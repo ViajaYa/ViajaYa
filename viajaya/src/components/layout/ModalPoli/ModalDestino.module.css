@@ -1,0 +1,73 @@
+.modalContainer{
+    position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+    opacity: 0;
+    animation: aparecer .25s ease-in-out forwards;
+    z-index: 999;
+}
+
+.flex{
+  display: flex;
+  /* justify-content: space-between; */
+  /* gap: 0px; */
+  /* background-color: red; */
+}
+
+.ul{
+  list-style: none;
+  margin: 0;
+  /* background-color: rebeccapurple; */
+  width: 150px;
+}
+
+.li{
+  margin: 0;
+  /* text-align: center; */
+  font-size: 1.1em;
+  font-weight: 600;
+  margin-top: 10px;
+}
+
+.modal{
+    background-color: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  max-width: 400px;
+  width: 900px;
+  position: relative;
+}
+
+.modal p{
+  text-align: justify;
+}
+
+.title{
+text-align: center;
+}
+
+@keyframes aparecer{
+    100%{
+        opacity:1
+    }
+}
+
+.button{
+  display: flex;
+  margin: 0 auto;
+  background-color: var(--primary);;
+  padding: 3px 15px;
+  border-radius: 5px;
+  color: white;
+  font-weight: 500;
+  border:0;
+  font-size: 1.05em;
+  cursor:pointer
+}

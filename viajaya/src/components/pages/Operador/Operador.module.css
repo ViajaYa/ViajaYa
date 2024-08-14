@@ -1,0 +1,133 @@
+.Promo{
+    margin: 20px 0px;
+    width: 100%;
+    height: 100vh;
+    /* padding: 20px 0px; */
+}
+
+.bg{
+    height: 100%;
+    position: absolute;
+    z-index: -1;
+    opacity: .5;
+}
+
+.titleContainer{
+    display:flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.titleSection{
+    text-align: center;
+    font-size: 3.5em;
+    line-height: 80px;
+    margin: 0px;
+    padding: 0;
+    color:var(--primary);
+    font-family: var(--font);
+}
+
+.PromoContainer{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 100px;
+    margin: 0px 50px;
+}
+
+.desc{
+    /* background-color: red; */
+       width: 500px;
+       font-size: 1.5em;
+       font-weight: 100;
+       text-align: justify;
+       /* margin-left: 50px; */
+}
+
+.noLink{
+    text-decoration: none;
+}
+
+.img{
+    width: 350px;
+    border-radius: 15px;
+    margin-top: 50px;
+}
+
+.buttonContainer{
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    /* background-color: red; */
+}
+
+.servicesContainer{
+    display: flex;
+    flex-flow: row wrap;
+    padding: 0px 80px;
+    gap: 100px;
+    justify-content: center;
+}
+
+.noLink{
+    color: white;
+    text-decoration: none;
+}
+
+.service{
+    width: 250px;
+    height: 400px;
+    /* background-color: red; */
+}
+
+.service:hover .img{
+    scale:1.1
+}
+
+.img{
+    width: 250px;
+    display: flex;
+    margin: 20px auto;
+    height: 250px;
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0px 0px 10px 7px rgba(75, 75, 75, 0.217);
+    transition: .3s;
+}
+
+.title{
+    text-align: center;
+    width: 200px;
+    margin: 0 auto;
+}
+
+.button{
+    border: 0;
+    background-color: var(--primary);;
+    color: white;
+    padding: 4px 20px;
+    border-radius: 5px;
+    font-size: 1em;
+    margin: 20px auto;
+    display: flex;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+@media screen and (max-width:900px) {
+    .Promo{
+        height: fit-content;
+    }
+    .servicesContainer{
+        gap: 0px;
+        flex-direction: column;
+        margin: 0 auto;
+    }
+    .service{
+        margin: 0 auto;
+    }
+    .bg{
+        display: none;
+    }
+}

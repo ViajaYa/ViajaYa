@@ -1,0 +1,41 @@
+.nav{
+    width: 100%;
+    /* background-color: red; */
+    height: 9vh;
+    display: flex;
+    justify-content: end;
+    gap: 30px;
+    align-items: center;
+}
+
+.car{
+    font-size: 2.2em;
+    color: var(--primary);
+}
+
+.user{
+    font-size: 2.2em;
+    color: var(--primary);
+}
+
+.profile{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-right: 100px;
+}
+
+.nameUser{
+    font-size: 1.1em;
+    font-weight: 600;
+}
+
+.noLink{
+    text-decoration: none;
+    color: black;
+}
+
+.inicio{
+    font-weight: 600;
+    font-size: 1.1em;
+}

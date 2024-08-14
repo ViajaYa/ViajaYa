@@ -1,0 +1,44 @@
+.footer{
+    background-color: #370861ed;
+    width: 100vw;
+    height: 10vh;
+    color: white;
+}
+
+.createdBy{
+    font-size: 1.1em;
+    line-height: 0;
+}
+
+.footerContent{
+    display: flex;
+    justify-content:space-around;
+    align-items: center;
+}
+
+.redes{
+    display: flex;
+    gap: 20px;
+    /* background-color: red; */
+}
+
+.icons{
+    font-size: 2em;
+}
+
+.noLink{
+    color: white;
+    text-decoration: none;
+}
+
+@media screen and (max-width:500px) {
+    .footerContent{
+        flex-direction: column-reverse;
+    }
+    .footer{
+        height: fit-content;
+    }
+    .redes{
+        margin-top: 25px;
+    }
+}

@@ -1,0 +1,77 @@
+.login{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* background-color: red; */
+    height: 100vh;
+}
+
+.loginContainer{
+    background-color: rgb(247, 247, 247);
+    width: 300px;
+    height: fit-content;
+    padding-bottom: 30px;
+    /* display: flex; */
+    /* margin: 100px auto; */
+    border-radius: 10px;
+    border: 1px solid rgb(227, 227, 227);
+}
+
+.title{
+    text-align: center;
+    padding-top: 30px;
+    /* color: green; */
+}
+
+.button{
+    border: 0;
+    color: white;
+    border-radius: 5px;
+    padding:7px 15px;
+    font-size: .9em;
+    font-weight: 600;
+    background-color: var(--primary);
+    width: 220px;
+    cursor: pointer;
+}
+
+.google{
+    font-size: 1.5em;
+}
+
+.buttonGoogle{
+    border: 1px solid rgb(200, 200, 200);
+    border-radius: 5px;
+    padding:7px 15px;
+    font-size: .9em;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.form{
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 0px 40px;
+}
+
+.input{
+    border: 1px solid rgb(200, 200, 200);
+    border-radius: 5px;
+    background-color: white;
+    font-size: 1em;
+    padding: 7px 15px;
+}
+
+.register{
+    text-align: center;
+}
+
+.buttonRegister{
+    font-weight: 600;
+    cursor:pointer;
+}
