@@ -13,6 +13,7 @@ import about5 from "../../../assets/miembros/f5-min.jpg"
 import about6 from "../../../assets/miembros/f6-min.jpg"
 import about7 from "../../../assets/miembros/f7-min.jpg"
 import about9 from "../../../assets/miembros/f9-min.jpg"
+import NavBar from '../../layout/NavBar/NavBar';
 
 import va1 from "../../../assets/va1.mp4"
 import va2 from "../../../assets/va2.mp4"
@@ -44,8 +45,9 @@ const About = () => {
 
   return(
     <Element name="nosotros">
+      <NavBar ruta="/about" showFullMenu={false} />
     <motion.div animate={animation} ref={ref} className={style.about} id="nosotros">
-      <h2 className={style.titleSection}>Quienes somos</h2>
+      <h2 className={style.titleSection}>Sobre Nostros</h2>
       <div className={style.aboutContainer}>
         {/* <h4 className={style.desc}>VIDEOS</h4> */}
         <div className={style.row}>
