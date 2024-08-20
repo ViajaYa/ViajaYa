@@ -41,7 +41,7 @@ const NavBar = ({ ruta, showFullMenu = true }) => {
               <li className={style.li}>Sobre Nosotros</li>
             </RouterLink>
             <ScrollLink to="proyectos" smooth={true} duration={500}>
-              <li ref={linkRef} className={style.li}>Promociones</li>
+              <li ref={linkRef} className={style.li}>Paquetes</li>
             </ScrollLink>
             <ScrollLink to="servicios" smooth={true} duration={500}>
               <li className={style.li}>Destinos</li>
@@ -50,7 +50,7 @@ const NavBar = ({ ruta, showFullMenu = true }) => {
               <li className={style.li}>Aliados</li>
             </ScrollLink>
             <ScrollLink to="contactanos" smooth={true} duration={500}>
-              <li className={style.li}>Trabaja con nosotros</li>
+              <li className={style.li}>Obtén Beneficios</li>
             </ScrollLink>
           </>
         ) : (
