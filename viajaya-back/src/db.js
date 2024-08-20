@@ -2,12 +2,30 @@ require('dotenv').config();
 const { Sequelize } = require('sequelize');
 const fs = require('fs');
 const path = require('path');
-const {DB} = process.env
+const { DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME, DB_DEPLOY } = require("../src/config/envs")
 
-const sequelize = new Sequelize("postgres://edgarrios412:M16cY6oxZQk2A8Zo4jslTs5i4YpoP0jB@dpg-cig2odd9aq012et8kvn0-a.oregon-postgres.render.com:5432/vi?ssl=true", {
-    logging: false, // set to console.log to see the raw SQL queries
-    native: false, // lets Sequelize know we can use pg-native for ~30% more speed
-  });
+//-------------------------------- CONFIGURACION PARA TRABAJAR LOCALMENTE-----------------------------------
+const sequelize = new Sequelize(
+    `postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}`,
+    {
+      logging: false, // set to console.log to see the raw SQL queries
+      native: false, // lets Sequelize know we can use pg-native for ~30% more speed
+    }
+  ); 
+  //-------------------------------------CONFIGURACION PARA EL DEPLOY---------------------------------------------------------------------
+//   const sequelize = new Sequelize(DB_DEPLOY , {
+//     logging: false, // set to console.log to see the raw SQL queries
+//     native: false, // lets Sequelize know we can use pg-native for ~30% more speed
+//     dialectOptions: {
+//       ssl: {
+//         require: true,
+//         rejectUnauthorized: false,
+//       }
+//     },
+//   }
+// );
+
+//----
 
   const basename = path.basename(__filename);
 
