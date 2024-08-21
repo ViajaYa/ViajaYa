@@ -33,6 +33,23 @@ module.exports = {
         if(userr){
             throw Error("Email existente")
         }else{
+
+            if (user.referred_by) {
+                const referrer = await User.findOne({
+                    where: {
+                        referral_code: user.referred_by,
+                    },
+                });
+
+                if (!referrer) {
+                    throw new Error("Código de referido no válido");
+                }
+
+                // Si existe un usuario que refirió, asignar su código
+                user.referred_by = referrer.referral_code;
+            }
+
+
         await User.create(user)
         return "Usuario creado con exito"
         }

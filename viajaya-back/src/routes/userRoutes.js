@@ -61,6 +61,7 @@ userRoutes.get("/recovery/:email", async (req,res) => {
 userRoutes.post("/", async (req,res) => {
     // Crear un usuarios
     const user = req.body
+    
     try {
         const users = await postUser(user)
         res.status(200).json({message:users})

@@ -69,7 +69,9 @@ const Profile = () => {
       axios.get("/pack").then((data) => dispatch(setPaquetes(data.data)))
       axios.get("/pack/chars").then((data) => setChars(data.data))
       axios.get("/promo").then((data) => setPromo(data.data))
-      axios.get(`/user/verify/${localStorage.getItem("token")}`).then((data) => {axios.get(`/user/${data.data.id}`).then((data) => setUser(data.data)); axios.get(`/buy/${data.data.id}`).then((data) => setBuy(data.data))})
+      axios.get(`/user/verify/${localStorage.getItem("token")}`).then((data) => {
+      axios.get(`/user/${data.data.id}`).then((data) => setUser(data.data));
+      axios.get(`/buy/${data.data.id}`).then((data) => setBuy(data.data))})
     }, [])
 
     const findLocation = (e) => {
@@ -388,6 +390,7 @@ const Profile = () => {
             <div className={style.profileDetail}>
                 <p className={style.profileName}>{user?.name} {user?.lastname}</p>
                 <p className={style.profileEmail}>{user?.email}</p>
+                <p className={style.profileEmail}>{user?.referral_code}</p>
                 {user?.role == 1 && <p></p>}
                 {user?.role == 2 && <p className={style.tagAsesor}>Asesor</p>}
                 {user?.role == 3 && <p className={style.tagAdmin}>Admin</p>}

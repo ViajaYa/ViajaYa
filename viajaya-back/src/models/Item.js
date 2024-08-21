@@ -26,5 +26,14 @@ module.exports = (sequelize) => {
     person:{
         type: DataTypes.INTEGER,
     },
+    referral_code: {
+      type: DataTypes.UUID, // Usamos UUID para almacenar el código de referido
+      allowNull: true, // Puede ser null si no hubo un referidor
+    },
+    userId: {
+      type: DataTypes.INTEGER, // Relación con el id del Usuario
+      allowNull: false,
+    }
+
   },{timestamps:false});
 };

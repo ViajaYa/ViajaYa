@@ -56,10 +56,35 @@ const packChar = sequelize.define('pack_char', {
 Pack.belongsToMany(Char, { through: packChar})
 Char.belongsToMany(Pack, { through: packChar})
 
-User.hasMany(Item)
+
 
 Item.belongsTo(Pack)
 Pack.hasMany(Item)
+
+
+// Relación entre usuarios para los referidos
+User.hasMany(User, {
+  as: 'Referrals', // Un usuario puede tener muchos referidos
+  foreignKey: 'referred_by', // Este es el campo en la tabla que almacena el referral_code del referidor
+  sourceKey: 'referral_code' // Esto conecta el referral_code del referidor con el referred_by del usuario referido
+});
+
+User.belongsTo(User, {
+  as: 'Referrer', // Un usuario puede ser referido por un usuario
+  foreignKey: 'referred_by', // Este campo almacena el código de referido del usuario que lo refirió
+  targetKey: 'referral_code' // Conecta el referred_by con el referral_code
+});
+
+// Relación entre Usuario y Compra (Item)
+User.hasMany(Item, {
+  foreignKey: 'userId', // Añadir la clave foránea userId a la tabla de Items
+  sourceKey: 'id' // Conecta con el id del Usuario
+});
+
+Item.belongsTo(User, {
+  foreignKey: 'userId', // Establece que cada Item pertenece a un Usuario
+  targetKey: 'id' // Conecta con el id del Usuario
+})
 
   module.exports = {
     ...sequelize.models, // para poder importar los modelos así: const { Product, User } = require('./db.js');
