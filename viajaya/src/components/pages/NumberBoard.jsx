@@ -3,7 +3,7 @@ import axios from 'axios';
 import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 
-
+const BASE_URL = "http://localhost:3001"
 
 const NumberBoard = ({ onSelect }) => {
   const [numbers, setNumbers] = useState([]);
@@ -21,7 +21,7 @@ const NumberBoard = ({ onSelect }) => {
       setLoading(true); // Iniciar la carga
       try {
         const response = await axios.get(
-          `https://numberboard.onrender.com/numbers/available?page=${paginationData.currentPage}&limit=${numbersPerPage}`
+          `${BASE_URL}/numbers/available?page=${paginationData.currentPage}&limit=${numbersPerPage}`
         );
         if (response.data && response.data.availableNumbers) {
           setNumbers(response.data.availableNumbers);
