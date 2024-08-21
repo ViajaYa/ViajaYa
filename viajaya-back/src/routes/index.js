@@ -5,6 +5,7 @@ const classRoutes = require("./classRoutes")
 const promoRoutes = require("./promoRoutes")
 const buyRoutes = require("./buyRoutes")
 const popupRoutes= require("./popupRoutes")
+const numberRoutes= require("./numberRoutes")
 
 const routes = Router()
 
@@ -15,5 +16,7 @@ routes
 .use("/promo", promoRoutes)
 .use("/buy", buyRoutes)
 .use("/popup", popupRoutes)
+.use("/rifa", numberRoutes)
+.use("number", numberRoutes)
 
 module.exports = routes
