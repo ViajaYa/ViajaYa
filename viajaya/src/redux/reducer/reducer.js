@@ -10,8 +10,19 @@ import {
   FILTER_PACKS,
   FILTER_PACKSCHARS,
   FILTER_PACKSTITLE,
-  DATA_PAY
+  DATA_PAY,
+
 } from "../actions/actions";
+
+import{
+
+  GET_POPUP_SUCCESS,
+  GET_POPUP_FAIL,
+  POST_POPUP_SUCCESS,
+  POST_POPUP_FAIL,  
+  PUT_POPUP_SUCCESS,
+  PUT_POPUP_FAIL 
+  } from '../actions/actions-types'
 
 const perPage = 8;
 
@@ -30,6 +41,10 @@ const initialState = {
   filter: "all",
   pay:{},
   word:"",
+  popup: null,
+  loading: false,
+  error: null,
+
 };
 const rootReducer = (state = initialState, { type, payload }) => {
   switch (type) {
@@ -81,6 +96,7 @@ const rootReducer = (state = initialState, { type, payload }) => {
             paquetes: state.paquetesOrigin.filter(p => p.chars.map(c => c.name).includes(payload[0]) && p.chars.map(c => c.name).includes(payload[1]) && p.chars.map(c => c.name).includes(payload[2]))
           }}
     }
+    // eslint-disable-next-line no-fallthrough
     case FILTER_PACKS:{
       if(payload[1] == "pack"){
       if(payload[0] == "all"){
@@ -124,6 +140,7 @@ const rootReducer = (state = initialState, { type, payload }) => {
   }
   }
     }
+    // eslint-disable-next-line no-fallthrough
     case SET_PAQUETES: {
       return {
         ...state,
@@ -201,7 +218,20 @@ const rootReducer = (state = initialState, { type, payload }) => {
           p.title.toLowerCase().includes(payload.toLowerCase())
         ),
       };
+
     }
+    case GET_POPUP_SUCCESS:
+      return { ...state, popup: payload, loading: false };
+    case GET_POPUP_FAIL:
+      return { ...state, error: payload, loading: false };
+    case POST_POPUP_SUCCESS:
+      return { ...state, popup: payload, loading: false };
+    case POST_POPUP_FAIL:
+      return { ...state, error: payload, loading: false };
+    case PUT_POPUP_SUCCESS:
+      return { ...state, popup: payload, loading: false };
+    case PUT_POPUP_FAIL:
+      return { ...state, error: payload, loading: false };
     default:
       return { ...state };
   }
