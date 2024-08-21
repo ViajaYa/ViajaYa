@@ -21,8 +21,10 @@ import Contact from "../Contact/Contact"
 import Promo from "../Promo/Promo"
 import Operador from "../Operador/Operador"
 
-
-
+import { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { animateScroll as scroll } from 'react-scroll';
+import WhatssapButton from './WhatssapButton'
 
 const Landing = ({ ruta }) => {
   const dispatch = useDispatch();
@@ -34,7 +36,6 @@ const Landing = ({ ruta }) => {
 
   return (
     <>
-
       <NavBar ruta={ruta} />
       <Home />
       <Promo />
@@ -45,8 +46,13 @@ const Landing = ({ ruta }) => {
       <Clients />
       <Contact />
       <Footer />
-      
+      <WhatssapButton />
       {popup && popup.isActive && <Popup content={popup.content} />}
+
+
+
+     
+
 
     </>
   );
