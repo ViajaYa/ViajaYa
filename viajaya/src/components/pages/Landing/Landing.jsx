@@ -20,9 +20,7 @@ import Clients from "../Clients/Clients"
 import Contact from "../Contact/Contact"
 import Promo from "../Promo/Promo"
 import Operador from "../Operador/Operador"
-
-
-
+import WhatssapButton from './WhatssapButton'
 
 const Landing = ({ ruta }) => {
   const dispatch = useDispatch();
@@ -34,7 +32,6 @@ const Landing = ({ ruta }) => {
 
   return (
     <>
-
       <NavBar ruta={ruta} />
       <Home />
       <Promo />
@@ -45,8 +42,13 @@ const Landing = ({ ruta }) => {
       <Clients />
       <Contact />
       <Footer />
-      
+      <WhatssapButton />
       {popup && popup.isActive && <Popup content={popup.content} />}
+
+
+
+     
+
 
     </>
   );
