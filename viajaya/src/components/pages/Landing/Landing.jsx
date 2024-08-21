@@ -13,7 +13,7 @@ import Operador from "../Operador/Operador"
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { animateScroll as scroll } from 'react-scroll';
-
+import WhatssapButton from './WhatssapButton'
 const Landing = ({ruta}) => {
 
   return(
@@ -28,6 +28,7 @@ const Landing = ({ruta}) => {
       <Clients/>
       <Contact/>
       <Footer/>
+      <WhatssapButton />
     </>
   )
 };
