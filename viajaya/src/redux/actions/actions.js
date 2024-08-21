@@ -20,7 +20,9 @@ GET_POPUP_FAIL,
 POST_POPUP_SUCCESS,
 POST_POPUP_FAIL,  
 PUT_POPUP_SUCCESS,
-PUT_POPUP_FAIL 
+PUT_POPUP_FAIL ,
+USER_REGISTER_SUCCESS,
+USER_REGISTER_FAIL
 } from './actions-types'
 
 const BASE_URL = 'http://localhost:3001'
@@ -31,7 +33,22 @@ export const setUser = (user) => {
     dispatch({type:SET_USER, payload:user})
   }
 }
+export const registerUser = (userData) => async (dispatch) => {
+  try {
+      // Hacer la solicitud al backend para crear el usuario
+      const response = await axios.post('/api/users', userData);
 
+      dispatch({
+          type: USER_REGISTER_SUCCESS,
+          payload: response.data,
+      });
+  } catch (error) {
+      dispatch({
+          type: USER_REGISTER_FAIL,
+          payload: error.response ? error.response.data : "Error en la solicitud",
+      });
+  }
+};
 
 
 export const setDataPay = (data) => {
