@@ -21,7 +21,10 @@ import{
   POST_POPUP_SUCCESS,
   POST_POPUP_FAIL,  
   PUT_POPUP_SUCCESS,
-  PUT_POPUP_FAIL 
+  PUT_POPUP_FAIL,
+  USER_REGISTER_REQUEST,
+  USER_REGISTER_SUCCESS,
+  USER_REGISTER_FAIL
   } from '../actions/actions-types'
 
 const perPage = 8;
@@ -42,8 +45,10 @@ const initialState = {
   pay:{},
   word:"",
   popup: null,
+  userInfo: null,
   loading: false,
   error: null,
+
 
 };
 const rootReducer = (state = initialState, { type, payload }) => {
@@ -232,6 +237,13 @@ const rootReducer = (state = initialState, { type, payload }) => {
       return { ...state, popup: payload, loading: false };
     case PUT_POPUP_FAIL:
       return { ...state, error: payload, loading: false };
+
+      case USER_REGISTER_REQUEST:
+        return { ...state, loading: true };
+    case USER_REGISTER_SUCCESS:
+        return { ...state, loading: false, userInfo: payload };
+    case USER_REGISTER_FAIL:
+        return { ...state, loading: false, error: payload };
     default:
       return { ...state };
   }
