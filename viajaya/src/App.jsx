@@ -1,4 +1,4 @@
-import { Route, Routes, useLocation } from "react-router-dom"
+import { Route, Routes, useLocation, useNavigate } from "react-router-dom"
 import Login from "./components/pages/Login/Login"
 import ProfileAdmin from "./components/pages/ProfileAdmin/Profile"
 import Detail from "./components/pages/Detail/Detail"
@@ -13,12 +13,16 @@ import ProtectedRoute from "./components/utils/ProtectedRoute"
 import {Suspense, lazy} from "react"
 import style from "./Spinner.module.css"
 import About from "./components/pages/About/About"
+import Rifa from "./components/pages/Rifa"
+import NumberBoard from "./components/pages/NumberBoard"
+import Form from "./components/pages/Form"
 
 const Landing = lazy(() => import("./components/pages/Landing/Landing"))
 
 function App() {
   const dispatch = useDispatch()
-
+  const navigate = useNavigate();
+  
   const verify = () => {
     const token = localStorage.getItem("token")
     alert(token)
@@ -36,11 +40,22 @@ function App() {
     }
   },[location.pathname])
 
+  const handleBack = () => {
+    navigate('/number');  // Cambia '/number' a la ruta a la que quieras navegar cuando se haga clic en "Volver"
+  };
+
   return (
     <>
     <Routes>
 
       <Route exact path="/login" element={<Login/>}/>
+      <Route exact path="/rifa" element={<Rifa/>}/>
+      <Route exact path="/number" element={<NumberBoard/>}/> 
+      <Route 
+          exact 
+          path="/form" 
+          element={<Form selectedNumbers={[]} onBack={handleBack} />}  // Pasar handleBack como prop onBack
+        />
       <Route exact path="/about" element={<About/>}/>
       <Route exact path="/profile" element={<ProfileAdmin/>}/>
       <Route exact path="/politicas" element={<Politicas/>}/>
