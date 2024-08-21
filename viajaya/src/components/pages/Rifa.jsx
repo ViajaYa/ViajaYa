@@ -23,7 +23,7 @@ const Rifa = () => {
       </div>
       <div className="w-full bg-verde text-white py-4">
         <div className="container mx-auto text-center">
-          <Link to="/number-board">
+          <Link to="/number">
             <button className="text-white py-4 px-8 rounded bg-blue-500 text-2xl">
               Seleccionar Números
             </button>
