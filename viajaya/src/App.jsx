@@ -12,6 +12,7 @@ import { setUser } from "./redux/actions/actions"
 import ProtectedRoute from "./components/utils/ProtectedRoute"
 import {Suspense, lazy} from "react"
 import style from "./Spinner.module.css"
+import About from "./components/pages/About/About"
 
 const Landing = lazy(() => import("./components/pages/Landing/Landing"))
 
@@ -40,7 +41,7 @@ function App() {
     <Routes>
 
       <Route exact path="/login" element={<Login/>}/>
-
+      <Route exact path="/about" element={<About/>}/>
       <Route exact path="/profile" element={<ProfileAdmin/>}/>
       <Route exact path="/politicas" element={<Politicas/>}/>
       <Route exact path="/terminos" element={<Terminos/>}/>

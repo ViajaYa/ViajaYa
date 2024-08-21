@@ -1,7 +1,8 @@
-.nav{
-    /* background-color: #370861ed; */
+/* Estilos existentes del NavBar */
+
+.nav {
     background: rgb(227,179,220);
-background: linear-gradient(90deg, rgba(227,179,220,1) 0%, rgba(62,22,106,1) 100%);
+    background: linear-gradient(90deg, rgba(227,179,220,1) 0%, rgba(62,22,106,1) 100%);
     display: flex;
     position: fixed;
     align-items: center;
@@ -10,23 +11,14 @@ background: linear-gradient(90deg, rgba(227,179,220,1) 0%, rgba(62,22,106,1) 100
     height: 10vh;
     z-index: 999;
     width: 100%;
-    /* margin-top: -11vh; */
-    /* animation: aparecer 1s .5s ease-in-out forwards; */
-
 }
 
-/* @keyframes aparecer{
-    100%{
-        margin-top: 0vh;
-    }
-} */
-
-.logo{
+.logo {
     width: 80px;
     margin-left: 75px;
 }
 
-.ul{
+.ul {
     display: flex;
     list-style:none;
     gap: 40px;
@@ -35,14 +27,14 @@ background: linear-gradient(90deg, rgba(227,179,220,1) 0%, rgba(62,22,106,1) 100
     padding: 0px 40px;
 }
 
-.li{
+.li {
     font-size: 1.25em;
     cursor:pointer;
     color:white;
 }
 
-.libutton{
-    background-color: var(--primary);;
+.libutton {
+    background-color: var(--primary);
     padding: 5px 15px;
     border-radius: 5px;
     color: white;
@@ -51,22 +43,64 @@ background: linear-gradient(90deg, rgba(227,179,220,1) 0%, rgba(62,22,106,1) 100
     cursor: pointer;
 }
 
-.noLink{
+.noLink {
     text-decoration: none;
     border: 0;
     outline: 0;
-    color:black
+    color: black;
 }
 
-@media screen and (max-width: 900px){
-    .li{
+@media screen and (max-width: 900px) {
+    .li {
         display: none;
     }
-    .ul{
+    .ul {
         gap: 0;
     }
-    .logo{
+    .logo {
         width: 50px;
         margin-left: 40px;
     }
 }
+
+/* Nuevos estilos para el menú desplegable de redes sociales */
+
+.socialMenu {
+    position: relative;
+}
+
+.socialButton {
+    background-color: var(--secondary); /* Fondo igual al del NavBar */
+    border: none;
+    cursor: pointer;
+    padding: 5px 15px;
+    font-size: 1.25em;
+    color: white; /* Texto blanco */
+    border-radius: 5px; /* Opcional: para darle bordes redondeados */
+}
+
+.socialIcons {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: rgb(227,179,220);
+    background: linear-gradient(90deg, rgba(227,179,220,1) 0%, rgba(62,22,106,1) 100%);
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.icon {
+    font-size: 1.5em;
+    color: white; /* Los íconos deben usar su color original */
+    text-decoration: none;
+}
+
+.icon:hover {
+    color: #f0f0f0; /* Color al pasar el ratón sobre el ícono */
+}
+

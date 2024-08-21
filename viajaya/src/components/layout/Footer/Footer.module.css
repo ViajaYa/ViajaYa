@@ -1,44 +1,66 @@
-.footer{
-    background-color: #370861ed;
+.footer {
+    background-color: #622697ed;
     width: 100vw;
     height: 10vh;
     color: white;
-}
-
-.createdBy{
-    font-size: 1.1em;
-    line-height: 0;
-}
-
-.footerContent{
     display: flex;
-    justify-content:space-around;
+    justify-content: center;
     align-items: center;
 }
 
-.redes{
+.footerContent {
+    display: flex;
+    justify-content: center; /* Centramos el contenido */
+    align-items: center;
+    gap: 20px; /* Espacio entre íconos */
+}
+
+.redes {
     display: flex;
     gap: 20px;
-    /* background-color: red; */
 }
 
-.icons{
-    font-size: 2em;
+.icons {
+    font-size: 3em;
+}
+.whatsapp {
+    color: #25D366; /* Color verde para WhatsApp */
 }
 
-.noLink{
-    color: white;
+.facebook {
+    color: #1877F2; /* Color azul para Facebook */
+}
+
+.instagram {
+    color: #C13584; /* Color rosa para Instagram */
+}
+
+.tiktok {
+    color: #000000; /* Color negro para TikTok */
+}
+
+.telegram {
+    color: #0088CC; /* Color azul para Telegram */
+}
+
+.terms {
+    color: #FFFFFF; /* Color blanco para el ícono de términos */
+}
+
+
+.noLink {
+    color: inherit; /* Hereda el color del contenedor (blanco en este caso) */
     text-decoration: none;
 }
 
-@media screen and (max-width:500px) {
-    .footerContent{
+@media screen and (max-width: 500px) {
+    .footerContent {
         flex-direction: column-reverse;
     }
-    .footer{
+    .footer {
         height: fit-content;
     }
-    .redes{
+    .redes {
         margin-top: 25px;
     }
 }
