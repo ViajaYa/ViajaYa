@@ -117,7 +117,7 @@ export const postPopup = (popupData) => async (dispatch) => {
   }
 };
 
-// Acción para actualizar un popup existente
+
 export const putPopup = (id, popupData) => async (dispatch) => {
   try {
     const response = await axios.put(`${BASE_URL}/popup/${id}`, popupData);
