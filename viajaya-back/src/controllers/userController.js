@@ -25,34 +25,32 @@ module.exports = {
         }else return "No lo encontramos"
     },
     postUser: async (user) => {
-        const userr = await User.findOne({
-            where:{
-                email:user.email
+        const existingUser = await User.findOne({
+            where: {
+                email: user.email
             }
-        })
-        if(userr){
+        });
+        if(existingUser){
             throw Error("Email existente")
-        }else{
-
-            if (user.referred_by) {
-                const referrer = await User.findOne({
-                    where: {
-                        referral_code: user.referred_by,
-                    },
-                });
-
-                if (!referrer) {
-                    throw new Error("Código de referido no válido");
+        }if(user.referral_code) {
+            const referringUser = await User.findOne({
+                where: {
+                    referral_code: user.referral_code
                 }
+            });
 
-                // Si existe un usuario que refirió, asignar su código
-                user.referred_by = referrer.referral_code;
+            if (referringUser) {
+                // Si el código de referido es válido, asigna el código de referido del usuario
+                user.referred_by = referringUser.referral_code;
+            } else {
+                // Si el código de referido no es válido, puedes manejar el error si es necesario
+                throw Error("Código de referido inválido");
             }
-
-
-        await User.create(user)
-        return "Usuario creado con exito"
         }
+
+        // Crea el nuevo usuario
+        await User.create(user);
+        return "Usuario creado con éxito";
     },
     recoveryPass: async (email) => {
         const user = await User.findOne({

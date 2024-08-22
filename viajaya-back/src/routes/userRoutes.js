@@ -58,17 +58,17 @@ userRoutes.get("/recovery/:email", async (req,res) => {
     }
 })
 
-userRoutes.post("/", async (req,res) => {
-    // Crear un usuarios
-    const user = req.body
-    
+userRoutes.post("/", async (req, res) => {
+    // Crear un usuario
+    const user = req.body;
+
     try {
-        const users = await postUser(user)
-        res.status(200).json({message:users})
+        const message = await postUser(user);
+        res.status(200).json({ message });
     } catch (error) {
-        res.status(404).json({mensaje:error})
+        res.status(400).json({ message: error.message }); 
     }
-})
+});
 
 
 

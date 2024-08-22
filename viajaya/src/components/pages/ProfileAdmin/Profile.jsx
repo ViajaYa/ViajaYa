@@ -29,6 +29,13 @@ const Profile = () => {
     const [user, setUser] = useState()
     const [changePass, setChangePass] = useState(false)
     const dispatch = useDispatch()
+    const referralLink = `http://localhost:5173/login/${user?.referral_code}`;
+
+    const copyToClipboard = () => {
+      navigator.clipboard.writeText(referralLink)
+          .then(() => alert('Enlace copiado al portapapeles!'))
+          .catch(err => console.error('Error al copiar el enlace: ', err));
+  };
 
     const [loading, setLoading] = useState(true)
 
@@ -388,14 +395,18 @@ const Profile = () => {
             <input type="file" className={style.upload2} onChange={uploadUserImage}/>
             </div>
             <div className={style.profileDetail}>
-                <p className={style.profileName}>{user?.name} {user?.lastname}</p>
-                <p className={style.profileEmail}>{user?.email}</p>
-                <p className={style.profileEmail}>{user?.referral_code}</p>
-                {user?.role == 1 && <p></p>}
-                {user?.role == 2 && <p className={style.tagAsesor}>Asesor</p>}
-                {user?.role == 3 && <p className={style.tagAdmin}>Admin</p>}
-
-            </div>
+            <p className={style.profileName}>{user?.name} {user?.lastname}</p>
+            <p className={style.profileEmail}>{user?.email}</p>
+            <p className={style.profileReferralCode}>
+                <a href={referralLink} target="_blank" rel="noopener noreferrer">{referralLink}</a>
+            </p>
+            <button onClick={copyToClipboard} className={style.copyButton}>
+                Copiar enlace
+            </button>
+            {user?.role === 1 && <p></p>}
+            {user?.role === 2 && <p className={style.tagAsesor}>Asesor</p>}
+            {user?.role === 3 && <p className={style.tagAdmin}>Admin</p>}
+        </div>
         </div>
         <div className={style.editProfile}>
             <form className={style.form} onSubmit={e => e.preventDefault()}>
