@@ -11,27 +11,44 @@ import {
   FILTER_PACKSCHARS,
   FILTER_PACKSTITLE,
   DATA_PAY,
+} from "../actions/actions-types";
 
-} from "../actions/actions";
-
-import{
-
+import {
   GET_POPUP_SUCCESS,
   GET_POPUP_FAIL,
   POST_POPUP_SUCCESS,
-  POST_POPUP_FAIL,  
+  POST_POPUP_FAIL,
   PUT_POPUP_SUCCESS,
   PUT_POPUP_FAIL,
   USER_REGISTER_REQUEST,
   USER_REGISTER_SUCCESS,
-  USER_REGISTER_FAIL
-  } from '../actions/actions-types'
+  USER_REGISTER_FAIL,
+} from "../actions/actions-types";
+
+import { 
+  INFO_USERS,
+  UPDATE_USER,
+  DELETE_USER_BY_ID,
+  FETCH_PACKS_REQUEST,
+    FETCH_PACKS_SUCCESS,
+    FETCH_PACKS_FAILURE,
+    CREATE_PACK_REQUEST,
+    CREATE_PACK_SUCCESS,
+    CREATE_PACK_FAILURE,
+    UPDATE_PACK_REQUEST,
+    UPDATE_PACK_SUCCESS,
+    UPDATE_PACK_FAILURE,
+    DELETE_PACK_REQUEST,
+    DELETE_PACK_SUCCESS,
+    DELETE_PACK_FAILURE
+ } from "../NewActions/NewActions-Types";
 
 const perPage = 8;
 
 const initialState = {
   user: {},
   pagina: 1,
+  infoUsers: [],
   paquetes: [],
   paquetesOrigin: [],
   users: [],
@@ -39,139 +56,157 @@ const initialState = {
   clases: [],
   clasesOrigin: [],
   maxPagesPacks: null,
-  maxPagesUser:null,
+  maxPagesUser: null,
   maxPagesClass: null,
   filter: "all",
-  pay:{},
-  word:"",
+  pay: {},
+  word: "",
   popup: null,
+  packs: [],
   userInfo: null,
   loading: false,
   error: null,
-
-
+  
 };
-const rootReducer = (state = initialState, { type, payload }) => {
-  switch (type) {
+const rootReducer = (state = initialState, action) => {
+  switch (action.type) {
     case SET_USER: {
       return {
         ...state,
-        user: payload,
+        user: action.payload,
       };
     }
     case DATA_PAY: {
       return {
         ...state,
-        pay: payload,
+        pay: action.payload,
       };
     }
-    case FILTER_PACKSTITLE:{
-      if(payload.length == 0){
-        return{
+    case FILTER_PACKSTITLE: {
+      if (action.payload.length == 0) {
+        return {
           ...state,
           paquetes: state.paquetesOrigin,
-          word: payload
-        }}else{
-          return{
-            ...state,
-            word:payload,
-            paquetes: state.paquetesOrigin.filter(p => p.title.toLowerCase().includes(payload.toLowerCase()))
-          }
-        }
+          word: action.payload,
+        };
+      } else {
+        return {
+          ...state,
+          word: action.payload,
+          paquetes: state.paquetesOrigin.filter((p) =>
+            p.title.toLowerCase().includes(action.payload.toLowerCase())
+          ),
+        };
+      }
     }
-    case FILTER_PACKSCHARS:{
-      if(payload.length == 0){
-        return{
+    case FILTER_PACKSCHARS: {
+      if (action.payload.length == 0) {
+        return {
           ...state,
-          paquetes: state.paquetesOrigin
-        }}
-      if(payload.length == 1){
-      return{
-        ...state,
-        paquetes: state.paquetesOrigin.filter(p => p.chars.map(c => c.name).includes(payload[0]))
-      }}
-      if(payload.length == 2){
-        return{
+          paquetes: state.paquetesOrigin,
+        };
+      }
+      if (action.payload.length == 1) {
+        return {
           ...state,
-          paquetes: state.paquetesOrigin.filter(p => p.chars.map(c => c.name).includes(payload[0]) && p.chars.map(c => c.name).includes(payload[1]))
-        }}
-        if(payload.length >= 3){
-          return{
-            ...state,
-            paquetes: state.paquetesOrigin.filter(p => p.chars.map(c => c.name).includes(payload[0]) && p.chars.map(c => c.name).includes(payload[1]) && p.chars.map(c => c.name).includes(payload[2]))
-          }}
+          paquetes: state.paquetesOrigin.filter((p) =>
+            p.chars.map((c) => c.name).includes(action.payload[0])
+          ),
+        };
+      }
+      if (action.payload.length == 2) {
+        return {
+          ...state,
+          paquetes: state.paquetesOrigin.filter(
+            (p) =>
+              p.chars.map((c) => c.name).includes(action.payload[0]) &&
+              p.chars.map((c) => c.name).includes(action.payload[1])
+          ),
+        };
+      }
+      if (action.payload.length >= 3) {
+        return {
+          ...state,
+          paquetes: state.paquetesOrigin.filter(
+            (p) =>
+              p.chars.map((c) => c.name).includes(action.payload[0]) &&
+              p.chars.map((c) => c.name).includes(action.payload[1]) &&
+              p.chars.map((c) => c.name).includes(action.payload[2])
+          ),
+        };
+      }
     }
     // eslint-disable-next-line no-fallthrough
-    case FILTER_PACKS:{
-      if(payload[1] == "pack"){
-      if(payload[0] == "all"){
-        return{
-          ...state,
-          paquetes: state.paquetesOrigin.slice(
-            (state.pagina - 1) * perPage,
-            perPage * state.pagina
-          )
+    case FILTER_PACKS: {
+      if (action.payload[1] == "pack") {
+        if (action.payload[0] == "all") {
+          return {
+            ...state,
+            paquetes: state.paquetesOrigin.slice(
+              (state.pagina - 1) * perPage,
+              perPage * state.pagina
+            ),
+          };
+        } else if (action.payload[0] == "false") {
+          return {
+            ...state,
+            paquetes: state.paquetesOrigin.filter((p) => p.status == false),
+          };
+        } else if (action.payload[0] == "true") {
+          return {
+            ...state,
+            paquetes: state.paquetesOrigin.filter((p) => p.status == true),
+          };
         }
-      }else if(payload[0] == "false"){
-      return{
-        ...state,
-        paquetes: state.paquetesOrigin.filter(p => p.status == false)
-      }
-    }else if(payload[0] == "true"){
-        return{
-          ...state,
-          paquetes: state.paquetesOrigin.filter(p => p.status == true)
+      } else {
+        if (action.payload[0] == "all") {
+          return {
+            ...state,
+            clases: state.clasesOrigin.slice(
+              (state.pagina - 1) * perPage,
+              perPage * state.pagina
+            ),
+          };
+        } else if (action.payload[0] == "false") {
+          return {
+            ...state,
+            clases: state.clasesOrigin.filter((p) => p.status == false),
+          };
+        } else if (action.payload[0] == "true") {
+          return {
+            ...state,
+            clases: state.clasesOrigin.filter((p) => p.status == true),
+          };
         }
-    }
-  }else{
-    if(payload[0] == "all"){
-      return{
-        ...state,
-        clases: state.clasesOrigin.slice(
-          (state.pagina - 1) * perPage,
-          perPage * state.pagina
-        )
       }
-    }else if(payload[0] == "false"){
-    return{
-      ...state,
-      clases: state.clasesOrigin.filter(p => p.status == false)
-    }
-  }else if(payload[0] == "true"){
-      return{
-        ...state,
-        clases: state.clasesOrigin.filter(p => p.status == true)
-      }
-  }
-  }
     }
     // eslint-disable-next-line no-fallthrough
     case SET_PAQUETES: {
       return {
         ...state,
-        paquetes: payload.slice(
+        paquetes: action.payload.slice(
           (state.pagina - 1) * perPage,
           perPage * state.pagina
         ),
-        paquetesOrigin: payload,
-        maxPagesPacks: Math.ceil(payload.length/perPage)
+        paquetesOrigin: action.payload,
+        maxPagesPacks: Math.ceil(action.payload.length / perPage),
       };
     }
     case SET_PAGINA: {
       return {
         ...state,
-        pagina: payload,
+        pagina: action.payload,
         paquetes: state.paquetes.slice(
-          (payload - 1) * perPage,
-          perPage * payload
+          (action.payload - 1) * perPage,
+          perPage * action.payload
         ),
         clases: state.clases.slice(
-          (payload - 1) * perPage,
-          perPage * payload
+          (action.payload - 1) * perPage,
+          perPage * action.payload
         ),
         users: state.usersOrigin.slice(
-          (payload - 1) * perPage,
-          perPage * payload
+          (action.payload - 1) * perPage,
+          perPage * action.payload
         ),
       };
     }
@@ -180,72 +215,122 @@ const rootReducer = (state = initialState, { type, payload }) => {
         ...state,
         pagina: 1,
         paquetes: state.paquetesOrigin.filter((p) =>
-          p.title.toLowerCase().includes(payload.toLowerCase())
+          p.title.toLowerCase().includes(action.payload.toLowerCase())
         ),
       };
     }
     case SET_USERS: {
       return {
         ...state,
-        pagina:1,
-        users: payload.slice(
+        pagina: 1,
+        users: action.payload.slice(
           (state.pagina - 1) * perPage,
           perPage * state.pagina
         ),
-        usersOrigin: payload,
-        maxPagesUser: Math.ceil(payload.length/perPage)
+        usersOrigin: action.payload,
+        maxPagesUser: Math.ceil(action.payload.length / perPage),
       };
     }
     case FIND_USERS: {
       return {
         ...state,
         users: state.usersOrigin.filter((p) =>
-          p.email.toLowerCase().includes(payload.toLowerCase())
+          p.email.toLowerCase().includes(action.payload.toLowerCase())
         ),
       };
     }
     case SET_CLASS: {
       return {
         ...state,
-        pagina:1,
-        clases: payload.slice(
+        pagina: 1,
+        clases: action.payload.slice(
           (state.pagina - 1) * perPage,
           perPage * state.pagina
         ),
-        clasesOrigin: payload,
-        maxPagesClass: Math.ceil(payload.length/perPage)
+        clasesOrigin: action.payload,
+        maxPagesClass: Math.ceil(action.payload.length / perPage),
       };
     }
     case FIND_CLASS: {
       return {
         ...state,
         clases: state.clasesOrigin.filter((p) =>
-          p.title.toLowerCase().includes(payload.toLowerCase())
+          p.title.toLowerCase().includes(action.payload.toLowerCase())
         ),
       };
-
     }
     case GET_POPUP_SUCCESS:
-      return { ...state, popup: payload, loading: false };
+      return { ...state, popup: action.payload, loading: false };
     case GET_POPUP_FAIL:
-      return { ...state, error: payload, loading: false };
+      return { ...state, error: action.payload, loading: false };
     case POST_POPUP_SUCCESS:
-      return { ...state, popup: payload, loading: false };
+      return { ...state, popup: action.payload, loading: false };
     case POST_POPUP_FAIL:
-      return { ...state, error: payload, loading: false };
+      return { ...state, error: action.payload, loading: false };
     case PUT_POPUP_SUCCESS:
-      return { ...state, popup: payload, loading: false };
+      return { ...state, popup: action.payload, loading: false };
     case PUT_POPUP_FAIL:
-      return { ...state, error: payload, loading: false };
+      return { ...state, error: action.payload, loading: false };
 
-      case USER_REGISTER_REQUEST:
-        return { ...state, loading: true };
+    case USER_REGISTER_REQUEST:
+      return { ...state, loading: true };
     case USER_REGISTER_SUCCESS:
-        return { ...state, loading: false, userInfo: payload };
+      return { ...state, loading: false, userInfo: action.payload };
     case USER_REGISTER_FAIL:
-        return { ...state, loading: false, error: payload };
+      return { ...state, loading: false, error: action.payload };
+      case INFO_USERS:
+        return {
+          ...state,
+          infoUsers: action.payload,
+          loading: false,
+        };
+      case UPDATE_USER:
+        return {
+          ...state,
+          infoUsers: state.infoUsers.map((user) =>
+            user.id === action.payload.id ? action.payload : user
+          ),
+        };
+        case DELETE_USER_BY_ID:
+          return {
+            ...state,
+          };
+          case FETCH_PACKS_REQUEST:
+            return {
+               ...state, 
+               loading: true, 
+               error: null };
+        case FETCH_PACKS_SUCCESS:
+            return { ...state, 
+              loading: false, 
+              packs: action.payload };
+        case FETCH_PACKS_FAILURE:
+            return { ...state, loading: false, error: action.payload };
+        case CREATE_PACK_REQUEST:
+            return { ...state, loading: true, error: null };
+        case CREATE_PACK_SUCCESS:
+            return { ...state, loading: false };
+        case CREATE_PACK_FAILURE:
+            return { ...state, loading: false, error: action.payload };
+        case UPDATE_PACK_REQUEST:
+            return { ...state, loading: true, error: null };
+        case UPDATE_PACK_SUCCESS:
+            return { ...state, loading: false };
+        case UPDATE_PACK_FAILURE:
+            return { ...state, loading: false, error: action.payload };
+        case DELETE_PACK_REQUEST:
+            return { ...state, loading: true, error: null };
+        case DELETE_PACK_SUCCESS:
+            return {
+                ...state,
+                loading: false,
+                packs: state.packs.filter(pack => pack.id !== action.payload)
+            };
+        case DELETE_PACK_FAILURE:
+            return { ...state, loading: false, error: action.payload };
+
     default:
-      return { ...state };
+      return state ;
   }
 };
 

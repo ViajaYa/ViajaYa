@@ -8,7 +8,7 @@ import {FiUsers} from "react-icons/fi"
 import {BsBoxSeam} from "react-icons/bs"
 import {FaChalkboardTeacher, FaExchangeAlt} from "react-icons/fa"
 import axios from 'axios';
-import { FIND_USERS, findPaquetes, setPaquetes, findUsers, setUsers, setClass, findClass, setPagina, filterPacks } from '../../../redux/actions/actions';
+import {  findPaquetes, setPaquetes, findUsers, setUsers, setClass, findClass, setPagina, filterPacks } from '../../../redux/actions/actions';
 import { useDispatch, useSelector } from 'react-redux';
 import Map from '../../layout/Map/Map';
 import {toast, Toaster} from "react-hot-toast"

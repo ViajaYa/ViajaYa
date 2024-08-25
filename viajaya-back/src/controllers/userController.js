@@ -7,23 +7,31 @@ module.exports = {
         return users
     },
     putUser: async (u) => {
-        const user = await User.findOne({
-            where:{
-                id:u.id
+        try {
+            const user = await User.findOne({
+                where: { id: u.id }
+            });
+    
+            if (!user) {
+                throw new Error("Usuario no encontrado");
             }
-        })
-        if(user){
-            if(u.name) user.name = u.name
-            if(u.lastname) user.lastname = u.lastname
-            if(u.email) user.email = u.email
-            if(u.phone) user.phone = u.phone
-            if(u.password) user.password = u.password
-            if(u.role) user.role = u.role
-            if(u.image) user.image = u.image
-            await user.save()
-            return "Usuario actualizado"
-        }else return "No lo encontramos"
+    
+            // Actualiza solo los campos que están definidos en `u`
+            const fieldsToUpdate = [ 'email', 'phone',  'role', 'image', 'points', 'referredBy'];
+            fieldsToUpdate.forEach(field => {
+                if (u[field] !== undefined) {
+                    user[field] = u[field];
+                }
+            });
+    
+            await user.save();
+            return "Usuario actualizado";
+        } catch (error) {
+            console.error('Error al actualizar el usuario:', error);
+            return `Error: ${error.message}`;
+        }
     },
+    
     postUser: async (user) => {
         const existingUser = await User.findOne({
             where: {
@@ -60,16 +68,23 @@ module.exports = {
         })
         return user
     },
-    deleteUser: async (id) => {
-        const user = await User.findOne({
-            where:{
-                id:id
+    deleteUser:  async (id) => {
+        try {
+            const user = await User.findOne({
+                where: {
+                    id: id
+                }
+            });
+    
+            if (user) {
+                await user.destroy();
+                return "Usuario eliminado con éxito";
+            } else {
+                return null; // Cambié esto para que retorne null si el usuario no existe
             }
-        })
-        if(user){
-            await user.destroy()
-            return "Usuario eliminado con exito"
-        }else return "No encontramos el usuario"
+        } catch (error) {
+            throw new Error("Error al eliminar el usuario");
+        }
     },
     authUser: async ({email,password}) => {
         const user = await User.findOne({

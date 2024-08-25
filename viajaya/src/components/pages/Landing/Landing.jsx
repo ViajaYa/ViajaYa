@@ -17,6 +17,7 @@ import Promo from "../Promo/Promo"
 import Operador from "../Operador/Operador"
 import WhatssapButton from './WhatssapButton'
 
+// eslint-disable-next-line react/prop-types
 const Landing = ({ ruta }) => {
   const dispatch = useDispatch();
   const popup = useSelector((state) => state.popup);

@@ -1,69 +1,59 @@
-const {Router} = require("express")
+const express = require('express');
+const router = express.Router();
+const { getPacks, getChars, getPackById, putPack, postPack, deletePack } = require('../controllers/packController');
 
-const {getPacks, getPackById, postPack, putPack, deletePack, getChars} = require("../controllers/packController")
-
-const packRoutes = Router()
-
-packRoutes.get("/", async (req,res) => {
-    // Traer todos los paquete
+router.get('/', async (req, res) => {
     try {
-        const pack = await getPacks()
-        res.status(200).json(pack)
+        const packs = await getPacks();
+        res.json(packs);
     } catch (error) {
-        res.status(404).json({message:error})
+        res.status(500).json({ message: error.message });
     }
-})
+});
 
-packRoutes.get("/chars", async (req,res) => {
-    // Traer todos los paquete
+router.get('/chars', async (req, res) => {
     try {
-        const pack = await getChars()
-        res.status(200).json(pack)
+        const chars = await getChars();
+        res.json(chars);
     } catch (error) {
-        res.status(404).json({message:error})
+        res.status(500).json({ message: error.message });
     }
-})
+});
 
-packRoutes.get("/:id", async (req,res) => {
-    // Traer todos los paquete
-    const {id} = req.params
+router.get('/:id', async (req, res) => {
     try {
-        const pack = await getPackById(id)
-        res.status(200).json(pack)
+        const pack = await getPackById(req.params.id);
+        res.json(pack);
     } catch (error) {
-        res.status(404).json({message:error})
+        res.status(404).json({ message: error.message });
     }
-})
+});
 
-packRoutes.post("/", async (req,res) => {
-    // Crear un paquete
-    const p = req.body
+router.put('/:id', async (req, res) => {
     try {
-        const pack = await postPack(p)
-        res.status(200).json({message:pack})
+        const updatedPack = await putPack(req.body);
+        res.json(updatedPack);
     } catch (error) {
-        res.status(404).json({message:error})
+        res.status(400).json({ message: error.message });
     }
-})
-packRoutes.put("/", async (req,res) => {
-    // Editar un paquete
-    const pack = req.body
-    try {
-        const packEdit = await putPack(pack)
-        res.status(200).json({message:packEdit})
-    } catch (error) {
-        res.status(404).json({message:error})
-    }
-})
-packRoutes.delete("/:id", async (req,res) => {
-    // Borrar un paquete
-    const {id} = req.params
-    try {
-        const pack = await deletePack(id)
-        res.status(200).json({message:pack})
-    } catch (error) {
-        res.status(404).json({message:error})
-    }
-})
+});
 
-module.exports = packRoutes
+router.post('/', async (req, res) => {
+    try {
+        const message = await postPack(req.body);
+        res.json({ message });
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+});
+
+router.delete('/:id', async (req, res) => {
+    try {
+        const message = await deletePack(req.params.id);
+        res.json({ message });
+    } catch (error) {
+        res.status(404).json({ message: error.message });
+    }
+});
+
+module.exports = router;

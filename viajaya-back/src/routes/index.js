@@ -7,6 +7,8 @@ const buyRoutes = require("./buyRoutes")
 const popupRoutes= require("./popupRoutes")
 const numberRoutes= require("./numberRoutes")
 
+
+
 const routes = Router()
 
 routes

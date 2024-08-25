@@ -16,6 +16,11 @@ import About from "./components/pages/About/About"
 import Rifa from "./components/pages/Rifa"
 import NumberBoard from "./components/pages/NumberBoard"
 import Form from "./components/pages/Form"
+import Panel from "./components/Panel/Panel"
+import UserManagement from "./components/Panel/UserManagment"
+import PackManagement from "./components/Panel/PackManagement"
+import NewPack from "./components/Panel/NewPack"
+
 
 const Landing = lazy(() => import("./components/pages/Landing/Landing"))
 
@@ -58,6 +63,10 @@ function App() {
         />
       <Route exact path="/about" element={<About/>}/>
       <Route exact path="/profile" element={<ProfileAdmin/>}/>
+      <Route exact path="/panel" element={<Panel/>}/>
+       <Route path="/panel/user" element={<UserManagement/>}/> 
+       <Route path="/panel/pack" element={<PackManagement/>}/> 
+       <Route path="/panel/newPack" element={<NewPack/>}/> 
       <Route exact path="/politicas" element={<Politicas/>}/>
       <Route exact path="/terminos" element={<Terminos/>}/>
       <Route exact path="/pay" element={<Pay/>}/>

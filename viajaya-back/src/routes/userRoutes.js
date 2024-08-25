@@ -72,7 +72,7 @@ userRoutes.post("/", async (req, res) => {
 
 
 
-userRoutes.put("/", async (req,res) => {
+userRoutes.put("/:id", async (req,res) => {
     // Editar un usuario
     const user = req.body
     try {
@@ -83,14 +83,19 @@ userRoutes.put("/", async (req,res) => {
     }
 })
 
-userRoutes.delete("/:id", async(req,res)=>{
+userRoutes.delete("/:id", async (req, res) => {
+    const { id } = req.params; // Asegúrate de obtener correctamente el id
     try {
-        const user = await deleteUser(id)
-        res.status(200).json({message:user})
+        const user = await deleteUser(id); // Pasa el id correctamente a la función deleteUser
+        if (user) {
+            res.status(200).json({ message: "Usuario eliminado con éxito" });
+        } else {
+            res.status(404).json({ message: "Usuario no encontrado" });
+        }
     } catch (error) {
-        res.status(404).json({message:error})
+        res.status(500).json({ message: "Error al eliminar el usuario" });
     }
-})
+});
 
 userRoutes.post("/auth", async(req,res)=>{
     const user = req.body
