@@ -33,7 +33,10 @@ const Landing = ({ ruta }) => {
       <Promo />
       <Operador />
       <Paquetes />
-      <Destinos />
+      <div>
+  <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-5xl font-bold font-dancing text-gray-700 mb-3 p-8 text-center mt-16">Destinos</h1>
+  <Destinos/>
+  </div>
       <Clients />
       <Contact />
       <Footer />

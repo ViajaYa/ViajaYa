@@ -127,7 +127,7 @@ const Profile = () => {
                                             <li>
                                                 <button 
                                                     onClick={() => setPage(0)} 
-                                                    className={`p-2 rounded ${page === 0 ? 'bg-rose-300 text-gray-900' : 'hover:bg-gray-700'}`}
+                                                    className={`p-2 rounded ${page === 0 ? 'bg-ColorMorado text-gray-900' : 'hover:bg-gray-700'}`}
                                                 >
                                                     <AiOutlineUser className="inline-block mr-1" /> Información Personal
                                                 </button>
@@ -135,7 +135,7 @@ const Profile = () => {
                                             <li>
                                                 <button 
                                                     onClick={() => setPage(1)} 
-                                                    className={`p-2 rounded ${page === 1 ? 'bg-rose-300 text-gray-900' : 'hover:bg-gray-700'}`}
+                                                    className={`p-2 rounded ${page === 1 ? 'bg-ColorMorado text-gray-900' : 'hover:bg-gray-700'}`}
                                                 >
                                                     <MdPayment className="inline-block mr-1" /> Mis compras
                                                 </button>
@@ -192,7 +192,7 @@ const Profile = () => {
 
                                         <button 
                                             onClick={updateUser} 
-                                            className="w-full bg-rose-300 text-white p-2 rounded hover:bg-slate-700"
+                                            className="w-full bg-ColorMorado text-white p-2 rounded hover:bg-slate-700"
                                         >
                                             {changePass ? 'Actualizar contraseña' : 'Actualizar datos'}
                                         </button>
@@ -210,7 +210,7 @@ const Profile = () => {
  {/* Botón para ir a la página principal */}
  <button 
                                 onClick={handleGoHome} 
-                                className="w-full bg-rose-300 text-white p-2 rounded hover:bg-slate-700 mb-4"
+                                className="w-full bg-ColorMorado text-white p-2 rounded hover:bg-slate-700 mb-4"
                             >
                                 <MdHome className="inline-block mr-1" /> Ir a la página principal
                             </button>
