@@ -70,9 +70,18 @@ userRoutes.post("/", async (req, res) => {
     }
 });
 
+userRoutes.put("/update/:id", async (req,res) => {
+    // Editar un usuario
+    const user = req.body
+    try {
+        const users = await putUser(user)
+        res.status(200).json({message:users})
+    } catch (error) {
+        res.status(404).json({message:error})
+    }
+})
 
-
-userRoutes.put("/:id", async (req,res) => {
+userRoutes.put("/", async (req,res) => {
     // Editar un usuario
     const user = req.body
     try {

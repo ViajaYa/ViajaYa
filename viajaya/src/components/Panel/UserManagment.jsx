@@ -92,7 +92,7 @@ const UserManagment = () => {
 
   return (
     <div className="container mx-auto mt-12 p-4">
-      <h2 className="bg-ColorMorado text-4xl font-bold font-nunito text-xl  text-white mb-8">Listar y Modificar Usuarios</h2>
+      <h2 className="bg-ColorMorado text-3xl font-bold font-nunito  text-white mb-8">Listar y Modificar Usuarios</h2>
 
       {/* Formulario de Búsqueda */}
       <div className="mb-4">

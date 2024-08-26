@@ -24,7 +24,7 @@ export const infoUsers = () => async (dispatch) => {
 
 export const updateUser = (userData) => async (dispatch) => {
   try {
-    const url = `${BASE_URL}/user/${userData.id}`; 
+    const url = `${BASE_URL}/user/update/${userData.id}`; 
     const { data } = await axios.put(url, userData);
     dispatch({ type: UPDATE_USER, payload: data });
     return { success: true };

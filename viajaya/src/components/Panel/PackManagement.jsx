@@ -1,4 +1,4 @@
-// src/components/PackManagement.jsx
+
 // eslint-disable-next-line no-unused-vars
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';

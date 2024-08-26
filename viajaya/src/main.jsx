@@ -7,6 +7,8 @@ import axios from 'axios';
 import { store } from './redux/store/store.js';
 import { Provider } from 'react-redux';
 
+
+
 // Configuración de Axios
 axios.defaults.baseURL = "http://localhost:3001";
 
