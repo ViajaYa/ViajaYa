@@ -2,7 +2,9 @@
 import React, { useState, useCallback } from 'react';
 import { useDispatch } from 'react-redux';
 import { useDropzone } from 'react-dropzone';
-import { createPack } from '../../redux/NewActions/newActions'; // Tu action para crear el pack
+import { createPack } from '../../redux/NewActions/newActions'; 
+import MapView from '../MapView';
+import "leaflet/dist/leaflet.css";
 
 const NewPack = () => {
   const [title, setTitle] = useState('');
@@ -134,11 +136,15 @@ const NewPack = () => {
             {imagePreview.map((src, index) => (
               <div key={index} className="relative">
                 <img src={src} alt={`Preview ${index}`} className="w-full h-auto rounded-md" />
-                
               </div>
+              
             ))}
           </div>
+         
         )}
+        <div>
+            <MapView/>
+          </div>
 
         <button
           type="submit"
