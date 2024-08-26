@@ -16,8 +16,12 @@ module.exports = {
                 throw new Error("Usuario no encontrado");
             }
     
-            // Actualiza solo los campos que están definidos en `u`
-            const fieldsToUpdate = [ 'email', 'phone',  'role', 'image', 'points', 'referredBy'];
+            // Define los campos que pueden ser actualizados
+            const fieldsToUpdate = [
+                'name', 'lastname', 'email', 'phone', 'password', 'role', 'image', 'points', 'referredBy'
+            ];
+    
+            // Actualiza solo los campos que están definidos en u
             fieldsToUpdate.forEach(field => {
                 if (u[field] !== undefined) {
                     user[field] = u[field];

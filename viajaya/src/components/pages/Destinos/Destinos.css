@@ -1,0 +1,57 @@
+.perspective {
+    perspective: 1000px;
+  }
+  
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+  
+  .backface-hidden {
+    backface-visibility: hidden;
+  }
+  
+  .group:hover .preserve-3d {
+    transform: rotateY(180deg);
+  }
+  
+  .flip-card {
+    transition: transform 0.5s;
+    transform-style: preserve-3d;
+  }
+  
+  .flip-card-front, .flip-card-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+  }
+  
+  .flip-card-back {
+    transform: rotateY(180deg);
+  }
+  
+  .w-64 {
+    width: 14rem; /* Ancho original */
+  }
+  
+  .w-70 {
+    width: 12rem; /* 10% más ancho que el original */
+  }
+  
+  .h-160 {
+    height: 30rem; /* Doble de la altura original */
+  }
+  /* Estilos responsivos para pantallas pequeñas */
+@media (max-width: 768px) { /* Ajusta el punto de interrupción según sea necesario */
+    .w-64 {
+      width: 10rem; /* Reduzca el ancho en pantallas pequeñas */
+    }
+  
+    .w-70 {
+      width: 9rem; /* Ajusta el ancho si usas esta clase */
+    }
+  
+    .h-160 {
+      height: 20rem; /* Ajusta la altura en pantallas pequeñas */
+    }
+  }

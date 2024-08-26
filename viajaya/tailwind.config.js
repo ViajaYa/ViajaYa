@@ -15,6 +15,7 @@ module.exports = {
       },
       fontFamily: {
         nunito: ['Nunito', 'sans-serif'], // Definir la fuente Nunito
+        dancing:['Dancing+Script']
       },
     },
   },
