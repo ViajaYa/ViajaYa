@@ -5,7 +5,7 @@ import { getPopup } from '../../../redux/actions/actions'
 import Popup from '../../../components/popups/Popup'
 
 
- 
+ import TabbedImages from '../Operador/TabbedImages';
 import NavBar from "../../layout/NavBar/NavBar"
 import Footer from "../../layout/Footer/Footer"
 import Home from "../Home/Home"
@@ -36,6 +36,7 @@ const Landing = ({ ruta }) => {
   </div>
       <Promo />
       {/* <Operador /> */}
+      <TabbedImages/>
       <Paquetes />
  
       <Clients />
