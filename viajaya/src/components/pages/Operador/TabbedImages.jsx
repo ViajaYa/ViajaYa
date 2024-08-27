@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import guzerat from '../../../assets/newImg/viajayaImg/onya.png';
-import gyr from '../../../assets/newImg/viajayaImg/40mil.png';
-import jersey from '../../../assets/newImg/viajayaImg/alohaya.png';
-import brahman from '../../../assets/newImg/viajayaImg/combiYa.png';
+import onya from '../../../assets/newImg/viajayaImg/onya.png';
+import cuarenta from '../../../assets/newImg/viajayaImg/40mil.png';
+import vuelaYa from '../../../assets/newImg/viajayaImg/vuelaya.png';
+import combiya from '../../../assets/newImg/viajayaImg/combiYa.png';
+import ganaya from '../../../assets/newImg/viajayaImg/ganaya.png';
 
 const TabbedImages = () => {
   const [activeTab, setActiveTab] = useState('tab1');
@@ -15,27 +16,32 @@ const TabbedImages = () => {
     switch (tab) {
       case 'tab1':
         return {
-          image: guzerat,
-          text: 'Asesoría en mejoramiento genérico. Mejora parámetros productivos(carne y leche). Busca mejorar la eficiencia productiva. Mejor relación entre conformación y salud mamaria.',
+          image: combiya,
+          text: 'Combi YA Que es? aqui encontraras la oportunidad de conocer multiples destinos con descuentos para quien es? : Viajeros con tiempo ilimitado y el doble de ganas de viajar. ¿Cómo se obtiene ? :  Con cuota de %  inicial y saldo a cuotas mensuales.',
         };
       case 'tab2':
         return {
-          image: gyr,
-          text: 'Distribuidor de importantes Casas de Genética Bovina y respaldado por las mejores marcas en implementos, medicamentos hormonales y productos para salud reproductiva bovina.',
+          image: onya,
+          text: 'ONYA! Que es ?: convenio con cadena hotelera colombiana con destinos seleccionados Como se obtiene: 30% de valor y pagando cuotas hasta 24 meses !! Para quien es? : Viajeros que no tengan miedo de enamorarse de una nueva region colombiana como se ontiene? : como es nuestro producto estrella desde un 5% del plan elegido y ha cuotas .',
         };
       case 'tab3':
         return {
-          image: jersey,
-          text: 'Con LLanoBioTec tendrás asegurada una calidad inigualable, nos destacamos por el manejo de buenas prácticas donde se hará la implementación de varios procesos con tecnología de ultima calidad en el mercado..',
+          image: vuelaYa,
+          text: 'Vuela Ya Que es? adquiere la tasas mas bajas de tiquetes a diario para quien es?: viajeros que aceptan horarios nocturnos y baja demanda como se seprara? Pago 100% clientes con la desicion de volar ya .',
         };
       case 'tab4':
         return {
-          image: brahman,
-          text: 'También somos educación tecnología, turismo y producción para la evolución de la región llanera y de Restrepo Meta..',
+          image: cuarenta,
+          text: '40 Mil Razones para viajar  que es?  Apartar la promocion vigente con el valor más bajo para quien es? Viajeros con poder de decisión como se obtiene? Con 2 billetes de 20 mil pesos y en el momento adecuado..',
         };
+        case 'tab5':
+          return {
+            image: ganaya,
+            text: 'GanaYA y Viajaya (sorteos  cada trimestre) que es?  por un precio Bajo obtener la oportunidad de ganar un plan completo para quien es ? Personas con Fe de Ganar con sus numeros preferidos de la suerte Como se obtiene? : Valor por boleta o compra de planes turisticos promocionales .',
+          };
       default:
         return {
-          image: guzerat,
+          image: cuarenta,
           text: 'Texto explicativo por defecto.',
         };
     }
@@ -50,25 +56,31 @@ const TabbedImages = () => {
           className={`px-2 py-1 md:px-4 md:py-2 rounded text-sm lg:text-lg ${activeTab === 'tab1' ? 'bg-ColorAzul text-gray-900' : 'bg-gray-200 text-gray-600'}`}
           onClick={() => handleTabClick('tab1')}
         >
-          Asesoría
+         Combi YA
         </button>
         <button
           className={`px-2 py-1 md:px-4 md:py-2 rounded text-sm lg:text-lg mx-1 md:mx-2 ${activeTab === 'tab2' ? 'bg-ColorAzul text-gray-900' : 'bg-gray-200 text-gray-600'}`}
           onClick={() => handleTabClick('tab2')}
         >
-          Distribuidor
+          ONYA!
         </button>
         <button
           className={`px-2 py-1 md:px-4 md:py-2 rounded text-sm lg:text-lg mx-1 md:mx-2 ${activeTab === 'tab3' ? 'bg-ColorAzul text-gray-900' : 'bg-gray-200 text-gray-600'}`}
           onClick={() => handleTabClick('tab3')}
         >
-          Calidad
+          Vuela Ya
         </button>
         <button
           className={`px-2 py-1 md:px-4 md:py-2 rounded text-sm lg:text-lg font-nunito ${activeTab === 'tab4' ? 'bg-ColorAzul text-gray-900' : 'bg-gray-200 text-gray-600'}`}
           onClick={() => handleTabClick('tab4')}
         >
-          Educación
+          40 Mil Razones para viajar    
+        </button>
+        <button
+          className={`px-2 py-1 md:px-4 md:py-2 rounded text-sm lg:text-lg mx-1 md:mx-2 ${activeTab === 'tab5' ? 'bg-ColorAzul text-gray-900' : 'bg-gray-200 text-gray-600'}`}
+          onClick={() => handleTabClick('tab5')}
+        >
+          GanaYA y Viajaya
         </button>
       </div>
       <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-4 lg:space-x-8">
