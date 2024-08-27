@@ -17,13 +17,16 @@
   .flip-card {
     transition: transform 0.5s;
     transform-style: preserve-3d;
+    
+    
   }
   
   .flip-card-front, .flip-card-back {
-    position: absolute;
-    width: 100%;
+    position: center;
+    width: 200%;
     height: 100%;
     backface-visibility: hidden;
+    margin-right: 20%;
   }
   
   .flip-card-back {

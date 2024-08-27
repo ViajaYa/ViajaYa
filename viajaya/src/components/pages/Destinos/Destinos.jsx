@@ -3,9 +3,9 @@ import React from "react";
 import "./Destinos.css";
 import PropTypes from "prop-types";
 import destinacionales from '../../../assets/flipcard/destinacionales.jpg';
-import lamacarena from '../../../assets/flipcard/lamacarena.jpg';
-import europoa from '../../../assets/flipcard/europoa.jpg';
-import portierra from '../../../assets/flipcard/portierra.jpg';
+import llanero from '../../../assets/llanero.jpg';
+import llano from '../../../assets/llano.jpg';
+import atardecer from '../../../assets/atardecer.jpg';
 
 const FlipCard = ({ link, backTitle, backSteps, backHighlight, frontColor, backColor, frontImage }) => {
   return (
@@ -13,7 +13,7 @@ const FlipCard = ({ link, backTitle, backSteps, backHighlight, frontColor, backC
       <div className="flip-card relative w-70 h-160 md:w-80 md:h-180 rounded-lg shadow-lg transition-transform duration-500 preserve-3d">
         <div
           className={`flip-card-front absolute rounded-lg text-white flex flex-col items-center justify-center ${frontColor}`}
-          style={{ backgroundImage: `url(${frontImage})`, backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}
+          style={{ backgroundImage: `url(${frontImage})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}
         >
           {/* Imagen de fondo sin textos ni iconos */}
         </div>
@@ -45,27 +45,27 @@ FlipCard.propTypes = {
 
 const Destinos = () => {
   return (
-    <div className="flex flex-col items-center md:flex-row justify-around w-full h-full">
+    <div className="flex flex-col items-center md:flex-row justify-around p-16 w-full h-full">
       <FlipCard
         link="https://periodico.unal.edu.co/uploads/UN_Periodico_Digital/Imagenes/2021/04-Abril/0408/pm/01-LLanos_cc0.jpg"  // Enlace a la página correspondiente
         backSteps={[]}
         backHighlight="Embrujo llanero"
         backColor="bg-ColorMorado"
-        frontImage={lamacarena}
+        frontImage={llanero}
       />
       <FlipCard
         link="https://drive.google.com/file/d/14yE4CEhINubE6cHk3uRywct6nFJUzdH-/view?usp=drive_link"
         backSteps={[]}
         backHighlight="Amanecer llanero"
         backColor="bg-ColorMorado"
-        frontImage={portierra}
+        frontImage={atardecer}
       />
       <FlipCard
         link="https://drive.google.com/file/d/1-hSjK9145gJQ59W-NgTTyX3-qNyMZoxI/view"
         backSteps={[]}
         backHighlight="Pie de monte llanero"
         backColor="bg-ColorMorado"
-        frontImage={europoa}
+        frontImage={llano}
       />
      
     </div>
