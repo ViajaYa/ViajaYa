@@ -14,7 +14,7 @@ import Destinos from "../Destinos/Destinos"
 import Clients from "../Clients/Clients"
 import Contact from "../Contact/Contact"
 import Promo from "../Promo/Promo"
-import Operador from "../Operador/Operador"
+//import Operador from "../Operador/Operador"
 import WhatssapButton from './WhatssapButton'
 
 // eslint-disable-next-line react/prop-types
@@ -31,11 +31,11 @@ const Landing = ({ ruta }) => {
       <NavBar ruta={ruta} />
       <Home />
       <div>
-  <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-5xl font-bold font-dancing text-gray-700  text-center ">Destinos</h1>
+  <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-5xl font-bold font-dancing text-gray-700  text-center ">Tours al llano</h1>
   <Destinos/>
   </div>
       <Promo />
-      <Operador />
+      {/* <Operador /> */}
       <Paquetes />
  
       <Clients />

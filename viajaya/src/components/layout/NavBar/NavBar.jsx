@@ -34,9 +34,7 @@ const NavBar = ({ ruta, showFullMenu = true }) => {
       <ul className={style.ul}>
         {showFullMenu ? (
           <>
-            <ScrollLink to="home" smooth={true} duration={500}>
-              <li className={style.li}>Inicio</li>
-            </ScrollLink>
+           
             <RouterLink to="/about" className={style.noLink}>
               <li className={style.li}>Sobre Nosotros</li>
             </RouterLink>

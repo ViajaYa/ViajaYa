@@ -1,8 +1,7 @@
 /* Estilos existentes del NavBar */
 
 .nav {
-    background: rgb(227,179,220);
-    background: linear-gradient(90deg, rgba(227,179,220,1) 0%, rgba(62,22,106,1) 100%);
+    background: #b85aa1;
     display: flex;
     position: fixed;
     align-items: center;
@@ -31,13 +30,14 @@
     font-size: 1.25em;
     cursor:pointer;
     color:white;
+    font-family: 'Nunito';
 }
 
 .libutton {
-    background-color: var(--primary);
+    background-color: #2be0e9;
     padding: 5px 15px;
     border-radius: 5px;
-    color: white;
+    color: rgb(51, 51, 51);
     font-weight: 700;
     font-size: 1.25em;
     cursor: pointer;

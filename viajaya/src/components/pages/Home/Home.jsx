@@ -5,7 +5,7 @@ import { useDispatch } from 'react-redux';
 import { filterPacksTitle } from '../../../redux/actions/actions';
 import logo from "../../../assets/mascota.png"
 import CarouselHome from '../../CarouselHome'; // Asegúrate de ajustar la ruta según corresponda
-
+//import Destinos from '../Destinos/Destinos'
 const Home = () => {
 
   const dispatch = useDispatch();
@@ -25,6 +25,10 @@ const Home = () => {
           </Link>
         </div>
         <img src={logo} className={style.imgLogo} alt="Logo" /> */}
+              {/* <div >
+  <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-5xl font-bold font-dancing text-gray-700  text-center mt-8 mb-8">Tours al llano</h1>
+  <Destinos/>
+  </div> */}
       </div>
     </Element>
   )
