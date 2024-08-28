@@ -50,16 +50,16 @@ const TabbedImages = () => {
   const { image, text } = getImageAndText(activeTab);
 
   return (
-    <div className="flex flex-col items-center mt-4 p-4 md:p-8 bg-opacity-50 bg-ColorMorado rounded-lg">
+    <div className="flex flex-col items-center mt-4 p-4 md:p-8 bg-opacity-50 rounded-lg">
       <div className="flex justify-center mb-4 p-2 md:p-4 gap-2 md:gap-6 flex-wrap">
         <button
-          className={`px-2 py-1 md:px-4 md:py-2 rounded text-sm lg:text-lg ${activeTab === 'tab1' ? 'bg-ColorAzul text-gray-900' : 'bg-gray-200 text-gray-600'}`}
+          className={`px-2 py-1 md:px-4 md:py-2 font-nunito rounded text-sm lg:text-lg ${activeTab === 'tab1' ? 'bg-BotonNaranja text-gray-700' : 'bg-gray-200 text-gray-600'}`}
           onClick={() => handleTabClick('tab1')}
         >
          Combi YA
         </button>
         <button
-          className={`px-2 py-1 md:px-4 md:py-2 rounded text-sm lg:text-lg mx-1 md:mx-2 ${activeTab === 'tab2' ? 'bg-ColorAzul text-gray-900' : 'bg-gray-200 text-gray-600'}`}
+          className={`px-2 py-1 md:px-4 md:py-2 rounded text-sm lg:text-lg mx-1 md:mx-2 ${activeTab === 'tab2' ? 'bg-BotonAmarillo text-gray-900' : 'bg-gray-200 text-gray-600'}`}
           onClick={() => handleTabClick('tab2')}
         >
           ONYA!
@@ -71,13 +71,13 @@ const TabbedImages = () => {
           Vuela Ya
         </button>
         <button
-          className={`px-2 py-1 md:px-4 md:py-2 rounded text-sm lg:text-lg font-nunito ${activeTab === 'tab4' ? 'bg-ColorAzul text-gray-900' : 'bg-gray-200 text-gray-600'}`}
+          className={`px-2 py-1 md:px-4 md:py-2 rounded text-sm lg:text-lg font-nunito ${activeTab === 'tab4' ? 'bg-BotonMorado text-gray-900' : 'bg-gray-200 text-gray-600'}`}
           onClick={() => handleTabClick('tab4')}
         >
           40 Mil Razones para viajar    
         </button>
         <button
-          className={`px-2 py-1 md:px-4 md:py-2 rounded text-sm lg:text-lg mx-1 md:mx-2 ${activeTab === 'tab5' ? 'bg-ColorAzul text-gray-900' : 'bg-gray-200 text-gray-600'}`}
+          className={`px-2 py-1 md:px-4 md:py-2 rounded text-sm lg:text-lg mx-1 md:mx-2 ${activeTab === 'tab5' ? 'bg-BotonValija text-gray-900' : 'bg-gray-200 text-gray-600'}`}
           onClick={() => handleTabClick('tab5')}
         >
           GanaYA y Viajaya

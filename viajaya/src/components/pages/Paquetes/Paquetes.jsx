@@ -86,7 +86,7 @@ const Paquetes = () => {
     { projectId && <ModalProject id={projectId} close={() => setProjectId(null)}/>}
     <Element name="proyectos">
     <motion.div ref={ref} animate={animation} className={style.paquetes} id="proyectos">
-      <h2 className={style.titleSection}>Promociones</h2>
+      <h2 className={style.titleSection}>Haz tu Reserva</h2>
       <div className={style.selectContainer}>
         {/* <RiRefreshFill className={style.refresh}/> */}
         <Select placeholder="Caracteristicas" isMulti className={style.select} onChange={filterPacks} options={options}/>

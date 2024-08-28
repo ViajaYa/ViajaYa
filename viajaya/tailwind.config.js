@@ -10,7 +10,11 @@ module.exports = {
         botonPopup: "#573b58",
         fondoPopup: "#421261",
         ColorMorado: "#b85aa1",
-        ColorAzul:"#2be0e9 "
+        ColorAzul:"#2be0e9 ",
+        BotonNaranja: "#f7944f",
+        BotonAmarillo:"#e4e13e",
+        BotonMorado: "#7d0091",
+        BotonValija:"#ffe102"
 
       },
       fontFamily: {
