@@ -70,10 +70,11 @@
 }
 
 .mapa{
-    width: 300px;
-    height: 150px;
+    width: 330px;
+    height: 330px;
     background-color: white;
     overflow: hidden;
+    border-radius: 2%;
 }
 
 .subtitleSection{
@@ -133,8 +134,8 @@
 
 /* MAPA */
 .mapContainer{
-    height: 200px;
-    width: 300px;
+    height: 330px;
+    width: 330px;
     /* margin:180px 0px 0px 100px; */
     /* border-radius: 5px; */
     /* box-shadow: 0px 0px 5px 5px rgba(171, 171, 171, 0.267); */
@@ -147,8 +148,8 @@
 
 .map{
     /* position: sticky; */
-    height: 200px;
-    width: 300px;
+    height: 330px;
+    width: 330px;
     border-radius:5px;
     z-index: 1;
 }
