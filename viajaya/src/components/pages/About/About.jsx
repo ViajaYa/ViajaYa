@@ -27,7 +27,7 @@ const About = () => {
 
   return (
     <div>
-      <div className="grid grid-cols-4 gap-2 p-8">
+      <div className="grid grid-cols-4 gap-2 p-8 mt-32">
         <img src={sobrenosotros1} alt="sobrenosotros 1" className={`transition-transform duration-700 ${scattered ? 'transform translate-x-4' : ''}`} />
         <img src={sobrenosotros2} alt="sobrenosotros 2" className={`transition-transform duration-700 ${scattered ? 'transform translate-x-4 translate-y-2' : ''}`} />
         <img src={sobrenosotros3} alt="sobrenosotros 3" className={`transition-transform duration-700 ${scattered ? 'transform -translate-x-4 translate-y-4' : ''}`} />
