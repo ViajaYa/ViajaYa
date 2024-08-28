@@ -34,7 +34,7 @@ const Landing = ({ ruta }) => {
      
       <Destinos/>
 
-      <Promo />
+      {/* <Promo /> */}
       {/* <Operador /> */}
       
       <Paquetes />
