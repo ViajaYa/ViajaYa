@@ -49,21 +49,21 @@ const Destinos = () => {
         link="https://periodico.unal.edu.co/uploads/UN_Periodico_Digital/Imagenes/2021/04-Abril/0408/pm/01-LLanos_cc0.jpg"
         backSteps={[]}
         backHighlight="Embrujo llanero"
-        backColor="bg-ColorMorado"
+        backColor="bg-slate-200"
         frontImage={llanero}
       />
       <FlipCard
         link="https://drive.google.com/file/d/14yE4CEhINubE6cHk3uRywct6nFJUzdH-/view?usp=drive_link"
         backSteps={[]}
         backHighlight="Amanecer llanero"
-        backColor="bg-ColorMorado"
+        backColor="bg-slate-200"
         frontImage={atardecer}
       />
       <FlipCard
         link="https://drive.google.com/file/d/1-hSjK9145gJQ59W-NgTTyX3-qNyMZoxI/view"
         backSteps={[]}
         backHighlight="Pie de monte llanero"
-        backColor="bg-ColorMorado"
+        backColor="bg-slate-200"
         frontImage={llano}
       />
     </div>

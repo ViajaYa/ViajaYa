@@ -2,15 +2,18 @@
 .flip-card {
   transform-style: preserve-3d;
   transition: transform 2s; /* Aumenta la duración de la transición */
+  
 }
 
 .flip-card:hover {
   transform: rotateY(180deg);
+  transition: transform 2s ease-in-out;
 }
 
 .flip-card-front,
 .flip-card-back {
   backface-visibility: hidden;
+  border-radius: 2%;
 }
 
 .flip-card-front {
@@ -43,6 +46,7 @@
   justify-content: center; /* Centra las cards horizontalmente */
   gap: 2rem; /* Espacio entre las cards */
   padding: 1rem;
+  margin-bottom: 20%;
 }
 
 /* Asegura que las cards tengan un tamaño y separación uniforme */
