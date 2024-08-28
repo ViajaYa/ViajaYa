@@ -78,7 +78,7 @@ const Contact = () => {
       <h2 className={style.titleSection}>Trabaja con nosotros</h2>
       <div className={style.contactContainer}>
         <div className={style.infoContacto}>
-         
+          <h2 className={style.subtitleSection}>Informacion de contacto</h2>
           <div className={style.correos}>
         <div>
           <FiMail className={style.icon}/>
