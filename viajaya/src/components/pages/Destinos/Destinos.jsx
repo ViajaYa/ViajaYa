@@ -2,7 +2,6 @@
 import React from "react";
 import "./Destinos.css";
 import PropTypes from "prop-types";
-import destinacionales from '../../../assets/flipcard/destinacionales.jpg';
 import llanero from '../../../assets/llanero.jpg';
 import llano from '../../../assets/llano.jpg';
 import atardecer from '../../../assets/atardecer.jpg';
