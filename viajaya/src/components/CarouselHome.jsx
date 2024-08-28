@@ -68,11 +68,11 @@ const CarouselHome = () => {
                                 backgroundImage: `url(${image.src})`,
                                 backgroundSize: 'cover',
                                 backgroundPosition: 'center',
-                                height: '500px'
+                                height: '600px'
                             }}
                         >
                             <div className="absolute inset-0 flex items-center justify-center">
-                                <h2 className="text-white text-2xl font-bold bg-black bg-opacity-50 p-2 rounded font-nunito rounded-xl">
+                                <h2 className="text-white text-2xl font-bold bg-black bg-opacity-50 p-2  font-nunito rounded-xl">
                                     {image.title}
                                 </h2>
                             </div>
@@ -84,29 +84,28 @@ const CarouselHome = () => {
                     className="flex transition-transform duration-500 ease-in-out"
                     style={{ transform: `translateX(-${currentIndex * 100}%)` }}
                 >
-                    {newImages.map((image, index) => (
-                        <div
-                            key={index}
-                            className="relative w-full h-full flex-shrink-0 flex items-center"
-                            style={{
-                                backgroundImage: `url(${image.src})`,
-                                backgroundSize: 'cover',
-                                backgroundPosition: 'center',
-                                height: '500px',
-                            }}
-                        >
-                            <div className="w-full h-full flex flex-col justify-center items-end mr-16 text-white ">
-                                <Title styleAdd="text-4xl sm:text-4xl font-nunito animate-fade-up animate-ease-in-out bg-black bg-opacity-50 p-2 border-2 rounded-xl">
-                                    <a href="/reserva" onClick={() => alert(`Clicked on ${image.title}`)}>
-                                        {image.title}
-                                    </a>
-                                </Title>
-                                {/* <Title styleAdd="text-xl font-nunito sm:text-2xl animate-fade-up animate-delay-200 animate-ease-in-out ">
-                                    {image.description}
-                                </Title> */}
-                            </div>
-                        </div>
-                    ))}
+           {newImages.map((image, index) => (
+    <div
+        key={index}
+        className="relative w-full h-full flex-shrink-0 flex items-center"
+        style={{
+            backgroundImage: `url(${image.src})`,
+            backgroundSize: 'cover', // Cambiado a 'cover' para que la imagen cubra todo el contenedor
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            height: '600px'
+        }}
+    >
+        <div className="w-full h-full flex flex-col justify-center items-end mr-16 text-white">
+            <Title styleAdd="text-4xl sm:text-4xl font-nunito animate-fade-up animate-ease-in-out bg-black bg-opacity-50 p-2 border-2 rounded-xl">
+                <a href="/reserva" onClick={() => alert(`Clicked on ${image.title}`)}>
+                    {image.title}
+                </a>
+            </Title>
+        </div>
+    </div>
+))}
+
                 </div>
             )}
 
