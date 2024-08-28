@@ -20,6 +20,7 @@ import Panel from "./components/Panel/Panel"
 import UserManagement from "./components/Panel/UserManagment"
 import PackManagement from "./components/Panel/PackManagement"
 import NewPack from "./components/Panel/NewPack"
+import PanelPage from "./components/Panel/Panel2"
 
 
 const Landing = lazy(() => import("./components/pages/Landing/Landing"))
@@ -63,7 +64,7 @@ function App() {
         />
       <Route exact path="/about" element={<About/>}/>
       <Route exact path="/profile" element={<ProfileAdmin/>}/>
-      <Route exact path="/panel" element={<Panel/>}/>
+      <Route exact path="/panel" element={<PanelPage/>}/>
        <Route path="/panel/user" element={<UserManagement/>}/> 
        <Route path="/panel/pack" element={<PackManagement/>}/> 
        <Route path="/panel/newPack" element={<NewPack/>}/> 
