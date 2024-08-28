@@ -4,6 +4,7 @@ import { BiLogoFacebookCircle } from 'react-icons/bi';
 import { FiInstagram } from 'react-icons/fi';
 import { FaTiktok, FaTelegramPlane } from 'react-icons/fa';
 import { LuShieldQuestion } from 'react-icons/lu';
+import { MdEmail } from 'react-icons/md'; // Importa el icono de correo electrónico
 import { useNavigate } from 'react-router-dom';
 import { Link } from 'react-scroll';
 
@@ -14,6 +15,9 @@ const Footer = () => {
         <footer className={style.footer}>
             <div className={style.footerContent}>
                 <div className={style.redes}>
+                <a className={style.noLink} href="mailto:viajaya.hotelesytodoincluido@gmail.com" target="_blank" rel="noopener noreferrer"> {/* Cambia esto a tu correo electrónico real */}
+                        <MdEmail className={`${style.icons} ${style.email}`} /> {/* Agrega el icono de correo electrónico */}
+                    </a>
                     <a className={style.noLink} href="https://wa.link/28unmk" target="_blank" rel="noopener noreferrer">
                         <AiOutlineWhatsApp className={`${style.icons} ${style.whatsapp}`} />
                     </a>
@@ -29,6 +33,7 @@ const Footer = () => {
                     <a className={style.noLink} href="https://www.t.me/+jVPYyJBifRJiMjdh" target="_blank" rel="noopener noreferrer">
                         <FaTelegramPlane className={`${style.icons} ${style.telegram}`} />
                     </a>
+                  
                     <Link to="home" smooth={false} style={{ cursor: 'pointer' }} duration={0}>
                         <div onClick={() => navigate("/terminos")}>
                             <LuShieldQuestion className={`${style.icons} ${style.terms}`} />
@@ -41,3 +46,4 @@ const Footer = () => {
 };
 
 export default Footer;
+

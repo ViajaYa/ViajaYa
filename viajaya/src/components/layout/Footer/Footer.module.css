@@ -45,7 +45,10 @@
 }
 
 .terms {
-    color: #FFFFFF; /* Color blanco para el ícono de términos */
+    color: #eae8e8; /* Color blanco para el ícono de términos */
+}
+.email {
+    color: #eae8e8; /* Cambia el color si lo deseas */
 }
 
 
