@@ -17,28 +17,48 @@ const TabbedImages = () => {
       case 'tab1':
         return {
           image: combiya,
-          text: 'Combi YA Que es? aqui encontraras la oportunidad de conocer multiples destinos con descuentos para quien es? : Viajeros con tiempo ilimitado y el doble de ganas de viajar. ¿Cómo se obtiene ? :  Con cuota de %  inicial y saldo a cuotas mensuales.',
+          text: (
+            <>
+              <span className="font-bold text-BotonNaranja">Combi YA</span> ¿Qué es?: Aquí encontrarás la oportunidad de conocer múltiples destinos con descuentos. ¿Para quién es?: Viajeros con tiempo ilimitado y el doble de ganas de viajar. ¿Cómo se obtiene?: Con cuota de % inicial y saldo a cuotas mensuales.
+            </>
+          ),
         };
       case 'tab2':
         return {
           image: onya,
-          text: 'ONYA! Que es ?: convenio con cadena hotelera colombiana con destinos seleccionados Como se obtiene: 30% de valor y pagando cuotas hasta 24 meses !! Para quien es? : Viajeros que no tengan miedo de enamorarse de una nueva region colombiana como se ontiene? : como es nuestro producto estrella desde un 5% del plan elegido y ha cuotas .',
+          text: (
+            <>
+              <span className="font-bold text-BotonAmarillo">ONYA!</span> ¿Qué es?: Convenio con cadena hotelera colombiana con destinos seleccionados. ¿Cómo se obtiene?: 30% de valor y pagando cuotas hasta 24 meses. ¿Para quién es?: Viajeros que no tengan miedo de enamorarse de una nueva región colombiana. ¿Cómo se obtiene?: Desde un 5% del plan elegido y a cuotas.
+            </>
+          ),
         };
       case 'tab3':
         return {
           image: vuelaYa,
-          text: 'Vuela Ya Que es? adquiere la tasas mas bajas de tiquetes a diario para quien es?: viajeros que aceptan horarios nocturnos y baja demanda como se seprara? Pago 100% clientes con la desicion de volar ya .',
+          text: (
+            <>
+              <span className="font-bold text-ColorAzul">Vuela Ya</span> ¿Qué es?: Adquiere las tasas más bajas de tiquetes a diario. ¿Para quién es?: Viajeros que aceptan horarios nocturnos y baja demanda. ¿Cómo se separa?: Pago 100% clientes con la decisión de volar ya.
+            </>
+          ),
         };
       case 'tab4':
         return {
           image: cuarenta,
-          text: '40 Mil Razones para viajar  que es?  Apartar la promocion vigente con el valor más bajo para quien es? Viajeros con poder de decisión como se obtiene? Con 2 billetes de 20 mil pesos y en el momento adecuado..',
+          text: (
+            <>
+              <span className="font-bold text-BotonMorado">40 Mil Razones para viajar</span> ¿Qué es?: Aparta la promoción vigente con el valor más bajo. ¿Para quién es?: Viajeros con poder de decisión. ¿Cómo se obtiene?: Con 2 billetes de 20 mil pesos y en el momento adecuado.
+            </>
+          ),
         };
-        case 'tab5':
-          return {
-            image: ganaya,
-            text: 'GanaYA y Viajaya (sorteos  cada trimestre) que es?  por un precio Bajo obtener la oportunidad de ganar un plan completo para quien es ? Personas con Fe de Ganar con sus numeros preferidos de la suerte Como se obtiene? : Valor por boleta o compra de planes turisticos promocionales .',
-          };
+      case 'tab5':
+        return {
+          image: ganaya,
+          text: (
+            <>
+              <span className="font-bold text-BotonValija">GanaYA y Viajaya</span> (sorteos cada trimestre) ¿Qué es?: Por un precio bajo obtener la oportunidad de ganar un plan completo. ¿Para quién es?: Personas con fe de ganar con sus números preferidos de la suerte. ¿Cómo se obtiene?: Valor por boleta o compra de planes turísticos promocionales.
+            </>
+          ),
+        };
       default:
         return {
           image: cuarenta,
@@ -50,13 +70,13 @@ const TabbedImages = () => {
   const { image, text } = getImageAndText(activeTab);
 
   return (
-    <div className="flex flex-col items-center mt-4 p-4 md:p-8 bg-opacity-50 rounded-lg">
+    <div className="flex flex-col items-center mt-4  md:p-8 bg-opacity-50 rounded-lg p-10">
       <div className="flex justify-center mb-4 p-2 md:p-4 gap-2 md:gap-6 flex-wrap">
         <button
           className={`px-2 py-1 md:px-4 md:py-2 font-nunito rounded text-sm lg:text-lg ${activeTab === 'tab1' ? 'bg-BotonNaranja text-gray-700' : 'bg-gray-200 text-gray-600'}`}
           onClick={() => handleTabClick('tab1')}
         >
-         Combi YA
+          Combi YA
         </button>
         <button
           className={`px-2 py-1 md:px-4 md:py-2 rounded text-sm lg:text-lg mx-1 md:mx-2 ${activeTab === 'tab2' ? 'bg-BotonAmarillo text-gray-900' : 'bg-gray-200 text-gray-600'}`}
@@ -85,10 +105,12 @@ const TabbedImages = () => {
       </div>
       <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-4 lg:space-x-8">
         <div className="w-full md:w-1/2 flex justify-center">
-          <img src={image} alt="Tab Image" className="w-40 md:w-80 lg:w-96 h-auto rounded-lg" />
+          <img src={image} alt="Tab Image" className="w-40 md:w-80 lg:w-96 h-auto rounded-lg border-4" />
         </div>
         <div className="w-full md:w-1/2 lg:w-1/3 flex flex-col items-center">
-          <p className="text-sm md:text-lg lg:text-2xl font-bold font-nunito text-gray-700 text-center p-2 md:p-4">{text}</p>
+          <p className="text-sm md:text-lg lg:text-2xl font-bold font-nunito text-gray-500 text-center p-2 md:p-4">
+            {text}
+          </p>
         </div>
       </div>
     </div>

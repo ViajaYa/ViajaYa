@@ -31,8 +31,8 @@ const Landing = ({ ruta }) => {
       <NavBar ruta={ruta} />
       <Home />
       <TabbedImages/>
-      <div>
-  <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-5xl font-bold font-dancing text-gray-700  text-center ">Tours al llano</h1>
+      <div className='mb-32'>
+  <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-5xl font-bold font-nunito text-gray-700  text-center ">Tours al llano</h1>
   <Destinos/>
   </div>
       <Promo />

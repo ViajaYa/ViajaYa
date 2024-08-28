@@ -1,4 +1,4 @@
-// eslint-disable-next-line no-unused-vars
+// Destinos.jsx
 import React from "react";
 import "./Destinos.css";
 import PropTypes from "prop-types";
@@ -8,16 +8,16 @@ import atardecer from '../../../assets/atardecer.jpg';
 
 const FlipCard = ({ link, backTitle, backSteps, backHighlight, frontColor, backColor, frontImage }) => {
   return (
-    <a href={link} className="group perspective my-4 mb-0 no-underline">
-      <div className="flip-card relative w-70 h-160 md:w-80 md:h-180 rounded-lg shadow-lg transition-transform duration-500 preserve-3d">
+    <a href={link} className="group flip-card relative">
+      <div className={`flip-card relative rounded-lg shadow-lg transition-transform duration-800`}>
         <div
-          className={`flip-card-front absolute rounded-lg text-white flex flex-col items-center justify-center ${frontColor}`}
-          style={{ backgroundImage: `url(${frontImage})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}
+          className={`flip-card-front ${frontColor}`}
+          style={{ backgroundImage: `url(${frontImage})` }}
         >
           {/* Imagen de fondo sin textos ni iconos */}
         </div>
         <div
-          className={`flip-card-back absolute w-full h-full rounded-lg text-white flex flex-col items-center justify-center p-6 ${backColor}`}
+          className={`flip-card-back ${backColor}`}
         >
           <h2 className="text-3xl font-bold mb-4">{backTitle}</h2>
           <ul className="text-center mb-4">
@@ -44,9 +44,9 @@ FlipCard.propTypes = {
 
 const Destinos = () => {
   return (
-    <div className="flex flex-col items-center md:flex-row justify-around p-16 w-full h-full">
+    <div className="flip-card-container">
       <FlipCard
-        link="https://periodico.unal.edu.co/uploads/UN_Periodico_Digital/Imagenes/2021/04-Abril/0408/pm/01-LLanos_cc0.jpg"  // Enlace a la página correspondiente
+        link="https://periodico.unal.edu.co/uploads/UN_Periodico_Digital/Imagenes/2021/04-Abril/0408/pm/01-LLanos_cc0.jpg"
         backSteps={[]}
         backHighlight="Embrujo llanero"
         backColor="bg-ColorMorado"
@@ -66,10 +66,10 @@ const Destinos = () => {
         backColor="bg-ColorMorado"
         frontImage={llano}
       />
-     
     </div>
   );
 };
 
 export default Destinos;
+
 

@@ -1,60 +1,54 @@
-.perspective {
-    perspective: 1000px;
-  }
-  
-  .preserve-3d {
-    transform-style: preserve-3d;
-  }
-  
-  .backface-hidden {
-    backface-visibility: hidden;
-  }
-  
-  .group:hover .preserve-3d {
-    transform: rotateY(180deg);
-  }
-  
-  .flip-card {
-    transition: transform 0.5s;
-    transform-style: preserve-3d;
-    
-    
-  }
-  
-  .flip-card-front, .flip-card-back {
-    position: center;
-    width: 200%;
-    height: 100%;
-    backface-visibility: hidden;
-    margin-right: 20%;
-  }
-  
-  .flip-card-back {
-    transform: rotateY(180deg);
-  }
-  
-  .w-64 {
-    width: 14rem; /* Ancho original */
-  }
-  
-  .w-70 {
-    width: 12rem; /* 10% más ancho que el original */
-  }
-  
-  .h-160 {
-    height: 30rem; /* Doble de la altura original */
-  }
-  /* Estilos responsivos para pantallas pequeñas */
-@media (max-width: 768px) { /* Ajusta el punto de interrupción según sea necesario */
-    .w-64 {
-      width: 10rem; /* Reduzca el ancho en pantallas pequeñas */
-    }
-  
-    .w-70 {
-      width: 9rem; /* Ajusta el ancho si usas esta clase */
-    }
-  
-    .h-160 {
-      height: 20rem; /* Ajusta la altura en pantallas pequeñas */
-    }
-  }
+/* Destinos.css */
+.flip-card {
+  transform-style: preserve-3d;
+  transition: transform 2s; /* Aumenta la duración de la transición */
+}
+
+.flip-card:hover {
+  transform: rotateY(180deg);
+}
+
+.flip-card-front,
+.flip-card-back {
+  backface-visibility: hidden;
+}
+
+.flip-card-front {
+  position: absolute;
+  width: 100%;
+  height: 180%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-size: cover;
+  background-position: center;
+}
+
+.flip-card-back {
+  position: absolute;
+  width: 100%;
+  height: 180%;
+  transform: rotateY(180deg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem; /* Agrega padding para que el texto tenga espacio */
+}
+
+/* Ajusta el contenedor para que las cards tengan separación uniforme */
+.flip-card-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center; /* Centra las cards horizontalmente */
+  gap: 2rem; /* Espacio entre las cards */
+  padding: 1rem;
+}
+
+/* Asegura que las cards tengan un tamaño y separación uniforme */
+.flip-card {
+  width: 20rem; /* Tamaño de la tarjeta */
+  height: 15rem; /* Tamaño de la tarjeta */
+  perspective: 1000px; /* Añade perspectiva para el efecto 3D */
+}
+
