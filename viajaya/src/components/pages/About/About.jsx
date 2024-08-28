@@ -1,5 +1,5 @@
 import React, {useState, useEffect} from 'react'
-
+import NavBar from '../../layout/NavBar/NavBar';
 import sobrenosotros1 from '../../../assets/sn/sobrenosotros1.png';
 import sobrenosotros2 from '../../../assets/sn/sobrenosotros2.png';
 import sobrenosotros3 from '../../../assets/sn/sobrenosotros3.png';
@@ -27,7 +27,11 @@ const About = () => {
 
   return (
     <div>
-      <div className="grid grid-cols-4 gap-2 p-8 mt-32">
+      <div className='fixed top-0 left-0 z-50'>
+      <NavBar/>
+      </div>
+     
+      <div className="grid grid-cols-4 gap-2 p-8 mt-10">
         <img src={sobrenosotros1} alt="sobrenosotros 1" className={`transition-transform duration-700 ${scattered ? 'transform translate-x-4' : ''}`} />
         <img src={sobrenosotros2} alt="sobrenosotros 2" className={`transition-transform duration-700 ${scattered ? 'transform translate-x-4 translate-y-2' : ''}`} />
         <img src={sobrenosotros3} alt="sobrenosotros 3" className={`transition-transform duration-700 ${scattered ? 'transform -translate-x-4 translate-y-4' : ''}`} />
