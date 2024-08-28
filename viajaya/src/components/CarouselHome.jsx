@@ -21,11 +21,11 @@ const CarouselHome = () => {
     ];
 
     const newImages = [
-        { src: europa, title: "Europa", description: "Descubre las maravillas de Europa." },
-        { src: internacional, title: "Internacionales", description: "Viaja por todo el mundo." },
-        { src: llano, title: "LLano", description: "Conoce los paisajes únicos del llano." },
-        { src: nacionales3, title: "Nacionales", description: "Explora destinos nacionales increíbles." },
-        { src: nacionales2, title: "Por Tierra", description: "Explora aún más destinos nacionales." }
+        { src: europa, title: "Reservá", description: "Europa." },
+        { src: internacional, title: "Reservá", description: "Internacionales." },
+        { src: llano, title: "Reservá", description: "Nacionales." },
+        { src: nacionales3, title: "Reservá", description: "Llano." },
+        { src: nacionales2, title: "Reservá", description: "Por Tierra." }
     ];
 
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -61,15 +61,18 @@ const CarouselHome = () => {
             {showAll ? (
                 <div className="flex justify-center transition-transform duration-500 ease-in-out">
                     {initialImages.map((image, index) => (
-                        <div key={index} className="relative w-1/5 h-full">
-                            <img
-                                src={image.src}
-                                alt={`Slide ${index}`}
-                                className="w-full h-full object-cover"
-                                style={{ height: '500px' }} // Establecer altura fija
-                            />
+                        <div
+                            key={index}
+                            className="relative w-1/5 h-full"
+                            style={{
+                                backgroundImage: `url(${image.src})`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                                height: '500px'
+                            }}
+                        >
                             <div className="absolute inset-0 flex items-center justify-center">
-                                <h2 className="text-white text-2xl font-bold bg-black bg-opacity-50 p-2 rounded font-nunito">
+                                <h2 className="text-white text-2xl font-bold bg-black bg-opacity-50 p-2 rounded font-nunito rounded-xl">
                                     {image.title}
                                 </h2>
                             </div>
@@ -82,24 +85,25 @@ const CarouselHome = () => {
                     style={{ transform: `translateX(-${currentIndex * 100}%)` }}
                 >
                     {newImages.map((image, index) => (
-                        <div key={index} className="relative w-full h-full flex-shrink-0 flex items-center">
-                            <div className="w-1/2 h-full">
-                                <img
-                                    src={image.src}
-                                    alt={`Slide ${index}`}
-                                    className="w-full h-full object-contain"
-                                    style={{ height: '500px', marginLeft: '10%' }} // Asegurar altura consistente
-                                />
-                            </div>
-                            <div className="w-1/2 h-full flex flex-col justify-center items-center text-gray-700">
-                                <Title styleAdd="text-4xl sm:text-4xl font-nunito animate-fade-up animate-ease-in-out">
-                                    <a href="#" onClick={() => alert(`Clicked on ${image.title}`)}>
+                        <div
+                            key={index}
+                            className="relative w-full h-full flex-shrink-0 flex items-center"
+                            style={{
+                                backgroundImage: `url(${image.src})`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                                height: '500px',
+                            }}
+                        >
+                            <div className="w-full h-full flex flex-col justify-center items-end mr-16 text-white ">
+                                <Title styleAdd="text-4xl sm:text-4xl font-nunito animate-fade-up animate-ease-in-out bg-black bg-opacity-50 p-2 border-2 rounded-xl">
+                                    <a href="/reserva" onClick={() => alert(`Clicked on ${image.title}`)}>
                                         {image.title}
                                     </a>
                                 </Title>
-                                <Title styleAdd="text-xl font-nunito sm:text-2xl animate-fade-up animate-delay-200 animate-ease-in-out">
+                                {/* <Title styleAdd="text-xl font-nunito sm:text-2xl animate-fade-up animate-delay-200 animate-ease-in-out ">
                                     {image.description}
-                                </Title>
+                                </Title> */}
                             </div>
                         </div>
                     ))}
@@ -127,6 +131,7 @@ const CarouselHome = () => {
 };
 
 export default CarouselHome;
+
 
 
 
