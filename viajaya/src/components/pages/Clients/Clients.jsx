@@ -77,7 +77,7 @@ const Clients = () => {
   return(
     <Element name="clientes">
     <motion.div animate={animation} ref={ref} className={style.clients} id="clientes">
-      <h2 className={style.titleSection}>Nuestros aliados</h2>
+
         <Slider key={Math.random()} {...settings}>
         <div className={style.client}>
           <img src={l1} className={style.img}></img>
@@ -115,7 +115,7 @@ const Clients = () => {
         </Slider>
 
       <div>
-        <h3 className={style.titleSection}>Clientes felices</h3>
+      <h1 className='font-nunito bg-FondoTit text-white p-4 text-2xl w-full justify-center text-center mb-4'>Nuestros Clientes</h1>
         
         <div className={style.row}>
             <img src={c3} className={style.video}/>

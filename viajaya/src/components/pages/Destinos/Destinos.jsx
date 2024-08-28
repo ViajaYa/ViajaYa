@@ -8,6 +8,7 @@ import atardecer from '../../../assets/atardecer.jpg';
 
 const FlipCard = ({ link, backTitle, backSteps, backHighlight, frontColor, backColor, frontImage }) => {
   return (
+    
     <a href={link} className="group flip-card relative">
       <div className={`flip-card relative rounded-lg shadow-lg transition-transform duration-800`}>
         <div
@@ -44,28 +45,33 @@ FlipCard.propTypes = {
 
 const Destinos = () => {
   return (
-    <div className="flip-card-container">
-      <FlipCard
-        link="https://periodico.unal.edu.co/uploads/UN_Periodico_Digital/Imagenes/2021/04-Abril/0408/pm/01-LLanos_cc0.jpg"
-        backSteps={[]}
-        backHighlight="Embrujo llanero"
-        backColor="bg-slate-200"
-        frontImage={llanero}
-      />
-      <FlipCard
-        link="https://drive.google.com/file/d/14yE4CEhINubE6cHk3uRywct6nFJUzdH-/view?usp=drive_link"
-        backSteps={[]}
-        backHighlight="Amanecer llanero"
-        backColor="bg-slate-200"
-        frontImage={atardecer}
-      />
-      <FlipCard
-        link="https://drive.google.com/file/d/1-hSjK9145gJQ59W-NgTTyX3-qNyMZoxI/view"
-        backSteps={[]}
-        backHighlight="Pie de monte llanero"
-        backColor="bg-slate-200"
-        frontImage={llano}
-      />
+    <div className="relative">
+      <h1 className='font-nunito bg-FondoTit text-white p-4 text-2xl w-screen mx-0 px-0 text-center'>
+        Tours al llano
+      </h1>
+      <div className="flip-card-container mt-16"> {/* Ajusta este margen según la altura del título */}
+        <FlipCard
+          link="https://periodico.unal.edu.co/uploads/UN_Periodico_Digital/Imagenes/2021/04-Abril/0408/pm/01-LLanos_cc0.jpg"
+          backSteps={[]}
+          backHighlight="Embrujo llanero"
+          backColor="bg-slate-200"
+          frontImage={llanero}
+        />
+        <FlipCard
+          link="https://drive.google.com/file/d/14yE4CEhINubE6cHk3uRywct6nFJUzdH-/view?usp=drive_link"
+          backSteps={[]}
+          backHighlight="Amanecer llanero"
+          backColor="bg-slate-200"
+          frontImage={atardecer}
+        />
+        <FlipCard
+          link="https://drive.google.com/file/d/1-hSjK9145gJQ59W-NgTTyX3-qNyMZoxI/view"
+          backSteps={[]}
+          backHighlight="Pie de monte llanero"
+          backColor="bg-slate-200"
+          frontImage={llano}
+        />
+      </div>
     </div>
   );
 };

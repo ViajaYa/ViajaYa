@@ -4,7 +4,7 @@ import cuarenta from '../../../assets/newImg/viajayaImg/40mil.png';
 import vuelaYa from '../../../assets/newImg/viajayaImg/vuelaya.png';
 import combiya from '../../../assets/newImg/viajayaImg/combiYa.png';
 import ganaya from '../../../assets/newImg/viajayaImg/ganaya.png';
-
+//import SectionSeparator from '../../utils/SectionsSeparations';
 const TabbedImages = () => {
   const [activeTab, setActiveTab] = useState('tab1');
 
@@ -70,7 +70,9 @@ const TabbedImages = () => {
   const { image, text } = getImageAndText(activeTab);
 
   return (
+    
     <div className="flex flex-col items-center mt-4 mb-10 md:p-8 bg-opacity-50 rounded-lg p-10">
+     <h1 className='font-nunito bg-FondoTit text-white p-4 text-2xl w-screen justify-center text-center mb-8'>Nuestros Productos</h1>
       <div className="flex justify-center mb-4 p-2 md:p-4 gap-2 md:gap-6 flex-wrap">
         <button
           className={`px-2 py-1 md:px-4 md:py-2 font-nunito rounded text-sm lg:text-lg ${activeTab === 'tab1' ? 'bg-BotonNaranja text-gray-700' : 'bg-gray-200 text-gray-600'}`}

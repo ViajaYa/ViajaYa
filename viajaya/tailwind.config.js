@@ -14,7 +14,8 @@ module.exports = {
         BotonNaranja: "#f7944f",
         BotonAmarillo:"#e4e13e",
         BotonMorado: "#7d0091",
-        BotonValija:"#ffe102"
+        BotonValija:"#ffe102",
+        FondoTit:"#4b5563"
 
       },
       fontFamily: {

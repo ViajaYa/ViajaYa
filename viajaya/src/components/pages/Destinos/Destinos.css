@@ -1,13 +1,14 @@
 /* Destinos.css */
 .flip-card {
   transform-style: preserve-3d;
-  transition: transform 2s; /* Aumenta la duración de la transición */
+  transition: transform 2s  ease-in-out; /* Aumenta la duración de la transición */
   
 }
 
 .flip-card:hover {
   transform: rotateY(180deg);
   transition: transform 2s ease-in-out;
+  
 }
 
 .flip-card-front,
