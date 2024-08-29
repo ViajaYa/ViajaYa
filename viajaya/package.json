@@ -17,6 +17,7 @@
     "@reduxjs/toolkit": "^2.2.7",
     "axios": "^1.4.0",
     "cloudinary": "^1.37.3",
+    "cloudinary-react": "^1.8.1",
     "dayjs": "^1.11.8",
     "flatpickr": "^4.6.13",
     "framer-motion": "^10.12.16",

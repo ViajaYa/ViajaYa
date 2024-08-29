@@ -80,7 +80,7 @@ const Profile = () => {
         const data = new FormData();
         data.append("file", files[0]);
         data.append("upload_preset", "viajaya");
-        const res = await axios.post("https://api.cloudinary.com/v1_1/dftvenl2z/image/upload", data);
+        const res = await axios.post("https://api.cloudinary.com/v1_1/dbxwx3m3l/image/upload", data);
         setUser({
             ...user,
             image: res.data.secure_url

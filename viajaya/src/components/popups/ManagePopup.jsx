@@ -2,7 +2,7 @@
 // eslint-disable-next-line no-unused-vars
 import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { postPopup, putPopup } from '../../actions/popupActions';
+import { postPopup, putPopup } from '../../redux/actions/actions';
 
 const ManagePopup = ({ existingPopup }) => {
   const [content, setContent] = useState(existingPopup ? existingPopup.content : '');
