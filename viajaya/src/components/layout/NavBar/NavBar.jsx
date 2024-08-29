@@ -21,16 +21,14 @@ const NavBar = ({ showFullMenu = true }) => {
 
   useEffect(() => {
     verify();
-    // You might not need this part if `ruta` is correctly passed
-    // if (linkRef.current && (ruta?.includes("/detail") || ruta?.includes("/pay"))) {
-    //   setTimeout(() => linkRef.current.click(), 2000);
-    // }
   }, []);
 
   // Obtén la ruta actual usando `window.location.pathname`
   const currentPath = window.location.pathname;
 
-  // Verifica si estamos en la página `/about`
+  // Verifica las condiciones para mostrar elementos específicos
+  const isLoginPage = currentPath === '/login';
+  const isProductsPage = currentPath === '/productos';
   const isAboutPage = currentPath === '/about';
 
   return (
@@ -39,7 +37,14 @@ const NavBar = ({ showFullMenu = true }) => {
         <img className={style.logo} src={logo} alt="Logo" />
       </RouterLink>
       <ul className={style.ul}>
-        {isAboutPage ? (
+        {/* Mostrar "Inicio" en la página de login */}
+        {isLoginPage && (
+          <RouterLink to="/" className={style.noLink}>
+            <li className={style.li}>Inicio</li>
+          </RouterLink>
+        )}
+        {/* Mostrar "Ingresar" en la página de productos */}
+        {isProductsPage && (
           <>
             <RouterLink to="/" className={style.noLink}>
               <li className={style.li}>Inicio</li>
@@ -48,32 +53,44 @@ const NavBar = ({ showFullMenu = true }) => {
               <li className={style.libutton} onClick={() => navigate("/login")}>Ingresar</li>
             )}
           </>
-        ) : (
+        )}
+        {/* Mostrar elementos generales */}
+        {!isLoginPage && !isProductsPage && (
           <>
-         
-            <RouterLink to="/about" className={style.noLink}>
-              <li className={style.li}>Nosotros</li>
-            </RouterLink>
-            <ScrollLink to="proyectos" smooth={true} duration={500}>
-              <li ref={linkRef} className={style.li}>Paquetes</li>
-            </ScrollLink>
-            
-            <RouterLink to="/productos" className={style.noLink}>
-              <li className={style.li}>Productos</li>
-            </RouterLink>
-            
-            <ScrollLink to="contactanos" smooth={true} duration={500}>
-              <li className={style.li}>Obtén Descuentos</li>
-            </ScrollLink>
-            {!user && (
-              <li className={style.libutton} onClick={() => navigate("/login")}>Ingresar</li>
+            {isAboutPage ? (
+              <>
+                <RouterLink to="/" className={style.noLink}>
+                  <li className={style.li}>Inicio</li>
+                </RouterLink>
+                {!user && (
+                  <li className={style.libutton} onClick={() => navigate("/login")}>Ingresar</li>
+                )}
+              </>
+            ) : (
+              <>
+                <RouterLink to="/about" className={style.noLink}>
+                  <li className={style.li}>Nosotros</li>
+                </RouterLink>
+                <ScrollLink to="proyectos" smooth={true} duration={500}>
+                  <li ref={linkRef} className={style.li}>Paquetes</li>
+                </ScrollLink>
+                <RouterLink to="/productos" className={style.noLink}>
+                  <li className={style.li}>Productos</li>
+                </RouterLink>
+                <ScrollLink to="contactanos" smooth={true} duration={500}>
+                  <li className={style.li}>Obtén Descuentos</li>
+                </ScrollLink>
+                {!user && (
+                  <li className={style.libutton} onClick={() => navigate("/login")}>Ingresar</li>
+                )}
+              </>
             )}
           </>
         )}
         {user && (
           <li className={style.libutton} onClick={() => navigate(`/profile`)}>{user.name}</li>
         )}
-        {!isAboutPage && (
+        {!isLoginPage && !isProductsPage && (
           <li className={style.socialMenu}>
             <button onClick={() => setShowSocialMenu(!showSocialMenu)} className={style.socialButton}>
               Redes
@@ -105,6 +122,7 @@ const NavBar = ({ showFullMenu = true }) => {
 };
 
 export default NavBar;
+
 
 
 
