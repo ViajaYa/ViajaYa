@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link} from 'react-router-dom';
 import { AiOutlineUser } from "react-icons/ai";
 import { MdPayment, MdExitToApp, MdHome } from "react-icons/md";
 import axios from 'axios';
@@ -8,7 +8,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { toast, Toaster } from "react-hot-toast";
 import dayjs from "dayjs";
 import "dayjs/locale/es";
-import backgroundImage from '../../../assets/rifa/logoviaja.png';
+import backgroundImage from '../../../assets/newImg/viajaYaImg/nuestrosProd.png';
+import NavBar from '../../layout/NavBar/NavBar';
 
 dayjs.locale("es");
 
@@ -93,139 +94,145 @@ const Profile = () => {
 
     return (
         <>
-            {loading ? (
-                <div 
-                    className="flex items-center justify-center h-screen w-screen bg-cover bg-center"
-                >
-                    <div className="lds-ellipsis"><div></div><div></div><div></div><div></div></div>
-                </div>
-            ) : (
-                <div className="flex min-h-screen ">
-                    {/* Contenedor principal que ocupa toda la pantalla */}
-                    <div className="flex flex-grow">
-                        {/* Imagen de fondo en la mitad izquierda */}
-                        <div 
-                            className="w-1/2  bg-cover  bg-center hidden lg:block" 
-                            style={{ backgroundImage: `url(${backgroundImage})` }}
-                        ></div>
-
-                        {/* Contenido del perfil en la mitad derecha */}
-                        <div className="w-full lg:w-1/2  p-12 mt-32 overflow-y-auto flex flex-col rounded-lg shadow-lg ">
-                            <Toaster />
-                            <div className="bg-slate-600 opacity-70 text-white p-4 rounded-lg shadow-md mb-4">
-                                <nav className="flex items-center">
-                                    <img 
-                                        className="w-12 h-12 rounded-full border-2 border-gray-300 cursor-pointer mb-4 mr-4" 
-                                        src={user?.image ? user.image : "https://cdn.landesa.org/wp-content/uploads/default-user-image.png"} 
-                                        alt="Perfil" 
-                                        onClick={() => document.getElementById('fileInput').click()} 
-                                    />
-                                    <div className="flex flex-col">
-                                        <span className="text-lg font-semibold uppercase">{user?.name + " " + user?.lastname || "Mi perfil"}</span>
-
-                                        <ul className="flex space-x-2 mt-2">
-                                            <li>
-                                                <button 
-                                                    onClick={() => setPage(0)} 
-                                                    className={`p-2 rounded ${page === 0 ? 'bg-ColorMorado text-gray-900' : 'hover:bg-gray-700'}`}
-                                                >
-                                                    <AiOutlineUser className="inline-block mr-1" /> Información Personal
-                                                </button>
-                                            </li>
-                                            <li>
-                                                <button 
-                                                    onClick={() => setPage(1)} 
-                                                    className={`p-2 rounded ${page === 1 ? 'bg-ColorMorado text-gray-900' : 'hover:bg-gray-700'}`}
-                                                >
-                                                    <MdPayment className="inline-block mr-1" /> Mis compras
-                                                </button>
-                                            </li>
-                                            <li>
-                                                <button 
-                                                    onClick={() => { navigate("/"); localStorage.removeItem("token"); dispatch(setUser(false)) }} 
-                                                    className="p-2 rounded hover:bg-gray-700"
-                                                >
-                                                    <MdExitToApp className="inline-block mr-1" /> Cerrar sesión
-                                                </button>
-                                            </li>
-                                        </ul>
-                                    </div>
-                                </nav>
-                            </div>
-
-                            <input 
-                                id="fileInput" 
-                                type="file" 
-                                className="hidden" 
-                                onChange={uploadUserImage} 
-                            />
-
-                           
-
-                            {page === 0 && (
-                                <div className="w-full max-w-md mx-auto bg-white p-6 ">
-                                    <form onSubmit={e => e.preventDefault()}>
-                                        {!changePass ? (
-                                            <>
-                                             <span className="text-lg font-semibold"> Mis Datos</span>
-                                                <div className="flex space-x-4 mb-4 mt-10">
-                                               
-                                                    <div className="flex-1">
-                                                        <input className="w-full p-2 border border-gray-300 rounded" onChange={handleUser} name="name" value={user?.name || ''} placeholder="Nombre" />
-                                                        <input className="w-full p-2 border border-gray-300 rounded mt-2" onChange={handleUser} name="lastname" value={user?.lastname || ''} placeholder="Apellido" />
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <input className="w-full p-2 border border-gray-300 rounded" onChange={handleUser} name="email" value={user?.email || ''} placeholder="Email" />
-                                                        <input className="w-full p-2 border border-gray-300 rounded mt-2" onChange={handleUser} name="phone" value={user?.phone || ''} placeholder="Teléfono" />
-                                                    </div>
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <div className="mb-4">
-                                                    <input className="w-full p-2 border border-gray-300 rounded" onChange={handleUser} name="passwordLast" type="password" placeholder="Contraseña actual" />
-                                                    <input className="w-full p-2 border border-gray-300 rounded mt-2" onChange={handleUser} name="password2" type="password" placeholder="Nueva contraseña" />
-                                                    <input className="w-full p-2 border border-gray-300 rounded mt-2" onChange={handleUser} name="password3" type="password" placeholder="Confirmar nueva contraseña" />
-                                                </div>
-                                            </>
-                                        )}
-
-                                        <button 
-                                            onClick={updateUser} 
-                                            className="w-full bg-ColorMorado text-white p-2 rounded hover:bg-slate-700"
-                                        >
-                                            {changePass ? 'Actualizar contraseña' : 'Actualizar datos'}
-                                        </button>
-                                        <button 
-                                            onClick={() => setChangePass(!changePass)} 
-                                            className="w-full mt-2 text-slate-700 hover:underline"
-                                        >
-                                            {changePass ? 'Cancelar cambio de contraseña' : 'Cambiar contraseña'}
-                                        </button>
-                                    </form>
-                                    
-                                </div>
-                                
-                            )}
- {/* Botón para ir a la página principal */}
- <button 
-                                onClick={handleGoHome} 
-                                className="w-full bg-ColorMorado text-white p-2 rounded hover:bg-slate-700 mb-4"
+          <div className='fixed top-0 left-0 z-50 w-full'>
+            <NavBar />
+          </div>
+          {loading ? (
+            <div className="flex items-center justify-center h-screen w-screen bg-cover bg-center">
+              <div className="lds-ellipsis"><div></div><div></div><div></div><div></div></div>
+            </div>
+          ) : (
+            <div className="flex min-h-screen">
+              {/* Contenedor principal */}
+              <div className="flex flex-grow mt-8 ">
+                {/* Contenido del perfil en la mitad derecha */}
+                <div className="w-full lg:w-1/2 p-12 flex flex-col justify-center items-center  ">
+                  <Toaster />
+                  <div className="bg-slate-700 opacity-70 text-white p-4 rounded-lg shadow-md mb-4 w-full">
+                    <nav className="flex items-center">
+                      <div className="relative">
+                        <img
+                          className="w-24 h-24 rounded-full border-2 border-gray-300 cursor-pointer mb-4 mr-4 object-cover"
+                          src={user?.image ? user.image : "https://cdn.landesa.org/wp-content/uploads/default-user-image.png"}
+                          alt="Perfil"
+                          onClick={() => document.getElementById('fileInput').click()}
+                        />
+                        <input
+                          id="fileInput"
+                          type="file"
+                          className="absolute inset-0 opacity-0 cursor-pointer"
+                          onChange={(e) => {/* Tu lógica para manejar la selección de archivos */}}
+                        />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-lg font-semibold uppercase">
+                          {user?.name + " " + user?.lastname || "Mi perfil"}
+                        </span>
+                        <ul className="flex space-x-2 mt-2">
+                          <li>
+                            <button
+                              onClick={() => setPage(0)}
+                              className={`p-1 rounded font-nunito ${page === 0 ? 'bg-ColorMorado text-gray-900' : 'hover:bg-pink-600'}`}
                             >
-                                <MdHome className="inline-block mr-1" /> Ir a la página principal
+                              Información Personal<AiOutlineUser className="inline-block mr-1" /> 
                             </button>
-                            {page === 1 && (
-                                <div className="w-full max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg">
-                                    {/* Aquí puedes agregar el contenido de las compras */}
-                                </div>
-                            )}
-                        </div>
+                          </li>
+                          <li>
+                            <button
+                              onClick={() => setPage(1)}
+                              className={`p-1 rounded font-nunito ${page === 1 ? 'bg-ColorMorado text-gray-900' : 'hover:bg-pink-600'}`}
+                            >
+                              Mis compras<MdPayment className="inline-block mr-1" /> 
+                            </button>
+                          </li>
+                          <li>
+                            <button
+                              onClick={() => { navigate("/"); localStorage.removeItem("token"); dispatch(setUser(false)) }}
+                              className="p-1 font-nunito rounded hover:bg-pink-600"
+                            >
+                             Cerrar sesión <MdExitToApp className="inline-block mr-1" /> 
+                            </button>
+                          </li>
+                        </ul>
+                      </div>
+                    </nav>
+                  </div>
+                  <input
+                    id="fileInput"
+                    type="file"
+                    className="hidden"
+                    onChange={uploadUserImage}
+                  />
+                  {page === 0 && (
+                    <div className="w-full max-w-md mx-auto bg-white p-2 rounded-lg shadow-lg">
+                      <form onSubmit={e => e.preventDefault()}>
+                        {!changePass ? (
+                          <>
+                            <span className="text-lg font-bold font-nunito text-center text-gray-700"> Mis Datos</span>
+                            <div className="flex space-x-4 mb-4 mt-6">
+                              <div className="flex-1">
+                                <input className="w-full p-2 border border-gray-300 rounded" onChange={handleUser} name="name" value={user?.name || ''} placeholder="Nombre" />
+                                <input className="w-full p-2 border border-gray-300 rounded mt-2" onChange={handleUser} name="lastname" value={user?.lastname || ''} placeholder="Apellido" />
+                              </div>
+                              <div className="flex-1">
+                                <input className="w-full p-2 border border-gray-300 rounded" onChange={handleUser} name="email" value={user?.email || ''} placeholder="Email" />
+                                <input className="w-full p-2 border border-gray-300 rounded mt-2" onChange={handleUser} name="phone" value={user?.phone || ''} placeholder="Teléfono" />
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="mb-4">
+                              <input className="w-full p-2 border border-gray-300 rounded" onChange={handleUser} name="passwordLast" type="password" placeholder="Contraseña actual" />
+                              <input className="w-full p-2 border border-gray-300 rounded mt-2" onChange={handleUser} name="password2" type="password" placeholder="Nueva contraseña" />
+                              <input className="w-full p-2 border border-gray-300 rounded mt-2" onChange={handleUser} name="password3" type="password" placeholder="Confirmar nueva contraseña" />
+                            </div>
+                          </>
+                        )}
+                        <button
+                          onClick={updateUser}
+                          className="w-full bg-ColorMorado text-white p-2 rounded hover:bg-pink-600"
+                        >
+                          {changePass ? 'Actualizar contraseña' : 'Actualizar datos'}
+                        </button>
+                        <button
+                          onClick={() => setChangePass(!changePass)}
+                          className="w-full mt-2 text-slate-700 hover:underline"
+                        >
+                          {changePass ? 'Cancelar cambio de contraseña' : 'Cambiar contraseña'}
+                        </button>
+                      </form>
                     </div>
+                  )}
+                  <button
+                    onClick={handleGoHome}
+                    className="w-full bg-ColorMorado text-white p-2 rounded hover:bg-pink-600 mb-4"
+                  >
+                    <MdHome className="inline-block mr-1" /> Ir a la página principal
+                  </button>
+                  {page === 1 && (
+                    <div className="w-full max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg">
+                      {/* Aquí puedes agregar el contenido de las compras */}
+                    </div>
+                  )}
                 </div>
-            )}
+      
+                {/* Imagen en la mitad izquierda */}
+                <div className="w-1/2 lg:block flex items-center justify-center mt-32 ">
+  <Link to="/productos">
+    <img
+      src={backgroundImage}
+      alt="Imagen de Fondo"
+      className="w-1/2 h-auto max-w-md ml-32 cursor-pointer border-4 border-ColorAzul"
+    />
+  </Link>
+</div>
+              </div>
+            </div>
+          )}
         </>
-    );
-};
-
+      );
+      
+    }
 export default Profile;
 

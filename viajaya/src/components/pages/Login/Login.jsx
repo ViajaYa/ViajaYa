@@ -5,6 +5,7 @@ import {FcGoogle} from "react-icons/fc";
 import axios from "axios"
 import {toast, Toaster} from "react-hot-toast"
 import { useEffect } from 'react';
+import NavBar from '../../layout/NavBar/NavBar';
  
 const Login = () => {
     const [login, setLogin] = useState(true)
@@ -84,6 +85,9 @@ const Login = () => {
     }
   return(
     <div className={style.login}>
+         <div className='fixed top-0 left-0 z-50'>
+      <NavBar/>
+      </div>
         <Toaster
   position="top-center"
   reverseOrder={false}
