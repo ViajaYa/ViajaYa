@@ -31,7 +31,7 @@ const About = () => {
       <NavBar/>
       </div>
      
-      <div className="grid grid-cols-4 gap-2 p-8 mt-10">
+      <div className="grid grid-cols-4 gap-2 p-8 mt-14">
         <img src={sobrenosotros1} alt="sobrenosotros 1" className={`transition-transform duration-700 ${scattered ? 'transform translate-x-4' : ''}`} />
         <img src={sobrenosotros2} alt="sobrenosotros 2" className={`transition-transform duration-700 ${scattered ? 'transform translate-x-4 translate-y-2' : ''}`} />
         <img src={sobrenosotros3} alt="sobrenosotros 3" className={`transition-transform duration-700 ${scattered ? 'transform -translate-x-4 translate-y-4' : ''}`} />
@@ -42,8 +42,9 @@ const About = () => {
         <img src={sobrenosotros8} alt="sobrenosotros 8" className={`transition-transform duration-700 ${scattered ? 'transform -translate-x-10 translate-y-4' : ''}`} />
         <img src={sobrenosotros9} alt="sobrenosotros 9" className={`transition-transform duration-700 ${scattered ? 'transform translate-x-4' : ''}`} />
         <img src={sobrenosotros10} alt="sobrenosotros 10" className={`transition-transform duration-700 ${scattered ? 'transform translate-x-4 translate-y-2' : ''}`} />
-        <img src={sobrenosotros11} alt="sobrenosotros 11" className={`transition-transform duration-700 ${scattered ? 'transform -translate-x-4 translate-y-4' : ''}`} />
+        
         <img src={sobrenosotros12} alt="sobrenosotros 12" className={`transition-transform duration-700 ${scattered ? 'transform translate-y-4' : ''}`} />
+        <img src={sobrenosotros11} alt="sobrenosotros 11" className={`transition-transform duration-700 ${scattered ? 'transform -translate-x-4 translate-y-4' : ''}`} />
         <img src={sobrenosotros13} alt="sobrenosotros 13" className={`transition-transform duration-700 ${scattered ? 'transform -translate-x-6 -translate-y-2' : ''}`} />
         <img src={sobrenosotros14} alt="sobrenosotros 14" className={`transition-transform duration-700 ${scattered ? 'transform translate-x-8 translate-y-6' : ''}`} />
         <img src={sobrenosotros15} alt="sobrenosotros 15" className={`transition-transform duration-700 ${scattered ? 'transform -translate-y-8 translate-x-2' : ''}`} />
