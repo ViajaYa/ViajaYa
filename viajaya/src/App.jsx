@@ -21,6 +21,7 @@ import UserManagement from "./components/Panel/UserManagment"
 import PackManagement from "./components/Panel/PackManagement"
 import NewPack from "./components/Panel/NewPack"
 import PanelPage from "./components/Panel/Panel2"
+import TabbedImages from "./components/pages/Operador/TabbedImages"
 
 
 const Landing = lazy(() => import("./components/pages/Landing/Landing"))
@@ -72,6 +73,7 @@ function App() {
       <Route exact path="/terminos" element={<Terminos/>}/>
       <Route exact path="/pay" element={<Pay/>}/>
       <Route exact path="/detail/:id" element={<Detail/>}/>
+      <Route exact path="/productos" element={<TabbedImages/>}/>
       <Route exact path="/" element={
       <Suspense fallback={<div className={style.ldsellipsis}><div></div><div></div><div></div><div></div></div>}>
       <Landing ruta={rutaAnterior}/>

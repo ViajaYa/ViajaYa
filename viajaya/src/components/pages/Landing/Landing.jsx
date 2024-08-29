@@ -12,6 +12,7 @@ import Home from "../Home/Home"
 import Paquetes from "../Paquetes/Paquetes"
 import Destinos from "../Destinos/Destinos"
 import Clients from "../Clients/Clients"
+import Clients2 from '../Clients/Clientes2';
 import Contact from "../Contact/Contact"
 import Promo from "../Promo/Promo"
 //import Operador from "../Operador/Operador"
@@ -30,7 +31,7 @@ const Landing = ({ ruta }) => {
     <>
       <NavBar ruta={ruta} />
       <Home />
-      <TabbedImages/>
+      
      
       <Destinos/>
 
@@ -38,7 +39,7 @@ const Landing = ({ ruta }) => {
       {/* <Operador /> */}
       
       <Paquetes />
- 
+    <Clients2/>
       <Clients />
       <Contact />
       <Footer />

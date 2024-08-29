@@ -1,7 +1,7 @@
 /* Estilos existentes del NavBar */
 
 .nav {
-    background: #b85aa1;
+    background: white;
     display: flex;
     position: fixed;
     align-items: center;
@@ -30,8 +30,8 @@
 .li {
     font-size: 1.25em;
     cursor:pointer;
-    color:white;
-    font-family: 'Nunito';
+    color: rgb(51, 51, 51);
+    font-family: 'Nunito'
 }
 
 .libutton {
@@ -71,13 +71,14 @@
 }
 
 .socialButton {
-    background-color: var(--secondary); /* Fondo igual al del NavBar */
+    background-color: #b85aa1; /* Fondo igual al del NavBar */
     border: none;
     cursor: pointer;
-    padding: 5px 15px;
+    padding: 5px 25px;
     font-size: 1.25em;
     color: white; /* Texto blanco */
     border-radius: 5px; /* Opcional: para darle bordes redondeados */
+    font-family: 'Nunito';
 }
 
 .socialIcons {

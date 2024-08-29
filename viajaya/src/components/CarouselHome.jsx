@@ -13,11 +13,11 @@ import nacionales2 from "../assets/flipcard/nacionales2.png";
 
 const CarouselHome = () => {
     const initialImages = [
-        { src: nacionales, title: "Nacionales", description: "Explora destinos nacionales increíbles." },
-        { src: europoa, title: "Europa", description: "Descubre las maravillas de Europa." },
-        { src: internacionales, title: "Internacionales", description: "Viaja por todo el mundo con nuestras opciones internacionales." },
-        { src: macarena, title: "LLano", description: "Conoce los paisajes únicos del llano colombiano." },
-        { src: tierra, title: "Por Tierra", description: "Viaja por tierra y descubre nuevas aventuras." }
+        { src: nacionales, title: "NACIONALES", description: "Explora destinos nacionales increíbles." },
+        { src: europoa, title: "EUROPA", description: "Descubre las maravillas de Europa." },
+        { src: internacionales, title: "INTERNACIONALES", description: "Viaja por todo el mundo con nuestras opciones internacionales." },
+        { src: macarena, title: "LLANO", description: "Conoce los paisajes únicos del llano colombiano." },
+        { src: tierra, title: "POR TIERRA", description: "Viaja por tierra y descubre nuevas aventuras." }
     ];
 
     const newImages = [
@@ -72,7 +72,7 @@ const CarouselHome = () => {
                             }}
                         >
                             <div className="absolute inset-0 flex items-center justify-center">
-                                <h2 className="text-white text-2xl font-bold bg-black bg-opacity-50 p-2  font-nunito rounded-xl">
+                                <h2 className="text-white text-xl font-bold bg-black bg-opacity-50 p-2  font-nunito rounded-xl">
                                     {image.title}
                                 </h2>
                             </div>

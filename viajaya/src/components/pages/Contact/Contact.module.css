@@ -1,9 +1,10 @@
-.contact{
+.contact {
     width: 100%;
     height: fit-content;
-    padding:2%;
-    background-color: #4b5563;
-    
+    padding: 2%;
+ /* Ajusta la opacidad en el color */
+    box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.3); /* Sombra con un poco de difuminado */
+    border-radius: 10px; /* Bordes redondeados */
 }
 
 .titleSection{

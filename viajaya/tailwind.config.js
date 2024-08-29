@@ -15,7 +15,8 @@ module.exports = {
         BotonAmarillo:"#e4e13e",
         BotonMorado: "#7d0091",
         BotonValija:"#ffe102",
-        FondoTit:"#4b5563"
+        FondoTit:"#4b5563",
+        MoradoSuave:"#dc86c7"
 
       },
       fontFamily: {

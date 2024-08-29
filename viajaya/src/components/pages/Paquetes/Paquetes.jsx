@@ -62,7 +62,7 @@ const Paquetes = () => {
       {projectId && <ModalProject id={projectId} close={() => setProjectId(null)} />}
       <Element name="proyectos">
         <motion.div ref={ref} animate={animation} className={style.paquetes} id="proyectos">
-        <h1  className='font-nunito bg-FondoTit text-white p-4 text-2xl w-screen mx-0 px-0 text-center mb-4'>Haz tu Reserva</h1>
+        <h1  className='font-nunito bg-ColorAzul text-gray-700 font-bold p-4 text-2xl w-screen mx-0 px-0 text-center mb-4'>HAZ TU RESERVA</h1>
       
           <div className={style.selectContainer}>
             <Select placeholder="Características" isMulti className={style.select} onChange={filterPacks} options={options} />

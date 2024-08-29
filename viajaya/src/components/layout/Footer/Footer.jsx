@@ -12,7 +12,7 @@ const Footer = () => {
     const navigate = useNavigate();
     
     return (
-        <footer className={style.footer}>
+        <footer className={style.footer} >
             <div className={style.footerContent}>
                 <div className={style.redes}>
                 <a className={style.noLink} href="mailto:viajaya.hotelesytodoincluido@gmail.com" target="_blank" rel="noopener noreferrer"> {/* Cambia esto a tu correo electrónico real */}

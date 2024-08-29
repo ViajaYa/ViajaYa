@@ -35,9 +35,9 @@ const NavBar = ({ showFullMenu = true }) => {
 
   return (
     <nav className={style.nav}>
-      <ScrollLink to="home" smooth={true} duration={500}>
+      <RouterLink to="/" className={style.noLink}>
         <img className={style.logo} src={logo} alt="Logo" />
-      </ScrollLink>
+      </RouterLink>
       <ul className={style.ul}>
         {isAboutPage ? (
           <>
@@ -57,9 +57,11 @@ const NavBar = ({ showFullMenu = true }) => {
             <ScrollLink to="proyectos" smooth={true} duration={500}>
               <li ref={linkRef} className={style.li}>Paquetes</li>
             </ScrollLink>
-            <ScrollLink to="servicios" smooth={true} duration={500}>
+            
+            <RouterLink to="/productos" className={style.noLink}>
               <li className={style.li}>Productos</li>
-            </ScrollLink>
+            </RouterLink>
+            
             <ScrollLink to="contactanos" smooth={true} duration={500}>
               <li className={style.li}>Obtén Descuentos</li>
             </ScrollLink>

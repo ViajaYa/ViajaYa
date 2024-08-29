@@ -2,13 +2,10 @@ import style from './Clients.module.css'
 import Slider from "react-slick"
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
-import logo from "../../../assets/logo2.jpg"
 import {Element} from "react-scroll"
 import { useInView } from 'react-intersection-observer';
 import { useAnimation, motion } from 'framer-motion';
 import { useEffect } from 'react';
-import mascota from "../../../assets/mascota.png"
-
 import l1 from "../../../assets/aliados/13.png"
 import l2 from "../../../assets/aliados/2.png"
 import l3 from "../../../assets/aliados/12.webp"
@@ -22,9 +19,9 @@ import l10 from "../../../assets/aliados/10.png"
 import l11 from "../../../assets/aliados/11.png"
 // import l4 from "../../../assets/aliados/4.png"
 
-import c1 from "../../../assets/c1.mp4"
-import c2 from "../../../assets/c2.jpeg"
-import c3 from "../../../assets/c3.jpeg"
+// import c1 from "../../../assets/c1.mp4"
+// import c2 from "../../../assets/c2.jpeg"
+// import c3 from "../../../assets/c3.jpeg"
  
 const Clients = () => {
 
@@ -114,22 +111,22 @@ const Clients = () => {
         </div>
         </Slider>
 
-      <div>
-      <h1 className='font-nunito bg-FondoTit text-white p-4 text-2xl w-full justify-center text-center mb-4'>Nuestros Clientes</h1>
+      {/* <div>
+      <h1 className='font-nunito bg-ColorMorado text-gray-700 font-bold p-4 text-2xl w-full justify-center text-center mb-4'>NUESTROS CLIENTES</h1>
         
         <div className={style.row}>
             <img src={c3} className={style.video}/>
             <img src={c2} className={style.video}/>
           <video src={c1} controls className={style.video}/>
-        </div>
+        </div> */}
 
         {/* <div className={style.valores}>
         <a className={style.noLink} href="https://www.instagram.com/viajaya_pagina_oficial/" target="_blank"><div className={style.valor}><img className={style.imgValores} src={logo}></img></div></a>
         <a className={style.noLink} href="https://www.instagram.com/viajaya_pagina_oficial/" target="_blank"><div className={style.valor}><img className={style.imgValores} src={logo}></img></div></a>
         <a className={style.noLink} href="https://www.instagram.com/viajaya_pagina_oficial/" target="_blank"><div className={style.valor}><img className={style.imgValores} src={logo}></img></div></a>
         </div> */}
-      </div>
-      <div><button className={style.button}><a className={style.noLink} target="_blank" href="https://www.instagram.com/stories/highlights/17846810168704295/">Mas testimonios</a></button></div>
+      {/* </div>
+      <div><button className={style.button}><a  className="font-nunito text-gray" target="_blank" href="https://www.instagram.com/stories/highlights/17846810168704295/">Mas testimonios</a></button></div> */}
     </motion.div>
     </Element>
   )

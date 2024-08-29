@@ -126,14 +126,14 @@ const Contact = () => {
           </div>
 
           {/* Lista de sedes como slice */}
-          <div className="w-full md:w-1/3 flex flex-col space-y-4 mt-8 md:mt-0 p-4 bg-gray-700 rounded-lg shadow-md">
-            <h2 className="text-lg font-nunito text-white">Selecciona una sede</h2>
+          <div className="w-full md:w-1/3 flex flex-col space-y-4 mt-8 md:mt-0 p-4 bg-MoradoSuave rounded-lg shadow-md">
+            <h2 className="text-lg font-nunito font-bold text-white text-center">Selecciona una sede</h2>
             <div className="flex flex-col space-y-2">
               {locations.map(location => (
                 <button
                   key={location.id}
                   onClick={() => handleLocationChange(location)}
-                  className="px-4 py-2 text-lg border border-gray-300 rounded-md hover:bg-gray-600 text-white font-nunito"
+                  className="px-4 py-2 text-lg border border-gray-300 rounded-md hover:bg-ColorMorado text-gray-700 font-nunito"
                 >
                   {location.name}
                 </button>
@@ -142,7 +142,7 @@ const Contact = () => {
           </div>
 
           {/* Formulario de contacto */}
-          <form className="w-full md:w-1/3 flex flex-col space-y-4 mt-8 md:mt-0 p-4 bg-gray-700 rounded-lg shadow-md">
+          <form className="w-full md:w-1/3 flex flex-col space-y-4 mt-8 md:mt-0 p-4 bg-MoradoSuave  rounded-lg shadow-md">
             <div className="flex flex-col space-y-4">
               <div className="flex space-x-4">
                 <input
@@ -185,7 +185,7 @@ const Contact = () => {
               />
               <button
                 onClick={sendMail}
-                className="px-6 py-3 text-lg text-white font-nunito bg-ColorAzul rounded-md hover:bg-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                className="px-6 py-3 text-lg text-gray-600 font-bold font-nunito bg-ColorAzul rounded-md hover:bg-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500">
                 Enviar
               </button>
             </div>

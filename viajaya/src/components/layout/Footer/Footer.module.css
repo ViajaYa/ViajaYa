@@ -1,8 +1,7 @@
 .footer {
-    background-color: #b85aa1;
+    background-color: white;
     width: 100vw;
     height: 10vh;
-    color: white;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -22,7 +21,7 @@
 }
 
 .icons {
-    font-size: 3em;
+    font-size: 2em;
 }
 .whatsapp {
     color: #25D366; /* Color verde para WhatsApp */
@@ -45,10 +44,10 @@
 }
 
 .terms {
-    color: #eae8e8; /* Color blanco para el ícono de términos */
+    color: #b85aa1; /* Color blanco para el ícono de términos */
 }
 .email {
-    color: #eae8e8; /* Cambia el color si lo deseas */
+    color: #b85aa1; /* Cambia el color si lo deseas */
 }
 
 
