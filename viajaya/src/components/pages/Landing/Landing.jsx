@@ -3,20 +3,17 @@ import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { getPopup } from '../../../redux/actions/actions'
 import Popup from '../../../components/popups/Popup'
-
-
- import TabbedImages from '../Operador/TabbedImages';
 import NavBar from "../../layout/NavBar/NavBar"
 import Footer from "../../layout/Footer/Footer"
 import Home from "../Home/Home"
 import Paquetes from "../Paquetes/Paquetes"
 import Destinos from "../Destinos/Destinos"
 import Clients from "../Clients/Clients"
-import Clients2 from '../Clients/Clientes2';
 import Contact from "../Contact/Contact"
 import Promo from "../Promo/Promo"
 //import Operador from "../Operador/Operador"
 import WhatssapButton from './WhatssapButton'
+import InstagramCarousel from '../Clients/InstagramReelCarousel';
 
 // eslint-disable-next-line react/prop-types
 const Landing = ({ ruta }) => {
@@ -39,7 +36,8 @@ const Landing = ({ ruta }) => {
       {/* <Operador /> */}
       
       <Paquetes />
-    <Clients2/>
+      <InstagramCarousel/>
+    {/* <Clients2/> */}
       <Clients />
       <Contact />
       <Footer />

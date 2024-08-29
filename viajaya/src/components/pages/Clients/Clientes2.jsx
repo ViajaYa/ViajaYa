@@ -5,7 +5,8 @@ import { useAnimation, motion } from 'framer-motion';
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
-
+import Instagram from './InstagramReel'
+import InstagramReelCarousel from './InstagramReelCarousel';
 import l1 from "../../../assets/aliados/13.png";
 import l2 from "../../../assets/aliados/2.png";
 import l3 from "../../../assets/aliados/12.webp";
@@ -21,6 +22,8 @@ import l11 from "../../../assets/aliados/11.png";
 import c1 from "../../../assets/c1.mp4";
 import c2 from "../../../assets/c2.jpeg";
 import c3 from "../../../assets/c3.jpeg";
+import "slick-carousel/slick/slick.css"; 
+import "slick-carousel/slick/slick-theme.css";
 
 const Clients2 = () => {
 
@@ -28,7 +31,7 @@ const Clients2 = () => {
     threshold: 0.05
   });
   const animation = useAnimation();
-
+  const reelUrl = "https://www.instagram.com/reel/C_O6gHfAAQt/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA=="; //https://www.instagram.com/reel/C_O6gHfAAQt/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA==// Reemplaza con la URL de tu reel
   useEffect(() => {
     if (inView) {
       animation.start({
@@ -71,11 +74,16 @@ const Clients2 = () => {
 
   return (
     <Element name="clientes">
-      <motion.div animate={animation} ref={ref} className="flex flex-col items-center py-8" id="clientes">
+      <motion.div animate={animation} ref={ref} className="flex flex-col items-center py-8 mb-24" id="clientes">
 
         <h1 className="font-nunito bg-ColorAzul text-gray-700 font-bold p-4 text-2xl w-full text-center mb-8">
           NUESTROS CLIENTES
         </h1>
+        <div>
+     
+      <Instagram reelUrl={reelUrl} />
+    </div>
+
 
         <div className="w-full px-4 sm:px-8 md:px-12 lg:px-16 xl:px-20">
           <Slider key={Math.random()} {...settings}>
@@ -116,7 +124,7 @@ const Clients2 = () => {
         </div>
 
       
-          <button className="bg-ColorAzul text-gray-600 font-bold font-nunito px-8 py-2 rounded-lg shadow-lg hover:bg-ColorMorado">
+          <button className="bg-ColorAzul text-gray-600 font-bold font-nunito px-8 py-2 rounded-lg shadow-lg hover:bg-ColorMorado mt-2">
             <a href="https://www.instagram.com/stories/highlights/17846810168704295/" target="_blank" rel="noopener noreferrer">
               Mas testimonios
             </a>
