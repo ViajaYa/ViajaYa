@@ -16,12 +16,14 @@ import About from "./components/pages/About/About"
 import Rifa from "./components/pages/Rifa"
 import NumberBoard from "./components/pages/NumberBoard"
 import Form from "./components/pages/Form"
-import Panel from "./components/Panel/Panel"
 import UserManagement from "./components/Panel/UserManagment"
 import PackManagement from "./components/Panel/PackManagement"
 import NewPack from "./components/Panel/NewPack"
 import PanelPage from "./components/Panel/Panel2"
 import TabbedImages from "./components/pages/Operador/TabbedImages"
+import ManagePopup from "./components/popups/ManagePopup"
+import Popup from "./components/popups/Popup"
+
 
 
 const Landing = lazy(() => import("./components/pages/Landing/Landing"))
@@ -68,7 +70,9 @@ function App() {
       <Route exact path="/panel" element={<PanelPage/>}/>
        <Route path="/panel/user" element={<UserManagement/>}/> 
        <Route path="/panel/pack" element={<PackManagement/>}/> 
-       <Route path="/panel/newPack" element={<NewPack/>}/> 
+       <Route path="/panel/newPack" element={<NewPack/>}/>
+       <Route path="/panel/popup" element={<ManagePopup/>}/>
+       <Route path="/panel/popup/popup" element={<Popup/>}/>  
       <Route exact path="/politicas" element={<Politicas/>}/>
       <Route exact path="/terminos" element={<Terminos/>}/>
       <Route exact path="/pay" element={<Pay/>}/>

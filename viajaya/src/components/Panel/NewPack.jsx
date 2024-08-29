@@ -1,76 +1,86 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { useDropzone } from 'react-dropzone';
 import { createPack } from '../../redux/NewActions/newActions'; 
 import MapView from '../MapView';
 import "leaflet/dist/leaflet.css";
+import { openCloudinaryWidget } from '../../cloudinaryConfig';
 
 const NewPack = () => {
   const [title, setTitle] = useState('');
   const [days, setDays] = useState('');
   const [location, setLocation] = useState('');
   const [lat, setLat] = useState('');
+  const [fechas, setFechas] = useState([{ salida: '', vuelta: '' }]);
+  const [city, setCity] = useState('');
   const [lng, setLng] = useState('');
-  const [description, setDescription] = useState('');
+  const [detail, setDetail] = useState('');
   const [price, setPrice] = useState('');
-  const [images, setImages] = useState([]); // Unificando el estado de imágenes
+  const [images, setImages] = useState([]);
   const [selectedChars, setSelectedChars] = useState([]);
 
   const dispatch = useDispatch();
 
-  // Función para manejar la carga de imágenes
-  const onDrop = (acceptedFiles) => {
-    setImages(acceptedFiles.map(file => Object.assign(file, {
-      preview: URL.createObjectURL(file) // Generando vista previa
-    })));
+  const handleWidget = () => {
+    openCloudinaryWidget((uploadedImageUrl) => {
+      setImages(prevImages => [...prevImages, uploadedImageUrl]);
+    });
   };
 
-  const { getRootProps, getInputProps } = useDropzone({
-    accept: {
-      'image/jpeg': ['.jpeg', '.jpg'],
-      'image/png': ['.png']
-    },
-    onDrop
-  });
+  
 
-  // Función para manejar el cambio de coordenadas desde el mapa
   const handleCoordinatesChange = ([latitude, longitude]) => {
     setLat(latitude);
     setLng(longitude);
   };
 
-  // Función para manejar el envío del formulario
+  const handleFechaChange = (index, key, value) => {
+    const newFechas = [...fechas];
+    newFechas[index][key] = value;
+    setFechas(newFechas);
+  };
+
+  const handleAddFechas = () => {
+    setFechas([...fechas, { salida: '', vuelta: '' }]);
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log("Formulario enviado")
+
+    // Construir el objeto FormData
     const formData = new FormData();
-    
     formData.append('title', title);
     formData.append('days', days);
+    formData.append('city', city);
     formData.append('location', location);
-    formData.append('description', description);
+    formData.append('detail', detail);
     formData.append('price', price);
     formData.append('lat', lat);
     formData.append('lng', lng);
+    formData.append('fechas', JSON.stringify(fechas));
 
-    // Añadir cada caracter (chars) individualmente
+    // Añadir imágenes
+    images.forEach((url, index) => {
+      formData.append(`images[${index}]`, url);
+    });
+
+    // Añadir otras propiedades
     selectedChars.forEach((char, index) => {
-        formData.append(`chars[${index}]`, char);
+      formData.append(`chars[${index}]`, char);
     });
 
-    // Añadir cada imagen al FormData
-    images.forEach((image, index) => {
-        formData.append(`images[${index}]`, image);  // Cambié 'images' a `images[${index}]`
-    });
+    // Imprimir el FormData
+    for (let [key, value] of formData.entries()) {
+      console.log(key, value);
+    }
 
-    // Realizar la solicitud usando formData
+    // Despachar la acción
     dispatch(createPack(formData));
-};
+  };
 
   return (
     <div className="container mx-auto mt-12 p-4">
       <h2 className="bg-ColorMorado text-3xl font-bold font-nunito text-white mb-8">Crear Paquete</h2>
-      <form onSubmit={handleSubmit} className="space-y-4 grid grid-cols-2 gap-6">
+      <form onSubmit={handleSubmit} className="space-y-4 grid grid-cols-2 gap-6" encType="multipart/form-data">
         <div>
           <label className="block text-sm font-nunito font-medium">Nombre del Paquete</label>
           <input
@@ -84,8 +94,8 @@ const NewPack = () => {
         <div>
           <label className="block text-sm font-nunito font-medium">Descripción</label>
           <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            value={detail}
+            onChange={(e) => setDetail(e.target.value)}
             className="mt-1 block w-full p-2 font-nunito border border-gray-300 rounded-md"
             required
           />
@@ -120,6 +130,38 @@ const NewPack = () => {
           />
         </div>
 
+        {fechas.map((fecha, index) => (
+          <div key={index} className="flex space-x-4">
+            <div>
+              <label className="block text-sm font-nunito font-medium">Fecha de Salida</label>
+              <input
+                type="date"
+                value={fecha.salida}
+                onChange={(e) => handleFechaChange(index, 'salida', e.target.value)}
+                className="mt-1 block w-full p-2 font-nunito border border-gray-300 rounded-md"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-nunito font-medium">Fecha de Vuelta</label>
+              <input
+                type="date"
+                value={fecha.vuelta}
+                onChange={(e) => handleFechaChange(index, 'vuelta', e.target.value)}
+                className="mt-1 block w-full p-2 font-nunito border border-gray-300 rounded-md"
+                required
+              />
+            </div>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={handleAddFechas}
+          className="bg-gray-300 hover:bg-gray-400 text-black font-nunito font-semibold py-2 px-4 rounded-md mt-2"
+        >
+          Agregar Otra Fecha
+        </button>
+
         <div>
           <label className="block text-sm font-nunito font-medium">Latitud</label>
           <input
@@ -127,7 +169,7 @@ const NewPack = () => {
             value={lat}
             onChange={(e) => setLat(e.target.value)}
             className="mt-1 block w-full p-2 font-nunito border border-gray-300 rounded-md"
-            readOnly
+            required
           />
         </div>
         <div>
@@ -137,69 +179,39 @@ const NewPack = () => {
             value={lng}
             onChange={(e) => setLng(e.target.value)}
             className="mt-1 block w-full p-2 font-nunito border border-gray-300 rounded-md"
-            readOnly
+            required
           />
         </div>
 
-        <div className="col-span-2">
-          <label className="block text-sm font-nunito font-medium">Características</label>
-          <select
-            multiple
-            value={selectedChars}
-            onChange={(e) => setSelectedChars(Array.from(e.target.selectedOptions, option => option.value))}
-            className="mt-1 block w-full p-2 font-nunito border border-gray-300 rounded-md"
-          >
-            <option value="Wifi">Wifi</option>
-            <option value="Parqueadero">Parqueadero</option>
-            <option value="Piscina">Piscina</option>
-            <option value="Jacuzzi">Jacuzzi</option>
-            <option value="Cama Doble">Cama Doble</option>
-            <option value="Gimnasio">Gimnasio</option>
-          </select>
-        </div>
-
-        <div {...getRootProps()} className="mt-1 block w-full p-4 border-2 border-dashed border-gray-300 rounded-md text-center cursor-pointer">
-          <input {...getInputProps()} />
-          <p>Arrastra y suelta tus imágenes aquí, o haz clic para seleccionarlas</p>
-        </div>
-
-        {images.length > 0 && ( // Cambiar files a images
-          <div className="previews">
-            {images.map((image) => ( // Cambiar files.map a images.map
-              <div key={image.name}>
-                <img src={image.preview} alt={image.name} style={{ width: '200px' }} />
-              </div>
+        <MapView onCoordinatesChange={handleCoordinatesChange} />
+        
+        <div>
+        <label className="block text-sm font-nunito font-medium">Imágenes</label>
+        <button type="button" onClick={handleWidget}>
+        Selecciona las imágenes
+      </button>
+          <div className="mt-2">
+            {images.map((img, index) => (
+              <img key={index} src={img} alt={`Uploaded ${index}`} className="w-32 h-32 object-cover rounded-md mr-2" />
             ))}
           </div>
-        )}
-
-        {/* Integrando el componente MapView */}
-        <div className="col-span-2">
-          <label className="block text-sm font-nunito font-medium mb-2">Ubicación en el Mapa</label>
-          <MapView
-            initialCoordinates={[lat || -34.603722, lng || -58.381592]} // Coordenadas iniciales (ejemplo: Buenos Aires)
-            onCoordinatesChange={handleCoordinatesChange}
-            onSave={(newCoordinates) => {
-              setLat(newCoordinates[0]);
-              setLng(newCoordinates[1]);
-            }}
-          />
         </div>
-
-        <div className="col-span-2">
-          <button
-            type="submit"
-            className="bg-ColorMorado hover:bg-ColorMoradoOscuro text-white font-nunito font-semibold py-2 px-4 rounded-md"
-          >
-            Crear Paquete
-          </button>
-        </div>
+        
+        <button
+          type="submit"
+          className="bg-ColorMorado hover:bg-ColorMoradoDark text-white font-nunito font-semibold py-2 px-4 rounded-md"
+        >
+          Crear Paquete
+        </button>
       </form>
     </div>
   );
 };
 
 export default NewPack;
+
+
+
 
 
 

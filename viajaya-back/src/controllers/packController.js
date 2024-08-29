@@ -1,5 +1,5 @@
 const { Pack, Char } = require("../db");
-
+const cloudinary = require('../config/cloudinaryConfig');
 
 module.exports = {
     // Obtener todos los packs
@@ -84,19 +84,39 @@ module.exports = {
         }
     },
 
-    // Crear un nuevo pack
-    postPack: async (pack) => {
+    // Crear un pack
+     postPack : async (req, res) => {
         try {
-            const newPack = await Pack.create(pack);
-            if (pack.chars) {
-                await newPack.addChars(pack.chars);
-            }
-            return "Pack created successfully";
+          console.log('Datos del cuerpo:', req.body);
+          // Las URLs de las imágenes están en req.body.images
+      
+          // Si `fechas` es una cadena JSON, conviértela a un objeto
+          const fechas = req.body.fechas ? JSON.parse(req.body.fechas) : [];
+      
+          // Crear el nuevo pack en la base de datos
+          const newPack = await Pack.create({
+            title: req.body.title,
+            days: parseInt(req.body.days, 10),
+            location: req.body.location,
+            city: req.body.city,
+            detail: req.body.detail,
+            price: parseInt(req.body.price, 10),
+            lat: req.body.lat,
+            lng: req.body.lng,
+            fechas: fechas,
+            images: req.body.images // Usa las URLs proporcionadas
+          });
+      
+          res.status(201).json({ message: 'Pack created successfully', newPack });
         } catch (error) {
-            console.error('Error creating pack:', error);
-            throw new Error('Error creating pack');
+          console.error('Error creando el pack:', error);
+          res.status(500).json({ error: 'Error creating pack' });
         }
-    },
+      },
+      
+    
+    
+    
 
     // Eliminar un pack
     deletePack: async (id) => {
@@ -117,3 +137,4 @@ module.exports = {
         }
     }
 };
+

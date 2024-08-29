@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
+const upload = require('../config/multerConfig'); // Importar configuración de multer
 const { getPacks, getChars, getPackById, putPack, postPack, deletePack } = require('../controllers/packController');
 
+// Obtener todos los packs
 router.get('/', async (req, res) => {
     try {
         const packs = await getPacks();
@@ -11,6 +13,7 @@ router.get('/', async (req, res) => {
     }
 });
 
+// Obtener todos los chars
 router.get('/chars', async (req, res) => {
     try {
         const chars = await getChars();
@@ -20,6 +23,7 @@ router.get('/chars', async (req, res) => {
     }
 });
 
+// Obtener un pack por ID
 router.get('/:id', async (req, res) => {
     try {
         const pack = await getPackById(req.params.id);
@@ -29,6 +33,7 @@ router.get('/:id', async (req, res) => {
     }
 });
 
+// Actualizar un pack
 router.put('/:id', async (req, res) => {
     try {
         const updatedPack = await putPack(req.body);
@@ -38,15 +43,16 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-router.post('/', async (req, res) => {
+// Crear un pack con archivos
+router.post('/', upload.array('images', 10), async (req, res) => {
     try {
-        const message = await postPack(req.body);
-        res.json({ message });
+        await postPack(req, res);
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
 });
 
+// Eliminar un pack
 router.delete('/:id', async (req, res) => {
     try {
         const message = await deletePack(req.params.id);

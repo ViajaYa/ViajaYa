@@ -57,13 +57,20 @@ export const fetchPacks = () => async (dispatch) => {
 export const createPack = (pack) => async (dispatch) => {
   dispatch({ type: CREATE_PACK_REQUEST });
   try {
-      await axios.post(`${BASE_URL}/pack`, pack);
-      dispatch({ type: CREATE_PACK_SUCCESS });
-      // Optionally, you can fetch packs again or handle success
+    await axios.post(`${BASE_URL}/pack`, pack, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    dispatch({ type: CREATE_PACK_SUCCESS });
+    // Optionally, you can fetch packs again or handle success
   } catch (error) {
-      dispatch({ type: CREATE_PACK_FAILURE, payload: error.message });
+    console.error('Error al crear el pack:', error.message);
+    dispatch({ type: CREATE_PACK_FAILURE, payload: error.message });
   }
 };
+
+
 
 export const updatePack = (pack) => async (dispatch) => {
   dispatch({ type: UPDATE_PACK_REQUEST });

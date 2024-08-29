@@ -234,9 +234,9 @@ const Profile = () => {
     const data = new FormData();
     data.append("file", files[0]);
     data.append("upload_preset","viajaya")
-    data.append("api_key","612393625364863")
+    data.append("api_key","336229217577135")
     data.append("timestamp", 0)
-    const res = await axios.post("https://api.cloudinary.com/v1_1/dftvenl2z/image/upload", data)
+    const res = await axios.post("https://api.cloudinary.com/v1_1/dbxwx3m3l/image/upload", data)
     // console.log(res.data.secure_url)
     setPromo({
       ...promo,
@@ -264,9 +264,9 @@ const Profile = () => {
     const data = new FormData();
     data.append("file", files[0]);
     data.append("upload_preset","viajaya")
-    data.append("api_key","612393625364863")
+    data.append("api_key","336229217577135")
     data.append("timestamp", 0)
-    const res = await axios.post("https://api.cloudinary.com/v1_1/dftvenl2z/image/upload", data)
+    const res = await axios.post("https://api.cloudinary.com/v1_1/dbxwx3m3l/image/upload", data)
     setPack({
       ...pack,
       images:[...pack.images, res.data.secure_url]
