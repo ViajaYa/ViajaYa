@@ -1,22 +1,21 @@
 import { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { createPack } from '../../redux/NewActions/newActions'; 
-import MapView from '../MapView';
 import "leaflet/dist/leaflet.css";
 import { openCloudinaryWidget } from '../../cloudinaryConfig';
 
 const NewPack = () => {
   const [title, setTitle] = useState('');
   const [days, setDays] = useState('');
-  const [location, setLocation] = useState('');
-  const [lat, setLat] = useState('');
+  const [destino, setDestino] = useState('Internacionales');
+  const[location, setLocation] = useState('') // Valor predeterminado
   const [fechas, setFechas] = useState([{ salida: '', vuelta: '' }]);
   const [city, setCity] = useState('');
-  const [lng, setLng] = useState('');
   const [detail, setDetail] = useState('');
   const [price, setPrice] = useState('');
   const [images, setImages] = useState([]);
   const [selectedChars, setSelectedChars] = useState([]);
+  const [successMessage, setSuccessMessage] = useState(false);
 
   const dispatch = useDispatch();
 
@@ -24,13 +23,6 @@ const NewPack = () => {
     openCloudinaryWidget((uploadedImageUrl) => {
       setImages(prevImages => [...prevImages, uploadedImageUrl]);
     });
-  };
-
-  
-
-  const handleCoordinatesChange = ([latitude, longitude]) => {
-    setLat(latitude);
-    setLng(longitude);
   };
 
   const handleFechaChange = (index, key, value) => {
@@ -46,41 +38,60 @@ const NewPack = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // Construir el objeto FormData
     const formData = new FormData();
     formData.append('title', title);
     formData.append('days', days);
     formData.append('city', city);
+    formData.append('destino', destino);
     formData.append('location', location);
     formData.append('detail', detail);
     formData.append('price', price);
-    formData.append('lat', lat);
-    formData.append('lng', lng);
     formData.append('fechas', JSON.stringify(fechas));
 
-    // Añadir imágenes
     images.forEach((url, index) => {
       formData.append(`images[${index}]`, url);
     });
 
-    // Añadir otras propiedades
     selectedChars.forEach((char, index) => {
       formData.append(`chars[${index}]`, char);
     });
 
-    // Imprimir el FormData
-    for (let [key, value] of formData.entries()) {
-      console.log(key, value);
-    }
+    dispatch(createPack(formData))
+      .then(() => {
+        // Mostrar mensaje de éxito
+        setSuccessMessage(true);
 
-    // Despachar la acción
-    dispatch(createPack(formData));
+        // Limpiar formulario
+        setTitle('');
+        setDays('');
+        setCity('');
+        setDestino('Internacionales'); 
+        setLocation('');
+        setDetail('');
+        setPrice('');
+        setFechas([{ salida: '', vuelta: '' }]);
+        setImages([]);
+        setSelectedChars([]);
+
+        // Ocultar mensaje después de 3 segundos
+        setTimeout(() => {
+          setSuccessMessage(false);
+        }, 3000);
+      });
   };
 
   return (
     <div className="container mx-auto mt-12 p-4">
-      <h2 className="bg-ColorMorado text-3xl font-bold font-nunito text-white mb-8">Crear Paquete</h2>
+      <h2 className="bg-ColorMorado text-3xl font-bold font-nunito text-white mb-8">Crear Nuevo Paquete</h2>
+
+      {successMessage && (
+        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4">
+          Paquete creado con éxito.
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-4 grid grid-cols-2 gap-6" encType="multipart/form-data">
+        {/* Campos del formulario */}
         <div>
           <label className="block text-sm font-nunito font-medium">Nombre del Paquete</label>
           <input
@@ -102,6 +113,30 @@ const NewPack = () => {
         </div>
         <div>
           <label className="block text-sm font-nunito font-medium">Destino</label>
+          <select
+            value={location}
+            onChange={(e) => setDestino(e.target.value)}
+            className="mt-1 block w-full p-2 font-nunito border border-gray-300 rounded-md"
+            required
+          >
+            <option value="Internacionales">Internacionales</option>
+            <option value="Europa">Europa</option>
+            <option value="Nacionales">Nacionales</option>
+            <option value="Llano">Llano</option>
+            <option value="Por Tierra">Por Tierra</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-nunito font-medium">Ciudad</label>
+          <textarea
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            className="mt-1 block w-full p-2 font-nunito border border-gray-300 rounded-md"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-nunito font-medium">Locacion</label>
           <textarea
             value={location}
             onChange={(e) => setLocation(e.target.value)}
@@ -154,53 +189,28 @@ const NewPack = () => {
             </div>
           </div>
         ))}
+
         <button
           type="button"
           onClick={handleAddFechas}
-          className="bg-gray-300 hover:bg-gray-400 text-black font-nunito font-semibold py-2 px-4 rounded-md mt-2"
+          className="bg-ColorAzul hover:bg-gray-400 text-black font-nunito font-semibold py-2 px-4 rounded-md mt-2"
         >
           Agregar Otra Fecha
         </button>
 
         <div>
-          <label className="block text-sm font-nunito font-medium">Latitud</label>
-          <input
-            type="text"
-            value={lat}
-            onChange={(e) => setLat(e.target.value)}
-            className="mt-1 block w-full p-2 font-nunito border border-gray-300 rounded-md"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-nunito font-medium">Longitud</label>
-          <input
-            type="text"
-            value={lng}
-            onChange={(e) => setLng(e.target.value)}
-            className="mt-1 block w-full p-2 font-nunito border border-gray-300 rounded-md"
-            required
-          />
-        </div>
-
-        <MapView onCoordinatesChange={handleCoordinatesChange} />
-        
-        <div>
-        <label className="block text-sm font-nunito font-medium">Imágenes</label>
-        <button type="button" onClick={handleWidget}>
-        Selecciona las imágenes
-      </button>
+          <label className="block text-sm font-nunito font-medium">Imágenes</label>
+          <button type="button" onClick={handleWidget} className="bg-ColorAzul hover:bg-gray-400 text-white font-nunito font-semibold py-2 px-4 rounded-md">
+            Selecciona las imágenes
+          </button>
           <div className="mt-2">
             {images.map((img, index) => (
-              <img key={index} src={img} alt={`Uploaded ${index}`} className="w-32 h-32 object-cover rounded-md mr-2" />
+              <img key={index} src={img} alt={`Uploaded ${index}`} className="w-32 h-32 object-cover rounded-md shadow-md mr-2 mb-2" />
             ))}
           </div>
         </div>
         
-        <button
-          type="submit"
-          className="bg-ColorMorado hover:bg-ColorMoradoDark text-white font-nunito font-semibold py-2 px-4 rounded-md"
-        >
+        <button type="submit" className="bg-ColorMorado hover:bg-ColorAzul text-white font-nunito font-semibold py-2 px-4 rounded-md mt-4">
           Crear Paquete
         </button>
       </form>
@@ -209,6 +219,8 @@ const NewPack = () => {
 };
 
 export default NewPack;
+
+
 
 
 

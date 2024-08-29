@@ -71,6 +71,7 @@ module.exports = {
             if (p.price) pack.price = p.price;
             if (p.days) pack.days = p.days;
             if (p.location) pack.location = p.location;
+            if (p.destino) pack.destino = p.destino;
             if (p.city) pack.city = p.city;
             if (p.lat) pack.lat = p.lat;
             if (p.lng) pack.lng = p.lng;
@@ -100,6 +101,7 @@ module.exports = {
             location: req.body.location,
             city: req.body.city,
             detail: req.body.detail,
+            destino:req.body.destino,
             price: parseInt(req.body.price, 10),
             lat: req.body.lat,
             lng: req.body.lng,
