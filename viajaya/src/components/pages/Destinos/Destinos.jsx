@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import llanero from '../../../assets/llanero.jpg';
 import llano from '../../../assets/llano.jpg';
 import atardecer from '../../../assets/atardecer.jpg';
+import logo from '../../../assets/mascota.png'
 
 const FlipCard = ({ link, backTitle, backSteps, backHighlight, frontColor, backColor, frontImage }) => {
   const [flipped, setFlipped] = useState(false);
@@ -49,11 +50,23 @@ FlipCard.propTypes = {
 
 const Destinos = () => {
   return (
-    <div className="relative">
-      <h1 className='font-nunito bg-ColorAzul text-gray-700 font-bold p-4 text-2xl w-screen mx-0 px-0 text-center mt-8'>
-        TOURS AL LLANO
-      </h1>
-      <div className="flip-card-container mt-16"> {/* Ajusta este margen según la altura del título */}
+    <div className="relative cursor-custom">
+    
+        <img
+    src={logo}
+    alt="Logo"
+    className="w-20 h-20 ml-4 mt-4" // Ajusta el tamaño del logo y agrega un margen a la derecha
+  />
+<div className="flex items-center  mt-0 justify-center bg-ColorAzul pt-2 ">
+
+  <h1 className="font-nunito text-gray-700 font-bold text-2xl p-4 ">
+    TOURS AL LLANO
+  </h1>
+</div>
+
+
+
+      <div className="flip-card-container mt-12"> {/* Ajusta este margen según la altura del título */}
         <FlipCard
           link="https://periodico.unal.edu.co/uploads/UN_Periodico_Digital/Imagenes/2021/04-Abril/0408/pm/01-LLanos_cc0.jpg"
           backSteps={[]}

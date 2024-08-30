@@ -19,6 +19,9 @@ module.exports = {
         MoradoSuave:"#dc86c7"
 
       },
+      cursor: {
+        custom: 'url("../src/assets/mascota.png"), auto',
+      },
       fontFamily: {
         nunito: ['Nunito', 'sans-serif'], // Definir la fuente Nunito
         dancing:['Dancing+Script']
