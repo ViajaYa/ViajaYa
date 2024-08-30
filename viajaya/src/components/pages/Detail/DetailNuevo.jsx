@@ -1,7 +1,7 @@
-import  { useEffect } from 'react';
+import  { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchPack } from '../../../redux/NewActions/newActions';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -16,6 +16,8 @@ const DetailNuevo = () => {
   const loading = useSelector((state) => state.loading);
   const error = useSelector((state) => state.error);
 
+  const [selectedDate, setSelectedDate] = useState('');
+
   // Fetch pack when component mounts
   useEffect(() => {
     if (id) {
@@ -29,6 +31,10 @@ const DetailNuevo = () => {
   if (!pack || Object.keys(pack).length === 0) return <div>No se encontró el paquete</div>;
 
   const center = [parseFloat(pack.lat), parseFloat(pack.lng)];
+
+  const handleDateChange = (e) => {
+    setSelectedDate(e.target.value);
+  };
   
   return (
     <div className="container mx-auto mt-8 p-4">
@@ -43,16 +49,27 @@ const DetailNuevo = () => {
             <p className="text-lg mt-2">Días: {pack.days}</p>
             <p className="text-lg mt-2">Ciudad: {pack.city}</p>
             <p className="text-lg mt-2">Destino: {pack.location}</p>
-            {pack.fechas && pack.fechas.map((fecha, index) => (
-              <div key={index} className="mt-2">
-                <p>Salida: {fecha.salida}</p>
-                <p>Vuelta: {fecha.vuelta}</p>
-              </div>
-            ))}
+            <div className="mt-4">
+              <h3 className="text-2xl font-bold mb-2">Selecciona una fecha</h3>
+              <select 
+                value={selectedDate} 
+                onChange={handleDateChange} 
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+              >
+                <option value="">Selecciona una fecha</option>
+                {pack.fechas && pack.fechas.map((fecha, index) => (
+                  <option key={index} value={`${fecha.salida} a ${fecha.vuelta}`}>
+                    {fecha.salida} - {fecha.vuelta}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
+          <Link to="/pay">
           <button className="bg-ColorAzul hover:bg-ColorMorado text-white font-nunito font-semibold py-2 px-4 rounded-md mt-4">
             Pagar
           </button>
+          </Link>
         </div>
 
         <div>
