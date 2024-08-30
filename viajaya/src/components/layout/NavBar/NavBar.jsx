@@ -30,6 +30,8 @@ const NavBar = ({ showFullMenu = true }) => {
   const isLoginPage = currentPath === '/login';
   const isProductsPage = currentPath === '/productos';
   const isAboutPage = currentPath === '/about';
+  const isPanelPage = currentPath === '/panel';
+  const isProfilePage = currentPath === '/profile';
 
   return (
     <nav className={style.nav}>
@@ -54,8 +56,28 @@ const NavBar = ({ showFullMenu = true }) => {
             )}
           </>
         )}
+          {isPanelPage && (
+          <>
+            <RouterLink to="/" className={style.noLink}>
+              <li className={style.li}>Inicio</li>
+            </RouterLink>
+            {!user && (
+              <li className={style.libutton} onClick={() => navigate("/login")}>Ingresar</li>
+            )}
+          </>
+        )}
+        {isProfilePage && (
+          <>
+            <RouterLink to="/" className={style.noLink}>
+              <li className={style.li}>Inicio</li>
+            </RouterLink>
+            {!user && (
+              <li className={style.libutton} onClick={() => navigate("/login")}>Ingresar</li>
+            )}
+          </>
+        )}
         {/* Mostrar elementos generales */}
-        {!isLoginPage && !isProductsPage && (
+        {!isLoginPage && !isProductsPage && !isPanelPage && !isProfilePage && (
           <>
             {isAboutPage ? (
               <>

@@ -1,66 +1,54 @@
 import { Link } from 'react-router-dom';
+import NavBar from '../layout/NavBar/NavBar';
 
 
 const PanelPage = () => {
   return (
 
     <div className="mb-64 pt-20 p-8"> {/* Agregado pt-20 para el margen superior */}
-      <h1 className="text-3xl font-bold mb-6">Panel de Administración</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 font-nunito lg:grid-cols-3 gap-6">
+      <div className='fixed top-0 left-0 z-50 w-full'>
+            <NavBar />
+          </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 font-nunito lg:grid-cols-3 gap-6 mt-10">
         <Link
           to="/panel/user"
-          className="bg-white border border-gray-200 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out transform hover:scale-105 p-6 flex items-center justify-center"
+          className="bg-white font-nunito border border-gray-200 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out transform hover:scale-105 p-6 flex items-center justify-center"
         >
           <div className="text-center">
-            <h2 className="text-xl font-semibold text-blue-500 mb-2">Listar Usuarios</h2>
-            <p className="text-gray-600">Administra y visualiza los detalles de los clientes.</p>
+            <h2 className="text-xl font-semibold font-nunito  text-blue-500 mb-2">Listar Usuarios</h2>
+            <p className="text-gray-600 font-nunito ">Administra y visualiza los detalles de los clientes.</p>
           </div>
         </Link>
         <Link
           to="/panel/pack"
-          className="bg-white border border-gray-200 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out transform hover:scale-105 p-6 flex items-center justify-center"
+          className="bg-white border font-nunito  border-gray-200 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out transform hover:scale-105 p-6 flex items-center justify-center"
         >
           <div className="text-center">
-            <h2 className="text-xl font-semibold text-blue-500 mb-2">Gestionar Paquetes</h2>
-            <p className="text-gray-600">Administra tus paquetes, edita y agrega nuevos.</p>
+            <h2 className="text-xl font-semibold font-nunito  text-blue-500 mb-2">Gestionar Paquetes</h2>
+            <p className="text-gray-600 font-nunito ">Administra tus paquetes, edita y agrega nuevos.</p>
           </div>
         </Link>
         <Link
           to="/panel/invoices"
-          className="bg-white border border-gray-200 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out transform hover:scale-105 p-6 flex items-center justify-center"
+          className="bg-white border font-nunito  border-gray-200 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out transform hover:scale-105 p-6 flex items-center justify-center"
         >
           <div className="text-center">
-            <h2 className="text-xl font-semibold text-blue-500 mb-2">Gestionar Facturación</h2>
-            <p className="text-gray-600">Gestiona las facturas y el historial de transacciones.</p>
+            <h2 className="text-xl font-semibold font-nunito  text-blue-500 mb-2">Gestionar Facturación</h2>
+            <p className="text-gray-600 font-nunito ">Gestiona las facturas y el historial de transacciones.</p>
           </div>
         </Link>
-        <Link
-          to="/register"
-          className="bg-white border border-gray-200 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out transform hover:scale-105 p-6 flex items-center justify-center"
-        >
-          <div className="text-center">
-            <h2 className="text-xl font-semibold text-blue-500 mb-2">Gestionar Administrador</h2>
-            <p className="text-gray-600">Crear nuevo Administrador.</p>
-          </div>
-        </Link>
+       
         <Link
           to="/panel/clients/list"
-          className="bg-white border border-gray-200 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out transform hover:scale-105 p-6 flex items-center justify-center"
+          className="bg-white border font-nunito  border-gray-200 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out transform hover:scale-105 p-6 flex items-center justify-center"
         >
           <div className="text-center">
-            <h2 className="text-xl font-semibold text-blue-500 mb-2">Listar Clientes</h2>
-            <p className="text-gray-600">Listar y Editar Clientes Siigo</p>
+            <h2 className="text-xl font-semibold font-nunito  text-blue-500 mb-2">Gestionar Página</h2>
+            <p className="text-gray-600 font-nunito ">Crea enlaces, promos, yapaya</p>
           </div>
         </Link>
-        <Link
-          to="/panel/invoices/prueba"
-          className="bg-white border border-gray-200 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out transform hover:scale-105 p-6 flex items-center justify-center"
-        >
-          <div className="text-center">
-            <h2 className="text-xl font-semibold text-blue-500 mb-2">Prueba</h2>
-            <p className="text-gray-600">Probar Factura</p>
-          </div>
-        </Link>
+        
       </div>
 
     </div>
