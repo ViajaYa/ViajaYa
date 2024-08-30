@@ -108,7 +108,7 @@ const Profile = () => {
                 {/* Contenido del perfil en la mitad derecha */}
                 <div className="w-full lg:w-1/2 p-12 flex flex-col justify-center items-center  ">
                   <Toaster />
-                  <div className="bg-slate-700 opacity-70 text-white p-4 rounded-lg shadow-md mb-4 w-full">
+                  <div className=" opacity-70 text-white p-4 rounded-lg shadow-md mb-4 w-full">
                     <nav className="flex items-center">
                       <div className="relative">
                         <img
@@ -124,33 +124,41 @@ const Profile = () => {
                           onChange={(e) => {/* Tu lógica para manejar la selección de archivos */}}
                         />
                       </div>
+                      
                       <div className="flex flex-col">
-                        <span className="text-lg font-semibold uppercase">
+                        <span className="text-lg text-gray-600 font-semibold font-nunito uppercase">
                           {user?.name + " " + user?.lastname || "Mi perfil"}
                         </span>
-                        <ul className="flex space-x-2 mt-2">
-                          <li>
+                        <ul className="flex-col space-y-2 mt-2">
+                          {/* <li>
                             <button
                               onClick={() => setPage(0)}
                               className={`p-1 rounded font-nunito ${page === 0 ? 'bg-ColorMorado text-gray-900' : 'hover:bg-pink-600'}`}
                             >
                               Información Personal<AiOutlineUser className="inline-block mr-1" /> 
                             </button>
-                          </li>
+                          </li> */}
                           <li>
                             <button
                               onClick={() => setPage(1)}
-                              className={`p-1 rounded font-nunito ${page === 1 ? 'bg-ColorMorado text-gray-900' : 'hover:bg-pink-600'}`}
+                              className={`p-1 rounded text-gray-600 font-nunito ${page === 1 ? 'bg-ColorMorado text-gray-900' : 'hover:bg-pink-600'}`}
                             >
-                              Mis compras<MdPayment className="inline-block mr-1" /> 
+                              Mis compras<MdPayment className="inline-block ml-1" /> 
                             </button>
                           </li>
+                          {user?.role === 3 && (
+                                                <li>
+                                                    <Link to="/panel" className="px-6 py-2 rounded font-nunito bg-ColorMorado hover:bg-pink-600">
+                                                        Panel
+                                                    </Link>
+                                                </li>
+                                            )}
                           <li>
                             <button
                               onClick={() => { navigate("/"); localStorage.removeItem("token"); dispatch(setUser(false)) }}
-                              className="p-1 font-nunito rounded hover:bg-pink-600"
+                              className="p-1 text-gray-600 font-nunito rounded hover:bg-pink-600"
                             >
-                             Cerrar sesión <MdExitToApp className="inline-block mr-1" /> 
+                             Cerrar sesión <MdExitToApp className="inline-block ml-1" /> 
                             </button>
                           </li>
                         </ul>
@@ -171,45 +179,45 @@ const Profile = () => {
                             <span className="text-lg font-bold font-nunito text-center text-gray-700"> Mis Datos</span>
                             <div className="flex space-x-4 mb-4 mt-6">
                               <div className="flex-1">
-                                <input className="w-full p-2 border border-gray-300 rounded" onChange={handleUser} name="name" value={user?.name || ''} placeholder="Nombre" />
-                                <input className="w-full p-2 border border-gray-300 rounded mt-2" onChange={handleUser} name="lastname" value={user?.lastname || ''} placeholder="Apellido" />
+                                <input className="w-full p-2 border font-nunito border-gray-300 rounded" onChange={handleUser} name="name" value={user?.name || ''} placeholder="Nombre" />
+                                <input className="w-full p-2 border font-nunito border-gray-300 rounded mt-2" onChange={handleUser} name="lastname" value={user?.lastname || ''} placeholder="Apellido" />
                               </div>
                               <div className="flex-1">
-                                <input className="w-full p-2 border border-gray-300 rounded" onChange={handleUser} name="email" value={user?.email || ''} placeholder="Email" />
-                                <input className="w-full p-2 border border-gray-300 rounded mt-2" onChange={handleUser} name="phone" value={user?.phone || ''} placeholder="Teléfono" />
+                                <input className="w-full p-2 border font-nunito border-gray-300 rounded" onChange={handleUser} name="email" value={user?.email || ''} placeholder="Email" />
+                                <input className="w-full p-2 border font-nunito border-gray-300 rounded mt-2" onChange={handleUser} name="phone" value={user?.phone || ''} placeholder="Teléfono" />
                               </div>
                             </div>
                           </>
                         ) : (
                           <>
                             <div className="mb-4">
-                              <input className="w-full p-2 border border-gray-300 rounded" onChange={handleUser} name="passwordLast" type="password" placeholder="Contraseña actual" />
-                              <input className="w-full p-2 border border-gray-300 rounded mt-2" onChange={handleUser} name="password2" type="password" placeholder="Nueva contraseña" />
-                              <input className="w-full p-2 border border-gray-300 rounded mt-2" onChange={handleUser} name="password3" type="password" placeholder="Confirmar nueva contraseña" />
+                              <input className="w-full p-2 border font-nunito border-gray-300 rounded" onChange={handleUser} name="passwordLast" type="password" placeholder="Contraseña actual" />
+                              <input className="w-full p-2 border font-nunito border-gray-300 rounded mt-2" onChange={handleUser} name="password2" type="password" placeholder="Nueva contraseña" />
+                              <input className="w-full p-2 border font-nunito border-gray-300 rounded mt-2" onChange={handleUser} name="password3" type="password" placeholder="Confirmar nueva contraseña" />
                             </div>
                           </>
                         )}
                         <button
                           onClick={updateUser}
-                          className="w-full bg-ColorMorado text-white p-2 rounded hover:bg-pink-600"
+                          className="w-full bg-ColorMorado font-nunito text-white p-2 rounded hover:bg-pink-600"
                         >
                           {changePass ? 'Actualizar contraseña' : 'Actualizar datos'}
                         </button>
                         <button
                           onClick={() => setChangePass(!changePass)}
-                          className="w-full mt-2 text-slate-700 hover:underline"
+                          className="w-full mt-2 font-nunito text-slate-700 hover:underline"
                         >
                           {changePass ? 'Cancelar cambio de contraseña' : 'Cambiar contraseña'}
                         </button>
                       </form>
                     </div>
                   )}
-                  <button
+                  {/* <button
                     onClick={handleGoHome}
-                    className="w-full bg-ColorMorado text-white p-2 rounded hover:bg-pink-600 mb-4"
+                    className="w-full bg-ColorMorado text-white p-2 rounded font-nunito hover:bg-pink-600 mb-4"
                   >
                     <MdHome className="inline-block mr-1" /> Ir a la página principal
-                  </button>
+                  </button> */}
                   {page === 1 && (
                     <div className="w-full max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg">
                       {/* Aquí puedes agregar el contenido de las compras */}

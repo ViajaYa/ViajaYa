@@ -2,7 +2,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useEffect } from 'react';
 import { fetchPacks } from '../redux/NewActions/newActions';
 import { Link } from 'react-router-dom';
-import { FaPlaneDeparture } from 'react-icons/fa';
+import { FaPlaneDeparture, FaTag, FaCoins} from 'react-icons/fa';
 import Slider from 'react-slick';
 import "slick-carousel/slick/slick.css"; 
 import "slick-carousel/slick/slick-theme.css";
@@ -17,12 +17,12 @@ const PackCard = () => {
 
   const settings = {
     dots: true,
-    infinite: packs.length > 3, 
+    infinite: packs.length > 3,
     speed: 500,
     slidesToShow: Math.min(packs.length, 3),
     slidesToScroll: 1,
-    centerMode: packs.length > 3, 
-    centerPadding: '20px',
+    centerMode: packs.length > 3,
+    centerPadding: '0px', // Eliminar padding central del slider
     responsive: [
       {
         breakpoint: 1024,
@@ -31,7 +31,7 @@ const PackCard = () => {
           slidesToScroll: 1,
           infinite: packs.length > 2,
           dots: true,
-          centerPadding: '10px',
+          centerPadding: '0px',
         }
       },
       {
@@ -39,7 +39,7 @@ const PackCard = () => {
         settings: {
           slidesToShow: Math.min(packs.length, 1),
           slidesToScroll: 1,
-          centerPadding: '5px',
+          centerPadding: '0px',
         }
       }
     ]
@@ -53,7 +53,8 @@ const PackCard = () => {
         {packs.map((pack) => (
           <div
             key={pack.id}
-            className="bg-white rounded-lg shadow-lg hover:shadow-2xl transition-shadow duration-300 cursor-pointer flex flex-col p-6"
+            className="bg-white rounded-lg shadow-lg hover:shadow-2xl transition-shadow duration-300 cursor-pointer flex flex-col p-4 mx-2"  // Agregar margen lateral entre cards
+            style={{ width: '100%', boxSizing: 'border-box' }}  // Ajustar el tamaño y el box-sizing para asegurar el espaciado uniforme
           >
             <img
               src={pack.images[0]}
@@ -64,7 +65,10 @@ const PackCard = () => {
               <div>
                 <h3 className="text-xl font-semibold font-nunito text-gray-600">{pack.title}</h3> 
                 <div className="flex justify-between items-center mt-2">
-                  <span className="text-ColorMorado font-bold font-nunito text-lg">${pack.price}</span>
+               
+                  <p className="text-green-600 font-bold font-nunito text-lg"><FaCoins className="inline-block mr-1 text-yellow-500" />
+                  {pack.price}   <FaTag className="inline-block mr-1 text-gray-600" />    
+                        </p>
                   <span className="bg-ColorAzul text-gray-600 text-lg font-semibold font-nunito border-2 px-6 py-1 rounded-md"> 
                     {pack.days} días
                   </span>
@@ -96,6 +100,7 @@ const PackCard = () => {
 };
 
 export default PackCard;
+
 
 
 
