@@ -77,7 +77,7 @@ const InstagramCarousel = () => {
   };
   return (
     <div className='mt-30 mb-20'>
-      <h1 className='font-nunito bg-ColorAzul text-gray-700 font-bold p-4 text-2xl w-screen mx-0 px-0 text-center mb-4 mt-8'>Clientes Felices</h1>
+      <h1 className='font-nunito bg-ColorAzul text-gray-700 font-bold p-4 text-2xl w-screen mx-0 px-0 text-center mb-4 mt-8'>DISFRUTA COMO ELLOS</h1>
       <Slider {...settings}>
         {reelUrls.map((url, index) => (
           <div key={index}>

@@ -47,7 +47,7 @@ const PackCard = () => {
 
   return (
     <div className="container mx-auto mt-6 p-4">
-      <h1 className='font-nunito bg-ColorAzul text-gray-700 font-bold p-4 text-2xl w-screen mx-0 px-0 text-center mb-4 mt-4'>Paquetes Disponibles</h1>
+      <h1 className='font-nunito bg-ColorAzul text-gray-700 font-bold p-4 text-2xl w-screen mx-0 px-0 text-center mb-4 mt-4'>PLANIFICÁ TUS VACACIONES</h1>
       
       <Slider {...settings} className="px-4">
         {packs.map((pack) => (

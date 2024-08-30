@@ -69,7 +69,7 @@ const NavBar = ({ showFullMenu = true }) => {
             ) : (
               <>
                 <RouterLink to="/about" className={style.noLink}>
-                  <li className={style.li}>Nosotros</li>
+                  <li className={style.li} >Nosotros</li>
                 </RouterLink>
                 <ScrollLink to="proyectos" smooth={true} duration={500}>
                   <li ref={linkRef} className={style.li}>Paquetes</li>

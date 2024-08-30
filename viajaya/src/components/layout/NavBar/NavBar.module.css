@@ -31,18 +31,19 @@
 .li {
     font-size: 1.25em;
     cursor:pointer;
-    color: rgb(51, 51, 51);
-    font-family: 'Nunito'
+    color: rgb(72, 72, 72);
+    font-family:Verdana, Geneva, Tahoma, sans-serif
 }
 
 .libutton {
     background-color: #2be0e9;
     padding: 5px 15px;
     border-radius: 5px;
-    color: rgb(51, 51, 51);
-    font-weight: 700;
+    color: rgb(72, 72, 72);
+    font-weight: 500;
     font-size: 1.25em;
     cursor: pointer;
+    font-family:Verdana, Geneva, Tahoma, sans-serif
 }
 
 .noLink {
@@ -79,7 +80,7 @@
     font-size: 1.25em;
     color: white; /* Texto blanco */
     border-radius: 5px; /* Opcional: para darle bordes redondeados */
-    font-family: 'Nunito';
+    font-family:Verdana, Geneva, Tahoma, sans-serif
 }
 
 .socialIcons {
