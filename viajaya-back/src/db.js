@@ -45,7 +45,7 @@ let entries = Object.entries(sequelize.models);
 let capsEntries = entries.map((entry) => [entry[0][0].toUpperCase() + entry[0].slice(1), entry[1]]);
 sequelize.models = Object.fromEntries(capsEntries);
 
-const { Char, Pack, Item, User } = sequelize.models;
+const {  Pack, Item, User } = sequelize.models;
 
 const packChar = sequelize.define('pack_char', {
   // Definición de otros campos de la tabla intermedia
@@ -53,8 +53,7 @@ const packChar = sequelize.define('pack_char', {
   timestamps: false // Deshabilitar los campos de timestamp
 });
 
-Pack.belongsToMany(Char, { through: packChar})
-Char.belongsToMany(Pack, { through: packChar})
+
 
 
 

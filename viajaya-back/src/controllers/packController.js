@@ -6,11 +6,7 @@ module.exports = {
     getPacks: async () => {
         try {
             const packs = await Pack.findAll({
-                include: {
-                    model: Char,
-                    attributes: ['name'],
-                    through: { attributes: [] }
-                }
+                
             });
             return packs;
         } catch (error) {
@@ -20,26 +16,14 @@ module.exports = {
     },
 
     // Obtener todos los chars
-    getChars: async () => {
-        try {
-            const chars = await Char.findAll();
-            return chars;
-        } catch (error) {
-            console.error('Error fetching chars:', error);
-            throw new Error('Error fetching chars');
-        }
-    },
+    
 
     // Obtener un pack por ID
     getPackById: async (id) => {
         try {
             const pack = await Pack.findOne({
                 where: { id },
-                include: {
-                    model: Char,
-                    attributes: ['name'],
-                    through: { attributes: [] }
-                }
+                
             });
 
             if (!pack) {
@@ -73,6 +57,7 @@ module.exports = {
             if (p.location) pack.location = p.location;
             if (p.destino) pack.destino = p.destino;
             if (p.city) pack.city = p.city;
+            if(p.chars) pack.chars =p.chars
             if (p.lat) pack.lat = p.lat;
             if (p.lng) pack.lng = p.lng;
             if (p.images) pack.images = p.images;
@@ -87,13 +72,17 @@ module.exports = {
     },
 
     
-     postPack : async (req, res) => {
+    postPack: async (req, res) => {
         try {
           console.log('Datos del cuerpo:', req.body);
+      
           // Las URLs de las imágenes están en req.body.images
       
           // Si `fechas` es una cadena JSON, conviértela a un objeto
           const fechas = req.body.fechas ? JSON.parse(req.body.fechas) : [];
+      
+          // Asegúrate de que chars sea un array de cadenas
+          const chars = req.body.chars ? Object.values(req.body.chars).filter(char => char) : [];
       
           // Crear el nuevo pack en la base de datos
           const newPack = await Pack.create({
@@ -102,11 +91,12 @@ module.exports = {
             location: req.body.location,
             city: req.body.city,
             detail: req.body.detail,
-            destino:req.body.destino,
+            destino: req.body.destino,
             price: parseInt(req.body.price, 10),
             lat: req.body.lat,
             lng: req.body.lng,
             fechas: fechas,
+            chars: chars, // Usa el array de chars procesado
             images: req.body.images // Usa las URLs proporcionadas
           });
       
@@ -120,12 +110,8 @@ module.exports = {
       getYapayaPacks: async () => {
         try {
             const yapayaPacks = await Pack.findAll({
-                where: { isYapaya: true },
-                include: {
-                    model: Char,
-                    attributes: ['name'],
-                    through: { attributes: [] }
-                }
+                where: { isYapaya: true }
+                
             });
             return yapayaPacks;
         } catch (error) {
@@ -137,12 +123,8 @@ module.exports = {
     getActivePacks: async () => {
         try {
             const activePacks = await Pack.findAll({
-                where: { isActive: true },
-                include: {
-                    model: Char,
-                    attributes: ['name'],
-                    through: { attributes: [] }
-                }
+                where: { isActive: true }
+               
             });
             return activePacks;
         } catch (error) {
