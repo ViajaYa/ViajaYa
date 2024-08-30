@@ -17,19 +17,19 @@ const PackCard = () => {
 
   const settings = {
     dots: true,
-    infinite: true,
+    infinite: packs.length > 3, 
     speed: 500,
-    slidesToShow: 3,
+    slidesToShow: Math.min(packs.length, 3),
     slidesToScroll: 1,
-    centerMode: true,
+    centerMode: packs.length > 3, 
     centerPadding: '20px',
     responsive: [
       {
         breakpoint: 1024,
         settings: {
-          slidesToShow: 2,
+          slidesToShow: Math.min(packs.length, 2),
           slidesToScroll: 1,
-          infinite: true,
+          infinite: packs.length > 2,
           dots: true,
           centerPadding: '10px',
         }
@@ -37,7 +37,7 @@ const PackCard = () => {
       {
         breakpoint: 600,
         settings: {
-          slidesToShow: 1,
+          slidesToShow: Math.min(packs.length, 1),
           slidesToScroll: 1,
           centerPadding: '5px',
         }
