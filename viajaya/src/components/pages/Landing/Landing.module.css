@@ -5,6 +5,9 @@
     
 
 }
+.body {
+  cursor: url('../../../assets/mascota.png'), auto;
+}
 
 .whatsappButton {
     position: fixed;
