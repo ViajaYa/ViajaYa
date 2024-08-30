@@ -25,23 +25,26 @@ import {
   USER_REGISTER_FAIL,
 } from "../actions/actions-types";
 
-import { 
+import {
   INFO_USERS,
   UPDATE_USER,
   DELETE_USER_BY_ID,
   FETCH_PACKS_REQUEST,
-    FETCH_PACKS_SUCCESS,
-    FETCH_PACKS_FAILURE,
-    CREATE_PACK_REQUEST,
-    CREATE_PACK_SUCCESS,
-    CREATE_PACK_FAILURE,
-    UPDATE_PACK_REQUEST,
-    UPDATE_PACK_SUCCESS,
-    UPDATE_PACK_FAILURE,
-    DELETE_PACK_REQUEST,
-    DELETE_PACK_SUCCESS,
-    DELETE_PACK_FAILURE
- } from "../NewActions/NewActions-Types";
+  FETCH_PACKS_SUCCESS,
+  FETCH_PACKS_FAILURE,
+  FETCH_PACK_REQUEST,
+  FETCH_PACK_SUCCESS,
+  FETCH_PACK_FAILURE,
+  CREATE_PACK_REQUEST,
+  CREATE_PACK_SUCCESS,
+  CREATE_PACK_FAILURE,
+  UPDATE_PACK_REQUEST,
+  UPDATE_PACK_SUCCESS,
+  UPDATE_PACK_FAILURE,
+  DELETE_PACK_REQUEST,
+  DELETE_PACK_SUCCESS,
+  DELETE_PACK_FAILURE,
+} from "../NewActions/NewActions-Types";
 
 const perPage = 8;
 
@@ -63,10 +66,10 @@ const initialState = {
   word: "",
   popup: null,
   packs: [],
+  pack: {},
   userInfo: null,
   loading: false,
   error: null,
-  
 };
 const rootReducer = (state = initialState, action) => {
   switch (action.type) {
@@ -278,59 +281,86 @@ const rootReducer = (state = initialState, action) => {
       return { ...state, loading: false, userInfo: action.payload };
     case USER_REGISTER_FAIL:
       return { ...state, loading: false, error: action.payload };
-      case INFO_USERS:
-        return {
-          ...state,
-          infoUsers: action.payload,
-          loading: false,
-        };
-      case UPDATE_USER:
-        return {
-          ...state,
-          infoUsers: state.infoUsers.map((user) =>
-            user.id === action.payload.id ? action.payload : user
-          ),
-        };
-        case DELETE_USER_BY_ID:
-          return {
-            ...state,
-          };
-          case FETCH_PACKS_REQUEST:
-            return {
-               ...state, 
-               loading: true, 
-               error: null };
-        case FETCH_PACKS_SUCCESS:
-            return { ...state, 
-              loading: false, 
-              packs: action.payload };
-        case FETCH_PACKS_FAILURE:
-            return { ...state, loading: false, error: action.payload };
-        case CREATE_PACK_REQUEST:
-            return { ...state, loading: true, error: null };
-        case CREATE_PACK_SUCCESS:
-            return { ...state, loading: false };
-        case CREATE_PACK_FAILURE:
-            return { ...state, loading: false, error: action.payload };
-        case UPDATE_PACK_REQUEST:
-            return { ...state, loading: true, error: null };
-        case UPDATE_PACK_SUCCESS:
-            return { ...state, loading: false };
-        case UPDATE_PACK_FAILURE:
-            return { ...state, loading: false, error: action.payload };
-        case DELETE_PACK_REQUEST:
-            return { ...state, loading: true, error: null };
-        case DELETE_PACK_SUCCESS:
-            return {
-                ...state,
-                loading: false,
-                packs: state.packs.filter(pack => pack.id !== action.payload)
-            };
-        case DELETE_PACK_FAILURE:
-            return { ...state, loading: false, error: action.payload };
+    case INFO_USERS:
+      return {
+        ...state,
+        infoUsers: action.payload,
+        loading: false,
+      };
+    case UPDATE_USER:
+      return {
+        ...state,
+        infoUsers: state.infoUsers.map((user) =>
+          user.id === action.payload.id ? action.payload : user
+        ),
+      };
+    case DELETE_USER_BY_ID:
+      return {
+        ...state,
+      };
+
+    case FETCH_PACKS_REQUEST:
+      return {
+        ...state,
+        loading: true,
+        error: null,
+      };
+    case FETCH_PACKS_SUCCESS:
+      return {
+        ...state,
+        loading: false,
+        packs: action.payload,
+      };
+    case FETCH_PACKS_FAILURE:
+      return {
+        ...state,
+        loading: false,
+        error: action.payload,
+      };
+
+    case FETCH_PACK_REQUEST:
+      return {
+        ...state,
+        loading: true,
+      };
+    case FETCH_PACK_SUCCESS:
+      return {
+        ...state,
+        loading: false,
+        pack: action.payload,
+      };
+    case FETCH_PACK_FAILURE:
+      return {
+        ...state,
+        loading: false,
+        error: action.payload,
+      };
+
+    case CREATE_PACK_REQUEST:
+      return { ...state, loading: true, error: null };
+    case CREATE_PACK_SUCCESS:
+      return { ...state, loading: false };
+    case CREATE_PACK_FAILURE:
+      return { ...state, loading: false, error: action.payload };
+    case UPDATE_PACK_REQUEST:
+      return { ...state, loading: true, error: null };
+    case UPDATE_PACK_SUCCESS:
+      return { ...state, loading: false };
+    case UPDATE_PACK_FAILURE:
+      return { ...state, loading: false, error: action.payload };
+    case DELETE_PACK_REQUEST:
+      return { ...state, loading: true, error: null };
+    case DELETE_PACK_SUCCESS:
+      return {
+        ...state,
+        loading: false,
+        packs: state.packs.filter((pack) => pack.id !== action.payload),
+      };
+    case DELETE_PACK_FAILURE:
+      return { ...state, loading: false, error: action.payload };
 
     default:
-      return state ;
+      return state;
   }
 };
 

@@ -1,12 +1,11 @@
 import { Route, Routes, useLocation, useNavigate } from "react-router-dom"
 import Login from "./components/pages/Login/Login"
 import ProfileAdmin from "./components/pages/ProfileAdmin/Profile"
-import Detail from "./components/pages/Detail/Detail"
+import DetailNuevo from "./components/pages/Detail/DetailNuevo"
 import Pay from "./components/pages/Pay/Pay"
 import Politicas from "./components/pages/Politicas/Politicas"
 import Terminos from "./components/pages/Politicas/Terminos"
 import { useEffect, useState } from "react"
-import axios from "axios"
 import { useDispatch, useSelector } from "react-redux"
 import { setUser } from "./redux/actions/actions"
 import ProtectedRoute from "./components/utils/ProtectedRoute"
@@ -59,7 +58,7 @@ function App() {
 
       <Route exact path="/login" element={<Login/>}/>
       <Route exact path="/rifa" element={<Rifa/>}/>
-      <Route exact path="/number" element={<NumberBoard/>}/> 
+      {/* <Route exact path="/number" element={<NumberBoard/>}/>  */}
       <Route 
           exact 
           path="/form" 
@@ -76,7 +75,7 @@ function App() {
       <Route exact path="/politicas" element={<Politicas/>}/>
       <Route exact path="/terminos" element={<Terminos/>}/>
       <Route exact path="/pay" element={<Pay/>}/>
-      <Route exact path="/detail/:id" element={<Detail/>}/>
+      <Route path="/detail/:id" element={<DetailNuevo/>}/>
       <Route exact path="/productos" element={<TabbedImages/>}/>
       <Route exact path="/" element={
       <Suspense fallback={<div className={style.ldsellipsis}><div></div><div></div><div></div><div></div></div>}>

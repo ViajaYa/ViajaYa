@@ -12,6 +12,9 @@ const NewPack = () => {
   const [fechas, setFechas] = useState([{ salida: '', vuelta: '' }]);
   const [city, setCity] = useState('');
   const [detail, setDetail] = useState('');
+  const[ lat, setLat] = useState('')
+  const[ lng, setLng] = useState('')
+
   const [price, setPrice] = useState('');
   const [images, setImages] = useState([]);
   const [selectedChars, setSelectedChars] = useState([]);
@@ -43,6 +46,8 @@ const NewPack = () => {
     formData.append('days', days);
     formData.append('city', city);
     formData.append('destino', destino);
+    formData.append('lat', lat);
+    formData.append('lng', lng);
     formData.append('location', location);
     formData.append('detail', detail);
     formData.append('price', price);
@@ -114,7 +119,7 @@ const NewPack = () => {
         <div>
           <label className="block text-sm font-nunito font-medium">Destino</label>
           <select
-            value={location}
+            value={destino}
             onChange={(e) => setDestino(e.target.value)}
             className="mt-1 block w-full p-2 font-nunito border border-gray-300 rounded-md"
             required
@@ -136,10 +141,28 @@ const NewPack = () => {
           />
         </div>
         <div>
-          <label className="block text-sm font-nunito font-medium">Locacion</label>
+          <label className="block text-sm font-nunito font-medium">Locación</label>
           <textarea
             value={location}
             onChange={(e) => setLocation(e.target.value)}
+            className="mt-1 block w-full p-2 font-nunito border border-gray-300 rounded-md"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-nunito font-medium">Latitud</label>
+          <textarea
+            value={lat}
+            onChange={(e) => setLat(e.target.value)}
+            className="mt-1 block w-full p-2 font-nunito border border-gray-300 rounded-md"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-nunito font-medium">Longitud</label>
+          <textarea
+            value={lng}
+            onChange={(e) => setLng(e.target.value)}
             className="mt-1 block w-full p-2 font-nunito border border-gray-300 rounded-md"
             required
           />

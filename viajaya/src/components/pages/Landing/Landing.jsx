@@ -11,9 +11,11 @@ import Destinos from "../Destinos/Destinos"
 import Clients from "../Clients/Clients"
 import Contact from "../Contact/Contact"
 import Promo from "../Promo/Promo"
+
 //import Operador from "../Operador/Operador"
 import WhatssapButton from './WhatssapButton'
 import InstagramCarousel from '../Clients/InstagramReelCarousel';
+import PackCard from '../../../components/PackCard'
 
 // eslint-disable-next-line react/prop-types
 const Landing = ({ ruta }) => {
@@ -35,7 +37,7 @@ const Landing = ({ ruta }) => {
       {/* <Promo /> */}
       {/* <Operador /> */}
       
-      <Paquetes />
+       <PackCard /> 
       <InstagramCarousel/>
     {/* <Clients2/> */}
       <Clients />

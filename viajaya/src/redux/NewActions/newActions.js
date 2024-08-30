@@ -3,7 +3,8 @@ import {
     INFO_USERS,
     UPDATE_USER,
     DELETE_USER_BY_ID,
-    FETCH_PACKS_REQUEST,    FETCH_PACKS_SUCCESS,    FETCH_PACKS_FAILURE,    
+    FETCH_PACKS_REQUEST,    FETCH_PACKS_SUCCESS,    FETCH_PACKS_FAILURE, 
+    FETCH_PACK_REQUEST,     FETCH_PACK_SUCCESS,     FETCH_PACK_FAILURE,    
     CREATE_PACK_REQUEST,    CREATE_PACK_SUCCESS,    CREATE_PACK_FAILURE,    
     UPDATE_PACK_REQUEST,    UPDATE_PACK_SUCCESS,    UPDATE_PACK_FAILURE,    
     DELETE_PACK_REQUEST,    DELETE_PACK_SUCCESS,    DELETE_PACK_FAILURE,} from './NewActions-Types';
@@ -53,6 +54,20 @@ export const fetchPacks = () => async (dispatch) => {
       dispatch({ type: FETCH_PACKS_FAILURE, payload: error.message });
   }
 };
+
+export const fetchPack = (id) => async (dispatch) => {
+  console.log('Fetching pack with id:', id); // Para verificar si se despacha la acción
+  dispatch({ type: FETCH_PACK_REQUEST });
+  try {
+    const response = await axios.get(`${BASE_URL}/pack/${id}`);
+    console.log('Fetched data:', response.data); // Verifica la respuesta del servidor
+    dispatch({ type: FETCH_PACK_SUCCESS, payload: response.data });
+  } catch (error) {
+    console.error('Fetch error:', error); // Muestra el error en la consola
+    dispatch({ type: FETCH_PACK_FAILURE, payload: error.message });
+  }
+};
+
 
 export const createPack = (pack) => async (dispatch) => {
   dispatch({ type: CREATE_PACK_REQUEST });
