@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import nacionales from "../assets/flipcard/destinacionales.jpg";
 import europoa from "../assets/flipcard/europoa.jpg";
@@ -12,6 +13,7 @@ import nacionales3 from "../assets/flipcard/nacionales3.png";
 import nacionales2 from "../assets/flipcard/nacionales2.png";
 
 const CarouselHome = () => {
+    const navigate = useNavigate(); // Para la navegación programática
     const initialImages = [
         { src: nacionales, title: "NACIONALES", description: "Explora destinos nacionales increíbles." },
         { src: europoa, title: "EUROPA", description: "Descubre las maravillas de Europa." },
@@ -21,11 +23,11 @@ const CarouselHome = () => {
     ];
 
     const newImages = [
-        { src: europa, title: "Reservá", description: "Europa." },
-        { src: internacional, title: "Reservá", description: "Internacionales." },
-        { src: llano, title: "Reservá", description: "Nacionales." },
-        { src: nacionales3, title: "Reservá", description: "Llano." },
-        { src: nacionales2, title: "Reservá", description: "Por Tierra." }
+        { src: europa, title: "Reservá", description: "Europa.", destino: "Europa" },
+        { src: internacional, title: "Reservá", description: "Internacionales.", destino: "Internacionales" },
+        { src: llano, title: "Reservá", description: "Nacionales.", destino: "Nacionales" },
+        { src: nacionales3, title: "Reservá", description: "Llano.", destino: "Llano" },
+        { src: nacionales2, title: "Reservá", description: "Por Tierra.", destino: "Por Tierra" }
     ];
 
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -55,9 +57,12 @@ const CarouselHome = () => {
         }
     };
 
+    const handleImageClick = (destino) => {
+        navigate(`/allpacks?destino=${destino}`);
+    };
+
     return (
         <div className="relative w-full h-125 overflow-hidden mt-16 bg-slate-200">
-            {/* Contenedor de imágenes */}
             {showAll ? (
                 <div className="flex justify-center transition-transform duration-500 ease-in-out">
                     {initialImages.map((image, index) => (
@@ -68,7 +73,8 @@ const CarouselHome = () => {
                                 backgroundImage: `url(${image.src})`,
                                 backgroundSize: 'cover',
                                 backgroundPosition: 'center',
-                                height: '600px'
+                                height: '600px',
+                                cursor: 'pointer'
                             }}
                         >
                             <div className="absolute inset-0 flex items-center justify-center">
@@ -84,28 +90,27 @@ const CarouselHome = () => {
                     className="flex transition-transform duration-500 ease-in-out"
                     style={{ transform: `translateX(-${currentIndex * 100}%)` }}
                 >
-           {newImages.map((image, index) => (
-    <div
-        key={index}
-        className="relative w-full h-full flex-shrink-0 flex items-center"
-        style={{
-            backgroundImage: `url(${image.src})`,
-            backgroundSize: 'cover', // Cambiado a 'cover' para que la imagen cubra todo el contenedor
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
-            height: '600px'
-        }}
-    >
-        <div className="w-full h-full flex flex-col justify-center items-end mr-16 text-white">
-            <Title styleAdd="text-4xl sm:text-4xl font-nunito animate-fade-up animate-ease-in-out bg-black bg-opacity-50 p-2 border-2 rounded-xl">
-                <a href="/reserva" onClick={() => alert(`Clicked on ${image.title}`)}>
-                    {image.title}
-                </a>
-            </Title>
-        </div>
-    </div>
-))}
-
+                    {newImages.map((image, index) => (
+                        <div
+                            key={index}
+                            className="relative w-full h-full flex-shrink-0 flex items-center"
+                            style={{
+                                backgroundImage: `url(${image.src})`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                                backgroundRepeat: 'no-repeat',
+                                height: '600px',
+                                cursor: 'pointer'
+                            }}
+                            onClick={() => handleImageClick(image.destino)}
+                        >
+                            <div className="w-full h-full flex flex-col justify-center items-end mr-16 text-white">
+                                <Title styleAdd="text-4xl sm:text-4xl font-nunito animate-fade-up animate-ease-in-out bg-black bg-opacity-50 p-2 border-2 rounded-xl">
+                                    <a href="#">{image.title}</a>
+                                </Title>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             )}
 
@@ -130,6 +135,7 @@ const CarouselHome = () => {
 };
 
 export default CarouselHome;
+
 
 
 
