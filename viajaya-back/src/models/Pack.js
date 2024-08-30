@@ -1,4 +1,5 @@
 const { DataTypes } = require("sequelize");
+
 module.exports = (sequelize) => {
   sequelize.define(
     "Pack",
@@ -16,7 +17,6 @@ module.exports = (sequelize) => {
         type: DataTypes.STRING,
         allowNull: true,
       },
-      
       days: {
         type: DataTypes.INTEGER,
       },
@@ -58,6 +58,10 @@ module.exports = (sequelize) => {
       },
       images: {
         type: DataTypes.ARRAY(DataTypes.STRING),
+        defaultValue: [],
+      },
+      chars: {
+        type: DataTypes.ARRAY(DataTypes.STRING),  
         defaultValue: [],
       },
     },

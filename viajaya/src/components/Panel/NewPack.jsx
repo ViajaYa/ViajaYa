@@ -8,6 +8,7 @@ const NewPack = () => {
   const [title, setTitle] = useState('');
   const [days, setDays] = useState('');
   const [destino, setDestino] = useState('Internacionales');
+  const [chars, setChars] = useState('Selecciona los amenities');
   const[location, setLocation] = useState('') // Valor predeterminado
   const [fechas, setFechas] = useState([{ salida: '', vuelta: '' }]);
   const [city, setCity] = useState('');
@@ -45,6 +46,7 @@ const NewPack = () => {
     formData.append('title', title);
     formData.append('days', days);
     formData.append('city', city);
+    formData.append('chars', chars);
     formData.append('destino', destino);
     formData.append('lat', lat);
     formData.append('lng', lng);
@@ -151,6 +153,22 @@ const NewPack = () => {
             required
           />
         </div>
+        <div>
+  <label className="block text-sm font-nunito font-medium">Amenities</label>
+  <select
+    multiple
+    value={selectedChars}
+    onChange={(e) => setSelectedChars([...e.target.selectedOptions].map(option => option.value))}
+    className="mt-1 block w-full p-2 font-nunito border border-gray-300 rounded-md"
+    required
+  >
+    <option value="Hotel">Hotel</option>
+    <option value="aereos">Aereos Incluidos</option>
+    <option value="piscina">Piscina</option>
+    <option value="Desayuno Incluido">Desayuno Incluido</option>
+    <option value="Wifi">Wifi</option>
+  </select>
+</div>
         <div>
           <label className="block text-sm font-nunito font-medium">Latitud</label>
           <textarea
