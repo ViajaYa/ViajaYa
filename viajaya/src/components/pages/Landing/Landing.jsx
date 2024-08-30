@@ -30,14 +30,14 @@ const Landing = ({ ruta }) => {
     <>
       <NavBar ruta={ruta} />
       <Home />
-      
+      <PackCard />
      
       <Destinos/>
 
       {/* <Promo /> */}
       {/* <Operador /> */}
       
-       <PackCard /> 
+       
       <InstagramCarousel/>
     {/* <Clients2/> */}
       <Clients />

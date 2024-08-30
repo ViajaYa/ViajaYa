@@ -22,6 +22,7 @@ import PanelPage from "./components/Panel/Panel2"
 import TabbedImages from "./components/pages/Operador/TabbedImages"
 import ManagePopup from "./components/popups/ManagePopup"
 import Popup from "./components/popups/Popup"
+import AllPacks from "./components/AllsPacks"
 
 
 
@@ -76,6 +77,7 @@ function App() {
       <Route exact path="/terminos" element={<Terminos/>}/>
       <Route exact path="/pay" element={<Pay/>}/>
       <Route path="/detail/:id" element={<DetailNuevo/>}/>
+      <Route path="/allpacks" element={<AllPacks />} />
       <Route exact path="/productos" element={<TabbedImages/>}/>
       <Route exact path="/" element={
       <Suspense fallback={<div className={style.ldsellipsis}><div></div><div></div><div></div><div></div></div>}>
