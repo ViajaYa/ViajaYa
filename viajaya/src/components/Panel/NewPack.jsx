@@ -8,7 +8,7 @@ const NewPack = () => {
   const [title, setTitle] = useState('');
   const [days, setDays] = useState('');
   const [destino, setDestino] = useState('Internacionales');
-  const [chars, setChars] = useState('Selecciona los amenities');
+  const [chars, setChars] = useState('Wifi');
   const[location, setLocation] = useState('') // Valor predeterminado
   const [fechas, setFechas] = useState([{ salida: '', vuelta: '' }]);
   const [city, setCity] = useState('');
@@ -81,6 +81,7 @@ const NewPack = () => {
         setFechas([{ salida: '', vuelta: '' }]);
         setImages([]);
         setSelectedChars([]);
+        setChars([])
 
         // Ocultar mensaje después de 3 segundos
         setTimeout(() => {
@@ -165,8 +166,9 @@ const NewPack = () => {
     <option value="Hotel">Hotel</option>
     <option value="aereos">Aereos Incluidos</option>
     <option value="piscina">Piscina</option>
-    <option value="Desayuno Incluido">Desayuno Incluido</option>
+    <option value="Desayuno">Desayuno Incluido</option>
     <option value="Wifi">Wifi</option>
+    <option value="gym">Gimnasio</option>
   </select>
 </div>
         <div>
