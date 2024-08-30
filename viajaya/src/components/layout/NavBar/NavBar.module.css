@@ -53,13 +53,50 @@
     color: black;
 }
 
+.hamburger {
+    display: none;
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    cursor: pointer;
+}
+
+
 @media screen and (max-width: 900px) {
-    .li {
-        display: none;
+    .hamburger {
+        display: block;
     }
+
     .ul {
-        gap: 0;
+        display: none;
+        flex-direction: column;
+        align-items: flex-start;
+        width: 100%;
+        position: fixed;
+        top: 10vh;
+        right: 0;
+        background-color: white;
+        padding: 20px;
+        height: 90vh;
+        gap: 20px;
+        z-index: 999;
     }
+
+    .menuOpen {
+        display: flex;
+    }
+
+    .li {
+        display: block;
+        font-size: 1.5em;
+        color: rgb(72, 72, 72);
+    }
+
+    .libutton {
+        font-size: 1.5em;
+        color: rgb(72, 72, 72);
+    }
+
     .logo {
         width: 50px;
         margin-left: 40px;
@@ -102,6 +139,7 @@
     font-size: 1.5em;
     color: white; /* Los íconos deben usar su color original */
     text-decoration: none;
+    transition: color 0.3s ease;
 }
 
 .icon:hover {

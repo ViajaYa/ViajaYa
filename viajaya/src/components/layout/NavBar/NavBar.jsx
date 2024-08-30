@@ -6,14 +6,14 @@ import { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 
 // Importa los íconos de redes sociales
-import { FaFacebookF, FaInstagram, FaTiktok, FaTelegramPlane, FaWhatsapp } from 'react-icons/fa';
+import { FaFacebookF, FaInstagram, FaTiktok, FaTelegramPlane, FaWhatsapp, FaBars, FaTimes } from 'react-icons/fa';
 
 const NavBar = ({ showFullMenu = true }) => {
   const navigate = useNavigate();
   const [user, setUser] = useState();
   const linkRef = useRef();
   const [showSocialMenu, setShowSocialMenu] = useState(false);
-
+  const [menuOpen, setMenuOpen] = useState(false);
   const verify = async () => {
     const data = await axios.get(`/user/verify/${localStorage.getItem("token")}`);
     setUser(data.data);
@@ -23,6 +23,9 @@ const NavBar = ({ showFullMenu = true }) => {
     verify();
   }, []);
 
+  const toggleMenu = () => {
+    setMenuOpen(!menuOpen);
+  }
   // Obtén la ruta actual usando `window.location.pathname`
   const currentPath = window.location.pathname;
 
@@ -38,7 +41,12 @@ const NavBar = ({ showFullMenu = true }) => {
       <RouterLink to="/" className={style.noLink}>
         <img className={style.logo} src={logo} alt="Logo" />
       </RouterLink>
-      <ul className={style.ul}>
+      {/* Botón de menú hamburguesa */}
+      <button className={style.hamburger} onClick={toggleMenu}>
+        {menuOpen ? <FaTimes /> : <FaBars />}
+      </button>
+
+       <ul className={`${style.ul} ${menuOpen ? style.menuOpen : ''}`}>
         {/* Mostrar "Inicio" en la página de login */}
         {isLoginPage && (
           <RouterLink to="/" className={style.noLink}>
