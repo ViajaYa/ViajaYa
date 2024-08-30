@@ -53,19 +53,19 @@ module.exports = {
         }
     },
 
-    // Actualizar un pack
+   
     putPack: async (p) => {
         try {
             const pack = await Pack.findOne({
                 where: { id: p.id }
             });
-
+    
             if (!pack) {
                 throw new Error('Pack not found');
             }
-
-            // Actualizar campos
-            if (p.status !== undefined) pack.status = !pack.status;
+    
+            if (p.isActive !== undefined) pack.isActive = p.isActive;
+            if (p.isYapaya !== undefined) pack.isYapaya = p.isYapaya;
             if (p.title) pack.title = p.title;
             if (p.detail) pack.detail = p.detail;
             if (p.price) pack.price = p.price;
@@ -76,7 +76,8 @@ module.exports = {
             if (p.lat) pack.lat = p.lat;
             if (p.lng) pack.lng = p.lng;
             if (p.images) pack.images = p.images;
-
+            if (p.fechas) pack.fechas = p.fechas;
+    
             await pack.save();
             return pack;
         } catch (error) {
@@ -85,7 +86,7 @@ module.exports = {
         }
     },
 
-    // Crear un pack
+    
      postPack : async (req, res) => {
         try {
           console.log('Datos del cuerpo:', req.body);
@@ -116,7 +117,39 @@ module.exports = {
         }
       },
       
-    
+      getYapayaPacks: async () => {
+        try {
+            const yapayaPacks = await Pack.findAll({
+                where: { isYapaya: true },
+                include: {
+                    model: Char,
+                    attributes: ['name'],
+                    through: { attributes: [] }
+                }
+            });
+            return yapayaPacks;
+        } catch (error) {
+            console.error('Error fetching Yapaya packs:', error);
+            throw new Error('Error fetching Yapaya packs');
+        }
+    },
+
+    getActivePacks: async () => {
+        try {
+            const activePacks = await Pack.findAll({
+                where: { isActive: true },
+                include: {
+                    model: Char,
+                    attributes: ['name'],
+                    through: { attributes: [] }
+                }
+            });
+            return activePacks;
+        } catch (error) {
+            console.error('Error fetching active packs:', error);
+            throw new Error('Error fetching active packs');
+        }
+    },
     
     
 

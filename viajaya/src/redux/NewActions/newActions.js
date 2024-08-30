@@ -7,7 +7,10 @@ import {
     FETCH_PACK_REQUEST,     FETCH_PACK_SUCCESS,     FETCH_PACK_FAILURE,    
     CREATE_PACK_REQUEST,    CREATE_PACK_SUCCESS,    CREATE_PACK_FAILURE,    
     UPDATE_PACK_REQUEST,    UPDATE_PACK_SUCCESS,    UPDATE_PACK_FAILURE,    
-    DELETE_PACK_REQUEST,    DELETE_PACK_SUCCESS,    DELETE_PACK_FAILURE,} from './NewActions-Types';
+    DELETE_PACK_REQUEST,    DELETE_PACK_SUCCESS,    DELETE_PACK_FAILURE,
+    FETCH_YAPAYA_REQUEST,   FETCH_YAPAYA_SUCCESS,   FETCH_YAPAYA_FAILURE, 
+    FETCH_ACTIVE_REQUEST,   FETCH_ACTIVE_SUCCESS,   FETCH_ACTIVE_FAILURE,    
+  } from './NewActions-Types';
 
 const BASE_URL = 'http://localhost:3001';
 // const BASE_URL = 'https://sunyaweb.onrender.com';
@@ -52,6 +55,32 @@ export const fetchPacks = () => async (dispatch) => {
       dispatch({ type: FETCH_PACKS_SUCCESS, payload: response.data });
   } catch (error) {
       dispatch({ type: FETCH_PACKS_FAILURE, payload: error.message });
+  }
+};
+
+export const fetchYapaya = (isYapaya) => async (dispatch) => {
+  console.log('Fetching pack with id:', isYapaya); // Para verificar si se despacha la acción
+  dispatch({ type: FETCH_YAPAYA_REQUEST });
+  try {
+    const response = await axios.get(`${BASE_URL}/pack/${isYapaya}`);
+    console.log('Fetched data:', response.data); // Verifica la respuesta del servidor
+    dispatch({ type: FETCH_YAPAYA_SUCCESS, payload: response.data });
+  } catch (error) {
+    console.error('Fetch error:', error); // Muestra el error en la consola
+    dispatch({ type: FETCH_YAPAYA_FAILURE, payload: error.message });
+  }
+};
+
+export const fetchPackActive = (isActive) => async (dispatch) => {
+  console.log('Fetching pack with id:', isActive); // Para verificar si se despacha la acción
+  dispatch({ type: FETCH_ACTIVE_REQUEST });
+  try {
+    const response = await axios.get(`${BASE_URL}/pack/${isActive}`);
+    console.log('Fetched data:', response.data); // Verifica la respuesta del servidor
+    dispatch({ type: FETCH_ACTIVE_SUCCESS, payload: response.data });
+  } catch (error) {
+    console.error('Fetch error:', error); // Muestra el error en la consola
+    dispatch({ type: FETCH_ACTIVE_FAILURE, payload: error.message });
   }
 };
 

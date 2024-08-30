@@ -23,6 +23,25 @@ router.get('/chars', async (req, res) => {
     }
 });
 
+router.get('/yapaya', async (req, res) => {
+    try {
+        const yapayaPacks = await getYapayaPacks();
+        res.json(yapayaPacks);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// Obtener packs con isActive: true
+router.get('/active', async (req, res) => {
+    try {
+        const activePacks = await getActivePacks();
+        res.json(activePacks);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 // Obtener un pack por ID
 router.get('/:id', async (req, res) => {
     try {
