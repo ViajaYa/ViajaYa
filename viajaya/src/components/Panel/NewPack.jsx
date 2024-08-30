@@ -74,6 +74,8 @@ const NewPack = () => {
         setLocation('');
         setDetail('');
         setPrice('');
+        setLat('');
+        setLng('');
         setFechas([{ salida: '', vuelta: '' }]);
         setImages([]);
         setSelectedChars([]);

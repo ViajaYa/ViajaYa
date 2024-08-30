@@ -12,6 +12,11 @@ module.exports = (sequelize) => {
         type: DataTypes.STRING,
         allowNull: true,
       },
+      destino: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      
       days: {
         type: DataTypes.INTEGER,
       },
@@ -21,12 +26,16 @@ module.exports = (sequelize) => {
       city: {
         type: DataTypes.STRING,
       },
-      status: {
+      isActive: {
         type: DataTypes.BOOLEAN,
-        defaultValue: true,
+        defaultValue: false,
+      },
+      isYapaya: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
       },
       detail: {
-        type: DataTypes.STRING,
+        type: DataTypes.TEXT,
         allowNull: true,
       },
       created: {
