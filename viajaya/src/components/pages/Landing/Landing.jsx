@@ -10,7 +10,7 @@ import Paquetes from "../Paquetes/Paquetes"
 import Destinos from "../Destinos/Destinos"
 import Clients from "../Clients/Clients"
 import Contact from "../Contact/Contact"
-import Promo from "../Promo/Promo"
+import YapayaCard from "../../YapayaCard"
 
 //import Operador from "../Operador/Operador"
 import WhatssapButton from './WhatssapButton'
@@ -30,11 +30,13 @@ const Landing = ({ ruta }) => {
     <>
       <NavBar ruta={ruta} />
       <Home />
+      <YapayaCard /> 
+
       <PackCard />
-     
+      
       <Destinos/>
 
-      {/* <Promo /> */}
+     
       {/* <Operador /> */}
       
        

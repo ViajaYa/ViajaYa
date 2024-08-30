@@ -13,7 +13,7 @@ import Slider from 'react-slick';
 import "slick-carousel/slick/slick.css"; 
 import "slick-carousel/slick/slick-theme.css";
 
-const PackCard = () => {
+const YapayaCard = () => {
   const dispatch = useDispatch();
   const packs = useSelector((state) => state.packs);
 
@@ -60,7 +60,7 @@ const PackCard = () => {
     Hotel: <RiHotelBedLine className="text-2xl text-gray-600" />,
   };
 
-  const filteredPacks = packs.filter(pack => pack.isActive && !pack.isYapaya);
+  const filteredPacks = packs.filter(pack => pack.isActive && pack.isYapaya);
 
   return (
     <div className="container mx-auto mt-6 p-4">
@@ -126,11 +126,4 @@ const PackCard = () => {
   );
 };
 
-export default PackCard;
-
-
-
-
-
-
-
+export default YapayaCard;
