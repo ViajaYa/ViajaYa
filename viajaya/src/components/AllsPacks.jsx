@@ -42,7 +42,7 @@ const AllPacks = () => {
               <div className="mt-2 flex justify-start items-center">
                 <Link to={`/detail/${pack.id}`} className="flex items-center gap-2">
                   <FaPlaneDeparture className="text-ColorAzul hover:text-gray-400 text-2xl cursor-pointer" />
-                  <span className="text-ColorAzul hover:text-gray-400 font-semibold font-nunito text-lg">Reservá</span>
+                  <span className="text-gray-600 hover:text-gray-400 font-semibold font-nunito text-lg">Reserva</span>
                 </Link>
               </div>
             </div>

@@ -64,23 +64,23 @@ const PackCard = () => {
             <div className="p-4 flex-grow flex flex-col justify-between">
               <div>
                 <h3 className="text-xl font-semibold font-nunito text-gray-600">{pack.title}</h3> 
+                <p className="text-gray-600 font-nunito">Destinos {pack.destino}</p>
+                
                 <div className="flex justify-between items-center mt-2">
                
                   <p className="text-green-600 font-bold font-nunito text-lg"><FaCoins className="inline-block mr-1 text-yellow-500" />
-                  {pack.price}   <FaTag className="inline-block mr-1 text-gray-600" />    
+                  {pack.price}       
                         </p>
                   <span className="bg-ColorAzul text-gray-600 text-lg font-semibold font-nunito border-2 px-6 py-1 rounded-md"> 
                     {pack.days} días
                   </span>
                 </div>
-                <div className="mt-2">
-                  <span className="text-sm text-ColorAzul">{pack.destino}</span>
-                </div>
+               
               </div>
               <div className="mt-2 flex justify-start items-center">
                 <Link to={`/detail/${pack.id}`} className="flex items-center gap-2">
                   <FaPlaneDeparture className="text-ColorAzul hover:text-gray-400 text-2xl cursor-pointer" />
-                  <span className="text-ColorAzul hover:text-gray-400 font-semibold font-nunito text-lg">Reservá</span>
+                  <span className="text-gray-600 hover:text-gray-400 font-semibold font-nunito text-lg">Reserva</span>
                 </Link>
               </div>
             </div>
