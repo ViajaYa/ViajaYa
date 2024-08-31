@@ -63,8 +63,10 @@ const YapayaCard = () => {
   const filteredPacks = packs.filter(pack => pack.isActive && pack.isYapaya);
 
   return (
-    <div className="container mx-auto mt-6 p-4">
+    <div>
       <h1 className='font-nunito bg-ColorAzul text-gray-700 font-bold p-4 text-2xl w-screen mx-0 px-0 text-center mb-4 mt-4'>PLANIFICÁ TUS VACACIONES</h1>
+      
+    <div className="container mx-auto mt-6 p-4">
       
       <Slider {...settings} className="px-4">
       {filteredPacks.map((pack) => (
@@ -121,7 +123,7 @@ const YapayaCard = () => {
           </button>
         </Link>
       </div>
-
+      </div>
     </div>
   );
 };
