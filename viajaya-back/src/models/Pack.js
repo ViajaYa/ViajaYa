@@ -11,20 +11,27 @@ module.exports = (sequelize) => {
       },
       title: {
         type: DataTypes.STRING,
-        allowNull: true,
+        allowNull: false,
       },
       destino: {
         type: DataTypes.STRING,
+        allowNull: false,
+      },
+      cupos:{
+        type: DataTypes.INTEGER,  
         allowNull: true,
       },
       days: {
         type: DataTypes.INTEGER,
+        allowNull: false,
       },
       location: {
         type: DataTypes.STRING,
+        allowNull: false,
       },
       city: {
         type: DataTypes.STRING,
+        allowNull: false,
       },
       isActive: {
         type: DataTypes.BOOLEAN,
@@ -36,21 +43,22 @@ module.exports = (sequelize) => {
       },
       detail: {
         type: DataTypes.TEXT,
-        allowNull: true,
+        allowNull: false,
       },
       created: {
         type: DataTypes.STRING,
       },
       lat: {
         type: DataTypes.STRING,
-        allowNull: true,
+        allowNull: false,
       },
       lng: {
         type: DataTypes.STRING,
-        allowNull: true,
+        allowNull: false,
       },
       price: {
         type: DataTypes.INTEGER,
+        allowNull: false,
       },
       fechas: {
         type: DataTypes.JSON, 
@@ -59,10 +67,12 @@ module.exports = (sequelize) => {
       images: {
         type: DataTypes.ARRAY(DataTypes.STRING),
         defaultValue: [],
+        allowNull: false,
       },
       chars: {
         type: DataTypes.ARRAY(DataTypes.STRING),  
         defaultValue: [],
+        allowNull: false,
       },
     },
     { timestamps: false }

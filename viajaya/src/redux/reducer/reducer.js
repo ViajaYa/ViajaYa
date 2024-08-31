@@ -26,7 +26,6 @@ import {
 } from "../actions/actions-types";
 
 import {
-  INFO_USERS,
   UPDATE_USER,
   DELETE_USER_BY_ID,
   FETCH_PACKS_REQUEST,
@@ -44,13 +43,27 @@ import {
   DELETE_PACK_REQUEST,
   DELETE_PACK_SUCCESS,
   DELETE_PACK_FAILURE,
-  FETCH_YAPAYA_REQUEST,   
-  FETCH_YAPAYA_SUCCESS,   
-  FETCH_YAPAYA_FAILURE, 
-  FETCH_ACTIVE_REQUEST,   
-  FETCH_ACTIVE_SUCCESS,   
-  FETCH_ACTIVE_FAILURE,    
-
+  FETCH_YAPAYA_REQUEST,
+  FETCH_YAPAYA_SUCCESS,
+  FETCH_YAPAYA_FAILURE,
+  FETCH_ACTIVE_REQUEST,
+  FETCH_ACTIVE_SUCCESS,
+  FETCH_ACTIVE_FAILURE,
+  CREATE_RESERVATION_SUCCESS,
+  CREATE_RESERVATION_FAILURE,
+  FETCH_RESERVATIONS_SUCCESS,
+  FETCH_RESERVATIONS_FAILURE,
+  FETCH_USER_RESERVATIONS_SUCCESS,
+  FETCH_USER_RESERVATIONS_FAILURE,
+  UPDATE_RESERVATION_SUCCESS,
+  UPDATE_RESERVATION_FAILURE,
+  DELETE_RESERVATION_SUCCESS,
+  DELETE_RESERVATION_FAILURE,
+  LOGIN_SUCCESS,
+  LOGOUT,
+  LOGIN_FAIL,
+  VERIFY_TOKEN_SUCCESS,
+  VERIFY_TOKEN_FAIL,
 } from "../NewActions/NewActions-Types";
 
 const perPage = 8;
@@ -70,18 +83,50 @@ const initialState = {
   maxPagesClass: null,
   filter: "all",
   isActive: false,
-  isYapaya:false,
+  isYapaya: false,
   pay: {},
   word: "",
   popup: null,
   packs: [],
   pack: {},
-  userInfo: null,
+  reservations: [],
+  userReservations: [],
+  userAuth: null,
+  token: null,
+  isAuthenticated: false,
   loading: false,
   error: null,
 };
 const rootReducer = (state = initialState, action) => {
   switch (action.type) {
+    case LOGIN_SUCCESS:
+      return {
+          ...state,
+          token: action.payload.token,
+          id: action.payload.id,
+          error: null,
+      };
+  case LOGIN_FAIL:
+      return {
+          ...state,
+          token: null,
+          id: null,
+          error: action.payload,
+      };
+  case VERIFY_TOKEN_SUCCESS:
+      return {
+          ...state,
+          user: action.payload,
+      };
+  case VERIFY_TOKEN_FAIL:
+      return {
+          ...state,
+          error: action.payload,
+      };
+  case LOGOUT:
+      return initialState;
+    
+
     case SET_USER: {
       return {
         ...state,
@@ -290,12 +335,7 @@ const rootReducer = (state = initialState, action) => {
       return { ...state, loading: false, userInfo: action.payload };
     case USER_REGISTER_FAIL:
       return { ...state, loading: false, error: action.payload };
-    case INFO_USERS:
-      return {
-        ...state,
-        infoUsers: action.payload,
-        loading: false,
-      };
+
     case UPDATE_USER:
       return {
         ...state,
@@ -345,7 +385,7 @@ const rootReducer = (state = initialState, action) => {
         error: action.payload,
       };
 
-      case FETCH_YAPAYA_REQUEST:
+    case FETCH_YAPAYA_REQUEST:
       return {
         ...state,
         loading: true,
@@ -363,55 +403,44 @@ const rootReducer = (state = initialState, action) => {
         error: action.payload,
       };
 
-      case FETCH_ACTIVE_REQUEST:
-        return {
-          ...state,
-          loading: true,
-        };
-      case FETCH_ACTIVE_SUCCESS:
-        return {
-          ...state,
-          loading: false,
-          isActive: action.payload,
-        };
-      case FETCH_ACTIVE_FAILURE:
-        return {
-          ...state,
-          loading: false,
-          error: action.payload,
-        };
-
+    case FETCH_ACTIVE_REQUEST:
+      return {
+        ...state,
+        loading: true,
+      };
+    case FETCH_ACTIVE_SUCCESS:
+      return {
+        ...state,
+        loading: false,
+        isActive: action.payload,
+      };
+    case FETCH_ACTIVE_FAILURE:
+      return {
+        ...state,
+        loading: false,
+        error: action.payload,
+      };
 
     case CREATE_PACK_REQUEST:
-      return { ...state, 
-        loading: true, 
-        error: null };
+      return { ...state, loading: true, error: null };
 
     case CREATE_PACK_SUCCESS:
-      return { ...state, 
-        loading: false };
+      return { ...state, loading: false };
 
     case CREATE_PACK_FAILURE:
-      return { ...state, 
-        loading: false, 
-        error: action.payload };
+      return { ...state, loading: false, error: action.payload };
 
     case UPDATE_PACK_REQUEST:
-      return { ...state, 
-        loading: true, error: null };
+      return { ...state, loading: true, error: null };
 
     case UPDATE_PACK_SUCCESS:
-      return { ...state, 
-        loading: false };
+      return { ...state, loading: false };
 
     case UPDATE_PACK_FAILURE:
-      return { ...state, 
-        loading: false, 
-        error: action.payload };
+      return { ...state, loading: false, error: action.payload };
 
     case DELETE_PACK_REQUEST:
-      return { ...state, 
-        loading: true, error: null };
+      return { ...state, loading: true, error: null };
 
     case DELETE_PACK_SUCCESS:
       return {
@@ -421,9 +450,71 @@ const rootReducer = (state = initialState, action) => {
       };
 
     case DELETE_PACK_FAILURE:
-      return { ...state, 
-        loading: false, 
-        error: action.payload };
+      return { ...state, loading: false, error: action.payload };
+    case CREATE_RESERVATION_SUCCESS:
+      return {
+        ...state,
+        reservations: [...state.reservations, action.payload],
+        loading: false,
+      };
+    case CREATE_RESERVATION_FAILURE:
+      return {
+        ...state,
+        error: action.payload,
+        loading: false,
+      };
+    case FETCH_RESERVATIONS_SUCCESS:
+      return {
+        ...state,
+        reservations: action.payload,
+        loading: false,
+      };
+    case FETCH_RESERVATIONS_FAILURE:
+      return {
+        ...state,
+        error: action.payload,
+        loading: false,
+      };
+    case FETCH_USER_RESERVATIONS_SUCCESS:
+      return {
+        ...state,
+        userReservations: action.payload,
+        loading: false,
+      };
+    case FETCH_USER_RESERVATIONS_FAILURE:
+      return {
+        ...state,
+        error: action.payload,
+        loading: false,
+      };
+    case UPDATE_RESERVATION_SUCCESS:
+      return {
+        ...state,
+        reservations: state.reservations.map((reservation) =>
+          reservation.id === action.payload.id ? action.payload : reservation
+        ),
+        loading: false,
+      };
+    case UPDATE_RESERVATION_FAILURE:
+      return {
+        ...state,
+        error: action.payload,
+        loading: false,
+      };
+    case DELETE_RESERVATION_SUCCESS:
+      return {
+        ...state,
+        reservations: state.reservations.filter(
+          (reservation) => reservation.id !== action.payload
+        ),
+        loading: false,
+      };
+    case DELETE_RESERVATION_FAILURE:
+      return {
+        ...state,
+        error: action.payload,
+        loading: false,
+      };
 
     default:
       return state;

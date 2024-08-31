@@ -7,8 +7,8 @@ module.exports = {
                 userId:id
             },
             include:{
-                model: Pack,
-                include: Char
+                model: Pack
+                
             }
         })
         return buys
