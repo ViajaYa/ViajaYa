@@ -3,6 +3,7 @@ import { useDispatch } from 'react-redux';
 import { createPack } from '../../redux/NewActions/newActions'; 
 import "leaflet/dist/leaflet.css";
 import { openCloudinaryWidget } from '../../cloudinaryConfig';
+import NavBar from '../layout/NavBar/NavBar';
 
 const NewPack = () => {
   const [title, setTitle] = useState('');
@@ -95,7 +96,10 @@ const NewPack = () => {
 
   return (
     <div className="container mx-auto mt-12 p-4">
-      <h2 className="bg-ColorMorado text-3xl font-bold font-nunito text-white mb-8">Crear Nuevo Paquete</h2>
+       <div className='fixed top-0 left-0 z-50 w-full'>
+            <NavBar />
+          </div>
+      <h2 className="bg-ColorMorado text-2xl font-bold font-nunito p-2 text-gray-200 mb-8 mt-10">Crear Nuevo Paquete</h2>
   
       {successMessage && (
         <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4">
@@ -103,7 +107,7 @@ const NewPack = () => {
         </div>
       )}
   
-      <form onSubmit={handleSubmit} className="space-y-4 grid grid-cols-1 gap-6" encType="multipart/form-data">
+      <form onSubmit={handleSubmit} className="space-y-1 grid grid-cols-1 gap-3" encType="multipart/form-data">
         {/* Campos del formulario */}
         <div>
           <label className="block text-sm font-nunito font-medium">Nombre del Paquete</label>
