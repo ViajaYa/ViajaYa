@@ -9,6 +9,10 @@ import { toast, Toaster } from "react-hot-toast";
 import dayjs from "dayjs";
 import "dayjs/locale/es";
 
+
+
+
+
 //import proo from '../../../assets/newImg/viajaYaImg/proo.png';
 
 import NavBar from '../../layout/NavBar/NavBar';
