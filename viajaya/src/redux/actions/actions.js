@@ -36,7 +36,7 @@ export const setUser = (user) => {
 export const registerUser = (userData) => async (dispatch) => {
   try {
       // Hacer la solicitud al backend para crear el usuario
-      const response = await axios.post('/api/users', userData);
+      const response = await axios.post('/users', userData);
 
       dispatch({
           type: USER_REGISTER_SUCCESS,

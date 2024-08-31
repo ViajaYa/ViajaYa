@@ -45,13 +45,9 @@ let entries = Object.entries(sequelize.models);
 let capsEntries = entries.map((entry) => [entry[0][0].toUpperCase() + entry[0].slice(1), entry[1]]);
 sequelize.models = Object.fromEntries(capsEntries);
 
-const {  Pack, Item, User } = sequelize.models;
+const {  Pack, Item, User, Reservation } = sequelize.models;
 
-const packChar = sequelize.define('pack_char', {
-  // Definición de otros campos de la tabla intermedia
-}, {
-  timestamps: false // Deshabilitar los campos de timestamp
-});
+
 
 
 
@@ -84,6 +80,12 @@ Item.belongsTo(User, {
   foreignKey: 'userId', // Establece que cada Item pertenece a un Usuario
   targetKey: 'id' // Conecta con el id del Usuario
 })
+
+User.hasMany(Reservation);
+Reservation.belongsTo(User);
+
+Pack.hasMany(Reservation);
+Reservation.belongsTo(Pack);
 
   module.exports = {
     ...sequelize.models, // para poder importar los modelos así: const { Product, User } = require('./db.js');
