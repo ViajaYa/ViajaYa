@@ -16,6 +16,7 @@ import YapayaCard from "../../YapayaCard"
 import WhatssapButton from './WhatssapButton'
 import InstagramCarousel from '../Clients/InstagramReelCarousel';
 import PackCard from '../../../components/PackCard'
+import Convenios from '../Clients/Convenios';
 
 // eslint-disable-next-line react/prop-types
 const Landing = ({ ruta }) => {
@@ -44,6 +45,7 @@ const Landing = ({ ruta }) => {
     {/* <Clients2/> */}
       <Clients />
       <Contact />
+      <Convenios/>
       <Footer />
       <WhatssapButton />
       {popup && popup.isActive && <Popup content={popup.content} />}

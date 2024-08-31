@@ -26,6 +26,7 @@ import AllPacks from "./components/AllsPacks"
 
 
 
+
 const Landing = lazy(() => import("./components/pages/Landing/Landing"))
 
 function App() {
