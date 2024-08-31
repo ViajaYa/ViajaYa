@@ -112,11 +112,11 @@ const NavBar = ({ showFullMenu = true }) => {
         {/* Mostrar "Ingresar" en la página de productos */}
         {isPanelNewPage && (
           <>
-            <RouterLink to="/" className={style.noLink}>
-              <li className={style.li}>Inicio</li>
+            <RouterLink to="/panel" className={style.noLink}>
+              <li className={style.li}>Panel</li>
             </RouterLink>
             {!user && (
-              <li className={style.libutton} onClick={() => navigate("/panel")}>Panel</li>
+              <li className={style.libutton} onClick={() =>  navigate("/login")}>Ingresar</li>
             )}
           </>
         )}
