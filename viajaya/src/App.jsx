@@ -75,7 +75,7 @@ function App() {
        <Route path="/panel/popup/popup" element={<Popup/>}/>  
       <Route exact path="/politicas" element={<Politicas/>}/>
       <Route exact path="/terminos" element={<Terminos/>}/>
-      <Route exact path="/pay" element={<Pay/>}/>
+      <Route exact path="/pay/:id" element={<Pay/>}/>
       <Route path="/detail/:id" element={<DetailNuevo/>}/>
       <Route path="/allpacks" element={<AllPacks />} />
       <Route exact path="/productos" element={<TabbedImages/>}/>

@@ -26,10 +26,17 @@ const DetailNuevo = () => {
     }
   }, [dispatch, id]);
 
-  if (loading) return <div className="text-center mt-8">Cargando...</div>;
-  if (error) return <div className="text-center mt-8 text-red-500">Error: {error}</div>;
+  if (loading) {
+    return <div className="text-center mt-8">Cargando...</div>;
+  }
 
-  if (!pack || Object.keys(pack).length === 0) return <div>No se encontró el paquete</div>;
+  if (error) {
+    return <div className="text-center mt-8 text-red-500">Error al cargar el paquete. Inténtalo de nuevo más tarde.</div>;
+  }
+
+  if (!pack || Object.keys(pack).length === 0) {
+    return <div className="text-center mt-8">No se encontró el paquete</div>;
+  }
 
   const center = [parseFloat(pack.lat), parseFloat(pack.lng)];
 
@@ -102,6 +109,7 @@ const DetailNuevo = () => {
               <h3 className="text-xl font-bold font-nunito mb-3 text-ColorMorado">Selecciona una fecha</h3>
               <select 
                 value={selectedDate} 
+                required
                 onChange={handleDateChange} 
                 className="w-full px-4 py-2 font-nunito border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-ColorAzul"
               >
@@ -115,7 +123,7 @@ const DetailNuevo = () => {
             </div>
 
             {/* Payment Button */}
-            <Link to="/pay">
+            <Link to={`/pay/${id}`}>
               <button className="bg-ColorAzul hover:bg-ColorMorado text-white font-nunito font-semibold py-3 px-6 rounded-md mt-6 transition duration-300 ease-in-out w-full">
                 Pagar
               </button>
@@ -128,6 +136,7 @@ const DetailNuevo = () => {
 };
 
 export default DetailNuevo;
+
 
 
 
