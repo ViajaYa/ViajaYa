@@ -8,7 +8,9 @@ import { useDispatch, useSelector } from 'react-redux';
 import { toast, Toaster } from "react-hot-toast";
 import dayjs from "dayjs";
 import "dayjs/locale/es";
-import productoos from '../../../assets/newImg/viajaYaImg/productoos.png';
+
+import proo from '../../../assets/newImg/viajaYaImg/proo.png';
+
 import NavBar from '../../layout/NavBar/NavBar';
 
 dayjs.locale("es");
@@ -228,8 +230,10 @@ const Profile = () => {
                 <div className="w-1/2 lg:block flex items-center justify-center mt-32 ">
   <Link to="/productos">
     <img
-      src={productoos}
-      alt="productoos"
+
+      src={proo}
+      alt="proo"
+
       className="w-1/2 h-auto max-w-md ml-32 cursor-pointer border-4 border-ColorAzul"
     />
   </Link>
