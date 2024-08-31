@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link} from 'react-router-dom';
-import { AiOutlineUser } from "react-icons/ai";
-import { MdPayment, MdExitToApp, MdHome } from "react-icons/md";
+
+import { MdPayment, MdExitToApp} from "react-icons/md";
 import axios from 'axios';
 import { findUsers, setUsers } from '../../../redux/actions/actions';
 import { useDispatch, useSelector } from 'react-redux';
@@ -229,7 +229,7 @@ const Profile = () => {
   <Link to="/productos">
     <img
       src={productoos}
-      alt="Imagen de Fondo"
+      alt="productoos"
       className="w-1/2 h-auto max-w-md ml-32 cursor-pointer border-4 border-ColorAzul"
     />
   </Link>
