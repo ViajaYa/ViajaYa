@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize) => {
-  sequelize.define('Reservation', {
+  sequelize.define('reservation', {
     id: {
       type: DataTypes.INTEGER,
       primaryKey: true,
@@ -9,7 +9,7 @@ module.exports = (sequelize) => {
     },
    userId: {  // Clave foránea que referencia a User
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
       references: {
         model: 'users', // Nombre de la tabla del modelo User
         key: 'id',
@@ -17,7 +17,7 @@ module.exports = (sequelize) => {
     },
     packId: {  // Clave foránea que referencia a Pack
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
       references: {
         model: 'packs', 
         key: 'id',
@@ -30,7 +30,7 @@ module.exports = (sequelize) => {
     },
     amount: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
     },
     paymentId: {
       type: DataTypes.STRING,

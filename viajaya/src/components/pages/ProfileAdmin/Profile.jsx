@@ -24,7 +24,7 @@ const Profile = () => {
     const [changePass, setChangePass] = useState(false);
     const dispatch = useDispatch();
     const [loading, setLoading] = useState(true);
-
+   console.log(user)
     const users = useSelector(s => s.users);
 
     useEffect(() => {

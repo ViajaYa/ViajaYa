@@ -451,7 +451,8 @@ const rootReducer = (state = initialState, action) => {
 
     case DELETE_PACK_FAILURE:
       return { ...state, loading: false, error: action.payload };
-    case CREATE_RESERVATION_SUCCESS:
+    
+      case CREATE_RESERVATION_SUCCESS:
       return {
         ...state,
         reservations: [...state.reservations, action.payload],
