@@ -27,7 +27,7 @@ const YapayaCard = () => {
     dots: true,
     infinite: packs.length > 3,
     speed: 500,
-    slidesToShow: packs.length >= 3 ? 3 : packs.length,  // Mostrar 1 o 2 según la cantidad de packs
+    slidesToShow: Math.min(packs.length, 3),  // Mostrar 1 o 2 según la cantidad de packs
     slidesToScroll: 1,
     centerMode: packs.length < 3, // Centrar si hay menos de 3 packs
     centerPadding: packs.length === 1 ? '25%' : packs.length === 2 ? '10%' : '0px',
@@ -37,7 +37,7 @@ const YapayaCard = () => {
         settings: {
           slidesToShow: packs.length >= 2 ? 2 : 1, // Mostrar 1 o 2 según la cantidad de packs
           slidesToScroll: 1,
-          infinite: packs.length > 2,
+          infinite: packs.length > 3,
           centerPadding: packs.length === 1 ? '25%' : '10%',
         }
       },

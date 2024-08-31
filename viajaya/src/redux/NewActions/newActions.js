@@ -122,11 +122,11 @@ export const fetchPacks = () => async (dispatch) => {
 };
 
 export const fetchYapaya = (isYapaya) => async (dispatch) => {
-  console.log('Fetching pack with id:', isYapaya); // Para verificar si se despacha la acción
+  
   dispatch({ type: FETCH_YAPAYA_REQUEST });
   try {
     const response = await axios.get(`${BASE_URL}/pack/${isYapaya}`);
-    console.log('Fetched data:', response.data); // Verifica la respuesta del servidor
+    
     dispatch({ type: FETCH_YAPAYA_SUCCESS, payload: response.data });
   } catch (error) {
     console.error('Fetch error:', error); // Muestra el error en la consola
@@ -135,11 +135,11 @@ export const fetchYapaya = (isYapaya) => async (dispatch) => {
 };
 
 export const fetchPackActive = (isActive) => async (dispatch) => {
-  console.log('Fetching pack with id:', isActive); // Para verificar si se despacha la acción
+  
   dispatch({ type: FETCH_ACTIVE_REQUEST });
   try {
     const response = await axios.get(`${BASE_URL}/pack/${isActive}`);
-    console.log('Fetched data:', response.data); // Verifica la respuesta del servidor
+    
     dispatch({ type: FETCH_ACTIVE_SUCCESS, payload: response.data });
   } catch (error) {
     console.error('Fetch error:', error); // Muestra el error en la consola
@@ -148,11 +148,11 @@ export const fetchPackActive = (isActive) => async (dispatch) => {
 };
 
 export const fetchPack = (id) => async (dispatch) => {
-  console.log('Fetching pack with id:', id); // Para verificar si se despacha la acción
+  
   dispatch({ type: FETCH_PACK_REQUEST });
   try {
     const response = await axios.get(`${BASE_URL}/pack/${id}`);
-    console.log('Fetched data:', response.data); // Verifica la respuesta del servidor
+    
     dispatch({ type: FETCH_PACK_SUCCESS, payload: response.data });
   } catch (error) {
     console.error('Fetch error:', error); // Muestra el error en la consola
@@ -217,12 +217,12 @@ export const createReservation = (reservationData) => async (dispatch) => {
 
     const data = await response.json();
     dispatch({
-      type: 'CREATE_RESERVATION_SUCCESS',
+      type: CREATE_RESERVATION_SUCCESS,
       payload: data,
     });
   } catch (error) {
     dispatch({
-      type: 'CREATE_RESERVATION_FAILURE',
+      type: CREATE_RESERVATION_FAILURE,
       payload: error.message,
     });
   }

@@ -26,7 +26,7 @@ USER_REGISTER_FAIL
 } from './actions-types'
 
 const BASE_URL = 'http://localhost:3001'
-
+//const BASE_URL = 'http://localhost:3001'
 
 export const setUser = (user) => {
   return (dispatch) => {

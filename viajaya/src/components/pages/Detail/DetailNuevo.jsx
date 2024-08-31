@@ -30,10 +30,7 @@ const DetailNuevo = () => {
     return <div className="text-center mt-8">Cargando...</div>;
   }
 
-  if (error) {
-    return <div className="text-center mt-8 text-red-500">Error al cargar el paquete. Inténtalo de nuevo más tarde.</div>;
-  }
-
+ 
   if (!pack || Object.keys(pack).length === 0) {
     return <div className="text-center mt-8">No se encontró el paquete</div>;
   }
