@@ -1,9 +1,10 @@
-.contact{
+.contact {
     width: 100%;
     height: fit-content;
-    padding-bottom: 50px;
-    background: rgb(143,239,243);
-background: linear-gradient(90deg, rgba(143,239,243,1) 0%, rgba(255,222,250,1) 55%, rgba(255,255,255,1) 78%);
+    padding: 2%;
+ /* Ajusta la opacidad en el color */
+    box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.3); /* Sombra con un poco de difuminado */
+    border-radius: 10px; /* Bordes redondeados */
 }
 
 .titleSection{
@@ -12,7 +13,7 @@ background: linear-gradient(90deg, rgba(143,239,243,1) 0%, rgba(255,222,250,1) 5
     padding: 20px;
     font-size: 5.5em;
     color:var(--primary);
-    font-family: var(--font);
+    
 }
 
 .contactContainer{
@@ -52,7 +53,7 @@ background: linear-gradient(90deg, rgba(143,239,243,1) 0%, rgba(255,222,250,1) 5
     border: 0;
     border-radius: 5px;
     color: white;
-    background-color: var(--primary);
+    background-color: #2be0e9;
     font-size: 1.3em;
     padding: 13px 0px;
     cursor: pointer;
@@ -70,10 +71,11 @@ background: linear-gradient(90deg, rgba(143,239,243,1) 0%, rgba(255,222,250,1) 5
 }
 
 .mapa{
-    width: 300px;
-    height: 150px;
-    background-color: green;
+    width: 330px;
+    height: 330px;
+    background-color: white;
     overflow: hidden;
+    border-radius: 2%;
 }
 
 .subtitleSection{
@@ -116,8 +118,9 @@ background: linear-gradient(90deg, rgba(143,239,243,1) 0%, rgba(255,222,250,1) 5
 }
 
 .map{
-    width: 50px;
-    height: 50px;
+    width: 75px;
+    height: 75px;
+    
 }
 
 .inputsms{
@@ -132,8 +135,8 @@ background: linear-gradient(90deg, rgba(143,239,243,1) 0%, rgba(255,222,250,1) 5
 
 /* MAPA */
 .mapContainer{
-    height: 200px;
-    width: 300px;
+    height: 330px;
+    width: 330px;
     /* margin:180px 0px 0px 100px; */
     /* border-radius: 5px; */
     /* box-shadow: 0px 0px 5px 5px rgba(171, 171, 171, 0.267); */
@@ -146,8 +149,8 @@ background: linear-gradient(90deg, rgba(143,239,243,1) 0%, rgba(255,222,250,1) 5
 
 .map{
     /* position: sticky; */
-    height: 200px;
-    width: 300px;
+    height: 330px;
+    width: 330px;
     border-radius:5px;
     z-index: 1;
 }

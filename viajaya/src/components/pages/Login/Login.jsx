@@ -1,16 +1,20 @@
 import { useState } from 'react';
 import style from './Login.module.css'
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import {FcGoogle} from "react-icons/fc";
 import axios from "axios"
 import {toast, Toaster} from "react-hot-toast"
 import { useEffect } from 'react';
+import NavBar from '../../layout/NavBar/NavBar';
  
 const Login = () => {
     const [login, setLogin] = useState(true)
     const [newUser, setNewUser] = useState()
     const [user, setUser] = useState()
     const navigate = useNavigate()
+
+    const { referral_code } = useParams();
+
 
     const emailReg = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const phoneReg = /^\d{10}$/;
@@ -22,7 +26,14 @@ const Login = () => {
         if(!emailReg.test(newUser?.email)) return toast.error("Debes ingresar un email valido")
         if(!newUser?.password.length || newUser?.password.length < 8) return toast.error("La contraseña debe tener al menos 8 caracteres")
         if(newUser?.password !== newUser?.password2) return toast.error("Las contraseñas no coinciden")
-        axios.post("/user", newUser).then(() => {
+            const newUser = {
+                ...newUser,
+                referral_code: referral_code || null, // o 'referred_by'
+            };
+        
+        
+        
+            axios.post("/user", newUser).then(() => {
             setLogin(true)
             //Limpiar form y enviar toast
             toast.success("Te has registrado exitosamente")
@@ -33,6 +44,7 @@ const Login = () => {
                 email:"",
                 password:"",
                 password2:"",
+            
             })
         }, (err) => toast.error("Email existente"))
     }
@@ -73,6 +85,9 @@ const Login = () => {
     }
   return(
     <div className={style.login}>
+         <div className='fixed top-0 left-0 z-50'>
+      <NavBar/>
+      </div>
         <Toaster
   position="top-center"
   reverseOrder={false}

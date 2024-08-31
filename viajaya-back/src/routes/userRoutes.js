@@ -58,18 +58,28 @@ userRoutes.get("/recovery/:email", async (req,res) => {
     }
 })
 
-userRoutes.post("/", async (req,res) => {
-    // Crear un usuarios
+userRoutes.post("/", async (req, res) => {
+    // Crear un usuario
+    const user = req.body;
+
+    try {
+        const message = await postUser(user);
+        res.status(200).json({ message });
+    } catch (error) {
+        res.status(400).json({ message: error.message }); 
+    }
+});
+
+userRoutes.put("/update/:id", async (req,res) => {
+    // Editar un usuario
     const user = req.body
     try {
-        const users = await postUser(user)
+        const users = await putUser(user)
         res.status(200).json({message:users})
     } catch (error) {
-        res.status(404).json({mensaje:error})
+        res.status(404).json({message:error})
     }
 })
-
-
 
 userRoutes.put("/", async (req,res) => {
     // Editar un usuario
@@ -82,14 +92,19 @@ userRoutes.put("/", async (req,res) => {
     }
 })
 
-userRoutes.delete("/:id", async(req,res)=>{
+userRoutes.delete("/:id", async (req, res) => {
+    const { id } = req.params; // Asegúrate de obtener correctamente el id
     try {
-        const user = await deleteUser(id)
-        res.status(200).json({message:user})
+        const user = await deleteUser(id); // Pasa el id correctamente a la función deleteUser
+        if (user) {
+            res.status(200).json({ message: "Usuario eliminado con éxito" });
+        } else {
+            res.status(404).json({ message: "Usuario no encontrado" });
+        }
     } catch (error) {
-        res.status(404).json({message:error})
+        res.status(500).json({ message: "Error al eliminar el usuario" });
     }
-})
+});
 
 userRoutes.post("/auth", async(req,res)=>{
     const user = req.body

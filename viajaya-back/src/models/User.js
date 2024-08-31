@@ -1,4 +1,6 @@
 const { DataTypes } = require('sequelize');
+const { v4: uuidv4 } = require('uuid');
+
 module.exports = (sequelize) => {
   sequelize.define('user', {
     id:{
@@ -31,6 +33,20 @@ module.exports = (sequelize) => {
     role:{
       type: DataTypes.INTEGER,
       defaultValue: 1,
+    },
+    referral_code: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // Genera un UUID automáticamente
+      unique: true,
+      allowNull: false,
+    },
+    referred_by: {
+      type: DataTypes.UUID,
+      allowNull: true, //// Código de referido del usuario que lo refirió
+    },
+    points: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0, // Puntos que el usuario ha acumulado
     }
   },{timestamps:false});
 };

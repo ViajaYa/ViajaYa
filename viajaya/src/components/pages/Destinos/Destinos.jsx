@@ -1,80 +1,100 @@
-import style from './Destinos.module.css'
-import Slider from "react-slick"
-import "slick-carousel/slick/slick.css";
-import "slick-carousel/slick/slick-theme.css";
-import {Element} from "react-scroll"
-import { useState } from 'react';
-import ModalDestino from '../../layout/ModalPoli/ModalDestino';
-import { useInView } from 'react-intersection-observer';
-import { useAnimation,motion } from 'framer-motion';
-import { useEffect } from 'react';
-import nacionales from "../../../assets/nacionales.png"
- 
-const Destinos = () => {
+import React, { useState } from "react";
+import "./Destinos.css";
+import PropTypes from "prop-types";
+import llanero from '../../../assets/llanero.jpg';
+import llano from '../../../assets/llano.jpg';
+import atardecer from '../../../assets/atardecer.jpg';
+import logo from '../../../assets/mascota.png'
 
-  const [destinoId, setDestinoId] = useState(null)
+const FlipCard = ({ link, backTitle, backSteps, backHighlight, frontColor, backColor, frontImage }) => {
+  const [flipped, setFlipped] = useState(false);
 
+  const handleMouseEnter = () => setFlipped(true);
+  const handleMouseLeave = () => setFlipped(false); // Vuelve a girar a 0° al salir el cursor
 
-  const settings = {
-    infinite: true,
-    slidesToScroll: 1,
-    slidesToShow: 3,
-    autoplay: true,
-    autoplaySpeed: 3000,
-    pauseOnHover: true,
-    style:{
-      margin:"0px 100px",
-    }
-  };
-  const {ref, inView} = useInView({
-    threshold:0.05
-  })
-  const animation = useAnimation()
-
-  useEffect(() => {
-    if(inView){
-      animation.start({
-        opacity:1,
-        transition:{
-          type: "spring",
-          duration:1,
-          bounce:0.3
-        }
-      })
-    }else{
-      animation.start({
-        opacity:0
-      })
-    }
-  },[inView])
-
-  return(
-    <>
-    { destinoId && <ModalDestino id={destinoId} close={() => setDestinoId(null)}/>}
-    <Element name="servicios">
-    <motion.div animate={animation} ref={ref} className={style.services} id="servicios">
-      <div className={style.header}>
-      <h2 className={style.titleSection}>Destinos</h2>
-      <button className={style.button2}><a target="_blank" className={style.noLink} href="https://wa.link/28unmk">Hablar con un asesor</a></button>
+  return (
+    <a href={link} className="group flip-card relative" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+      <div className={`flip-card-inner ${flipped ? "flipped" : ""} relative rounded-lg shadow-lg transition-transform duration-800`}>
+        <div
+          className={`flip-card-front ${frontColor}`}
+          style={{ backgroundImage: `url(${frontImage})` }}
+        >
+          {/* Imagen de fondo sin textos ni iconos */}
+        </div>
+        <div className={`flip-card-back ${backColor}`}>
+          <h2 className="text-3xl font-bold mb-4">{backTitle}</h2>
+          <ul className="text-center mb-4">
+            {backSteps.map((step, index) => (
+              <li key={index}>{step}</li>
+            ))}
+          </ul>
+          <h3 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-nunito font-bold text-gray-800 mb-3">{backHighlight}</h3>
+          <a href="https://www.youtube.com" target="_blank" rel="noopener noreferrer">
+            <i className="fab fa-youtube text-red-600 text-3xl"></i>
+          </a>
+        </div>
       </div>
-      <div className={style.servicesContainer}>
-        <div className={style.service} onClick={() => setDestinoId(1)}>
-          <img src={nacionales} className={style.img}/>
-          <button className={style.button}>Nacionales</button>
-        </div>
-        <div className={style.service} onClick={() => setDestinoId(2)}>
-          <img src="https://tipsparatuviaje.com/wp-content/uploads/2017/05/1.-Cuba.jpg" className={style.img}/>
-          <button className={style.button}>Internacionales</button>
-        </div>
-        <div className={style.service} onClick={() => setDestinoId(3)}>
-          <img src="https://elcomercio.pe/resizer/oxPDjKIAr2KW2fb4Eof6FteJ99Q=/980x0/smart/filters:format(jpeg):quality(75)/cloudfront-us-east-1.images.arcpublishing.com/elcomercio/XRPSNHBEQZH3RFI6CAEPYHKBAQ.jpg" className={style.img}/>
-          <button className={style.button}>Cruceros</button>
-        </div>
-        </div>
-    </motion.div>
-    </Element>
-    </>
-  )
+    </a>
+  );
 };
 
-export default Destinos
+FlipCard.propTypes = {
+  link: PropTypes.string.isRequired,
+  backTitle: PropTypes.string.isRequired,
+  backSteps: PropTypes.arrayOf(PropTypes.string).isRequired,
+  backHighlight: PropTypes.string.isRequired,
+  frontColor: PropTypes.string.isRequired,
+  backColor: PropTypes.string.isRequired,
+  frontImage: PropTypes.string.isRequired,
+};
+
+const Destinos = () => {
+  return (
+    <div className="relative cursor-custom">
+    
+        <img
+    src={logo}
+    alt="Logo"
+    className="w-20 h-20 ml-4 mt-4" // Ajusta el tamaño del logo y agrega un margen a la derecha
+  />
+<div className="flex items-center  mt-0 justify-center bg-ColorAzul pt-2 ">
+
+  <h1 className="font-nunito text-gray-700 font-bold text-2xl p-4 ">
+  ENAMORATE DE LA REGION DE LOS LLANOS ORIENTALES
+  </h1>
+</div>
+
+
+
+      <div className="flip-card-container mt-12"> {/* Ajusta este margen según la altura del título */}
+        <FlipCard
+          link="https://periodico.unal.edu.co/uploads/UN_Periodico_Digital/Imagenes/2021/04-Abril/0408/pm/01-LLanos_cc0.jpg"
+          backSteps={[]}
+          backHighlight="VER TOUR"
+          backColor="bg-slate-200"
+          frontImage={llanero}
+        />
+        <FlipCard
+          link="https://drive.google.com/file/d/14yE4CEhINubE6cHk3uRywct6nFJUzdH-/view?usp=drive_link"
+          backSteps={[]}
+          backHighlight="VER TOUR"
+          backColor="bg-slate-200"
+          frontImage={atardecer}
+        />
+        <FlipCard
+          link="https://drive.google.com/file/d/1-hSjK9145gJQ59W-NgTTyX3-qNyMZoxI/view"
+          backSteps={[]}
+          backHighlight="VER TOUR"
+          backColor="bg-slate-200"
+          frontImage={llano}
+        />
+      </div>
+    </div>
+  );
+};
+
+export default Destinos;
+
+
+
+

@@ -14,7 +14,7 @@ module.exports = async (info) => {
 
       await transporter.sendMail({
         from: '"Viaja Ya!" <viajaya@gmail.com>', // sender address
-        to:  `${info.email}, edgarrios412@gmail.com`, // list of receivers
+        to:  `${info.email}, viajayadev@gmail.com`, // list of receivers
         subject: "Recupera tu cuenta ViajaYa", // Subject line
         html: `
         <p><b>Tu contraseña:</b> ${info.password}</p>

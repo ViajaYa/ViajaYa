@@ -1,3 +1,19 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+.Toastify__toast--custom {
+  background-color: #333 !important;
+  color: #fff !important;
+}
+
+.Toastify__progress-bar--custom {
+  background-color: #520f4e !important;
+}
+
+
 body {
   margin: 0;
   font-family: "Fenix";

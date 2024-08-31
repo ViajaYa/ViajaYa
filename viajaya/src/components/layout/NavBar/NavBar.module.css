@@ -1,7 +1,7 @@
-.nav{
-    /* background-color: #370861ed; */
-    background: rgb(227,179,220);
-background: linear-gradient(90deg, rgba(227,179,220,1) 0%, rgba(62,22,106,1) 100%);
+/* Estilos existentes del NavBar */
+
+.nav {
+    background: white;
     display: flex;
     position: fixed;
     align-items: center;
@@ -10,23 +10,16 @@ background: linear-gradient(90deg, rgba(227,179,220,1) 0%, rgba(62,22,106,1) 100
     height: 10vh;
     z-index: 999;
     width: 100%;
-    /* margin-top: -11vh; */
-    /* animation: aparecer 1s .5s ease-in-out forwards; */
-
+    padding: 3%;
+    border-bottom: 3px solid #2be0e9;
 }
 
-/* @keyframes aparecer{
-    100%{
-        margin-top: 0vh;
-    }
-} */
-
-.logo{
+.logo {
     width: 80px;
     margin-left: 75px;
 }
 
-.ul{
+.ul {
     display: flex;
     list-style:none;
     gap: 40px;
@@ -35,38 +28,121 @@ background: linear-gradient(90deg, rgba(227,179,220,1) 0%, rgba(62,22,106,1) 100
     padding: 0px 40px;
 }
 
-.li{
+.li {
     font-size: 1.25em;
     cursor:pointer;
-    color:white;
+    color: rgb(72, 72, 72);
+    font-family:Verdana, Geneva, Tahoma, sans-serif
 }
 
-.libutton{
-    background-color: var(--primary);;
+.libutton {
+    background-color: #2be0e9;
     padding: 5px 15px;
     border-radius: 5px;
-    color: white;
-    font-weight: 700;
+    color: rgb(72, 72, 72);
+    font-weight: 500;
     font-size: 1.25em;
     cursor: pointer;
+    font-family:Verdana, Geneva, Tahoma, sans-serif
 }
 
-.noLink{
+.noLink {
     text-decoration: none;
     border: 0;
     outline: 0;
-    color:black
+    color: black;
 }
 
-@media screen and (max-width: 900px){
-    .li{
+.hamburger {
+    display: none;
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    cursor: pointer;
+}
+
+
+@media screen and (max-width: 900px) {
+    .hamburger {
+        display: block;
+    }
+
+    .ul {
         display: none;
+        flex-direction: column;
+        align-items: flex-start;
+        width: 100%;
+        position: fixed;
+        top: 10vh;
+        right: 0;
+        background-color: white;
+        padding: 20px;
+        height: 90vh;
+        gap: 20px;
+        z-index: 999;
     }
-    .ul{
-        gap: 0;
+
+    .menuOpen {
+        display: flex;
     }
-    .logo{
+
+    .li {
+        display: block;
+        font-size: 1.5em;
+        color: rgb(72, 72, 72);
+    }
+
+    .libutton {
+        font-size: 1.5em;
+        color: rgb(72, 72, 72);
+    }
+
+    .logo {
         width: 50px;
         margin-left: 40px;
     }
 }
+
+/* Nuevos estilos para el menú desplegable de redes sociales */
+
+.socialMenu {
+    position: relative;
+}
+
+.socialButton {
+    background-color: #b85aa1; /* Fondo igual al del NavBar */
+    border: none;
+    cursor: pointer;
+    padding: 5px 25px;
+    font-size: 1.25em;
+    color: white; /* Texto blanco */
+    border-radius: 5px; /* Opcional: para darle bordes redondeados */
+    font-family:Verdana, Geneva, Tahoma, sans-serif
+}
+
+.socialIcons {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: #b85aa1;
+    
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.icon {
+    font-size: 1.5em;
+    color: white; /* Los íconos deben usar su color original */
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.icon:hover {
+    color: #f0f0f0; /* Color al pasar el ratón sobre el ícono */
+}
+

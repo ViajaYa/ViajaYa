@@ -7,35 +7,62 @@ module.exports = {
         return users
     },
     putUser: async (u) => {
-        const user = await User.findOne({
-            where:{
-                id:u.id
+        try {
+            const user = await User.findOne({
+                where: { id: u.id }
+            });
+    
+            if (!user) {
+                throw new Error("Usuario no encontrado");
             }
-        })
-        if(user){
-            if(u.name) user.name = u.name
-            if(u.lastname) user.lastname = u.lastname
-            if(u.email) user.email = u.email
-            if(u.phone) user.phone = u.phone
-            if(u.password) user.password = u.password
-            if(u.role) user.role = u.role
-            if(u.image) user.image = u.image
-            await user.save()
-            return "Usuario actualizado"
-        }else return "No lo encontramos"
-    },
-    postUser: async (user) => {
-        const userr = await User.findOne({
-            where:{
-                email:user.email
-            }
-        })
-        if(userr){
-            throw Error("Email existente")
-        }else{
-        await User.create(user)
-        return "Usuario creado con exito"
+    
+            // Define los campos que pueden ser actualizados
+            const fieldsToUpdate = [
+                'name', 'lastname', 'email', 'phone', 'password', 'role', 'image', 'points', 'referredBy'
+            ];
+    
+            // Actualiza solo los campos que están definidos en u
+            fieldsToUpdate.forEach(field => {
+                if (u[field] !== undefined) {
+                    user[field] = u[field];
+                }
+            });
+    
+            await user.save();
+            return "Usuario actualizado";
+        } catch (error) {
+            console.error('Error al actualizar el usuario:', error);
+            return `Error: ${error.message}`;
         }
+    },
+    
+    postUser: async (user) => {
+        const existingUser = await User.findOne({
+            where: {
+                email: user.email
+            }
+        });
+        if(existingUser){
+            throw Error("Email existente")
+        }if(user.referral_code) {
+            const referringUser = await User.findOne({
+                where: {
+                    referral_code: user.referral_code
+                }
+            });
+
+            if (referringUser) {
+                // Si el código de referido es válido, asigna el código de referido del usuario
+                user.referred_by = referringUser.referral_code;
+            } else {
+                // Si el código de referido no es válido, puedes manejar el error si es necesario
+                throw Error("Código de referido inválido");
+            }
+        }
+
+        // Crea el nuevo usuario
+        await User.create(user);
+        return "Usuario creado con éxito";
     },
     recoveryPass: async (email) => {
         const user = await User.findOne({
@@ -45,16 +72,23 @@ module.exports = {
         })
         return user
     },
-    deleteUser: async (id) => {
-        const user = await User.findOne({
-            where:{
-                id:id
+    deleteUser:  async (id) => {
+        try {
+            const user = await User.findOne({
+                where: {
+                    id: id
+                }
+            });
+    
+            if (user) {
+                await user.destroy();
+                return "Usuario eliminado con éxito";
+            } else {
+                return null; // Cambié esto para que retorne null si el usuario no existe
             }
-        })
-        if(user){
-            await user.destroy()
-            return "Usuario eliminado con exito"
-        }else return "No encontramos el usuario"
+        } catch (error) {
+            throw new Error("Error al eliminar el usuario");
+        }
     },
     authUser: async ({email,password}) => {
         const user = await User.findOne({

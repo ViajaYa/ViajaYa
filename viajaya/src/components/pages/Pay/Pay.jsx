@@ -1,230 +1,136 @@
-import ShortNav from '../../layout/ShortNav/ShortNav';
-import style from './Pay.module.css'
-import {Link, useNavigate} from "react-router-dom"
-import {MdBusAlert, MdPayment} from "react-icons/md"
-import { useEffect } from 'react';
-import { useSelector } from 'react-redux';
 import axios from 'axios';
-import { useState } from 'react';
-import {Toaster, toast} from "react-hot-toast" 
-import dayjs from "dayjs"
-import {Navigate} from "react-router-dom"
+import { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { useParams, useNavigate } from 'react-router-dom';
+import { setUsers } from '../../../redux/actions/actions';
+import { fetchPack, createReservation } from '../../../redux/NewActions/newActions';
 
 const Pay = () => {
+  const dispatch = useDispatch();
+  const { id } = useParams();
+  const navigate = useNavigate();
 
-  const [passenger, setPassenger] = useState()
-  const [pack, setPack] = useState()
-  const [promo, setPromo] = useState()
-  const refe = new Date().getTime().toString()
-  const dataPay = JSON.parse(localStorage.getItem("pay"))
-  const [user,setUser]= useState()
-  const [loading, setLoading] = useState(true)
-  const navigate = useNavigate()
+  const pack = useSelector((state) => state.pack);
+  const [loading, setLoading] = useState(true);
+  const error = useSelector((state) => state.error); 
+  const [user, setUser] = useState(null);
+  const [quantity, setQuantity] = useState(1);
+  
+  useEffect(() => {
+    axios.get("/user").then((response) => {
+        dispatch(setUsers(response.data));
+        setLoading(false);
+    }).catch(err => {
+        console.error('Error fetching users:', err);
+        setLoading(false);
+    });
+
+    axios.get(`/user/verify/${localStorage.getItem("token")}`).then((response) => {
+        axios.get(`/user/${response.data.id}`).then((response) => setUser(response.data))
+          .catch(err => console.error('Error fetching user:', err));
+    }).catch(err => console.error('Error verifying user:', err));
+  }, [dispatch]);
 
   useEffect(() => {
-    if(dataPay?.id !== "promo"){
-    axios.get(`/pack/${dataPay?.id}`).then(data => setPack(data.data))
-    axios.get(`/user/verify/${localStorage.getItem("token")}`).then(data => {setUser(data.data); setTimeout(() => {
-      setLoading(false)
-    }, 500)})
-  }else{
-    axios.get(`/promo`).then(data => setPromo(data.data))
-    axios.get(`/user/verify/${localStorage.getItem("token")}`).then(data => {setUser(data.data); setTimeout(() => {
-      setLoading(false)
-    }, 500)})
-  }
-  },[])
+    if (id) {
+      dispatch(fetchPack(id));
+    }
+  }, [dispatch, id]);
 
-  if(localStorage.getItem("token") == null){
-    return <Navigate to="/login" replace />
-}
+  const handleReservation = () => {
+    if (!user || !pack) {
+      console.error('User or Pack data is missing');
+      return;
+    }
+    
+    const amount = pack.price * quantity;  // Calcular el monto total
+    
+    // Crear el mensaje a enviar por WhatsApp
+    const message = `Hola, soy ${user.name}. Estoy interesado en el paquete "${pack.title}" con un precio total de $${amount}.`;
+  
+    // Generar la URL de WhatsApp
+    const whatsappUrl = `https://wa.link/28unmk/?text=${encodeURIComponent(message)}`;
+  
+    // Abrir WhatsApp en una nueva ventana o pestaña
+    window.open(whatsappUrl, '_blank');
+  };
 
-  const pay = () => {
-    const total = `${dataPay?.person*pack?.price}00`
-    var checkout = new WidgetCheckout({
-      currency: 'COP',
-      amountInCents: total,
-      reference: refe,
-      publicKey: 'pub_prod_HEgZ1pvNEzFzbZvyz6TYo9uhUghfZDGi',
-      // publicKey: 'pub_test_w28dxS2v9clmkb8UbFrlkw3GxBUx3bsq',
-    })
-    checkout.open(function ( result ) {
-      var transaction = result.transaction
-      if(transaction.status == "APPROVED"){
-        toast.success("Compra exitosa")
-        axios.post("/buy",{
-          transaction: transaction,
-          userId:user.id,
-          packId:pack.id,
-          reserva:false,
-          person: dataPay.person,
-          inicio:dataPay.inicio,
-          fin:dataPay.fin,
-          email: user.email,
-          passenger: passenger,
-          comprado: dayjs().format('YYYY-MM-DD'),
-        })
-        // TODO: ENVIAR COMPROBANTE Y DATOS DE LOS PASAJEROS AL CORREO DE VIAJAYA
-        setTimeout(() => {
-          navigate("/profile")
-        },2000)
-      }else{
-        toast.error("No pudimos realizar el pago")
-      }
-    })
-  }
+  if (loading) return <div className="text-center mt-8">Cargando...</div>;
+  if (error) return <div className="text-center mt-8 text-red-500">Error: {error}</div>;
 
-  const payreserva = () => {
-    const total = `${dataPay?.person*pack?.reserva}00`
-    var checkout = new WidgetCheckout({
-      currency: 'COP',
-      amountInCents: total,
-      reference: refe,
-      publicKey: 'pub_prod_HEgZ1pvNEzFzbZvyz6TYo9uhUghfZDGi',
-    })
-    checkout.open(function ( result ) {
-      var transaction = result.transaction
-      if(transaction.status == "APPROVED"){
-        toast.success("Compra exitosa")
-        axios.post("/buy",{
-          transaction: transaction,
-          userId:user.id,
-          packId:pack.id,
-          person: dataPay.person,
-          reserva: true,
-          inicio:dataPay.inicio,
-          fin:dataPay.fin,
-          email: user.email,
-          passenger: passenger,
-          comprado: dayjs().format('YYYY-MM-DD'),
-        })
-        // TODO: ENVIAR COMPROBANTE Y DATOS DE LOS PASAJEROS AL CORREO DE VIAJAYA
-        setTimeout(() => {
-          navigate("/profile")
-        },2000)
-      }else{
-        toast.error("No pudimos realizar el pago")
-      }
-    })
-  }
-
-  const pay2 = () => {
-    const total = `${dataPay?.person*promo?.price}00`
-    var checkout = new WidgetCheckout({
-      currency: 'COP',
-      amountInCents: total,
-      reference: refe,
-      publicKey: 'pub_prod_HEgZ1pvNEzFzbZvyz6TYo9uhUghfZDGi',
-    })
-    checkout.open(function ( result ) {
-      var transaction = result.transaction
-      if(transaction.status == "APPROVED"){
-        toast.success("Compra exitosa")
-        axios.post("/buy",{
-          transaction: transaction,
-          userId:user.id,
-          packId:"promo",
-          person: dataPay.person,
-          inicio:dataPay.inicio,
-          reserva:false,
-          fin:dataPay.fin,
-          email: user.email,
-          passenger: passenger,
-          comprado: dayjs().format('YYYY-MM-DD'),
-        })
-        // TODO: ENVIAR COMPROBANTE Y DATOS DE LOS PASAJEROS AL CORREO DE VIAJAYA
-        setTimeout(() => {
-          navigate("/profile")
-        },2000)
-      }else{
-        toast.error("No pudimos realizar el pago")
-      }
-    })
-  }
-
-  const handlePassengers = (e) => {
-    setPassenger({
-      ...passenger,
-      [e.target.name] : e.target.value
-    })
-  }
-
-  const passengers = Array.from({ length: dataPay?.person }, (_, index) => {
-    if(index == 0) return (<><p className={style.passenger}>Titular</p>
-    <form className={style.form}>
-      <input className={style.inputForm} name={`name${index+1}`} value={passenger && passenger[`name${index+1}`]} onChange={handlePassengers} placeholder="Nombre completo"/>
-      <input className={style.inputForm} name={`doc${index+1}`} value={passenger &&passenger[`doc${index+1}`]} onChange={handlePassengers} placeholder="Documento"/>
-      <input className={style.inputForm} name={`phone${index+1}`} value={passenger &&passenger[`phone${index+1}`]} onChange={handlePassengers} placeholder="Numero de contacto"/>
-      <input className={style.inputForm} name={`location${index+1}`} value={passenger &&passenger[`location${index+1}`]} onChange={handlePassengers} placeholder="Direccion y ciudad"/>
-      <input className={style.inputForm} type="date" name={`date${index+1}`} value={passenger &&passenger[`date${index+1}`]} onChange={handlePassengers} placeholder="Fecha de nacimiento"/>
-      <input className={style.inputForm} name={`mail${index+1}`} value={passenger &&passenger[`mail${index+1}`]} onChange={handlePassengers} placeholder="Email"/>
-    </form></>)
-    return (<><p className={style.passenger}>Pasajero {index+1}</p>
-    <form className={style.form}>
-      <input className={style.inputForm} name={`name${index+1}`} value={passenger && passenger[`name${index+1}`]} onChange={handlePassengers} placeholder="Nombre completo"/>
-      <input className={style.inputForm} name={`doc${index+1}`} value={passenger &&passenger[`doc${index+1}`]} onChange={handlePassengers} placeholder="Documento"/>
-      <input className={style.inputForm} type="date" name={`date${index+1}`} value={passenger &&passenger[`date${index+1}`]} onChange={handlePassengers} placeholder="Fecha de nacimiento"/>
-    </form></>)})
-
-    const subtotal = dataPay?.person*pack?.price
-    const subtotalr = dataPay?.person*pack?.reserva
-    const promoSubtotal = dataPay?.person*promo?.price
-  return(
-    <>
-    <ShortNav/>
-    <Toaster/>
-    {loading ? <div className={style.ldsellipsis}><div></div><div></div><div></div><div></div></div> :
-    dataPay ? <div className={style.detailContainer}>
-        <div className={style.detailPay}>
-        {dataPay?.id !== "promo" ? <>
-            <div className={style.datosComprador}>
-              <h2 className={style.title}>Revisa y confirma tu compra</h2>
-              {passengers}
+  return (
+    <div className="min-h-screen bg-gray-100 py-12 px-4">
+      <div className="container mx-auto bg-white rounded-lg shadow-lg p-6">
+        <h1 className="text-3xl font-bold text-gray-800 mb-4">Revisa tu Reserva</h1>
+        {pack ? (
+          <div>
+            <div className="mb-6">
+              <p className="text-lg text-gray-800">{pack.title}</p>
             </div>
-            <div className={style.resumenCompra}>
-              <p className={style.resume}>Resumen de la compra</p>
-              <div className={style.details}>
-              <img src={pack?.images[0]} className={style.imgProduct}/>
-              <div>
-              <b>{pack?.title}</b>
-              <p style={{margin:"3px 0px"}}>{dataPay?.inicio}</p>
-              <p style={{margin:"3px 0px"}}>{dataPay?.person} personas</p>
-              <p className={style.price}>${pack?.price.toLocaleString()} p/p</p>
-              </div>
-              </div>
-              <p className={style.subtotal}>Subtotal: <b>${subtotal.toLocaleString()}</b></p>
-              <p className={style.subtotal}>Subtotal reserva: <b>${subtotalr.toLocaleString()}</b></p>
-              <div className={style.buttons}>
-                <button className={style.button} onClick={pay}><MdPayment className={style.payIcon}/> Pagar todo</button>
-                <button className={style.button} onClick={payreserva}><MdPayment className={style.payIcon}/> Pagar solo reserva</button>
-                <Link to="/"><button style={{width:"200px"}} className={style.button}>Seguir comprando</button></Link>
-              </div>
-            </div></>:<>
-            <div className={style.datosComprador}>
-              <h2 className={style.title}>Revisa y confirma tu compra</h2>
-              {passengers}
+            <div className="mb-6">
+              <p className="text-lg text-gray-800">{pack.destino}</p>
             </div>
-            <div className={style.resumenCompra}>
-              <p className={style.resume}>Resumen de la compra</p>
-              <div className={style.details}>
-              <img src={promo?.image} className={style.imgProduct}/>
-              <div>
-              <b>Promocion YA PA YA</b>
-              <p style={{margin:"3px 0px"}}>{dataPay?.inicio}</p>
-              <p style={{margin:"3px 0px"}}>{dataPay?.person} personas</p>
-              <p className={style.price}>${promo?.price.toLocaleString()} p/p</p>
+            <div className="mb-6">
+              <h3 className="text-xl font-semibold text-gray-600">Días:</h3>
+              <p className="text-lg text-gray-800">{pack.days}</p>
+            </div>
+            <div className="mb-6">
+              <p className="text-lg text-gray-800">{pack.location}</p>
+            </div>
+            <div className="mb-6">
+              <p className="text-lg text-gray-800">{pack.city}</p>
+            </div>
+            <div className="mb-6">
+              <h3 className="text-xl font-semibold text-gray-600">Precio:</h3>
+              <p className="text-lg text-gray-800">${pack.price}</p>
+            </div>
+            <div className="mb-6">
+              <h3 className="text-xl font-semibold text-gray-600">Detalles:</h3>
+              <p className="text-lg text-gray-800">{pack.detail}</p>
+            </div>
+            <div className="mb-6">
+              <div className="flex flex-wrap gap-4">
+                {pack.images.map((image, index) => (
+                  <img key={index} src={image} alt={`Pack ${index}`} className="w-32 h-32 object-cover rounded-md shadow-md" />
+                ))}
               </div>
-              </div>
-              <p className={style.subtotal}>Subtotal: <b>${promoSubtotal.toLocaleString()}</b></p>
-              <div className={style.buttons}>
-                <button className={style.button} onClick={pay2}><MdPayment className={style.payIcon}/> Pagar ahora</button>
-                <Link to="/"><button style={{width:"200px"}} className={style.button}>Seguir comprando</button></Link>
-              </div>
-            </div></>}
-        </div>
-      </div>: <h1 className={style.clearCar}>Aún no has agregado nada al carrito</h1>}
-      </>
-  )
+            </div>
+            <div className="mb-6">
+              <h3 className="text-xl font-semibold text-gray-600">Incluye</h3>
+              <ul className="list-disc list-inside text-lg text-gray-800">
+                {pack.chars.map((char, index) => (
+                  <li key={index}>{char}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="mb-6">
+              <label className="block text-lg font-semibold text-gray-600 mb-2" htmlFor="quantity">Cantidad:</label>
+              <input
+                id="quantity"
+                type="number"
+                value={quantity}
+                onChange={(e) => setQuantity(Number(e.target.value))}
+                min="1"
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <button
+              onClick={handleReservation}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-md transition duration-300 ease-in-out"
+            >
+              Reservar
+            </button>
+          </div>
+        ) : (
+          <p className="text-center text-gray-700">No se encontraron detalles del paquete.</p>
+        )}
+      </div>
+    </div>
+  );
 };
 
-export default Pay
+export default Pay;
+
+
+
+

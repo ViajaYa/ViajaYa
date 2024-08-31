@@ -1,0 +1,67 @@
+.flip-card-inner {
+  transform-style: preserve-3d;
+  transition: transform 1s ease-in-out; /* Aumenta la duración de la transición */
+  width: 100%;
+  height: 150%;
+}
+
+.flip-card-inner.flipped {
+  transform: rotateY(180deg); /* Mantiene la tarjeta girada */
+}
+
+.flip-card-front,
+.flip-card-back {
+  backface-visibility: hidden;
+  border-radius: 2%;
+}
+
+.flip-card-front {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-size: cover;
+  background-position: center;
+}
+
+.flip-card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  transform: rotateY(180deg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem; /* Agrega padding para que el texto tenga espacio */
+}
+
+/* Ajusta el contenedor para que las cards tengan separación uniforme */
+.flip-card-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center; /* Centra las cards horizontalmente */
+  gap: 2rem; /* Espacio entre las cards */
+  padding: 1rem;
+  margin-bottom: 20%;
+}
+
+/* Asegura que las cards tengan un tamaño y separación uniforme */
+.flip-card {
+  width: 20rem; /* Tamaño de la tarjeta */
+  height: 15rem; /* Tamaño de la tarjeta */
+  perspective: 1000px; /* Añade perspectiva para el efecto 3D */
+}
+
+.flip-card-back i {
+  margin-top: 1rem; /* Ajusta el espacio encima del ícono */
+  transition: transform 0.3s ease; /* Añade un pequeño efecto al ícono */
+}
+
+.flip-card-back i:hover {
+  transform: scale(1.2); /* Hace el ícono un poco más grande al pasar el cursor */
+}
+
+
