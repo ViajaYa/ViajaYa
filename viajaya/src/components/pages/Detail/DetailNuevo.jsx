@@ -55,25 +55,37 @@ const DetailNuevo = () => {
       <div className="container mx-auto mt-8 p-6 bg-white rounded-lg shadow-lg flex flex-col md:flex-row gap-8">
         {/* Left Side - Image and Map */}
         <div className="md:w-1/2 flex flex-col gap-6">
-          <img 
-            src={pack.images[0]} 
-            alt={pack.title} 
-            className="w-full h-64 object-cover rounded-md shadow-md" 
-          />
+          {pack.images && pack.images.length > 0 ? (
+            <img 
+              src={pack.images[0]} 
+              alt={pack.title} 
+              className="w-full h-64 object-cover rounded-md shadow-md" 
+            />
+          ) : (
+            <div className="w-full h-64 bg-gray-200 rounded-md shadow-md flex items-center justify-center">
+              <span className="text-gray-500">No hay imagen disponible</span>
+            </div>
+          )}
 
-          <div className="w-full h-64 rounded-md overflow-hidden shadow-md">
-            <MapContainer
-              center={center}
-              zoom={13}
-              scrollWheelZoom={false}
-              style={{ height: '100%', width: '100%' }}
-            >
-              <TileLayer url={MAP_LAYER_URL} attribution={MAP_LAYER_ATTRIBUTION} />
-              <Marker position={center}>
-                <Popup>{pack.title}</Popup>
-              </Marker>
-            </MapContainer>
-          </div>
+          {pack.lat && pack.lng ? (
+            <div className="w-full h-64 rounded-md overflow-hidden shadow-md">
+              <MapContainer
+                center={center}
+                zoom={13}
+                scrollWheelZoom={false}
+                style={{ height: '100%', width: '100%' }}
+              >
+                <TileLayer url={MAP_LAYER_URL} attribution={MAP_LAYER_ATTRIBUTION} />
+                <Marker position={center}>
+                  <Popup>{pack.title}</Popup>
+                </Marker>
+              </MapContainer>
+            </div>
+          ) : (
+            <div className="w-full h-64 bg-gray-200 rounded-md shadow-md flex items-center justify-center">
+              <span className="text-gray-500">Mapa no disponible</span>
+            </div>
+          )}
         </div>
 
         {/* Right Side - Package Details */}
@@ -125,7 +137,7 @@ const DetailNuevo = () => {
             {/* Payment Button */}
             <Link to={`/pay/${id}`}>
               <button className="bg-ColorAzul hover:bg-ColorMorado text-white font-nunito font-semibold py-3 px-6 rounded-md mt-6 transition duration-300 ease-in-out w-full">
-                Pagar
+                Reservar
               </button>
             </Link>
           </div>
@@ -136,6 +148,7 @@ const DetailNuevo = () => {
 };
 
 export default DetailNuevo;
+
 
 
 
