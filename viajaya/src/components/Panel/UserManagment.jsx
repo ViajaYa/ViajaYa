@@ -3,6 +3,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrash } from '@fortawesome/free-solid-svg-icons';
 import { infoUsers as fetchInfoUsers, updateUser as updateUserAction, deleteUser as deleteUserAction } from '../../redux/NewActions/newActions';
+import NavBar from '../layout/NavBar/NavBar';
+
 
 const UserManagment = () => {
   const dispatch = useDispatch();
@@ -91,8 +93,11 @@ const UserManagment = () => {
   }
 
   return (
-    <div className="container mx-auto mt-12 p-4">
-      <h2 className="bg-ColorMorado text-3xl font-bold font-nunito  text-white mb-8">Listar y Modificar Usuarios</h2>
+    <div className="container mx-auto  p-4">
+       <div className='fixed top-0 left-0 z-50 w-full'>
+            <NavBar />
+          </div>
+      <h2 className="bg-ColorMorado text-2xl font-bold font-nunito p-2 text-gray-200 mb-8 mt-20">Listar y Modificar Usuarios</h2>
 
       {/* Formulario de Búsqueda */}
       <div className="mb-4">
@@ -105,7 +110,7 @@ const UserManagment = () => {
         />
         <button
           onClick={handleSearch}
-          className="bg-ColorAzul text-white py-2 px-4 rounded ml-2 font-nunito hover:bg-blue-700"
+          className="bg-ColorAzul text-white py-2 px-4 rounded ml-2 font-nunito hover:bg-gray-200"
         >
           Buscar
         </button>
@@ -172,7 +177,7 @@ const UserManagment = () => {
                   {editUser?.id === user.id ? (
                     <button
                       onClick={handleSave}
-                      className="bg-ColorAzul font-nunito text-white py-1 px-4 rounded hover:bg-blue-700"
+                      className="bg-ColorAzul font-nunito text-white py-1 px-4 rounded hover:bg-gray-200"
                     >
                       Save
                     </button>
@@ -180,13 +185,13 @@ const UserManagment = () => {
                     <>
                       <button
                         onClick={() => handleEdit(user)}
-                        className="bg-ColorAzul font-nunito text-white py-1 px-4 rounded hover:bg-blue-700 "
+                        className="bg-ColorAzul font-nunito text-white py-1 px-4 rounded hover:bg-gray-200 "
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => handleDelete(user.id)}
-                        className="bg-ColorMorado text-white py-1 px-4 rounded hover:bg-red-700 "
+                        className="bg-ColorMorado text-white py-1 px-4 rounded hover:bg-gray-200 "
                       >
                         <FontAwesomeIcon icon={faTrash} />
                       </button>

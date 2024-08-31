@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faTrash, faEdit } from "@fortawesome/free-solid-svg-icons";
 import {
   fetchPacks,
   updatePack,
   deletePack,
 } from "../../redux/NewActions/newActions";
 import { useNavigate } from "react-router-dom";
+import NavBar from "../layout/NavBar/NavBar";
 
 const PackManagement = () => {
   const dispatch = useDispatch();
@@ -101,22 +102,25 @@ const PackManagement = () => {
   };
 
   return (
-    <div className="container mx-auto mt-12 p-2">
-      <h2 className="bg-ColorMorado text-3xl font-bold font-nunito text-white mb-8">
+    <div className="container mx-auto mt-12 p-6">
+       <div className='fixed top-0 left-0 z-50 w-full'>
+            <NavBar />
+          </div>
+      <h2 className="bg-ColorMorado text-2xl font-bold font-nunito text-gray-200 mb-8 mt-10 p-2">
         Listar y Modificar Paquetes
       </h2>
 
       <button
         onClick={handleCreatePack}
-        className="bg-ColorAzul text-white py-2 px-4 rounded mb-4 font-nunito hover:bg-blue-700"
+        className="bg-ColorAzul text-gray-700 py-2 px-4 rounded mb-4 font-nunito hover:bg-gray-200 "
       >
         Crear Nuevo Paquete
       </button>
 
       <div className="overflow-x-auto">
-        <table className="min-w-full bg-blue border border-gray-400 rounded-md">
+        <table className="min-w-full bg-gray border border-gray-400 rounded-md">
           <thead>
-            <tr className="bg-gray-400 font-nunito text-sm text-white">
+            <tr className="bg-gray-600 font-nunito text-sm text-gray-200">
               <th className="py-2 px-4 border-b">ID</th>
               <th className="py-2 px-4 border-b">Title</th>
               <th className="py-2 px-4 border-b">Days</th>
@@ -320,7 +324,7 @@ const PackManagement = () => {
                   {editPack?.id === pack.id ? (
                     <button
                       onClick={handleSave}
-                      className="bg-ColorAzul font-nunito text-white py-1 px-4 rounded hover:bg-blue-700"
+                      className="bg-ColorAzul font-nunito text-gray-700 py-1 px-4 rounded hover:bg-gray-200"
                     >
                       Save
                     </button>
@@ -328,13 +332,13 @@ const PackManagement = () => {
                     <>
                       <button
                         onClick={() => handleEdit(pack)}
-                        className="bg-ColorAzul font-nunito text-white py-1 px-4 rounded hover:bg-blue-700"
+                        className="bg-ColorAzul font-nunito text-gray-700 py-1 px-4 rounded hover:bg-gray-200"
                       >
-                        Edit
+                        <FontAwesomeIcon icon={faEdit} />
                       </button>
                       <button
                         onClick={() => handleDelete(pack.id)}
-                        className="bg-ColorMorado text-white py-1 px-4 rounded hover:bg-red-700"
+                        className="bg-ColorMorado text-gray-700 py-1 px-4 rounded hover:bg-pink-500"
                       >
                         <FontAwesomeIcon icon={faTrash} />
                       </button>
@@ -351,7 +355,7 @@ const PackManagement = () => {
         <button
           onClick={handlePrevPage}
           disabled={currentPage === 1}
-          className="bg-ColorAzul font-nunito text-white py-2 px-4 rounded hover:bg-blue-700 disabled:opacity-50"
+          className="bg-ColorAzul font-nunito text-gray-700 py-2 px-4 rounded hover:bg-gray-700 "
         >
           Anterior
         </button>
@@ -361,7 +365,7 @@ const PackManagement = () => {
         <button
           onClick={handleNextPage}
           disabled={currentPage === totalPages}
-          className="bg-ColorAzul font-nunito text-white py-2 px-4 rounded hover:bg-blue-700 disabled:opacity-50"
+          className="bg-ColorAzul font-nunito text-gray-700 py-2 px-4 rounded hover:bg-gray-700 "
         >
           Siguiente
         </button>
