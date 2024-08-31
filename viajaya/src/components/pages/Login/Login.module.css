@@ -27,7 +27,7 @@
     border: 0;
     color: white;
     border-radius: 5px;
-    padding:7px 15px;
+    padding:7px;
     font-size: .9em;
     font-weight: 600;
     background-color: var(--primary);
