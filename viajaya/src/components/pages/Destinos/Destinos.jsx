@@ -60,7 +60,7 @@ const Destinos = () => {
 <div className="flex items-center  mt-0 justify-center bg-ColorAzul pt-2 ">
 
   <h1 className="font-nunito text-gray-700 font-bold text-2xl p-4 ">
-    TOURS AL LLANO
+  ENAMORATE DE LA REGION DE LOS LLANOS ORIENTALES
   </h1>
 </div>
 

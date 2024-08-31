@@ -44,22 +44,15 @@ const Pay = () => {
     }
     
     const amount = pack.price * quantity;  // Calcular el monto total
-
-    const reservationData = {
-      userId: user.id,  // Asegúrate de usar userId
-      packId: pack.id,
-      amount,  // Precio total
-    };
-
-    console.log('Reservation Data:', reservationData);
-
-    dispatch(createReservation(reservationData))
-      .then(() => {
-        navigate('/success');
-      })
-      .catch((error) => {
-        console.error('Error creating reservation:', error);
-      });
+    
+    // Crear el mensaje a enviar por WhatsApp
+    const message = `Hola, soy ${user.name}. Estoy interesado en el paquete "${pack.title}" con un precio total de $${amount}.`;
+  
+    // Generar la URL de WhatsApp
+    const whatsappUrl = `https://wa.link/28unmk/?text=${encodeURIComponent(message)}`;
+  
+    // Abrir WhatsApp en una nueva ventana o pestaña
+    window.open(whatsappUrl, '_blank');
   };
 
   if (loading) return <div className="text-center mt-8">Cargando...</div>;
