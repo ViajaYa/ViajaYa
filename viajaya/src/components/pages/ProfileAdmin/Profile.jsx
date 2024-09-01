@@ -9,7 +9,7 @@ import { toast, Toaster } from "react-hot-toast";
 import dayjs from "dayjs";
 import "dayjs/locale/es";
 
-import tarjeta from '../../../assets/newImg/viajaYaImg/tarjeta.png';
+import tarjeta from 'src/assets/newImg/viajaYaImg/tarjeta.png';
 
 import NavBar from '../../layout/NavBar/NavBar';
 
