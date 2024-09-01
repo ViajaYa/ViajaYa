@@ -10,7 +10,7 @@ import { Provider } from 'react-redux';
 
 
 // Configuración de Axios
-axios.defaults.baseURL = "http://localhost:3001";
+axios.defaults.baseURL = "https://viajaya-mve8.onrender.com";
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <Provider store={store}>
