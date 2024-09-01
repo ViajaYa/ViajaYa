@@ -27,14 +27,14 @@ const Profile = () => {
     const users = useSelector(s => s.users);
 
     useEffect(() => {
-        axios.get("/user").then((data) => {
+        axios.get(`https://viajaya-mve8.onrender.com/user`).then((data) => {
             dispatch(setUsers(data.data));
             setTimeout(() => {
                 setLoading(false);
             }, 500);
         });
 
-        axios.get(`/user/verify/${localStorage.getItem("token")}`).then((data) => {
+        axios.get(`https://viajaya-mve8.onrender.com/user/verify/${localStorage.getItem("token")}`).then((data) => {
             axios.get(`/user/${data.data.id}`).then((data) => setUser(data.data));
         });
     }, [dispatch]);
