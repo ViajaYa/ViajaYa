@@ -313,7 +313,7 @@ const Profile = () => {
             <div className="w-1/2 lg:block flex items-center justify-center mt-32 ">
               <Link to="/productos">
                 <img
-                  src="/assets/newImg/viajaYaImg/tarjeta.png"
+                  src="/tarjeta.png"
                   alt="Tarjeta"
                   className="w-1/2 h-auto max-w-md ml-32 cursor-pointer border-4 border-ColorAzul"
                 />
