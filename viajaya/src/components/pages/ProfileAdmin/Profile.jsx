@@ -1,14 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link} from 'react-router-dom';
-import { AiOutlineUser } from "react-icons/ai";
-import { MdPayment, MdExitToApp, MdHome } from "react-icons/md";
+
+import { MdPayment, MdExitToApp} from "react-icons/md";
 import axios from 'axios';
 import { findUsers, setUsers } from '../../../redux/actions/actions';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast, Toaster } from "react-hot-toast";
 import dayjs from "dayjs";
 import "dayjs/locale/es";
+
+
+
+
+
 //import proo from '../../../assets/newImg/viajaYaImg/proo.png';
+
 import NavBar from '../../layout/NavBar/NavBar';
 
 dayjs.locale("es");
@@ -27,14 +33,14 @@ const Profile = () => {
     const users = useSelector(s => s.users);
 
     useEffect(() => {
-        axios.get(`https://viajaya-mve8.onrender.com/user`).then((data) => {
+        axios.get("/user").then((data) => {
             dispatch(setUsers(data.data));
             setTimeout(() => {
                 setLoading(false);
             }, 500);
         });
 
-        axios.get(`https://viajaya-mve8.onrender.com/user/verify/${localStorage.getItem("token")}`).then((data) => {
+        axios.get(`/user/verify/${localStorage.getItem("token")}`).then((data) => {
             axios.get(`/user/${data.data.id}`).then((data) => setUser(data.data));
         });
     }, [dispatch]);
@@ -228,8 +234,10 @@ const Profile = () => {
                 {/* <div className="w-1/2 lg:block flex items-center justify-center mt-32 ">
   <Link to="/productos">
     <img
+
       src={proo}
       alt="proo"
+
       className="w-1/2 h-auto max-w-md ml-32 cursor-pointer border-4 border-ColorAzul"
     />
   </Link>

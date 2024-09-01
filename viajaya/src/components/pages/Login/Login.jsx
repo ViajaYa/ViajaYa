@@ -33,7 +33,7 @@ const Login = () => {
         
         
         
-            axios.post(`https://viajaya-mve8.onrender.com/user`, newUser).then(() => {
+            axios.post("/user", newUser).then(() => {
             setLogin(true)
             //Limpiar form y enviar toast
             toast.success("Te has registrado exitosamente")
@@ -50,7 +50,7 @@ const Login = () => {
     }
 
     const authUser = async () => {
-        const auth = await axios.post(`https://viajaya-mve8.onrender.com/user/auth`, user)
+        const auth = await axios.post("/user/auth", user)
         if(auth.data.message){
             localStorage.setItem("token",auth.data.token)
             navigate("/profile")
@@ -73,7 +73,7 @@ const Login = () => {
     }
 
     const recoveryPass = () => {
-        axios.get(`https://viajaya-mve8.onrender.com/user/recovery/${user.email}`)
+        axios.get(`/user/recovery/${user.email}`)
         .then(() => {
             setLogin(1)
             toast.success("Email de recuperación enviado")
