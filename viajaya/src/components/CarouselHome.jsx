@@ -18,7 +18,7 @@ const CarouselHome = () => {
         { src: nacionales, title: "NACIONALES", description: "Explora destinos nacionales increíbles." },
         { src: europoa, title: "EUROPA", description: "Descubre las maravillas de Europa." },
         { src: internacionales, title: "INTERNACIONALES", description: "Viaja por todo el mundo con nuestras opciones internacionales." },
-        { src: macarena, title: "LLANO", description: "Conoce los paisajes únicos del llano colombiano." },
+        { src: macarena, title: "LLANOS ORIENTALES", description: "Conoce los paisajes únicos del llano colombiano." },
         { src: tierra, title: "POR TIERRA", description: "Viaja por tierra y descubre nuevas aventuras." }
     ];
 
