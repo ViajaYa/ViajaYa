@@ -9,7 +9,7 @@ import { toast, Toaster } from "react-hot-toast";
 import dayjs from "dayjs";
 import "dayjs/locale/es";
 
-//import proo from '../../../assets/newImg/viajaYaImg/proo.png';
+import tarjeta from '../../../assets/newImg/viajaYaImg/tarjeta.png';
 
 import NavBar from '../../layout/NavBar/NavBar';
 
@@ -227,17 +227,17 @@ const Profile = () => {
                 </div>
       
                 {/* Imagen en la mitad izquierda */}
-                {/* <div className="w-1/2 lg:block flex items-center justify-center mt-32 ">
+                <div className="w-1/2 lg:block flex items-center justify-center mt-32 ">
   <Link to="/productos">
     <img
 
-      src={proo}
-      alt="proo"
+      src={tarjeta}
+      alt=""
 
       className="w-1/2 h-auto max-w-md ml-32 cursor-pointer border-4 border-ColorAzul"
     />
   </Link>
-</div> */}
+</div>
               </div>
             </div>
           )}
