@@ -229,7 +229,7 @@ const NewPack = () => {
             value={price}
             onChange={(e) => setPrice(e.target.value)}
             className="mt-1 block w-32 p-2 font-nunito border border-gray-300 rounded-md"
-            max="999999"
+            max="99999999"
             required
           />
         </div>
