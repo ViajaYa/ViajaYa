@@ -11,6 +11,8 @@ import l2 from "../../../assets/code.png"
 import l3 from "../../../assets/fenalco.png"
 import l4 from "../../../assets/fedearroz.png"
 import l5 from "../../../assets/llanogas.png"
+import l6 from "../../../assets/openLuz.png"
+import l7 from "../../../assets/logoConvenios.png"
 
 
  
@@ -71,16 +73,31 @@ const Convenios = () => {
           <img src={l1} className={style.img}></img>
         </div>
         <div className={style.client}>
-        <img src={l2} className={style.img}></img>
+          <img src={l7} className={style.img}></img>
         </div>
         <div className={style.client}>
         <img src={l3} className={style.img}></img>
         </div>
         <div className={style.client}>
+          <img src={l7} className={style.img}></img>
+        </div>
+        <div className={style.client}>
         <img src={l4} className={style.img}></img>
         </div>
         <div className={style.client}>
+          <img src={l7} className={style.img}></img>
+        </div>
+        <div className={style.client}>
         <img src={l5} className={style.img}></img>
+        </div>
+        <div className={style.client}>
+          <img src={l7} className={style.img}></img>
+        </div>
+        <div className={style.client}>
+        <img src={l6} className={style.img}></img>
+        </div>
+        <div className={style.client}>
+          <img src={l7} className={style.img}></img>
         </div>
        
         </Slider>

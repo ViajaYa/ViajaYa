@@ -11,6 +11,7 @@ import viajofacil from '../../../assets/newImg/viajayaImg/viajofacilLogo.png'
 import viajollanos from '../../../assets/newImg/viajayaImg/viajallanos.png'
 import terrestres from '../../../assets/newImg/viajayaImg/terrestres.png'
 import tarjeta from '../../../assets/newImg/viajayaImg/tarjeta.png'
+
 const TabbedImages = () => {
   const items = [
     {
@@ -151,27 +152,32 @@ const TabbedImages = () => {
       image: viajollanos,
       text: (
         <>
-        
-          {/* <span className="font-bold text-amber-400">Combi YA</span> <strong>¿Qué es?</strong><br></br>
-          Aquí encontrarás la oportunidad de conocer múltiples destinos con descuentos.
-          <br></br><strong>¿Para quién es?</strong><br></br>
-          Viajeros con tiempo ilimitado y el doble de ganas de viajar.
-          <br></br><strong>¿Cómo se obtiene?</strong><br></br>
-          Con cuota de % inicial y saldo a cuotas mensuales. */}
-        </>
+        <span className="font-bold text-BotonValija">Tarifas Standar</span> <strong>¿Qué es?</strong><br></br>
+        Es el mi plan todo incluido con una inversión mensual
+        en cuotas cómodas a más de 6 meses.
+        <br></br><strong>¿Para quién es?</strong><br></br>
+        para familias, grupos, excursiones colegiales viajes
+        ya estipulados o con un fin de fecha..
+        <br></br><strong>¿Cómo se obtiene?</strong><br></br>
+        Cuota mínima por persona y compromiso de pago con las
+        cuotas, ya que funciona por su cumplimento de pago.
+      </>
       ),
     },
     {
       image: terrestres,
       text: (
         <>
-          {/* <span className="font-bold text-yellow-300">Combi YA</span> <strong>¿Qué es?</strong><br></br>
-          Aquí encontrarás la oportunidad de conocer múltiples destinos con descuentos.
-          <br></br><strong>¿Para quién es?</strong><br></br>
-          Viajeros con tiempo ilimitado y el doble de ganas de viajar.
-          <br></br><strong>¿Cómo se obtiene?</strong><br></br>
-          Con cuota de % inicial y saldo a cuotas mensuales. */}
-        </>
+        <span className="font-bold text-BotonValija">Standar Terrestre</span> <strong>¿Qué es?</strong><br></br>
+        Es el mi plan todo incluido con una inversión mensual
+        en cuotas cómodas a más de 6 meses.
+        <br></br><strong>¿Para quién es?</strong><br></br>
+        para familias, grupos, excursiones colegiales viajes
+        ya estipulados o con un fin de fecha..
+        <br></br><strong>¿Cómo se obtiene?</strong><br></br>
+        Cuota mínima por persona y compromiso de pago con las
+        cuotas, ya que funciona por su cumplimento de pago.
+      </>
       ),
     },
 

@@ -10,7 +10,7 @@ const PanelPage = () => {
             <NavBar />
           </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 font-nunito lg:grid-cols-3 gap-6 mt-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 font-nunito lg:grid-cols-3 gap-6 mt-14">
         <Link
           to="/panel/user"
           className="bg-white font-nunito border border-gray-200 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out transform hover:scale-105 p-6 flex items-center justify-center"
@@ -30,7 +30,7 @@ const PanelPage = () => {
           </div>
         </Link>
         <Link
-          to="/panel/invoices"
+          to="/panel"
           className="bg-white border font-nunito  border-gray-200 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out transform hover:scale-105 p-6 flex items-center justify-center"
         >
           <div className="text-center">
@@ -40,7 +40,7 @@ const PanelPage = () => {
         </Link>
        
         <Link
-          to="/panel/clients/list"
+          to="/panel"
           className="bg-white border font-nunito  border-gray-200 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out transform hover:scale-105 p-6 flex items-center justify-center"
         >
           <div className="text-center">
