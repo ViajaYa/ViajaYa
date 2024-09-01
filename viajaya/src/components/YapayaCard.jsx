@@ -65,7 +65,7 @@ const YapayaCard = () => {
 
   return (
     <div>
-      <h1 className='font-nunito bg-ColorAzul text-gray-700 font-bold p-4 text-2xl w-screen mx-0 px-0 text-center mb-4 mt-4'>CONOCE LAS OFERTAS DEL DIA</h1>
+      <h1 className='font-nunito bg-ColorAzul text-gray-700 font-bold p-2 text-2xl w-screen mx-0 px-0 text-center mb-4 mt-4'>CONOCE LAS OFERTAS DEL DIA</h1>
       
       <div className="relative w-full h-125 justify-center mx-auto mt-6 p-8 mr-0 ml-0">
         
