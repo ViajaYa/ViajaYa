@@ -166,7 +166,7 @@ const NavBar = ({ showFullMenu = true }) => {
                 <a href="https://wa.link/28unmk" target="_blank" rel="noopener noreferrer" className={style.icon}>
                   <FaWhatsapp />
                 </a>
-                <a href="https://www.facebook.com/oficialviajaya/" target="_blank" rel="noopener noreferrer" className={style.icon}>
+                <a href="https://www.facebook.com/share/w65jnMDrZaqF3ucy/?mibextid=qi2Omg" target="_blank" rel="noopener noreferrer" className={style.icon}>
                   <FaFacebookF />
                 </a>
                 <a href="https://www.instagram.com/viajaya_pagina_oficial/" target="_blank" rel="noopener noreferrer" className={style.icon}>

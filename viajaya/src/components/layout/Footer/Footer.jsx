@@ -21,7 +21,7 @@ const Footer = () => {
                     <a className={style.noLink} href="https://wa.link/28unmk" target="_blank" rel="noopener noreferrer">
                         <AiOutlineWhatsApp className={`${style.icons} ${style.whatsapp}`} />
                     </a>
-                    <a className={style.noLink} href="https://www.facebook.com/oficialviajaya/" target="_blank" rel="noopener noreferrer">
+                    <a className={style.noLink} href="https://www.facebook.com/share/w65jnMDrZaqF3ucy/?mibextid=qi2Omg" target="_blank" rel="noopener noreferrer">
                         <BiLogoFacebookCircle className={`${style.icons} ${style.facebook}`} />
                     </a>
                     <a className={style.noLink} href="https://www.instagram.com/viajaya_pagina_oficial/" target="_blank" rel="noopener noreferrer">
