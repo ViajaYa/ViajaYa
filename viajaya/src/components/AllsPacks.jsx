@@ -41,7 +41,7 @@ const AllPacks = () => {
                 <div className="flex justify-between items-center mt-4">
                   <p className="text-green-600 font-bold font-nunito text-lg">
                     <FaCoins className="inline-block mr-1 text-yellow-500" />
-                    {pack.price}   
+                    {Number(pack.price).toLocaleString('es-CO', { style: 'currency', currency: 'COP' })}   
                     <FaTag className="inline-block mr-1 text-gray-600" />    
                   </p>
                   <span className="bg-ColorAzul text-gray-600 text-lg font-semibold font-nunito border-2 px-6 py-1 rounded-md"> 
