@@ -16,7 +16,7 @@ import sobrenosotros13 from '../../../assets/sn/sobrenosotros13.png';
 import sobrenosotros14 from '../../../assets/sn/sobrenosotros14.png';
 import sobrenosotros15 from '../../../assets/sn/sobrenosotros15.png';
 import sobrenosotros16 from '../../../assets/sn/sobrenosotros16.png';
-
+import FeaturedSection from './FeaturedSection';
 const About = () => {
   const [scattered, setScattered] = useState(false);
 
@@ -50,7 +50,9 @@ const About = () => {
         <img src={sobrenosotros15} alt="sobrenosotros 15" className={`transition-transform duration-700 ${scattered ? 'transform -translate-y-8 translate-x-2' : ''}`} />
         <img src={sobrenosotros16} alt="sobrenosotros 16" className={`transition-transform duration-700 ${scattered ? 'transform -translate-x-10 translate-y-4' : ''}`} />
       </div>
-      
+      <div>
+        <FeaturedSection/>
+      </div>
     </div>
   );
 };

@@ -17,7 +17,9 @@ module.exports = {
         BotonValija:"#ffe102",
         FondoTit:"#4b5563",
         MoradoSuave:"#dc86c7",
-        moradito:"#cdb2d5"
+        moradito:"#cdb2d5",
+        galardones:"#1d1c55",
+        galardoneslogo:"#cb9246"
 
       },
       cursor: {
