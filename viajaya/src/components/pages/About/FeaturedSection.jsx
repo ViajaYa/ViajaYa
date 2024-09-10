@@ -45,7 +45,8 @@ const FeaturedSection = () => {
       {/* Banner de ancho completo */}
       <div className="w-full h-96 bg-cover bg-center bg-galardones" >
         <div className="w-full h-full bg-black bg-opacity-50 flex items-center justify-center">
-          <h1 className="text-galardoneslogo text-4xl md:text-6xl font-bold font-nunito ">Galardonados  En La Noche de los Mejores FENALCO 2023</h1>
+          <h1 className="text-galardoneslogo text-4xl md:text-6xl font-bold font-nunito text-center  ">Galardonados  En La Noche de los Mejores 
+            <br></br>FENALCO 2023</h1>
         </div>
       </div>
 
