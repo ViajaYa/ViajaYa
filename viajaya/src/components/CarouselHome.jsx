@@ -6,14 +6,14 @@ import internacionales from "../assets/flipcard/internacionales.jpg";
 import macarena from "../assets/flipcard/lamacarena.jpg";
 import tierra from "../assets/flipcard/portierra.jpg";
 import Title from "./utils/Title";
-import europa from "../assets/flipcard/EuropaCarousel.png";
-import internacional from "../assets/flipcard/internacionales.png";
-import llano from "../assets/flipcard/llano.png";
-import nacionales3 from "../assets/flipcard/nacionales3.png";
+import europa from "../assets/flipcard/EuropaCarousel.jpg";
+import internacional from "../assets/flipcard/dubai.jpg";
+import llano from "../assets/flipcard/llano.jpg";
+import nacionales3 from "../assets/flipcard/nacionales3.jpg";
 import nacionales2 from "../assets/flipcard/nacionales2.png";
 
 const CarouselHome = () => {
-    const navigate = useNavigate(); // Para la navegación programática
+    const navigate = useNavigate();
     const initialImages = [
         { src: nacionales, title: "NACIONALES", description: "Explora destinos nacionales increíbles." },
         { src: europoa, title: "EUROPA", description: "Descubre las maravillas de Europa." },
@@ -62,23 +62,22 @@ const CarouselHome = () => {
     };
 
     return (
-        <div className="relative w-full h-125 overflow-hidden mt-16 bg-slate-200">
+        <div className="relative w-full h-auto overflow-hidden mt-16 bg-slate-200">
             {showAll ? (
-                <div className="flex justify-center transition-transform duration-500 ease-in-out">
+                <div className="flex flex-wrap justify-center transition-transform duration-500 ease-in-out">
                     {initialImages.map((image, index) => (
                         <div
                             key={index}
-                            className="relative w-1/5 h-full"
+                            className="relative w-full sm:w-1/2 lg:w-1/5 h-64  sm:h-80 lg:h-[600px]"
                             style={{
                                 backgroundImage: `url(${image.src})`,
                                 backgroundSize: 'cover',
                                 backgroundPosition: 'center',
-                                height: '600px',
                                 cursor: 'pointer'
                             }}
                         >
                             <div className="absolute inset-0 flex items-center justify-center">
-                                <h2 className="text-white text-xl font-bold bg-black bg-opacity-50 p-2  font-nunito rounded-xl">
+                                <h2 className="text-white text-lg sm:text-xl font-semibold font-nunito bg-black bg-opacity-50 p-2 rounded-xl">
                                     {image.title}
                                 </h2>
                             </div>
@@ -93,19 +92,18 @@ const CarouselHome = () => {
                     {newImages.map((image, index) => (
                         <div
                             key={index}
-                            className="relative w-full h-full flex-shrink-0 flex items-center"
+                            className="relative w-full h-64 sm:h-80 lg:h-[600px] flex-shrink-0 flex items-center"
                             style={{
                                 backgroundImage: `url(${image.src})`,
                                 backgroundSize: 'cover',
                                 backgroundPosition: 'center',
                                 backgroundRepeat: 'no-repeat',
-                                height: '600px',
                                 cursor: 'pointer'
                             }}
                             onClick={() => handleImageClick(image.destino)}
                         >
-                            <div className="w-full h-full flex flex-col justify-center items-end mr-16 text-white">
-                                <Title styleAdd="text-4xl sm:text-4xl font-nunito animate-fade-up animate-ease-in-out bg-black bg-opacity-50 p-2 border-2 rounded-xl">
+                            <div className="w-full h-full flex flex-col justify-center items-end mr-4 sm:mr-16 text-white">
+                                <Title styleAdd="text-xl sm:text-2xl lg:text-4xl font-nunito bg-black bg-opacity-50 p-2 border-2 rounded-xl">
                                     <a href="#">{image.title}</a>
                                 </Title>
                             </div>
@@ -116,7 +114,7 @@ const CarouselHome = () => {
 
             {/* Botón Anterior */}
             <button
-                className="absolute top-1/2 left-5 transform -translate-y-1/2 bg-gray-800 text-white px-2 py-1"
+                className="absolute top-1/2 left-2 sm:left-5 transform -translate-y-1/2 bg-gray-800 text-white px-2 sm:px-3 py-1 sm:py-2"
                 onClick={handlePrev}
                 disabled={showAll}
             >
@@ -125,7 +123,7 @@ const CarouselHome = () => {
 
             {/* Botón Siguiente */}
             <button
-                className="absolute top-1/2 right-5 transform -translate-y-1/2 bg-gray-800 text-white px-2 py-1"
+                className="absolute top-1/2 right-2 sm:right-5 transform -translate-y-1/2 bg-gray-800 text-white px-2 sm:px-3 py-1 sm:py-2"
                 onClick={handleNext}
             >
                 &#10095;
@@ -135,6 +133,7 @@ const CarouselHome = () => {
 };
 
 export default CarouselHome;
+
 
 
 
