@@ -97,7 +97,7 @@ const UserManagment = () => {
        <div className='fixed top-0 left-0 z-50 w-full'>
             <NavBar />
           </div>
-      <h2 className="bg-ColorMorado text-2xl font-bold font-nunito p-2 text-gray-200 mb-8 mt-20">Listar y Modificar Usuarios</h2>
+      <h2 className="bg-ColorMorado text-2xl font-bold font-nunito p-2 text-gray-200 mb-8 mt-28">Listar y Modificar Usuarios</h2>
 
       {/* Formulario de Búsqueda */}
       <div className="mb-4">

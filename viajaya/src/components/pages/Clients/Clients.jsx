@@ -17,7 +17,7 @@ import l8 from "../../../assets/aliados/8.png"
 import l9 from "../../../assets/aliados/9.png"
 import l10 from "../../../assets/aliados/10.png"
 import l11 from "../../../assets/aliados/11.png"
-// import l4 from "../../../assets/aliados/4.png"
+import aliadosLogo from "../../../assets/aliados/aliadosLogo.png"
 
 // import c1 from "../../../assets/c1.mp4"
 // import c2 from "../../../assets/c2.jpeg"
@@ -80,34 +80,67 @@ const Clients = () => {
           <img src={l1} className={style.img}></img>
         </div>
         <div className={style.client}>
+          <img src={aliadosLogo} className={style.img}></img>
+        </div>
+        <div className={style.client}>
         <img src={l2} className={style.img}></img>
+        </div>
+        <div className={style.client}>
+          <img src={aliadosLogo} className={style.img}></img>
         </div>
         <div className={style.client}>
         <img src={l3} className={style.img}></img>
         </div>
         <div className={style.client}>
+          <img src={aliadosLogo} className={style.img}></img>
+        </div>
+        <div className={style.client}>
         <img src={l4} className={style.img}></img>
+        </div>
+        <div className={style.client}>
+          <img src={aliadosLogo} className={style.img}></img>
         </div>
         <div className={style.client}>
         <img src={l5} className={style.img}></img>
         </div>
         <div className={style.client}>
+          <img src={aliadosLogo} className={style.img}></img>
+        </div>
+        <div className={style.client}>
         <img src={l6} className={style.img}></img>
+        </div>
+        <div className={style.client}>
+          <img src={aliadosLogo} className={style.img}></img>
         </div>
         <div className={style.client}>
         <img src={l7} className={style.img}></img>
         </div>
         <div className={style.client}>
+          <img src={aliadosLogo} className={style.img}></img>
+        </div>
+        <div className={style.client}>
         <img src={l8} className={style.img}></img>
+        </div>
+        <div className={style.client}>
+          <img src={aliadosLogo} className={style.img}></img>
         </div>
         <div className={style.client}>
         <img src={l9} className={style.img}></img>
         </div>
         <div className={style.client}>
+          <img src={aliadosLogo} className={style.img}></img>
+        </div>
+        <div className={style.client}>
         <img src={l10} className={style.img}></img>
         </div>
         <div className={style.client}>
+          <img src={aliadosLogo} className={style.img}></img>
+        </div>
+        <div className={style.client}>
         <img src={l11} className={style.img}></img>
+        </div>
+        <div className={style.client}>
+          <img src={aliadosLogo} className={style.img}></img>
         </div>
         </Slider>
 

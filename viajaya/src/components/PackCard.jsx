@@ -64,7 +64,7 @@ const PackCard = () => {
 
   return (
     <div>
-      <h1 className='font-nunito bg-ColorAzul text-gray-700 font-bold p-4 text-2xl w-screen mx-0 px-0 text-center mb-4 mt-4'>PLANIFICÁ TUS VACACIONES</h1>
+      <h1 className='font-nunito bg-ColorAzul text-gray-700 font-bold p-4 text-2xl w-screen mx-0 px-0 text-center mb-4 mt-4'>PLANIFICA TUS VACACIONES</h1>
     <div className="container mx-auto mt-6 p-4">
       
       
@@ -88,8 +88,10 @@ const PackCard = () => {
                 
                 <div className="flex justify-between items-center mt-2">
                
-                  <p className="text-green-600 font-bold font-nunito text-lg"><FaCoins className="inline-block mr-1 text-yellow-500" />
-                  {pack.price}       
+                  <p className="text-green-600 font-bold font-nunito text-lg">
+                  <FaCoins className="inline-block mr-1 text-yellow-500" />
+                  {Number(pack.price).toLocaleString('es-CO', { style: 'currency', currency: 'COP' })}
+                 
                         </p>
                   <span className="bg-ColorAzul text-gray-600 text-lg font-semibold font-nunito border-2 px-6 py-1 rounded-md"> 
                     {pack.days} días

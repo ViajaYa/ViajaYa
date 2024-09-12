@@ -137,9 +137,9 @@ const NavBar = ({ showFullMenu = true }) => {
                 <RouterLink to="/about" className={style.noLink}>
                   <li className={style.li} >Nosotros</li>
                 </RouterLink>
-                <ScrollLink to="proyectos" smooth={true} duration={500}>
+                <RouterLink to="/allpacks" smooth={true} duration={500}>
                   <li ref={linkRef} className={style.li}>Paquetes</li>
-                </ScrollLink>
+                </RouterLink>
                 <RouterLink to="/productos" className={style.noLink}>
                   <li className={style.li}>Productos</li>
                 </RouterLink>
@@ -166,7 +166,7 @@ const NavBar = ({ showFullMenu = true }) => {
                 <a href="https://wa.link/28unmk" target="_blank" rel="noopener noreferrer" className={style.icon}>
                   <FaWhatsapp />
                 </a>
-                <a href="https://www.facebook.com/oficialviajaya/" target="_blank" rel="noopener noreferrer" className={style.icon}>
+                <a href="https://www.facebook.com/share/w65jnMDrZaqF3ucy/?mibextid=qi2Omg" target="_blank" rel="noopener noreferrer" className={style.icon}>
                   <FaFacebookF />
                 </a>
                 <a href="https://www.instagram.com/viajaya_pagina_oficial/" target="_blank" rel="noopener noreferrer" className={style.icon}>

@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { fetchPack } from '../../../redux/NewActions/newActions';
-import { useParams, Link } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import NavBar from '../../layout/NavBar/NavBar';
-import logo from '../../../assets/mascota.png';
+import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchPack } from "../../../redux/NewActions/newActions";
+import { useParams, Link } from "react-router-dom";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import NavBar from "../../layout/NavBar/NavBar";
+import logo from "../../../assets/mascota.png";
 
 const MAP_LAYER_ATTRIBUTION =
   "&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors";
@@ -18,7 +18,7 @@ const DetailNuevo = () => {
   const loading = useSelector((state) => state.loading);
   const error = useSelector((state) => state.error);
 
-  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedDate, setSelectedDate] = useState("");
 
   useEffect(() => {
     if (id) {
@@ -30,7 +30,6 @@ const DetailNuevo = () => {
     return <div className="text-center mt-8">Cargando...</div>;
   }
 
- 
   if (!pack || Object.keys(pack).length === 0) {
     return <div className="text-center mt-8">No se encontró el paquete</div>;
   }
@@ -43,20 +42,24 @@ const DetailNuevo = () => {
 
   return (
     <div className="min-h-screen pt-20 bg-gray-50">
-      <div className='fixed top-0 left-0 z-50 w-full'>
+      <div className="fixed top-0 left-0 z-50 w-full">
         <NavBar />
       </div>
       <div className="fixed top-16 right-0 z-50">
-        <img src={logo} alt="Logo" className="w-32 h-32 mr-4 mt-8 transform scale-x-[-1]" />
+        <img
+          src={logo}
+          alt="Logo"
+          className="w-32 h-32 mr-4 mt-8 transform scale-x-[-1]"
+        />
       </div>
       <div className="container mx-auto mt-8 p-6 bg-white rounded-lg shadow-lg flex flex-col md:flex-row gap-8">
         {/* Left Side - Image and Map */}
         <div className="md:w-1/2 flex flex-col gap-6">
           {pack.images && pack.images.length > 0 ? (
-            <img 
-              src={pack.images[0]} 
-              alt={pack.title} 
-              className="w-full h-64 object-cover rounded-md shadow-md" 
+            <img
+              src={pack.images[0]}
+              alt={pack.title}
+              className="w-full h-64 object-cover rounded-md shadow-md"
             />
           ) : (
             <div className="w-full h-64 bg-gray-200 rounded-md shadow-md flex items-center justify-center">
@@ -70,9 +73,12 @@ const DetailNuevo = () => {
                 center={center}
                 zoom={13}
                 scrollWheelZoom={false}
-                style={{ height: '100%', width: '100%' }}
+                style={{ height: "100%", width: "100%" }}
               >
-                <TileLayer url={MAP_LAYER_URL} attribution={MAP_LAYER_ATTRIBUTION} />
+                <TileLayer
+                  url={MAP_LAYER_URL}
+                  attribution={MAP_LAYER_ATTRIBUTION}
+                />
                 <Marker position={center}>
                   <Popup>{pack.title}</Popup>
                 </Marker>
@@ -87,47 +93,63 @@ const DetailNuevo = () => {
 
         {/* Right Side - Package Details */}
         <div className="md:w-1/2">
-          <h2 className="text-4xl font-bold font-nunito text-gray-700 mb-4">{pack.title}</h2>
+          <h2 className="text-4xl font-bold font-nunito text-gray-700 mb-4">
+            {pack.title}
+          </h2>
 
           <div className="bg-white rounded-lg shadow-lg hover:shadow-2xl transition-shadow duration-300 p-4 space-y-4">
-            <h3 className="text-xl font-bold font-nunito text-ColorMorado">Detalles del Paquete</h3>
+            <h3 className="text-xl font-bold font-nunito text-ColorMorado">
+              Detalles del Paquete
+            </h3>
             <p className="text-lg text-gray-700 flex justify-start">
               <span className="font-bold font-nunito "></span> {pack.location}
             </p>
-           
+
             <hr className="border-gray-300" />
             <p className="text-lg text-gray-700 flex justify-between">
-              <span className="font-semibold font-nunito">Precio:</span> ${pack.price}
+              <span className="font-semibold font-nunito">Precio:</span>
+              {Number(pack.price).toLocaleString("es-CO", {
+                style: "currency",
+                currency: "COP",
+              })}
             </p>
             <hr className="border-gray-300" />
             <p className="text-lg text-gray-700 flex justify-between">
-              <span className="font-semibold font-nunito">Días:</span> {pack.days}
+              <span className="font-semibold font-nunito">Días:</span>{" "}
+              {pack.days}
             </p>
             <hr className="border-gray-300" />
             <p className="text-lg text-gray-700 flex justify-between">
-              <span className="font-semibold font-nunito">Ciudad:</span> {pack.city}
+              <span className="font-semibold font-nunito">Ciudad:</span>{" "}
+              {pack.city}
             </p>
             <p className="text-lg text-gray-700">
-              <span className="font-semibold font-nunito">Descripción:</span> {pack.detail}
+              <span className="font-semibold font-nunito">Descripción:</span>{" "}
+              {pack.detail}
             </p>
             <hr className="border-gray-300" />
-           
 
             {/* Date Selection */}
             <div className="mt-6">
-              <h3 className="text-xl font-bold font-nunito mb-3 text-ColorMorado">Selecciona una fecha</h3>
-              <select 
-                value={selectedDate} 
+              <h3 className="text-xl font-bold font-nunito mb-3 text-ColorMorado">
+                Selecciona una fecha
+              </h3>
+              <select
+                value={selectedDate}
                 required
-                onChange={handleDateChange} 
+                onChange={handleDateChange}
                 className="w-full px-4 py-2 font-nunito border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-ColorAzul"
               >
                 <option value="">Selecciona una fecha</option>
-                {pack.fechas && pack.fechas.map((fecha, index) => (
-                  <option key={index} value={`${fecha.salida} a ${fecha.vuelta}`}>
-                    {fecha.salida} - {fecha.vuelta}
-                  </option>
-                ))}
+                {pack.fechas &&
+                  pack.fechas.map((fecha, index) => (
+                    <option
+                      key={index}
+                      value={`${fecha.salida} a ${fecha.vuelta}`}
+                    >
+                      {fecha.salida} - {fecha.vuelta}
+                    </option>
+                  ))}
               </select>
             </div>
 
@@ -145,8 +167,3 @@ const DetailNuevo = () => {
 };
 
 export default DetailNuevo;
-
-
-
-
-
