@@ -25,32 +25,34 @@ const YapayaCard = () => {
 
   const settings = {
     dots: true,
-    infinite: packs.length > 3,
+    infinite: packs.length > 3,  // Solo permitir bucle infinito si hay más de 3 paquetes
     speed: 500,
-    slidesToShow: Math.min(packs.length, 3),  // Mostrar 1 o 2 según la cantidad de packs
+    slidesToShow: Math.min(packs.length, 3),  // Mostrar hasta 3 slides o menos, dependiendo de la cantidad de packs
     slidesToScroll: 1,
     centerMode: packs.length < 3, // Centrar si hay menos de 3 packs
-    centerPadding: packs.length === 1 ? '25%' : packs.length === 2 ? '10%' : '0px',
+    centerPadding: packs.length === 1 ? '25%' : packs.length === 2 ? '10%' : '0px',  // Padding para centrar los slides si hay menos de 3
+  
     responsive: [
       {
         breakpoint: 1024,
         settings: {
-          slidesToShow: packs.length >= 2 ? 2 : 1, // Mostrar 1 o 2 según la cantidad de packs
+          slidesToShow: Math.min(packs.length, 2), // Mostrar 1 o 2 según la cantidad de packs
           slidesToScroll: 1,
-          infinite: packs.length > 3,
-          centerPadding:'0px',
-        }
+          infinite: packs.length > 3, // Solo permitir bucle infinito si hay más de 3 paquetes
+          centerPadding: '0px', // No centrar en pantallas más pequeñas
+        },
       },
       {
         breakpoint: 600,
         settings: {
-          slidesToShow: 1,
+          slidesToShow: 1,  // Mostrar solo 1 slide en pantallas pequeñas
           slidesToScroll: 1,
-          centerPadding: '0px', // Sin padding para pantallas pequeñas
-        }
-      }
-    ]
+          centerPadding: '0px',
+        },
+      },
+    ],
   };
+  
 
   const iconMap = {
     Wifi: <HiWifi className="text-2xl text-gray-600" />,
@@ -61,7 +63,7 @@ const YapayaCard = () => {
     Hotel: <RiHotelBedLine className="text-2xl text-gray-600" />,
   };
 
-  const filteredPacks = packs.filter(pack => pack.isActive && pack.isYapaya);
+  const filteredPacks = packs.filter(pack =>  pack.isYapaya  && pack.isActive);
 
   return (
     <div>

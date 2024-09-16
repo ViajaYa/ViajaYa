@@ -16,10 +16,10 @@ const AllPacks = () => {
   const queryParams = new URLSearchParams(location.search);
   const destinoFilter = queryParams.get('destino');
 
-  // Filtrar los paquetes según el destino
+  // Filtrar los paquetes según el destino y si están activos
   const filteredPacks = destinoFilter
-    ? packs.filter(pack => pack.destino === destinoFilter)
-    : packs;
+    ? packs.filter(pack => pack.destino === destinoFilter && pack.isActive)
+    : packs.filter(pack => pack.isActive); // Filtrar solo los que están activos
 
   useEffect(() => {
     dispatch(fetchPacks());
@@ -66,3 +66,4 @@ const AllPacks = () => {
 };
 
 export default AllPacks;
+
