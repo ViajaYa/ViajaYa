@@ -118,13 +118,13 @@ const PackCard = () => {
         ))}
       </Slider>
 
-      <div className="text-center mt-6">
-        <Link to="/allpacks">
-          <button className="bg-ColorAzul text-xs hover:bg-ColorMorado text-white text-center font-nunito font-semibold py-1 px-2 rounded-md transition duration-300 ease-in-out">
-            Ver todos
-          </button>
-        </Link>
-      </div>
+      <div className="text-center mt-10 ">
+          <Link to="/allpacks">
+            <button className="bg-ColorAzul text-sm hover:bg-ColorMorado text-white text-center font-nunito font-semibold py-3 px-3 rounded-md transition duration-300 ease-in-out">
+              Ver todos
+            </button>
+          </Link>
+        </div>
       </div>
     </div>
   );
