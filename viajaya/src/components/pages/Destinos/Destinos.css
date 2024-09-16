@@ -63,14 +63,30 @@
 .flip-card-back i:hover {
   transform: scale(1.2); /* Hace el ícono un poco más grande al pasar el cursor */
 }
-@media screen and (max-width:700px){
+@media screen and (max-width: 550px) {
+  .flip-card {
+    display: flex;
+    justify-content: center; /* Centra la tarjeta horizontalmente */
+    align-items: center; /* Centra la tarjeta verticalmente si es necesario */
+    padding: 0; /* Asegúrate de no tener padding en el contenedor */
+    margin: 0; /* Elimina márgenes en el contenedor padre */
+    width: 90vw; /* Ocupa todo el ancho de la pantalla */
+  }
+
   .flip-card-inner {
     transform-style: preserve-3d;
-    transition: transform 1s ease-in-out; 
-    width: 80%;
-    height: 80%;
-}
-
+    transition: transform 1s ease-in-out;
+    width: 90%; /* Ocupa todo el ancho disponible sin márgenes */
+    height: 80%; /* Ajusta la altura según lo que necesites */
+    display: flex;
+    justify-content: center; /* Centra el contenido horizontalmente */
+    align-items: center; /* Centra el contenido verticalmente */
+    padding: 0; /* Asegura que no haya padding interno */
+    margin: 0 auto; /* Centra la tarjeta en el contenedor */
+  }
+  .flip-card-inner.flipped {
+    transform: rotateY(180deg); /* Mantiene la tarjeta girada */
+  }
 }
 
 

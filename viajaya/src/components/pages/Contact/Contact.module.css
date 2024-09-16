@@ -158,12 +158,16 @@
 @media screen and (max-width:550px) {
     .divisores{
         flex-direction: column;
+       
     }
     .formContacto{
         width: fit-content;
     }
     .inputsms{
         width: 100%;
+    }
+    .mapContainer{
+        margin-top: 10%;
     }
 }
 @media screen and (max-width:850px) {
