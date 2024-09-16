@@ -106,27 +106,18 @@ const Profile = () => {
       <div className="fixed top-0 left-0 z-50 w-full">
         <NavBar />
       </div>
-      {loading ? (
-        <div className="flex items-center justify-center h-screen w-screen bg-cover bg-center">
-          <div className="lds-ellipsis">
-            <div></div>
-            <div></div>
-            <div></div>
-            <div></div>
-          </div>
-        </div>
-      ) : (
-        <div className="flex min-h-screen">
+      
+        <div className="flex flex-col md:flex-row min-h-screen">
           {/* Contenedor principal */}
           <div className="flex flex-grow mt-8 ">
-            {/* Contenido del perfil en la mitad derecha */}
+           
             <div className="w-full lg:w-1/2 p-12 flex flex-col justify-center items-center  ">
               <Toaster />
               <div className=" opacity-70 text-white p-4 rounded-lg shadow-md mb-4 w-full">
                 <nav className="flex items-center">
                   <div className="relative">
                     <img
-                      className="w-24 h-24 rounded-full border-2 border-gray-300 cursor-pointer mb-4 mr-4 object-cover"
+                      className="w-24 h-24 rounded-full border-2 border-gray-300 cursor-pointer mb-4 mr-4 object-cover hidden sm:block"
                       src={
                         user?.image
                           ? user.image
@@ -310,7 +301,7 @@ const Profile = () => {
             </div>
 
             {/* Imagen en la mitad izquierda */}
-            <div className="w-1/2 lg:block flex items-center justify-center mt-32 ">
+            <div className="w-full lg:w-1/2 items-center justify-center mt-40 lg:mt-32 hidden sm:block">
               <Link to="/productos">
                 <img
                   src="/tarjeta.png"
@@ -321,7 +312,7 @@ const Profile = () => {
             </div>
           </div>
         </div>
-      )}
+      )
     </>
   );
 };

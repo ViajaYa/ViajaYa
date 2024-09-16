@@ -49,7 +49,7 @@ const InstagramReel = ({ reelUrl }) => {
 
 const InstagramCarousel = () => {
   const reelUrls = [
-    ,
+    
     "https://www.instagram.com/reel/C_O6gHfAAQt/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA==",
     "https://www.instagram.com/reel/C-6MtCig5Zv/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA==",
     "https://www.instagram.com/reel/C-v2UdSJD9C/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA==",
@@ -77,7 +77,7 @@ const InstagramCarousel = () => {
   };
   return (
     <div className='mt-30 mb-20'>
-      <h1 className='font-nunito bg-ColorAzul text-gray-700 font-bold p-4 text-2xl w-screen mx-0 px-0 text-center mb-4 mt-8'>DISFRUTA COMO ELLOS</h1>
+      <h1 className='font-nunito bg-ColorAzul text-gray-700 font-bold p-4 text-2xl w-screen mx-0 px-0 text-center mb-4 mt-2'>DISFRUTA COMO ELLOS</h1>
       <Slider {...settings}>
         {reelUrls.map((url, index) => (
           <div key={index}>

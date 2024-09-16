@@ -13,8 +13,10 @@ const FlipCard = ({ link, backTitle, backSteps, backHighlight, frontColor, backC
   const handleMouseLeave = () => setFlipped(false); // Vuelve a girar a 0° al salir el cursor
 
   return (
-    <a href={link} className="group flip-card relative" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-      <div className={`flip-card-inner ${flipped ? "flipped" : ""} relative rounded-lg shadow-lg transition-transform duration-800`}>
+    <a href={link} className="group flip-card" 
+    onMouseEnter={handleMouseEnter} 
+    onMouseLeave={handleMouseLeave}>
+      <div className= {`flip-card-inner ${flipped ? "flipped" : ""} flex flex-col space-y-4 rounded-lg shadow-lg transition-transform duration-800 md:flex-row md:space-y-2 md:space-x-2`}>
         <div
           className={`flip-card-front ${frontColor}`}
           style={{ backgroundImage: `url(${frontImage})` }}

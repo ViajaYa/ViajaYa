@@ -23,7 +23,7 @@ const PackManagement = () => {
   const packsPerPage = 12;
 
   useEffect(() => {
-    dispatch(fetchPacks()); // Obtener la lista de paquetes
+    dispatch(fetchPacks()); 
   }, [dispatch]);
 
   const handleEdit = (pack) => {
@@ -39,8 +39,8 @@ const PackManagement = () => {
     try {
       const response = await dispatch(updatePack(editPack));
       if (response.success) {
-        setEditPack(null); // Limpiar estado después de guardar
-        dispatch(fetchPacks()); // Actualizar la lista de paquetes
+        setEditPack(null); 
+        dispatch(fetchPacks()); 
       } else {
         console.error("Error al guardar los cambios:", response.errorMessage);
       }
@@ -61,7 +61,7 @@ const PackManagement = () => {
     if (window.confirm("¿Estás seguro de que deseas eliminar este paquete?")) {
       dispatch(deletePack(id)).then((result) => {
         if (result.success) {
-          dispatch(fetchPacks()); // Obtener la lista actualizada de paquetes
+          dispatch(fetchPacks()); 
         } else {
           console.error(result.errorMessage);
         }
@@ -84,7 +84,7 @@ const PackManagement = () => {
   };
 
   const handleCreatePack = () => {
-    navigate("/panel/newPack"); // Redirige al componente de creación de paquete
+    navigate("/panel/newPack"); 
   };
 
   if (loading) {
@@ -102,7 +102,7 @@ const PackManagement = () => {
   };
 
   return (
-    <div className="container mx-auto mt-12 p-6">
+    <div className=" mx-auto mt-12 p-6">
        <div className='fixed top-0 left-0 z-50 w-full'>
             <NavBar />
           </div>
@@ -120,15 +120,13 @@ const PackManagement = () => {
       <div className="overflow-x-auto">
         <table className="min-w-full bg-gray border border-gray-400 rounded-md">
           <thead>
-            <tr className="bg-gray-600 font-nunito text-sm text-gray-200">
-              <th className="py-2 px-4 border-b">ID</th>
+            <tr className="bg-gray-600 font-nunito text-gray-200">
+              
               <th className="py-2 px-4 border-b">Title</th>
               <th className="py-2 px-4 border-b">Days</th>
               <th className="py-2 px-4 border-b">Location</th>
               <th className="py-2 px-4 border-b">Price</th>
-              <th className="py-2 px-4 border-b">Latitud</th>
-              <th className="py-2 px-4 border-b">Longitud</th>
-              <th className="py-2 px-4 border-b">Chars</th>
+            
               <th className="py-2 px-4 border-b" colSpan={2}>
                 Fechas
               </th>
@@ -141,7 +139,7 @@ const PackManagement = () => {
           <tbody>
             {currentPacks.map((pack) => (
               <tr key={pack.id}>
-                <td className="py-2 font-nunito px-4 border-b">{pack.id}</td>
+               
                 <td className="py-2 font-nunito px-4 border-b">
                   {editPack?.id === pack.id ? (
                     <input
@@ -196,42 +194,8 @@ const PackManagement = () => {
                     pack.price
                   )}
                 </td>
-                <td className="py-2 font-nunito px-4 border-b">
-                  {editPack?.id === pack.id ? (
-                    <input
-                      type="text"
-                      name="lat"
-                      value={editPack.lat}
-                      onChange={handleChange}
-                      className="p-1 border border-gray-300 rounded w-32"
-                    />
-                  ) : (
-                    pack.lat
-                  )}
-                </td>
-                <td className="py-2 font-nunito px-4 border-b">
-                  {editPack?.id === pack.id ? (
-                    <input
-                      type="text"
-                      name="lng"
-                      value={editPack.lng}
-                      onChange={handleChange}
-                      className="p-1 border border-gray-300 rounded w-32"
-                    />
-                  ) : (
-                    pack.lng
-                  )}
-                </td>
-                <td className="py-2 font-nunito px-4 border-b">
-                  {pack.chars.map((char) => (
-                    <span
-                      key={char.name}
-                      className="bg-gray-200 p-1 rounded mr-1"
-                    >
-                      {char.name}
-                    </span>
-                  ))}
-                </td>
+          
+                
                 {/* Fechas de salida */}
                 <td className="py-2 font-nunito px-4 border-b">
                   {editPack?.id === pack.id ? (
