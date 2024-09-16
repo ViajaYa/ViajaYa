@@ -25,31 +25,31 @@ const PackCard = () => {
     dots: true,
     infinite: packs.length > 3,
     speed: 500,
-    slidesToShow: Math.min(packs.length, 3),
+    slidesToShow: Math.min(packs.length, 3),  // Mostrar 1 o 2 según la cantidad de packs
     slidesToScroll: 1,
-    centerMode: packs.length > 3,
-    centerPadding: '0px', // Eliminar padding central del slider
+    centerMode: packs.length < 3, // Centrar si hay menos de 3 packs
+    centerPadding: packs.length === 1 ? '25%' : packs.length === 2 ? '10%' : '0px',
     responsive: [
       {
         breakpoint: 1024,
         settings: {
-          slidesToShow: Math.min(packs.length, 2),
+          slidesToShow: packs.length >= 2 ? 2 : 1, // Mostrar 1 o 2 según la cantidad de packs
           slidesToScroll: 1,
-          infinite: packs.length > 2,
-          dots: true,
-          centerPadding: '0px',
+          infinite: packs.length > 3,
+          centerPadding:'0px',
         }
       },
       {
         breakpoint: 600,
         settings: {
-          slidesToShow: Math.min(packs.length, 1),
+          slidesToShow: 1,
           slidesToScroll: 1,
-          centerPadding: '0px',
+          centerPadding: '0px', // Sin padding para pantallas pequeñas
         }
       }
     ]
   };
+
 
   const iconMap = {
     Wifi: <HiWifi className="text-2xl text-gray-600" />,
@@ -65,7 +65,7 @@ const PackCard = () => {
   return (
     <div>
       <h1 className='font-nunito bg-ColorAzul text-gray-700 font-bold p-4 text-2xl w-screen mx-0 px-0 text-center mb-4 mt-4'>PLANIFICA TUS VACACIONES</h1>
-    <div className="container mx-auto mt-6 p-4">
+      <div className="relative w-full h-125 justify-center  mt-6  mr-0 ml-0 p-2">
       
       
       <Slider {...settings} className="px-4">
@@ -73,7 +73,14 @@ const PackCard = () => {
           <div
             key={pack.id}
             className="bg-white rounded-lg shadow-lg hover:shadow-2xl transition-shadow duration-300 cursor-pointer flex flex-col p-4 mx-2"  // Agregar margen lateral entre cards
-            style={{ width: '100%', boxSizing: 'border-box' }}  // Ajustar el tamaño y el box-sizing para asegurar el espaciado uniforme
+            style={{ 
+              width: packs.length === 1 ? '70%' : packs.length === 2 ? '45%' : '80%', // Reducir el ancho para que no se vean tan grandes
+              margin: packs.length < 3 ? '0 auto' : '10px',
+              boxSizing: 'border-box',
+              animation: 'shine 2s infinite linear',
+              overflow: 'hidden',
+              
+            }}  // Ajustar el tamaño y el box-sizing para asegurar el espaciado uniforme
           >
             <img
               src={pack.images[0]}
