@@ -62,7 +62,7 @@
 }
 
 
-@media screen and (max-width: 900px) {
+@media screen and (max-width: 600px) {
     .hamburger {
         display: block;
     }
@@ -77,7 +77,7 @@
         right: 0;
         background-color: white;
         padding: 20px;
-        height: 90vh;
+        height: 50vh;
         gap: 20px;
         z-index: 999;
     }
@@ -88,36 +88,43 @@
 
     .li {
         display: block;
-        font-size: 1.5em;
+        font-size: 1.2em; /* Tamaño de fuente ajustado */
         color: rgb(72, 72, 72);
     }
 
     .libutton {
-        font-size: 1.5em;
+        font-size: 1.2em; /* Tamaño de fuente ajustado */
         color: rgb(72, 72, 72);
     }
 
     .logo {
-        width: 50px;
-        margin-left: 40px;
+        width: 40px; /* Tamaño más pequeño del logo */
+        margin-left: 10px; /* Ajuste del margen izquierdo */
+    }
+
+    /* Ajustes del contenedor del menú y logo */
+    .nav {
+        display: flex;
+        justify-content: space-between; /* Alinear logo y menú */
+        align-items: center;
+        padding: 0 30px; /* Añadir un poco de padding para evitar que se salga */
     }
 }
 
 /* Nuevos estilos para el menú desplegable de redes sociales */
-
 .socialMenu {
     position: relative;
 }
 
 .socialButton {
-    background-color: #b85aa1; /* Fondo igual al del NavBar */
+    background-color: #b85aa1;
     border: none;
     cursor: pointer;
-    padding: 5px 25px;
-    font-size: 1.25em;
-    color: white; /* Texto blanco */
-    border-radius: 5px; /* Opcional: para darle bordes redondeados */
-    font-family:Verdana, Geneva, Tahoma, sans-serif
+    padding: 5px 20px; /* Reducir padding */
+    font-size: 1em; /* Reducir tamaño de fuente */
+    color: white;
+    border-radius: 5px;
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
 }
 
 .socialIcons {
@@ -128,21 +135,20 @@
     flex-direction: column;
     gap: 10px;
     background: #b85aa1;
-    
     padding: 10px;
     border: 1px solid #ddd;
     border-radius: 5px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .icon {
-    font-size: 1.5em;
-    color: white; /* Los íconos deben usar su color original */
+    font-size: 1.2em; /* Reducir tamaño de íconos */
+    color: white;
     text-decoration: none;
     transition: color 0.3s ease;
 }
 
 .icon:hover {
-    color: #f0f0f0; /* Color al pasar el ratón sobre el ícono */
+    color: #f0f0f0;
 }
 
