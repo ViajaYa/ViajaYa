@@ -49,7 +49,7 @@ const InstagramReel = ({ reelUrl }) => {
 
 const InstagramCarousel = () => {
   const reelUrls = [
-    ,
+    
     "https://www.instagram.com/reel/C_O6gHfAAQt/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA==",
     "https://www.instagram.com/reel/C-6MtCig5Zv/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA==",
     "https://www.instagram.com/reel/C-v2UdSJD9C/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA==",
