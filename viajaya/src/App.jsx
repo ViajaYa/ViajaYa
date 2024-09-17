@@ -6,9 +6,7 @@ import Pay from "./components/pages/Pay/Pay"
 import Politicas from "./components/pages/Politicas/Politicas"
 import Terminos from "./components/pages/Politicas/Terminos"
 import { useEffect, useState } from "react"
-import { useDispatch, useSelector } from "react-redux"
-import { setUser } from "./redux/actions/actions"
-import ProtectedRoute from "./components/utils/ProtectedRoute"
+import { useDispatch} from "react-redux"
 import {Suspense, lazy} from "react"
 import style from "./Spinner.module.css"
 import About from "./components/pages/About/About"
@@ -23,7 +21,7 @@ import TabbedImages from "./components/pages/Operador/TabbedImages"
 import ManagePopup from "./components/popups/ManagePopup"
 import Popup from "./components/popups/Popup"
 import AllPacks from "./components/AllsPacks"
-
+import PrivateRoute from "./components/PrivateRoute"
 
 
 
@@ -67,16 +65,40 @@ function App() {
           element={<Form selectedNumbers={[]} onBack={handleBack} />}  // Pasar handleBack como prop onBack
         />
       <Route exact path="/about" element={<About/>}/>
-      <Route exact path="/profile" element={<ProfileAdmin/>}/>
-      <Route exact path="/panel" element={<PanelPage/>}/>
-       <Route path="/panel/user" element={<UserManagement/>}/> 
-       <Route path="/panel/pack" element={<PackManagement/>}/> 
-       <Route path="/panel/newPack" element={<NewPack/>}/>
-       <Route path="/panel/popup" element={<ManagePopup/>}/>
+      <Route exact path="/profile" element={
+          <PrivateRoute>
+            <ProfileAdmin />
+          </PrivateRoute>
+        }
+      />
+      <Route exact path="/panel" element={
+        <PrivateRoute>
+          <PanelPage/>
+        </PrivateRoute>}/>
+       <Route path="/panel/user" element={
+        <PrivateRoute>
+          <UserManagement/>
+          </PrivateRoute>}/> 
+       <Route path="/panel/pack" element={
+        <PrivateRoute>
+          <PackManagement/>
+          </PrivateRoute>}/> 
+       <Route path="/panel/newPack" element={
+        <PrivateRoute>
+          <NewPack/>
+          </PrivateRoute>}/>
+       <Route path="/panel/popup" element={
+        <PrivateRoute>
+          <ManagePopup/>
+        </PrivateRoute>
+        }/>
        <Route path="/panel/popup/popup" element={<Popup/>}/>  
       <Route exact path="/politicas" element={<Politicas/>}/>
       <Route exact path="/terminos" element={<Terminos/>}/>
-      <Route exact path="/pay/:id" element={<Pay/>}/>
+      <Route exact path="/pay/:id" element={
+        <PrivateRoute>
+          <Pay/>
+          </PrivateRoute>}/>
       <Route path="/detail/:id" element={<DetailNuevo/>}/>
       <Route path="/allpacks" element={<AllPacks />} />
       <Route exact path="/productos" element={<TabbedImages/>}/>

@@ -56,7 +56,7 @@ const Login = () => {
             navigate("/profile")
         }else return toast.error("Datos invalidos")
     }
-
+    
     const handleChange = (e) => {
         const {name,value} = e.target
         setNewUser({

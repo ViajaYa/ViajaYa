@@ -91,9 +91,7 @@ const initialState = {
   pack: {},
   reservations: [],
   userReservations: [],
-  userAuth: null,
   token: null,
-  isAuthenticated: false,
   loading: false,
   error: null,
 };
