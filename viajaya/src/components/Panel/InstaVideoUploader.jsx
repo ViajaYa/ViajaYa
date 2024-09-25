@@ -27,7 +27,7 @@ const InstaVideoUploader = () => {
       setSuccess(false);
   
       try {
-        const response = await axios.post('/insta/videosI', { url: videoUrl });
+        const response = await axios.post("/insta/videosI", { url: videoUrl });
         console.log(response.data); // Manejar respuesta si es necesario
         setSuccess(true);
         setVideoUrl(''); // Limpiar el campo de entrada
