@@ -24,7 +24,7 @@ const MAP_LAYER_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 const locations = [
   { id: 1, name: 'Restrepo Meta', address: 'Centro Comercial Plaza Roma Calle 7 No 5-48 oficina 105', position: [4.2614043, -73.567862] },
   { id: 2, name: 'Bogotá', address: 'Calle 38A Sur No 34d-51', position: [4.3911921, -74.2122951] },
-  { id: 3, name: 'Villavicencio', address: 'Av. Villavicencio Tv. 63 Bogotá piso 2', position: [4.582409, -74.1593002] },
+  { id: 3, name: 'Villavicencio', address: 'Av. Villavicencio Tv. 63 Bogotá piso 2', position: [4.1483808188657125, -73.64202505854918] },
   { id: 4, name: 'Guaviare', address: 'Cra.22 10-30 San José del Gaviare', position: [2.570166, -72.642707] },
   { id: 5, name: 'Bogotá', address: 'Cra.51 59c Sur-93 a Centro Comercial Gran Plaza el Ensueño piso 2- local 206', position: [4.582930, -74.15611] }
 ];
