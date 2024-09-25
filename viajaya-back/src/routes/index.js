@@ -7,7 +7,7 @@ const buyRoutes = require("./buyRoutes")
 const popupRoutes= require("./popupRoutes")
 const numberRoutes= require("./numberRoutes")
 const reservationRoutes= require(("./reservationRoutes"))
-
+const instagramVideoRoutes = require(("./instagramVideoRoutes"))
 
 const routes = Router()
 
@@ -21,5 +21,6 @@ routes
 .use("/popup", popupRoutes)
 .use("/rifa", numberRoutes)
 .use("number", numberRoutes)
+.use("/insta", instagramVideoRoutes)
 
 module.exports = routes

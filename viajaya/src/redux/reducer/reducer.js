@@ -64,6 +64,10 @@ import {
   LOGIN_FAIL,
   VERIFY_TOKEN_SUCCESS,
   VERIFY_TOKEN_FAIL,
+  FETCH_VIDEOS_REQUEST,
+  FETCH_VIDEOS_SUCCESS,
+  FETCH_VIDEOS_FAILURE,
+  REMOVE_VIDEO,
 } from "../NewActions/NewActions-Types";
 
 const perPage = 8;
@@ -94,6 +98,7 @@ const initialState = {
   token: null,
   loading: false,
   error: null,
+  videos: [],
 };
 const rootReducer = (state = initialState, action) => {
   switch (action.type) {
@@ -514,6 +519,32 @@ const rootReducer = (state = initialState, action) => {
         error: action.payload,
         loading: false,
       };
+      case FETCH_VIDEOS_REQUEST:
+        return {
+          ...state,
+          loading: true
+        };
+        case FETCH_VIDEOS_SUCCESS:
+          console.log('Fetched Videos:', action.payload); // Agrega este console.log para depuración
+          return {
+            ...state,
+            loading: false,
+            videos: action.payload,
+            error: ''
+          };
+        
+      case FETCH_VIDEOS_FAILURE:
+        return {
+          ...state,
+          loading: false,
+          videos: [],
+          error: action.payload
+        };
+        case REMOVE_VIDEO:
+          return {
+            ...state,
+            videos: state.videos.filter(video => video.id !== action.payload),
+          };
 
     default:
       return state;

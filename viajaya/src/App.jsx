@@ -22,7 +22,8 @@ import ManagePopup from "./components/popups/ManagePopup"
 import Popup from "./components/popups/Popup"
 import AllPacks from "./components/AllsPacks"
 import PrivateRoute from "./components/PrivateRoute"
-
+import GestionarPagina from "./components/Panel/GestionarPagina"
+import InstaVideoUploader from "./components/Panel/InstaVideoUploader"
 
 
 const Landing = lazy(() => import("./components/pages/Landing/Landing"))
@@ -90,6 +91,16 @@ function App() {
        <Route path="/panel/popup" element={
         <PrivateRoute>
           <ManagePopup/>
+        </PrivateRoute>
+        }/>
+           <Route path="/panelGestion" element={  ///panelInstagram
+        <PrivateRoute>
+          <GestionarPagina/>
+        </PrivateRoute>
+        }/>
+          <Route path="/panelInstagram" element={
+        <PrivateRoute>
+          <InstaVideoUploader/>
         </PrivateRoute>
         }/>
        <Route path="/panel/popup/popup" element={<Popup/>}/>  

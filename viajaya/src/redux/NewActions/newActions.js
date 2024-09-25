@@ -13,13 +13,13 @@ import {
     CREATE_RESERVATION_SUCCESS, CREATE_RESERVATION_FAILURE, FETCH_RESERVATIONS_SUCCESS,
     FETCH_RESERVATIONS_FAILURE, FETCH_USER_RESERVATIONS_SUCCESS,FETCH_USER_RESERVATIONS_FAILURE,
     UPDATE_RESERVATION_SUCCESS, UPDATE_RESERVATION_FAILURE,DELETE_RESERVATION_SUCCESS,
-    DELETE_RESERVATION_FAILURE, 
+    DELETE_RESERVATION_FAILURE, FETCH_VIDEOS_REQUEST, FETCH_VIDEOS_SUCCESS, FETCH_VIDEOS_FAILURE, REMOVE_VIDEO,
 
 
   } from './NewActions-Types';
 
-const BASE_URL = 'https://viajaya-mve8.onrender.com';
-//const BASE_URL = 'http://localhost:3001'
+//const BASE_URL = 'https://viajaya-mve8.onrender.com';
+const BASE_URL = 'http://localhost:3001'
 
 export const loginUser = (email, password) => async (dispatch) => {
   try {
@@ -268,3 +268,41 @@ export const deleteReservation = (id) => async (dispatch) => {
   }
 };
 
+export const fetchVideos = () => {
+  return async (dispatch) => {
+    dispatch({ type: FETCH_VIDEOS_REQUEST });
+
+    try {
+      const response = await axios.get(`${BASE_URL}/insta/videosI`);
+      console.log("Respuesta de la API:", response.data); // Verificar la respuesta
+
+      const data = response.data.data; // Esto asume que la data viene en un array como "data"
+console.log(data)
+      // Comprobar si data tiene elementos
+      if (!data || data.length === 0) {
+        console.error("No hay videos disponibles en la respuesta.");
+      }
+      
+      // Limpiar las URLs eliminando las comillas dobles
+      const cleanedData = data.map(video => ({
+        id: video.id,
+        url: video.url,
+       
+      }));
+
+      dispatch({ type: FETCH_VIDEOS_SUCCESS, payload: cleanedData });
+    } catch (error) {
+      dispatch({ type: FETCH_VIDEOS_FAILURE, payload: error.message });
+    }
+  };
+};
+
+export const removeVideo = (id) => async (dispatch) => {
+  try {
+    await axios.delete(`${BASE_URL}/insta/videosI/${id}`);
+    dispatch({ type: REMOVE_VIDEO, payload: id });
+  } catch (error) {
+    console.error('Error eliminando video:', error);
+    // Manejar error aquí (opcional)
+  }
+};
