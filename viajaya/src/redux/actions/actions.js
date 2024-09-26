@@ -14,11 +14,13 @@ export const FILTER_PACKSTITLE = "FILTER_PACKSTITLE"
 export const DATA_PAY = "DATA_PAY"
 
 import{
-
+GET_POPUP_REQUEST,
 GET_POPUP_SUCCESS,
 GET_POPUP_FAIL,
+POST_POPUP_REQUEST,
 POST_POPUP_SUCCESS,
-POST_POPUP_FAIL,  
+POST_POPUP_FAIL, 
+PUT_POPUP_REQUEST, 
 PUT_POPUP_SUCCESS,
 PUT_POPUP_FAIL ,
 USER_REGISTER_SUCCESS,
@@ -116,8 +118,10 @@ export const filterPacksTitle = (word) => {
     dispatch({type:FILTER_PACKSTITLE, payload:word})
   }
 }
+// Obtener popups
 export const getPopup = () => async (dispatch) => {
   try {
+    dispatch({ type: GET_POPUP_REQUEST }); // Para indicar que la solicitud ha comenzado
     const response = await axios.get(`${BASE_URL}/popup`);
     dispatch({ type: GET_POPUP_SUCCESS, payload: response.data });
   } catch (error) {
@@ -125,8 +129,10 @@ export const getPopup = () => async (dispatch) => {
   }
 };
 
+// Crear popup
 export const postPopup = (popupData) => async (dispatch) => {
   try {
+    dispatch({ type: POST_POPUP_REQUEST }); // Para indicar que la solicitud ha comenzado
     const response = await axios.post(`${BASE_URL}/popup`, popupData);
     dispatch({ type: POST_POPUP_SUCCESS, payload: response.data });
   } catch (error) {
@@ -134,9 +140,10 @@ export const postPopup = (popupData) => async (dispatch) => {
   }
 };
 
-
+// Actualizar popup
 export const putPopup = (id, popupData) => async (dispatch) => {
   try {
+    dispatch({ type: PUT_POPUP_REQUEST }); // Para indicar que la solicitud ha comenzado
     const response = await axios.put(`${BASE_URL}/popup/${id}`, popupData);
     dispatch({ type: PUT_POPUP_SUCCESS, payload: response.data });
   } catch (error) {
