@@ -14,10 +14,13 @@ import {
 } from "../actions/actions-types";
 
 import {
+  GET_POPUP_REQUEST,
   GET_POPUP_SUCCESS,
   GET_POPUP_FAIL,
+  POST_POPUP_REQUEST,
   POST_POPUP_SUCCESS,
   POST_POPUP_FAIL,
+  PUT_POPUP_REQUEST,
   PUT_POPUP_SUCCESS,
   PUT_POPUP_FAIL,
   USER_REGISTER_REQUEST,
@@ -320,16 +323,22 @@ const rootReducer = (state = initialState, action) => {
         ),
       };
     }
+    case GET_POPUP_REQUEST:
+    case POST_POPUP_REQUEST:
+    case PUT_POPUP_REQUEST:
+      return { ...state, loading: true, error: null };
+
     case GET_POPUP_SUCCESS:
       return { ...state, popup: action.payload, loading: false };
-    case GET_POPUP_FAIL:
-      return { ...state, error: action.payload, loading: false };
+
     case POST_POPUP_SUCCESS:
       return { ...state, popup: action.payload, loading: false };
-    case POST_POPUP_FAIL:
-      return { ...state, error: action.payload, loading: false };
+
     case PUT_POPUP_SUCCESS:
       return { ...state, popup: action.payload, loading: false };
+
+    case GET_POPUP_FAIL:
+    case POST_POPUP_FAIL:
     case PUT_POPUP_FAIL:
       return { ...state, error: action.payload, loading: false };
 

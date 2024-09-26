@@ -21,7 +21,7 @@ const GestionarPagina = () => {
           </div>
         </Link>
         <Link
-          to="/panelPopup"
+          to="/panel/popup"
           className="bg-white border font-nunito  border-gray-200 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out transform hover:scale-105 p-6 flex items-center justify-center"
         >
           <div className="text-center">
