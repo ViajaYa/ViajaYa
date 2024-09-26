@@ -3,58 +3,67 @@ import { useDispatch, useSelector } from 'react-redux';
 import { postPopup, putPopup, getPopup } from '../../redux/actions/actions';
 import NavBar from '../layout/NavBar/NavBar';
 
-
 const ManagePopup = () => {
   const dispatch = useDispatch();
-  const { loading, error } = useSelector((state) => state); // Asegúrate de que el estado del reducer incluya todos los popup
-  const popup  = useSelector((state) => state.popup || {})
+  const { loading, error } = useSelector((state) => state);
+  const popup = useSelector((state) => state.popup || null);
+
   const [content, setContent] = useState('');
   const [isActive, setIsActive] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
 
+  // Cargar el popup existente al cargar el componente
   useEffect(() => {
     dispatch(getPopup());
   }, [dispatch]);
 
+  // Rellenar los campos cuando haya un popup en el estado
   useEffect(() => {
-    if (popup) {
+    if (popup && popup.id) {
       setContent(popup.content);
       setIsActive(popup.isActive);
-      setIsEditing(true);
+      setIsEditing(true); // Establecer modo de edición si existe un popup
     } else {
+      // Resetear si no hay popup
       setContent('');
       setIsActive(false);
       setIsEditing(false);
     }
   }, [popup]);
 
+  // Desaparecer el mensaje de éxito después de 3 segundos
+  useEffect(() => {
+    if (alertMessage) {
+      const timer = setTimeout(() => setAlertMessage(''), 3000);
+      return () => clearTimeout(timer); // Limpiar el timeout cuando el componente se desmonte o cambie
+    }
+  }, [alertMessage]);
+
   const handleSubmit = () => {
     const popupData = { content, isActive };
 
-    if (isEditing) {
+    if (isEditing && popup.id) {
       dispatch(putPopup(popup.id, popupData));
       setAlertMessage('Popup actualizado exitosamente!');
     } else {
       dispatch(postPopup(popupData));
       setAlertMessage('Popup creado exitosamente!');
     }
-
-    // Limpiar el contenido y estado del popup después de crear o actualizar
-    setContent('');
-    setIsActive(false);
-    setIsEditing(false);
   };
 
   return (
-    <div className="mb-64 pt-20 p-8"> {/* Agregado pt-20 para el margen superior */}
-      <div className='fixed top-0 left-0 z-50 w-full'>
-            <NavBar />
-          </div>
+    <div className="mb-64 pt-20 p-8">
+      {/* NavBar fija */}
+      <div className="fixed top-0 left-0 z-50 w-full">
+        <NavBar />
+      </div>
+
+      {/* Mensajes de carga y error */}
       {loading && <p className="text-center text-gray-500">Cargando...</p>}
       {error && <p className="text-center text-red-500">Error: {error}</p>}
-      
-      {/* Alert de éxito */}
+
+      {/* Alert de éxito (desaparece en 3 segundos) */}
       {alertMessage && (
         <div className="p-2 mb-4 text-green-700 bg-green-200 rounded-md">
           {alertMessage}
@@ -62,9 +71,11 @@ const ManagePopup = () => {
       )}
 
       {/* Mostrar los detalles del popup existente */}
-      {popup && (
+      {popup && popup.id ? (
         <div className="mb-6 mt-10">
-             <h1 className="bg-ColorMorado text-2xl text-center font-bold font-nunito p-2 text-gray-200 mb-8 ">Popup</h1>
+          <h1 className="bg-ColorMorado text-2xl text-center font-bold font-nunito p-2 text-gray-200 mb-8">
+            Popup Existente
+          </h1>
           <textarea
             className="w-full p-2 border border-gray-300 rounded-md mb-2 font-nunito"
             value={content}
@@ -84,14 +95,12 @@ const ManagePopup = () => {
             onClick={handleSubmit}
             className="bg-ColorAzul hover:bg-blue-300 text-gray-600 font-bold font-nunito py-2 px-4 rounded focus:outline-none focus:shadow-outline"
           >
-            Actualizar Popup
+            {isEditing ? 'Actualizar Popup' : 'Crear Popup'}
           </button>
         </div>
-      )}
-      
-      {/* Mostrar opción para crear un nuevo popup si no existe uno */}
-      {!popup && (
-        <div className='mt-10'>
+      ) : (
+        // Mostrar formulario para crear un nuevo popup
+        <div className="mt-10">
           <h3 className="text-xl font-semibold mb-2">Crear Nuevo Popup</h3>
           <textarea
             className="w-full p-2 border border-gray-300 rounded-md mb-2"
@@ -117,13 +126,23 @@ const ManagePopup = () => {
         </div>
       )}
 
-    
-      
+      {/* Mostrar Popup siempre que esté activo */}
+      {popup && popup.isActive && (
+        <div className="mt-10 p-4 border border-green-400 bg-green-100 rounded-md">
+          <h2 className="text-lg font-bold">Popup Activo:</h2>
+          <p>{popup.content}</p>
+          <p className={popup.isActive ? 'text-green-500' : 'text-red-500'}>
+            {popup.isActive ? 'Activo' : 'Inactivo'}
+          </p>
+        </div>
+      )}
     </div>
   );
 };
 
 export default ManagePopup;
+
+
 
 
 
