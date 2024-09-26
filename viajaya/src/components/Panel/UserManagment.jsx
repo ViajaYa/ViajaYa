@@ -9,10 +9,14 @@ import NavBar from '../layout/NavBar/NavBar';
 const UserManagment = () => {
   const dispatch = useDispatch();
   const { infoUsers, loading } = useSelector((state) => ({
-    infoUsers: state.infoUsers,
+    
+    infoUsers: state.users,
     loading: state.loading,
+    
   }));
-  
+
+  // const infoUsers= useSelector((state) => state.users)
+  console.log(infoUsers)
   const [email, setEmail] = useState('');
   const [editUser, setEditUser] = useState(null);
   const [filteredUser, setFilteredUser] = useState(null);
@@ -26,7 +30,7 @@ const UserManagment = () => {
   const handleEdit = (user) => {
     setEditUser(user);
   };
-
+  console.log(infoUsers)
   const handleSearch = () => {
     const user = infoUsers.find((user) => user.email === email);
     setFilteredUser(user || null);

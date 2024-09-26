@@ -68,6 +68,7 @@ import {
   FETCH_VIDEOS_SUCCESS,
   FETCH_VIDEOS_FAILURE,
   REMOVE_VIDEO,
+  INFO_USERS,
 } from "../NewActions/NewActions-Types";
 
 const perPage = 8;
@@ -545,6 +546,14 @@ const rootReducer = (state = initialState, action) => {
             ...state,
             videos: state.videos.filter(video => video.id !== action.payload),
           };
+          case INFO_USERS:
+            console.log('Users information received:', action.payload); // Verifica que el payload traiga la información correcta
+            return {
+              ...state,
+              users: action.payload,  // Almacena los usuarios en el estado
+              loading: false,
+              error: null,
+            };
 
     default:
       return state;
