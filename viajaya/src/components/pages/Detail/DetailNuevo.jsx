@@ -154,7 +154,7 @@ const DetailNuevo = () => {
             </div>
 
             {/* Payment Button */}
-            <Link to={`/pay/${id}`}>
+            <Link to={`https://wa.link/28unmk`}>
               <button className="bg-ColorAzul hover:bg-ColorMorado text-white font-nunito font-semibold py-3 px-6 rounded-md mt-6 transition duration-300 ease-in-out w-full">
                 Reservar
               </button>
