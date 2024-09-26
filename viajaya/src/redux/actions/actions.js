@@ -121,13 +121,14 @@ export const filterPacksTitle = (word) => {
 // Obtener popups
 export const getPopup = () => async (dispatch) => {
   try {
-    dispatch({ type: GET_POPUP_REQUEST }); // Para indicar que la solicitud ha comenzado
+    dispatch({ type: GET_POPUP_REQUEST }); // Indicar que la solicitud ha comenzado
     const response = await axios.get(`${BASE_URL}/popup`);
-    dispatch({ type: GET_POPUP_SUCCESS, payload: response.data });
+    dispatch({ type: GET_POPUP_SUCCESS, payload: response.data }); // Asegúrate de que `response.data` sea correcto
   } catch (error) {
     dispatch({ type: GET_POPUP_FAIL, payload: error.message });
   }
 };
+
 
 // Crear popup
 export const postPopup = (popupData) => async (dispatch) => {

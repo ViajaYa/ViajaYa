@@ -1,53 +1,135 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { postPopup, putPopup, getPopup } from '../../redux/actions/actions';
+import NavBar from '../layout/NavBar/NavBar';
 
-const ManagePopup = ({ existingPopup }) => {
-  const [content, setContent] = useState(existingPopup ? existingPopup.content : '');
-  const [isActive, setIsActive] = useState(existingPopup ? existingPopup.isActive : false);
+
+const ManagePopup = () => {
   const dispatch = useDispatch();
-  const { loading, popup, error } = useSelector((state) => state.popup); // Usar el estado del reducer
+  const { loading, error } = useSelector((state) => state); // Asegúrate de que el estado del reducer incluya todos los popup
+  const popup  = useSelector((state) => state.popup || {})
+  const [content, setContent] = useState('');
+  const [isActive, setIsActive] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [alertMessage, setAlertMessage] = useState('');
 
-  // Si `existingPopup` está definido, usa los datos del popup para edición
   useEffect(() => {
-    if (existingPopup) {
-      dispatch(getPopup(existingPopup.id)); // Obtener popup si hay uno existente
+    dispatch(getPopup());
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (popup) {
+      setContent(popup.content);
+      setIsActive(popup.isActive);
+      setIsEditing(true);
+    } else {
+      setContent('');
+      setIsActive(false);
+      setIsEditing(false);
     }
-  }, [dispatch, existingPopup]);
+  }, [popup]);
 
   const handleSubmit = () => {
     const popupData = { content, isActive };
 
-    if (existingPopup) {
-      dispatch(putPopup(existingPopup.id, popupData)); // Actualizar popup existente
+    if (isEditing) {
+      dispatch(putPopup(popup.id, popupData));
+      setAlertMessage('Popup actualizado exitosamente!');
     } else {
-      dispatch(postPopup(popupData)); // Crear nuevo popup
+      dispatch(postPopup(popupData));
+      setAlertMessage('Popup creado exitosamente!');
     }
+
+    // Limpiar el contenido y estado del popup después de crear o actualizar
+    setContent('');
+    setIsActive(false);
+    setIsEditing(false);
   };
 
   return (
-    <div className="popup-form">
-      {loading && <p>Cargando...</p>} {/* Mostrar mensaje de carga */}
-      {error && <p>Error: {error}</p>} {/* Mostrar errores si existen */}
+    <div className="mb-64 pt-20 p-8"> {/* Agregado pt-20 para el margen superior */}
+      <div className='fixed top-0 left-0 z-50 w-full'>
+            <NavBar />
+          </div>
+      {loading && <p className="text-center text-gray-500">Cargando...</p>}
+      {error && <p className="text-center text-red-500">Error: {error}</p>}
       
-      <textarea 
-        value={content} 
-        onChange={(e) => setContent(e.target.value)} 
-        placeholder="Enter popup content here"
-      />
-      <label>
-        <input
-          type="checkbox"
-          checked={isActive}
-          onChange={() => setIsActive(!isActive)}
-        />
-        Active
-      </label>
-      <button onClick={handleSubmit}>
-        {existingPopup ? 'Actualizar Popup' : 'Crear Popup'}
-      </button>
+      {/* Alert de éxito */}
+      {alertMessage && (
+        <div className="p-2 mb-4 text-green-700 bg-green-200 rounded-md">
+          {alertMessage}
+        </div>
+      )}
+
+      {/* Mostrar los detalles del popup existente */}
+      {popup && (
+        <div className="mb-6 mt-10">
+             <h1 className="bg-ColorMorado text-2xl text-center font-bold font-nunito p-2 text-gray-200 mb-8 ">Popup</h1>
+          <textarea
+            className="w-full p-2 border border-gray-300 rounded-md mb-2 font-nunito"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Ingresa el contenido del popup"
+          />
+          <label className="flex items-center mb-4 font-nunito">
+            <input
+              type="checkbox"
+              checked={isActive}
+              onChange={() => setIsActive(!isActive)}
+              className="mr-2"
+            />
+            <span>Activo</span>
+          </label>
+          <button
+            onClick={handleSubmit}
+            className="bg-ColorAzul hover:bg-blue-300 text-gray-600 font-bold font-nunito py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+          >
+            Actualizar Popup
+          </button>
+        </div>
+      )}
+      
+      {/* Mostrar opción para crear un nuevo popup si no existe uno */}
+      {!popup && (
+        <div className='mt-10'>
+          <h3 className="text-xl font-semibold mb-2">Crear Nuevo Popup</h3>
+          <textarea
+            className="w-full p-2 border border-gray-300 rounded-md mb-2"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Ingresa el contenido del nuevo popup"
+          />
+          <label className="flex items-center mb-4">
+            <input
+              type="checkbox"
+              checked={isActive}
+              onChange={() => setIsActive(!isActive)}
+              className="mr-2"
+            />
+            <span>Activo</span>
+          </label>
+          <button
+            onClick={handleSubmit}
+            className="w-full bg-green-500 text-white py-2 rounded-md hover:bg-green-600 transition duration-200"
+          >
+            Crear Popup
+          </button>
+        </div>
+      )}
+
+    
+      
     </div>
   );
 };
 
 export default ManagePopup;
+
+
+
+
+
+
+
+
+
