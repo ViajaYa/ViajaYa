@@ -5,8 +5,9 @@ import NavBar from '../layout/NavBar/NavBar';
 
 const ManagePopup = () => {
   const dispatch = useDispatch();
-  const { loading, error } = useSelector((state) => state);
-  const popup = useSelector((state) => state.popup || null);
+  const loading = useSelector((state) => state.loading);
+  const  error  = useSelector((state) => state.error);
+  const popup = useSelector((state) => state.popup);
 
   const [content, setContent] = useState('');
   const [isActive, setIsActive] = useState(false);
@@ -15,8 +16,10 @@ const ManagePopup = () => {
 
   // Cargar el popup existente al cargar el componente
   useEffect(() => {
-    dispatch(getPopup());
-  }, [dispatch]);
+    if (!popup) { // Ensure we fetch only if popup is not already loaded
+      dispatch(getPopup());
+    }
+  }, [dispatch, popup]);
 
   // Rellenar los campos cuando haya un popup en el estado
   useEffect(() => {
@@ -39,18 +42,29 @@ const ManagePopup = () => {
       return () => clearTimeout(timer); // Limpiar el timeout cuando el componente se desmonte o cambie
     }
   }, [alertMessage]);
-
   const handleSubmit = () => {
     const popupData = { content, isActive };
 
-    if (isEditing && popup.id) {
-      dispatch(putPopup(popup.id, popupData));
-      setAlertMessage('Popup actualizado exitosamente!');
+    // Check if in edit mode and we have an id to update
+    if (isEditing && popup?.id) {
+        // Confirm with the user before updating
+        const confirmUpdate = window.confirm('¿Estás seguro de que deseas actualizar este popup?');
+        if (confirmUpdate) {
+            // Verificar que el id no sea undefined
+            if (popup.id !== undefined) {
+                console.log('Dispatching PUT with id:', popup.id);
+                dispatch(putPopup(popup.id, popupData));
+                setAlertMessage('Popup actualizado exitosamente!');
+            } else {
+                console.error('ID del popup es undefined');
+            }
+        }
     } else {
-      dispatch(postPopup(popupData));
-      setAlertMessage('Popup creado exitosamente!');
+        // Otherwise, create a new popup
+        dispatch(postPopup(popupData));
+        setAlertMessage('Popup creado exitosamente!');
     }
-  };
+};
 
   return (
     <div className="mb-64 pt-20 p-8">
@@ -94,6 +108,7 @@ const ManagePopup = () => {
           <button
             onClick={handleSubmit}
             className="bg-ColorAzul hover:bg-blue-300 text-gray-600 font-bold font-nunito py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+            disabled={loading} // Deshabilitar botón si está cargando
           >
             {isEditing ? 'Actualizar Popup' : 'Crear Popup'}
           </button>
@@ -120,6 +135,7 @@ const ManagePopup = () => {
           <button
             onClick={handleSubmit}
             className="w-full bg-green-500 text-white py-2 rounded-md hover:bg-green-600 transition duration-200"
+            disabled={loading} // Deshabilitar botón si está cargando
           >
             Crear Popup
           </button>
@@ -141,6 +157,7 @@ const ManagePopup = () => {
 };
 
 export default ManagePopup;
+
 
 
 
