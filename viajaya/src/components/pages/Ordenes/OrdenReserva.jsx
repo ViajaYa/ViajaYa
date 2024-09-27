@@ -1,29 +1,45 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchPack, createOrderReservation } from "../../../redux/NewActions/newActions"; 
-import { useParams} from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import NavBar from "../../layout/NavBar/NavBar";
 import logo from "../../../assets/mascota.png";
+import axios from 'axios';
 
 const MAP_LAYER_ATTRIBUTION =
   "&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors";
 const MAP_LAYER_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 
-const OrdenReserva= () => {
+const OrdenReserva = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
-  
-  
-  const pack = useSelector((state) => state.pack);
-  const loading = useSelector((state) => state.loading);
-  const error = useSelector((state) => state.error);
-  
+  const navigate = useNavigate();
+
+  const [user, setUser] = useState(null); // Inicialmente null
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedReturnDate, setSelectedReturnDate] = useState("");
   const [persons, setPersons] = useState(1);
   const [totalPrice, setTotalPrice] = useState(0);
+
+  const pack = useSelector((state) => state.pack);
+  const loading = useSelector((state) => state.loading);
+  const error = useSelector((state) => state.error);
+
+  // Función para verificar si el usuario está logueado
+  const verify = async () => {
+    try {
+      const data = await axios.get(`/user/verify/${localStorage.getItem("token")}`);
+      setUser(data.data.id); // Guardar el ID de usuario
+    } catch (error) {
+      console.log("Error al verificar usuario:", error);
+    }
+  };
+
+  useEffect(() => {
+    verify();
+  }, []);
 
   useEffect(() => {
     if (id) {
@@ -37,24 +53,62 @@ const OrdenReserva= () => {
     }
   }, [pack, persons]);
 
-  const handleReservation = () => {
-    const reservationData = {
-      packId: id,
-      selectedDate,
-      selectedReturnDate,
-      persons,
-      totalPrice,
-    };
-    
-    // Dispatch action to create reservation
-    dispatch(createOrderReservation(reservationData)).then((response) => {
-      // Redirigir al perfil de usuario o a la página de reservas
-    //   history.push(/reservas);
-    });
-  };
   const handleDateChange = (e) => {
-    setSelectedDate(e.target.value);
+    const [salida, vuelta] = e.target.value.split(" ");
+    setSelectedDate(salida);
+    setSelectedReturnDate(vuelta);
   };
+
+  const formatDate = (date) => {
+    // Asegurarse de que la fecha esté en el formato correcto: 'YYYY-MM-DD'
+    const formattedDate = new Date(date).toISOString().split("T")[0];
+    return formattedDate;
+  };
+  
+
+  const handleReservation = async () => {
+    if (!user) {
+      alert("Debes estar logueado para confirmar la reserva");
+      navigate("/login");
+      return;
+    }
+
+    if (!selectedDate || !selectedReturnDate) {
+      alert("Debes seleccionar las fechas de salida y llegada.");
+      return;
+    }
+
+    // Asegurarse de que packId es un número entero
+    const parsedPackId = parseInt(id, 10);
+
+    const reservationData = {
+      userId: user, // Usar el ID del usuario logueado
+      packId: parsedPackId,
+      numberOfPeople: persons,
+      totalPrice,
+      fechas: {
+        salida: formatDate(selectedDate), // Formatear la fecha
+        llegada: formatDate(selectedReturnDate), // Formatear la fecha
+      },
+    };
+
+    // Verificar el objeto antes de enviarlo
+    console.log("Datos de reserva a enviar:", reservationData);
+
+    try {
+      // Despachar la acción y esperar a que se resuelva
+      await dispatch(createOrderReservation(reservationData));
+
+      // Si es exitoso, mostrar alerta y redirigir a la página de reservas
+      alert("Reserva confirmada exitosamente");
+      navigate("/reservas");
+    } catch (error) {
+      // Si ocurre un error, mostrar una alerta o manejar el error adecuadamente
+      alert(`Error al confirmar la reserva: ${error.message || "Ocurrió un error"}`);
+    }
+  };
+
+
 
   if (loading) {
     return <div className="text-center mt-8">Cargando...</div>;
@@ -147,20 +201,17 @@ const OrdenReserva= () => {
                 onChange={handleDateChange}
                 className="w-full px-4 py-2 font-nunito border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-ColorAzul"
               >
-               
                 {pack.fechas &&
                   pack.fechas.map((fecha, index) => (
                     <option
                       key={index}
                       value={`${fecha.salida} ${fecha.vuelta}`}
-
                     >
-                      Fecha salida: {fecha.salida} -  Fecha vuelta: {fecha.vuelta}
+                      Fecha salida: {fecha.salida} - Fecha vuelta: {fecha.vuelta}
                     </option>
                   ))}
               </select>
             </div>
-
 
             {/* Select number of persons */}
             <div className="flex flex-col gap-2 mt-4">
