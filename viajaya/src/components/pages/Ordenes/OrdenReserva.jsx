@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchPack } from "../../../redux/NewActions/newActions";
-import { useParams, Link } from "react-router-dom";
+import { fetchPack, createOrderReservation } from "../../../redux/NewActions/newActions"; 
+import { useParams} from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import NavBar from "../../layout/NavBar/NavBar";
@@ -11,20 +11,50 @@ const MAP_LAYER_ATTRIBUTION =
   "&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors";
 const MAP_LAYER_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 
-const DetailNuevo = () => {
+const OrdenReserva= () => {
   const { id } = useParams();
   const dispatch = useDispatch();
+  
+  
   const pack = useSelector((state) => state.pack);
   const loading = useSelector((state) => state.loading);
   const error = useSelector((state) => state.error);
-
+  
   const [selectedDate, setSelectedDate] = useState("");
+  const [selectedReturnDate, setSelectedReturnDate] = useState("");
+  const [persons, setPersons] = useState(1);
+  const [totalPrice, setTotalPrice] = useState(0);
 
   useEffect(() => {
     if (id) {
       dispatch(fetchPack(id));
     }
   }, [dispatch, id]);
+
+  useEffect(() => {
+    if (pack && pack.price && persons) {
+      setTotalPrice(pack.price * persons);
+    }
+  }, [pack, persons]);
+
+  const handleReservation = () => {
+    const reservationData = {
+      packId: id,
+      selectedDate,
+      selectedReturnDate,
+      persons,
+      totalPrice,
+    };
+    
+    // Dispatch action to create reservation
+    dispatch(createOrderReservation(reservationData)).then((response) => {
+      // Redirigir al perfil de usuario o a la página de reservas
+    //   history.push(/reservas);
+    });
+  };
+  const handleDateChange = (e) => {
+    setSelectedDate(e.target.value);
+  };
 
   if (loading) {
     return <div className="text-center mt-8">Cargando...</div>;
@@ -35,10 +65,6 @@ const DetailNuevo = () => {
   }
 
   const center = [parseFloat(pack.lat), parseFloat(pack.lng)];
-
-  const handleDateChange = (e) => {
-    setSelectedDate(e.target.value);
-  };
 
   return (
     <div className="min-h-screen pt-20 bg-gray-50">
@@ -101,38 +127,19 @@ const DetailNuevo = () => {
             <h3 className="text-xl font-bold font-nunito text-ColorMorado">
               Detalles del Paquete
             </h3>
-            <p className="text-lg text-gray-700 flex justify-start">
-              <span className="font-bold font-nunito "></span> {pack.location}
-            </p>
-
-            <hr className="border-gray-300" />
-            <p className="text-lg text-gray-700 flex justify-between">
-              <span className="font-semibold font-nunito">Precio:</span>
+            <p className="text-lg text-gray-700">
+              <span className="font-semibold font-nunito">Precio por persona:</span>{" "}
               {Number(pack.price).toLocaleString("es-CO", {
                 style: "currency",
                 currency: "COP",
               })}
             </p>
             <hr className="border-gray-300" />
-            <p className="text-lg text-gray-700 flex justify-between">
-              <span className="font-semibold font-nunito">Días:</span>{" "}
-              {pack.days}
-            </p>
-            <hr className="border-gray-300" />
-            <p className="text-lg text-gray-700 flex justify-between">
-              <span className="font-semibold font-nunito">Ciudad:</span>{" "}
-              {pack.city}
-            </p>
-            <p className="text-lg text-gray-700">
-              <span className="font-semibold font-nunito">Descripción:</span>{" "}
-              {pack.detail}
-            </p>
-            <hr className="border-gray-300" />
 
             {/* Date Selection */}
             <div className="mt-6">
               <h3 className="text-xl font-bold font-nunito mb-3 text-ColorMorado">
-                Fechas Disponibles
+                Seleccionar Fechas
               </h3>
               <select
                 value={selectedDate}
@@ -145,21 +152,44 @@ const DetailNuevo = () => {
                   pack.fechas.map((fecha, index) => (
                     <option
                       key={index}
-                      value={`${fecha.salida} a ${fecha.vuelta}`}
+                      value={`${fecha.salida} ${fecha.vuelta}`}
+
                     >
-                      {fecha.salida} - {fecha.vuelta}
+                      Fecha salida: {fecha.salida} -  Fecha vuelta: {fecha.vuelta}
                     </option>
                   ))}
               </select>
             </div>
 
+
+            {/* Select number of persons */}
+            <div className="flex flex-col gap-2 mt-4">
+              <label className="text-lg font-nunito">Número de Personas</label>
+              <input
+                type="number"
+                min="1"
+                className="p-2 border rounded"
+                value={persons}
+                onChange={(e) => setPersons(Number(e.target.value))}
+              />
+            </div>
+
+            {/* Total Price */}
+            <p className="text-lg font-nunito mt-4">
+              <span className="font-semibold">Precio Total:</span>{" "}
+              {Number(totalPrice).toLocaleString("es-CO", {
+                style: "currency",
+                currency: "COP",
+              })}
+            </p>
+
             {/* Payment Button */}
-            <Link to={`/ordenReserva/${pack.id}`}>
-             
-              <button className="bg-ColorAzul hover:bg-ColorMorado text-white font-nunito font-semibold py-3 px-6 rounded-md mt-6 transition duration-300 ease-in-out w-full">
-                Reservar
-              </button>
-            </Link>
+            <button
+              onClick={handleReservation}
+              className="bg-ColorAzul hover:bg-ColorMorado text-white font-nunito font-semibold py-3 px-6 rounded-md mt-6 transition duration-300 ease-in-out w-full"
+            >
+              Confirmar Reserva
+            </button>
           </div>
         </div>
       </div>
@@ -167,4 +197,4 @@ const DetailNuevo = () => {
   );
 };
 
-export default DetailNuevo;
+export default OrdenReserva;

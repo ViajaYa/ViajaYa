@@ -24,6 +24,7 @@ import PrivateRoute from "./components/PrivateRoute"
 import GestionarPagina from "./components/Panel/GestionarPagina"
 import InstaVideoUploader from "./components/Panel/InstaVideoUploader"
 import UploadCarouselImage from "./components/Panel/UploadCarouselImage "
+import OrdenReserva from "./components/pages/Ordenes/OrdenReserva"
 
 const Landing = lazy(() => import("./components/pages/Landing/Landing"))
 
@@ -110,7 +111,7 @@ function App() {
        <Route path="/panel/popup/popup" element={<Popup/>}/>  
       <Route exact path="/politicas" element={<Politicas/>}/>
       <Route exact path="/terminos" element={<Terminos/>}/>
-      
+      <Route exact path="/ordenReserva/:id" element={<OrdenReserva/>}/>
       <Route path="/detail/:id" element={<DetailNuevo/>}/>
       <Route path="/allpacks" element={<AllPacks />} />
       <Route exact path="/productos" element={<TabbedImages/>}/>
