@@ -46,10 +46,7 @@ let entries = Object.entries(sequelize.models);
 let capsEntries = entries.map((entry) => [entry[0][0].toUpperCase() + entry[0].slice(1), entry[1]]);
 sequelize.models = Object.fromEntries(capsEntries);
 
-const {  Pack, Item, User, Reservation } = sequelize.models;
-
-
-
+const {  Pack, Item, User, OrderReservation } = sequelize.models;
 
 
 
@@ -82,11 +79,12 @@ Item.belongsTo(User, {
   targetKey: 'id' // Conecta con el id del Usuario
 })
 
-User.hasMany(Reservation);
-Reservation.belongsTo(User);
+User.hasMany(OrderReservation, { foreignKey: 'userId' });
+OrderReservation.belongsTo(User, { foreignKey: 'userId' });
 
-Pack.hasMany(Reservation);
-Reservation.belongsTo(Pack);
+// Relación entre Pack y Reserva
+Pack.hasMany(OrderReservation, { foreignKey: 'packId' });
+OrderReservation.belongsTo(Pack, { foreignKey: 'packId' });
 
   module.exports = {
     ...sequelize.models, // para poder importar los modelos así: const { Product, User } = require('./db.js');

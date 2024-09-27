@@ -10,10 +10,11 @@ import {
     DELETE_PACK_REQUEST,    DELETE_PACK_SUCCESS,    DELETE_PACK_FAILURE,
     FETCH_YAPAYA_REQUEST,   FETCH_YAPAYA_SUCCESS,   FETCH_YAPAYA_FAILURE, 
     FETCH_ACTIVE_REQUEST,   FETCH_ACTIVE_SUCCESS,   FETCH_ACTIVE_FAILURE, 
-    CREATE_RESERVATION_SUCCESS, CREATE_RESERVATION_FAILURE, FETCH_RESERVATIONS_SUCCESS,
-    FETCH_RESERVATIONS_FAILURE, FETCH_USER_RESERVATIONS_SUCCESS,FETCH_USER_RESERVATIONS_FAILURE,
-    UPDATE_RESERVATION_SUCCESS, UPDATE_RESERVATION_FAILURE,DELETE_RESERVATION_SUCCESS,
-    DELETE_RESERVATION_FAILURE, FETCH_VIDEOS_REQUEST, FETCH_VIDEOS_SUCCESS, FETCH_VIDEOS_FAILURE, REMOVE_VIDEO,
+    FETCH_VIDEOS_REQUEST, FETCH_VIDEOS_SUCCESS, FETCH_VIDEOS_FAILURE, REMOVE_VIDEO,
+    CREATE_ORDER_SUCCESS,     CREATE_ORDER_FAIL,     GET_ORDERS_SUCCESS,
+    GET_ORDERS_FAIL,     GET_ORDER_SUCCESS,     GET_ORDER_FAIL,
+    UPDATE_ORDER_SUCCESS,     UPDATE_ORDER_FAIL,     DELETE_ORDER_SUCCESS,
+    DELETE_ORDER_FAIL,
 
 
   } from './NewActions-Types';
@@ -200,73 +201,7 @@ export const deletePack = (id) => async (dispatch) => {
   }
 };
 
-// Acción para crear una nueva reserva
-export const createReservation = (reservationData) => async (dispatch) => {
-  try {
-    const response = await fetch(`${BASE_URL}/reservation`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(reservationData),
-    });
 
-    if (!response.ok) {
-      throw new Error('Failed to create reservation');
-    }
-
-    const data = await response.json();
-    dispatch({
-      type: CREATE_RESERVATION_SUCCESS,
-      payload: data,
-    });
-  } catch (error) {
-    dispatch({
-      type: CREATE_RESERVATION_FAILURE,
-      payload: error.message,
-    });
-  }
-};
-
-// Acción para obtener todas las reservas
-export const fetchReservations = () => async (dispatch) => {
-  try {
-    const response = await axios.get(`${BASE_URL}/reservations`);
-    dispatch({ type: FETCH_RESERVATIONS_SUCCESS, payload: response.data });
-  } catch (error) {
-    dispatch({ type: FETCH_RESERVATIONS_FAILURE, payload: error.message });
-  }
-};
-
-// Acción para obtener reservas de un usuario específico
-export const fetchUserReservations = (id) => async (dispatch) => {
-  try {
-    const response = await axios.get(`${BASE_URL}/reservations/user/${id}`);
-    dispatch({ type: FETCH_USER_RESERVATIONS_SUCCESS, payload: response.data });
-  } catch (error) {
-    dispatch({ type: FETCH_USER_RESERVATIONS_FAILURE, payload: error.message });
-  }
-};
-
-// Acción para actualizar una reserva
-export const updateReservation = (id, status) => async (dispatch) => {
-  try {
-    const response = await axios.put(`${BASE_URL}/reservations/${id}`, { status });
-    dispatch({ type: UPDATE_RESERVATION_SUCCESS, payload: response.data });
-  } catch (error) {
-    dispatch({ type: UPDATE_RESERVATION_FAILURE, payload: error.message });
-  }
-};
-
-// Acción para eliminar una reserva
-export const deleteReservation = (id) => async (dispatch) => {
-  try {
-    await axios.delete(`${BASE_URL}/reservations/${id}`);
-    dispatch({ type: DELETE_RESERVATION_SUCCESS, payload: id });
-  } catch (error) {
-    dispatch({ type: DELETE_RESERVATION_FAILURE, payload: error.message });
-  }
-};
 
 export const fetchVideos = () => {
   return async (dispatch) => {
@@ -304,5 +239,90 @@ export const removeVideo = (id) => async (dispatch) => {
   } catch (error) {
     console.error('Error eliminando video:', error);
     // Manejar error aquí (opcional)
+  }
+};
+
+export const createOrderReservation = (orderData) => async (dispatch) => {
+  try {
+    const { data } = await axios.post(`${BASE_URL}/order`, orderData);
+    dispatch({
+      type: CREATE_ORDER_SUCCESS,
+      payload: data,
+    });
+  } catch (error) {
+    dispatch({
+      type: CREATE_ORDER_FAIL,
+      payload: error.response ? error.response.data.message : error.message,
+    });
+  }
+};
+
+// Acción para obtener todas las órdenes
+export const getAllOrders = (userId = null) => async (dispatch) => {
+  try {
+    const url = userId 
+      ? `${BASE_URL}/order/user/${userId}`  
+      : `${BASE_URL}/order`;  
+    
+    const { data } = await axios.get(url);
+    
+    dispatch({
+      type: GET_ORDERS_SUCCESS,
+      payload: data,
+    });
+  } catch (error) {
+    dispatch({
+      type: GET_ORDERS_FAIL,
+      payload: error.response ? error.response.data.message : error.message,
+    });
+  }
+};
+
+
+// Acción para obtener una orden por ID
+export const getOrderById = (id) => async (dispatch) => {
+  try {
+    const { data } = await axios.get(`${BASE_URL}/order/${id}`);
+    dispatch({
+      type: GET_ORDER_SUCCESS,
+      payload: data,
+    });
+  } catch (error) {
+    dispatch({
+      type: GET_ORDER_FAIL,
+      payload: error.response ? error.response.data.message : error.message,
+    });
+  }
+};
+
+// Acción para actualizar una orden
+export const updateOrder = (id, orderData) => async (dispatch) => {
+  try {
+    const { data } = await axios.put(`${BASE_URL}/order/${id}`, orderData);
+    dispatch({
+      type: UPDATE_ORDER_SUCCESS,
+      payload: data,
+    });
+  } catch (error) {
+    dispatch({
+      type: UPDATE_ORDER_FAIL,
+      payload: error.response ? error.response.data.message : error.message,
+    });
+  }
+};
+
+// Acción para eliminar una orden
+export const deleteOrder = (id) => async (dispatch) => {
+  try {
+    await axios.delete(`${BASE_URL}/order/${id}`);
+    dispatch({
+      type: DELETE_ORDER_SUCCESS,
+      payload: id,
+    });
+  } catch (error) {
+    dispatch({
+      type: DELETE_ORDER_FAIL,
+      payload: error.response ? error.response.data.message : error.message,
+    });
   }
 };

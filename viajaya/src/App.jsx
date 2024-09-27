@@ -2,7 +2,6 @@ import { Route, Routes, useLocation, useNavigate } from "react-router-dom"
 import Login from "./components/pages/Login/Login"
 import ProfileAdmin from "./components/pages/ProfileAdmin/Profile"
 import DetailNuevo from "./components/pages/Detail/DetailNuevo"
-import Pay from "./components/pages/Pay/Pay"
 import Politicas from "./components/pages/Politicas/Politicas"
 import Terminos from "./components/pages/Politicas/Terminos"
 import { useEffect, useState } from "react"
@@ -111,10 +110,7 @@ function App() {
        <Route path="/panel/popup/popup" element={<Popup/>}/>  
       <Route exact path="/politicas" element={<Politicas/>}/>
       <Route exact path="/terminos" element={<Terminos/>}/>
-      <Route exact path="/pay/:id" element={
-        <PrivateRoute>
-          <Pay/>
-          </PrivateRoute>}/>
+      
       <Route path="/detail/:id" element={<DetailNuevo/>}/>
       <Route path="/allpacks" element={<AllPacks />} />
       <Route exact path="/productos" element={<TabbedImages/>}/>

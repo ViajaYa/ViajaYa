@@ -52,16 +52,16 @@ import {
   FETCH_ACTIVE_REQUEST,
   FETCH_ACTIVE_SUCCESS,
   FETCH_ACTIVE_FAILURE,
-  CREATE_RESERVATION_SUCCESS,
-  CREATE_RESERVATION_FAILURE,
-  FETCH_RESERVATIONS_SUCCESS,
-  FETCH_RESERVATIONS_FAILURE,
-  FETCH_USER_RESERVATIONS_SUCCESS,
-  FETCH_USER_RESERVATIONS_FAILURE,
-  UPDATE_RESERVATION_SUCCESS,
-  UPDATE_RESERVATION_FAILURE,
-  DELETE_RESERVATION_SUCCESS,
-  DELETE_RESERVATION_FAILURE,
+  CREATE_ORDER_SUCCESS,
+  CREATE_ORDER_FAIL,
+  GET_ORDERS_SUCCESS,
+  GET_ORDERS_FAIL,
+  GET_ORDER_SUCCESS,
+  GET_ORDER_FAIL,
+  UPDATE_ORDER_SUCCESS,
+  UPDATE_ORDER_FAIL,
+  DELETE_ORDER_SUCCESS,
+  DELETE_ORDER_FAIL,
   LOGIN_SUCCESS,
   LOGOUT,
   LOGIN_FAIL,
@@ -99,6 +99,9 @@ const initialState = {
   pack: {},
   reservations: [],
   userReservations: [],
+  loadingReservations: false, 
+  errorReservations: null, 
+  selectedReservation: null,
   token: null,
   loading: false,
   error: null,
@@ -108,31 +111,30 @@ const rootReducer = (state = initialState, action) => {
   switch (action.type) {
     case LOGIN_SUCCESS:
       return {
-          ...state,
-          token: action.payload.token,
-          id: action.payload.id,
-          error: null,
+        ...state,
+        token: action.payload.token,
+        id: action.payload.id,
+        error: null,
       };
-  case LOGIN_FAIL:
+    case LOGIN_FAIL:
       return {
-          ...state,
-          token: null,
-          id: null,
-          error: action.payload,
+        ...state,
+        token: null,
+        id: null,
+        error: action.payload,
       };
-  case VERIFY_TOKEN_SUCCESS:
+    case VERIFY_TOKEN_SUCCESS:
       return {
-          ...state,
-          user: action.payload,
+        ...state,
+        user: action.payload,
       };
-  case VERIFY_TOKEN_FAIL:
+    case VERIFY_TOKEN_FAIL:
       return {
-          ...state,
-          error: action.payload,
+        ...state,
+        error: action.payload,
       };
-  case LOGOUT:
+    case LOGOUT:
       return initialState;
-    
 
     case SET_USER: {
       return {
@@ -464,105 +466,118 @@ const rootReducer = (state = initialState, action) => {
 
     case DELETE_PACK_FAILURE:
       return { ...state, loading: false, error: action.payload };
-    
-      case CREATE_RESERVATION_SUCCESS:
-      return {
-        ...state,
-        reservations: [...state.reservations, action.payload],
-        loading: false,
-      };
-    case CREATE_RESERVATION_FAILURE:
-      return {
-        ...state,
-        error: action.payload,
-        loading: false,
-      };
-    case FETCH_RESERVATIONS_SUCCESS:
-      return {
-        ...state,
-        reservations: action.payload,
-        loading: false,
-      };
-    case FETCH_RESERVATIONS_FAILURE:
-      return {
-        ...state,
-        error: action.payload,
-        loading: false,
-      };
-    case FETCH_USER_RESERVATIONS_SUCCESS:
-      return {
-        ...state,
-        userReservations: action.payload,
-        loading: false,
-      };
-    case FETCH_USER_RESERVATIONS_FAILURE:
-      return {
-        ...state,
-        error: action.payload,
-        loading: false,
-      };
-    case UPDATE_RESERVATION_SUCCESS:
-      return {
-        ...state,
-        reservations: state.reservations.map((reservation) =>
-          reservation.id === action.payload.id ? action.payload : reservation
-        ),
-        loading: false,
-      };
-    case UPDATE_RESERVATION_FAILURE:
-      return {
-        ...state,
-        error: action.payload,
-        loading: false,
-      };
-    case DELETE_RESERVATION_SUCCESS:
-      return {
-        ...state,
-        reservations: state.reservations.filter(
-          (reservation) => reservation.id !== action.payload
-        ),
-        loading: false,
-      };
-    case DELETE_RESERVATION_FAILURE:
-      return {
-        ...state,
-        error: action.payload,
-        loading: false,
-      };
-      case FETCH_VIDEOS_REQUEST:
+
+      case CREATE_ORDER_SUCCESS:
         return {
           ...state,
-          loading: true
+          loadingReservations: false,
+          reservations: [...state.reservations, action.payload], // Agrega la nueva reserva
+          errorReservations: null,
         };
-        case FETCH_VIDEOS_SUCCESS:
-          console.log('Fetched Videos:', action.payload); // Agrega este console.log para depuración
-          return {
-            ...state,
-            loading: false,
-            videos: action.payload,
-            error: ''
-          };
-        
-      case FETCH_VIDEOS_FAILURE:
+  
+      case CREATE_ORDER_FAIL:
         return {
           ...state,
-          loading: false,
-          videos: [],
-          error: action.payload
+          loadingReservations: false,
+          errorReservations: action.payload, // Guarda el error
         };
-        case REMOVE_VIDEO:
-          return {
-            ...state,
-            videos: state.videos.filter(video => video.id !== action.payload),
-          };
-          case INFO_USERS:
-            console.log('Users information received:', action.payload); // Verifica que el payload traiga la información correcta
-            return {
-              ...state,
-              users: action.payload,  // Almacena los usuarios en el estado
-              loading: false,
-              error: null,
-            };
+  
+      case GET_ORDERS_SUCCESS:
+        return {
+          ...state,
+          loadingReservations: false,
+          reservations: action.payload, // Carga las reservas
+          errorReservations: null,
+        };
+  
+      case GET_ORDERS_FAIL:
+        return {
+          ...state,
+          loadingReservations: false,
+          errorReservations: action.payload, // Guarda el error
+        };
+  
+      case GET_ORDER_SUCCESS:
+        return {
+          ...state,
+          loadingReservations: false,
+          selectedReservation: action.payload, // Guarda la reserva específica
+          errorReservations: null,
+        };
+  
+      case GET_ORDER_FAIL:
+        return {
+          ...state,
+          loadingReservations: false,
+          errorReservations: action.payload, // Guarda el error
+        };
+  
+      case UPDATE_ORDER_SUCCESS:
+        return {
+          ...state,
+          loadingReservations: false,
+          reservations: state.reservations.map(reservation =>
+            reservation.id === action.payload.id ? action.payload : reservation // Actualiza la reserva
+          ),
+          errorReservations: null,
+        };
+  
+      case UPDATE_ORDER_FAIL:
+        return {
+          ...state,
+          loadingReservations: false,
+          errorReservations: action.payload, // Guarda el error
+        };
+  
+      case DELETE_ORDER_SUCCESS:
+        return {
+          ...state,
+          loadingReservations: false,
+          reservations: state.reservations.filter(reservation => reservation.id !== action.payload), 
+          errorReservations: null,
+        };
+  
+      case DELETE_ORDER_FAIL:
+        return {
+          ...state,
+          loadingReservations: false,
+          errorReservations: action.payload, // Guarda el error
+        };
+
+    case FETCH_VIDEOS_REQUEST:
+      return {
+        ...state,
+        loading: true,
+      };
+    case FETCH_VIDEOS_SUCCESS:
+      console.log("Fetched Videos:", action.payload); // Agrega este console.log para depuración
+      return {
+        ...state,
+        loading: false,
+        videos: action.payload,
+        error: "",
+      };
+
+    case FETCH_VIDEOS_FAILURE:
+      return {
+        ...state,
+        loading: false,
+        videos: [],
+        error: action.payload,
+      };
+    case REMOVE_VIDEO:
+      return {
+        ...state,
+        videos: state.videos.filter((video) => video.id !== action.payload),
+      };
+    case INFO_USERS:
+      console.log("Users information received:", action.payload); // Verifica que el payload traiga la información correcta
+      return {
+        ...state,
+        users: action.payload, // Almacena los usuarios en el estado
+        loading: false,
+        error: null,
+      };
 
     default:
       return state;
