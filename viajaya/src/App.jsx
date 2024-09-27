@@ -24,7 +24,7 @@ import AllPacks from "./components/AllsPacks"
 import PrivateRoute from "./components/PrivateRoute"
 import GestionarPagina from "./components/Panel/GestionarPagina"
 import InstaVideoUploader from "./components/Panel/InstaVideoUploader"
-
+import UploadCarouselImage from "./components/Panel/UploadCarouselImage "
 
 const Landing = lazy(() => import("./components/pages/Landing/Landing"))
 
@@ -101,6 +101,11 @@ function App() {
           <Route path="/panelInstagram" element={
         <PrivateRoute>
           <InstaVideoUploader/>
+        </PrivateRoute>
+        }/>
+         <Route path="/panelCarousel" element={
+        <PrivateRoute>
+          <UploadCarouselImage/>
         </PrivateRoute>
         }/>
        <Route path="/panel/popup/popup" element={<Popup/>}/>  

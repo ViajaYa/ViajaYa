@@ -8,7 +8,7 @@ const popupRoutes= require("./popupRoutes")
 const numberRoutes= require("./numberRoutes")
 const reservationRoutes= require(("./reservationRoutes"))
 const instagramVideoRoutes = require(("./instagramVideoRoutes"))
-
+const carouselRoutes = require("./carouselRoutes")
 const routes = Router()
 
 routes
@@ -22,5 +22,5 @@ routes
 .use("/rifa", numberRoutes)
 .use("number", numberRoutes)
 .use("/insta", instagramVideoRoutes)
-
+.use("/carousel", carouselRoutes)
 module.exports = routes
