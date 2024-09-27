@@ -114,11 +114,11 @@ const UploadCarouselImage = () => {
             className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm"
           >
             <option value="">Seleccione un destino</option>
-            <option value="Nacionales">NACIONALES</option>
-            <option value="Europa">EUROPA</option>
-            <option value="Internacionales">INTERNACIONALES</option>
-            <option value="Llanos Orientales">LLANOS ORIENTALES</option>
-            <option value="POR TIERRA">POR TIERRA</option>
+            <option value="Internacionales">Internacionales</option>
+            <option value="Europa">Europa</option>
+            <option value="Nacionales">Nacionales</option>
+            <option value="Llano">Llano</option>
+            <option value="Por Tierra">Por Tierra</option>
           </select>
         </div>
         <div className="mb-4">
@@ -146,11 +146,11 @@ const UploadCarouselImage = () => {
         <div className="grid grid-cols-2 gap-4">
           {carouselImages.map((image) => (
             <div key={image.id} className="relative">
-              <img 
-                src={image.src} 
-                alt={image.title} 
-                className="w-full h-32 object-cover rounded-md" 
-              />
+            <img 
+  src={image.src} 
+  alt={image.title} 
+  className="w-full h-32 object-cover rounded-md" 
+/>
               <button
                 onClick={() => handleDelete(image.id)}
                 className="absolute top-1 right-1 bg-red-500 text-white px-2 py-1 rounded-full text-xs hover:bg-red-600"

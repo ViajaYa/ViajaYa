@@ -7,11 +7,7 @@ import macarena from "../assets/flipcard/lamacarena.jpg";
 import tierra from "../assets/flipcard/portierra.jpg";
 import Title from "./utils/Title";
 import axios from 'axios';
-// import europa from "../assets/flipcard/EuropaCarousel.jpg";
-// import internacional from "../assets/flipcard/dubai.jpg";
-// import llano from "../assets/flipcard/llano.jpg";
-// import nacionales3 from "../assets/flipcard/nacionales3.jpg";
-// import nacionales2 from "../assets/flipcard/nacionales2.png";
+
 
 const CarouselHome = () => {
     const navigate = useNavigate();
@@ -25,20 +21,14 @@ const CarouselHome = () => {
         { src: tierra, title: "POR TIERRA", description: "Viaja por tierra y descubre nuevas aventuras." }
     ];
 
-    // const newImages = [
-    //     { src: europa, title: "Reservá", description: "Europa.", destino: "Europa" },
-    //     { src: internacional, title: "Reservá", description: "Internacionales.", destino: "Internacionales" },
-    //     { src: llano, title: "Reservá", description: "Nacionales.", destino: "Nacionales" },
-    //     { src: nacionales3, title: "Reservá", description: "Llano.", destino: "Llano" },
-    //     { src: nacionales2, title: "Reservá", description: "Por Tierra.", destino: "Por Tierra" }
-    // ];
+
     useEffect(() => {
         const fetchImages = async () => {
             try {
-                const response = await axios.get("/carousel"); // Axios usa la baseURL configurada
+                const response = await axios.get("/carousel");
                 const data = response.data;
-                
-                // Asegurarte de que data tenga el formato esperado
+
+
                 setNewImages(data);
             } catch (error) {
                 console.error('Error al obtener las imágenes del carrusel:', error);
@@ -111,7 +101,7 @@ const CarouselHome = () => {
                     {newImages.map((image, index) => (
                         <div
                             key={index}
-                            className="relative w-full h-64 sm:h-80 lg:h-[600px] flex-shrink-0 flex items-center"
+                            className="relative w-full h-64 sm:h-80 lg:h-[600px] flex-shrink-0 flex items-center object-cover"
                             style={{
                                 backgroundImage: `url(${image.src})`,
                                 backgroundSize: 'cover',
