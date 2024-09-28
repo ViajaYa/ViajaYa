@@ -20,30 +20,30 @@ const PaymentMethods = ({ onSelect }) => {
     <div className="flex space-x-4 justify-center mt-4">
       <div
         onClick={() => handleSelectMethod("QR")}
-        className={`p-4 flex flex-col items-center bg-blue-100 rounded-lg cursor-pointer hover:scale-105 transition-transform ${
+        className={`p-4 flex flex-col items-center bg-blue-100 rounded-lg cursor-pointer hover:scale-105 transition-transform w-36 h-36 justify-center ${
           selectedMethod === "QR" ? "ring-4 ring-blue-500" : ""
         }`}
       >
         <FaQrcode className="text-4xl text-blue-500" />
-        <p className="mt-2 text-gray-800">QR</p>
+        <p className="mt-2 text-gray-800 text-center">QR</p>
       </div>
       <div
         onClick={() => handleSelectMethod("Wompi")}
-        className={`p-4 flex flex-col items-center bg-green-100 rounded-lg cursor-pointer hover:scale-105 transition-transform ${
+        className={`p-4 flex flex-col items-center bg-green-100 rounded-lg cursor-pointer hover:scale-105 transition-transform w-36 h-36 justify-center ${
           selectedMethod === "Wompi" ? "ring-4 ring-green-500" : ""
         }`}
       >
         <FaMoneyBillWave className="text-4xl text-green-500" />
-        <p className="mt-2 text-gray-800">Wompi</p>
+        <p className="mt-2 text-gray-800 text-center">Wompi</p>
       </div>
       <div
         onClick={() => handleSelectMethod("WhatsApp")}
-        className={`p-4 flex flex-col items-center bg-yellow-100 rounded-lg cursor-pointer hover:scale-105 transition-transform ${
+        className={`p-4 flex flex-col items-center bg-yellow-100 rounded-lg cursor-pointer hover:scale-105 transition-transform w-36 h-36 justify-center ${
           selectedMethod === "WhatsApp" ? "ring-4 ring-yellow-500" : ""
         }`}
       >
         <FaWhatsapp className="text-4xl text-green-600" />
-        <p className="mt-2 text-gray-800">WhatsApp</p>
+        <p className="mt-2 text-gray-800 text-center">WhatsApp</p>
       </div>
     </div>
   );
@@ -106,15 +106,15 @@ const UserReservations = () => {
       </div>
       <div className="min-h-screen pt-20 bg-gray-50 font-nunito">
         <div className="container mx-auto mt-8 p-6 bg-white rounded-lg shadow-lg">
-          <h2 className="text-3xl font-bold text-gray-700 mb-6">Mis Reservas</h2>
+          <h2 className="text-3xl font-bold text-gray-200 mb-6 font-nunito text-center bg-ColorMorado">Mis Reservas</h2>
           {reservations.length > 0 ? (
-            <div className="space-y-6">
+            <div className="space-y-6 font-nunito">
       {reservations.map((reserva, index) => (
-  <div key={index} className="p-4 border rounded-md shadow-md space-y-4">
+  <div key={index} className="p-4 border rounded-md shadow-md space-y-6">
     <h3 className="text-xl font-semibold text-ColorMorado">
       {reserva.pack?.title || "Paquete no disponible"}
     </h3>
-    <div className="border-b border-gray-300 pb-2">
+    <div className="border-b border-gray-300 pb-2 font-nunito space-y-4 text-lg ">
       <p><strong>Fecha de salida:</strong> {new Date(reserva.fechas?.salida).toLocaleDateString("es-CO", { day: '2-digit', month: '2-digit', year: '2-digit' }) || "Fecha no disponible"}</p>
       <p><strong>Fecha de llegada:</strong> {new Date(reserva.fechas?.llegada).toLocaleDateString("es-CO", { day: '2-digit', month: '2-digit', year: '2-digit' }) || "Fecha no disponible"}</p>
       <p><strong>Total Personas:</strong> {reserva.numberOfPeople || "No especificado"}</p>
