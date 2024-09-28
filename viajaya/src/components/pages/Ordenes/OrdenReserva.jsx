@@ -1,12 +1,16 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchPack, createOrderReservation } from "../../../redux/NewActions/newActions"; 
+import {
+  fetchPack,
+  createOrderReservation,
+} from "../../../redux/NewActions/newActions";
 import { useParams, useNavigate } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import NavBar from "../../layout/NavBar/NavBar";
 import logo from "../../../assets/mascota.png";
-import axios from 'axios';
+import axios from "axios";
+import { toast } from 'react-toastify';
 
 const MAP_LAYER_ATTRIBUTION =
   "&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors";
@@ -30,7 +34,9 @@ const OrdenReserva = () => {
   // Función para verificar si el usuario está logueado
   const verify = async () => {
     try {
-      const data = await axios.get(`/user/verify/${localStorage.getItem("token")}`);
+      const data = await axios.get(
+        `/user/verify/${localStorage.getItem("token")}`
+      );
       setUser(data.data.id); // Guardar el ID de usuario
     } catch (error) {
       console.log("Error al verificar usuario:", error);
@@ -54,9 +60,11 @@ const OrdenReserva = () => {
   }, [pack, persons]);
 
   const handleDateChange = (e) => {
-    const [salida, vuelta] = e.target.value.split(" ");
-    setSelectedDate(salida);
-    setSelectedReturnDate(vuelta);
+    const selectedIndex = e.target.value; // Índice del array de fechas seleccionado
+    const selectedPackDate = pack.fechas[selectedIndex];
+
+    setSelectedDate(selectedPackDate.salida);
+    setSelectedReturnDate(selectedPackDate.vuelta);
   };
 
   const formatDate = (date) => {
@@ -64,17 +72,20 @@ const OrdenReserva = () => {
     const formattedDate = new Date(date).toISOString().split("T")[0];
     return formattedDate;
   };
-  
 
   const handleReservation = async () => {
     if (!user) {
-      alert("Debes estar logueado para confirmar la reserva");
+      toast.error("Debes estar logueado para confirmar la reserva", {
+        position: toast.POSITION.TOP_RIGHT,
+      });
       navigate("/login");
       return;
     }
 
     if (!selectedDate || !selectedReturnDate) {
-      alert("Debes seleccionar las fechas de salida y llegada.");
+      toast.error("Debes estar logueado para confirmar la reserva", {
+        position: "top-right",
+      });
       return;
     }
 
@@ -92,23 +103,24 @@ const OrdenReserva = () => {
       },
     };
 
-    // Verificar el objeto antes de enviarlo
-    console.log("Datos de reserva a enviar:", reservationData);
 
     try {
       // Despachar la acción y esperar a que se resuelva
       await dispatch(createOrderReservation(reservationData));
 
-      // Si es exitoso, mostrar alerta y redirigir a la página de reservas
-      alert("Reserva confirmada exitosamente");
+      toast.success("Reserva confirmada exitosamente. Ya puede abonarla.", {
+        position: "top-right",
+      });
       navigate("/reservas");
     } catch (error) {
       // Si ocurre un error, mostrar una alerta o manejar el error adecuadamente
-      alert(`Error al confirmar la reserva: ${error.message || "Ocurrió un error"}`);
+      toast.error(
+        `Error al confirmar la reserva: ${error.message || "Ocurrió un error"}`,{
+          position: "top-right",
+        }
+      );
     }
   };
-
-
 
   if (loading) {
     return <div className="text-center mt-8">Cargando...</div>;
@@ -182,7 +194,9 @@ const OrdenReserva = () => {
               Detalles del Paquete
             </h3>
             <p className="text-lg text-gray-700">
-              <span className="font-semibold font-nunito">Precio por persona:</span>{" "}
+              <span className="font-semibold font-nunito">
+                Precio por persona:
+              </span>{" "}
               {Number(pack.price).toLocaleString("es-CO", {
                 style: "currency",
                 currency: "COP",
@@ -196,18 +210,18 @@ const OrdenReserva = () => {
                 Seleccionar Fechas
               </h3>
               <select
-                value={selectedDate}
+                value={pack.fechas.findIndex(
+                  (fecha) => fecha.salida === selectedDate
+                )} // Obtener el índice correspondiente
                 required
                 onChange={handleDateChange}
                 className="w-full px-4 py-2 font-nunito border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-ColorAzul"
               >
                 {pack.fechas &&
                   pack.fechas.map((fecha, index) => (
-                    <option
-                      key={index}
-                      value={`${fecha.salida} ${fecha.vuelta}`}
-                    >
-                      Fecha salida: {fecha.salida} - Fecha vuelta: {fecha.vuelta}
+                    <option key={index} value={index}>
+                      Fecha salida: {fecha.salida} - Fecha vuelta:{" "}
+                      {fecha.vuelta}
                     </option>
                   ))}
               </select>

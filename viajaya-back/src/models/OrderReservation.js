@@ -32,13 +32,12 @@ module.exports = (sequelize) => {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    status: {  // Estado de la reserva (pendiente, confirmada, cancelada)
-      type: DataTypes.STRING,
-      defaultValue: 'pendiente',
-      allowNull: false,
-    },
     totalPrice: {  // Precio total calculado en base al pack y cupos
       type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+    },
+    fechas: {  // Campo para las fechas en formato JSON
+      type: DataTypes.JSON,
       allowNull: false,
     },
     isPaid: {  // Campo para confirmar si la reserva ha sido pagada

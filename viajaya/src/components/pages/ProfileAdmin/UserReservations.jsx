@@ -1,0 +1,79 @@
+import { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { getAllOrders } from "../../../redux/NewActions/newActions";
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css'; // Asegúrate de tener esto importado
+import QRImage from '../../../assets/QR.png'; // Imagen del QR
+import axios from "axios";
+
+
+const UserReservations = () => {
+  const dispatch = useDispatch();
+  const { reservations, loadingReservations, errorReservations } = useSelector(state => state);
+  const [user, setUser] = useState(null);
+
+  // Verificar usuario logueado
+  const verify = async () => {
+    try {
+      const data = await axios.get(`/user/verify/${localStorage.getItem("token")}`);
+      setUser(data.data.id);
+    } catch (error) {
+      console.log("Error al verificar usuario:", error);
+      toast.error("Por favor, inicia sesión para ver tus reservas", { position: "top-right" });
+    }
+  };
+
+  // Obtener reservas del usuario
+  useEffect(() => {
+    verify();
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      dispatch(getAllOrders(user));
+    }
+  }, [dispatch, user]);
+
+  if (loadingReservations) {
+    return <div className="text-center mt-8">Cargando reservas...</div>;
+  }
+
+  if (errorReservations) {
+    return <div className="text-center mt-8 text-red-500">{errorReservations}</div>;
+  }
+
+  return (
+    <div className="min-h-screen pt-20 bg-gray-50">
+      <div className="container mx-auto mt-8 p-6 bg-white rounded-lg shadow-lg">
+        <h2 className="text-3xl font-bold text-gray-700 mb-6">Mis Reservas</h2>
+
+        {/* Mostrar las reservas */}
+        {reservations.length > 0 ? (
+          <div className="space-y-6">
+            {reservations.map((reserva, index) => (
+              <div key={index} className="p-4 border rounded-md shadow-md">
+                <h3 className="text-xl font-semibold text-ColorMorado">{reserva.pack.title}</h3>
+                <p><strong>Fecha de salida:</strong> {reserva.fechas.salida}</p>
+                <p><strong>Fecha de llegada:</strong> {reserva.fechas.llegada}</p>
+                <p><strong>Total Personas:</strong> {reserva.numberOfPeople}</p>
+                <p><strong>Precio Total:</strong> {Number(reserva.totalPrice).toLocaleString("es-CO", { style: "currency", currency: "COP" })}</p>
+                
+                {/* Mostrar QR si no está pagada */}
+                {!reserva.isPaid && (
+                  <div className="mt-4">
+                    <p className="text-red-500 font-semibold">Reserva no pagada</p>
+                    <img src={QRImage} alt="Código QR para pagar" className="w-48 h-48 mt-4" />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center text-gray-600">No tienes reservas.</div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default UserReservations;

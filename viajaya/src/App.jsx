@@ -5,6 +5,8 @@ import DetailNuevo from "./components/pages/Detail/DetailNuevo"
 import Politicas from "./components/pages/Politicas/Politicas"
 import Terminos from "./components/pages/Politicas/Terminos"
 import { useEffect, useState } from "react"
+import { ToastContainer } from 'react-toastify';
+
 import { useDispatch} from "react-redux"
 import {Suspense, lazy} from "react"
 import style from "./Spinner.module.css"
@@ -25,6 +27,8 @@ import GestionarPagina from "./components/Panel/GestionarPagina"
 import InstaVideoUploader from "./components/Panel/InstaVideoUploader"
 import UploadCarouselImage from "./components/Panel/UploadCarouselImage "
 import OrdenReserva from "./components/pages/Ordenes/OrdenReserva"
+import UserReservation from "./components/pages/ProfileAdmin/UserReservations"
+import 'react-toastify/dist/ReactToastify.css'; 
 
 const Landing = lazy(() => import("./components/pages/Landing/Landing"))
 
@@ -55,8 +59,9 @@ function App() {
 
   return (
     <>
+    <ToastContainer />
     <Routes>
-
+    
       <Route exact path="/login" element={<Login/>}/>
       <Route exact path="/rifa" element={<Rifa/>}/>
       {/* <Route exact path="/number" element={<NumberBoard/>}/>  */}
@@ -80,6 +85,7 @@ function App() {
         <PrivateRoute>
           <UserManagement/>
           </PrivateRoute>}/> 
+          
        <Route path="/panel/pack" element={
         <PrivateRoute>
           <PackManagement/>
@@ -110,6 +116,7 @@ function App() {
         }/>
        <Route path="/panel/popup/popup" element={<Popup/>}/>  
       <Route exact path="/politicas" element={<Politicas/>}/>
+      <Route exact path="/userReservas" element={<UserReservation/>}/>
       <Route exact path="/terminos" element={<Terminos/>}/>
       <Route exact path="/ordenReserva/:id" element={<OrdenReserva/>}/>
       <Route path="/detail/:id" element={<DetailNuevo/>}/>

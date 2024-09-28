@@ -160,7 +160,7 @@ const Profile = () => {
                               : "hover:bg-pink-600"
                           }`}
                         >
-                          Mis compras
+                          Mis Reservas
                           <MdPayment className="inline-block ml-1" />
                         </button>
                       </li>
