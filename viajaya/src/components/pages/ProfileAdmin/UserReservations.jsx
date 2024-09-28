@@ -9,8 +9,8 @@ import axios from "axios";
 
 const UserReservations = () => {
   const dispatch = useDispatch();
-  const  reservations  = useSelector(state => state.reservations);
-  const {  loadingReservations, errorReservations } = useSelector(state => state.reservations);
+  const reservations = useSelector(state => state.reservations);
+  const { loadingReservations, errorReservations } = useSelector(state => state.reservations);
   const [user, setUser] = useState(null);
 
   // Verificar usuario logueado
@@ -53,10 +53,13 @@ const UserReservations = () => {
           <div className="space-y-6">
             {reservations.map((reserva, index) => (
               <div key={index} className="p-4 border rounded-md shadow-md">
-                <h3 className="text-xl font-semibold text-ColorMorado">{reserva.pack.title}</h3>
-                <p><strong>Fecha de salida:</strong> {reserva.fechas.salida}</p>
-                <p><strong>Fecha de llegada:</strong> {reserva.fechas.llegada}</p>
-                <p><strong>Total Personas:</strong> {reserva.numberOfPeople}</p>
+                {/* Verificación si pack está definido */}
+                <h3 className="text-xl font-semibold text-ColorMorado">
+                  {reserva.pack?.title ? reserva.pack.title : "Paquete no disponible"}
+                </h3>
+                <p><strong>Fecha de salida:</strong> {reserva.fechas?.salida || "Fecha no disponible"}</p>
+                <p><strong>Fecha de llegada:</strong> {reserva.fechas?.llegada || "Fecha no disponible"}</p>
+                <p><strong>Total Personas:</strong> {reserva.numberOfPeople || "No especificado"}</p>
                 <p><strong>Precio Total:</strong> {Number(reserva.totalPrice).toLocaleString("es-CO", { style: "currency", currency: "COP" })}</p>
                 
                 {/* Mostrar QR si no está pagada */}
@@ -78,3 +81,4 @@ const UserReservations = () => {
 };
 
 export default UserReservations;
+

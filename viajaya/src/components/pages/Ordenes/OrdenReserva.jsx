@@ -10,7 +10,7 @@ import "leaflet/dist/leaflet.css";
 import NavBar from "../../layout/NavBar/NavBar";
 import logo from "../../../assets/mascota.png";
 import axios from "axios";
-import { toast, ToastContainer } from 'react-toastify';
+import { toast} from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 const MAP_LAYER_ATTRIBUTION =
@@ -65,6 +65,15 @@ const OrdenReserva = () => {
     }
   }, [pack, persons]);
 
+  useEffect(() => {
+    if (pack.fechas && pack.fechas.length === 1) {
+      // Si solo hay una fecha, seleccionarla automáticamente
+      const uniqueDate = pack.fechas[0];
+      setSelectedDate(uniqueDate.salida);
+      setSelectedReturnDate(uniqueDate.vuelta);
+    }
+  }, [pack]);
+
   const handleDateChange = (e) => {
     const selectedIndex = e.target.value; // Índice del array de fechas seleccionado
     const selectedPackDate = pack.fechas[selectedIndex];
@@ -116,7 +125,7 @@ const OrdenReserva = () => {
       toast.success("Reserva confirmada exitosamente. Ya puede abonarla.", {
         position: "top-right",
       });
-      navigate("/reservas");
+      navigate("/userReservas");
     } catch (error) {
       toast.error(
         `Error al confirmar la reserva: ${error.message || "Ocurrió un error"}`,{
