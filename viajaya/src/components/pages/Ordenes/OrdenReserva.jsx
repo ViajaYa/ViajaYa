@@ -10,7 +10,8 @@ import "leaflet/dist/leaflet.css";
 import NavBar from "../../layout/NavBar/NavBar";
 import logo from "../../../assets/mascota.png";
 import axios from "axios";
-import { toast } from 'react-toastify';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const MAP_LAYER_ATTRIBUTION =
   "&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors";
@@ -21,7 +22,8 @@ const OrdenReserva = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const [user, setUser] = useState(null); // Inicialmente null
+  const [user, setUser] = useState(null); 
+  const [loadingUser, setLoadingUser] = useState(true); // Estado para gestionar la carga de verificación de usuario
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedReturnDate, setSelectedReturnDate] = useState("");
   const [persons, setPersons] = useState(1);
@@ -38,8 +40,12 @@ const OrdenReserva = () => {
         `/user/verify/${localStorage.getItem("token")}`
       );
       setUser(data.data.id); // Guardar el ID de usuario
+      console.log("Usuario verificado con éxito:", data.data); // Mostrar el usuario verificado
     } catch (error) {
       console.log("Error al verificar usuario:", error);
+      toast.error("Error al verificar el usuario. Por favor, inicia sesión.");
+    } finally {
+      setLoadingUser(false); // Finalizar la carga de verificación de usuario
     }
   };
 
@@ -83,7 +89,7 @@ const OrdenReserva = () => {
     }
 
     if (!selectedDate || !selectedReturnDate) {
-      toast.error("Debes estar logueado para confirmar la reserva", {
+      toast.error("Debes seleccionar una fecha para confirmar la reserva", {
         position: "top-right",
       });
       return;
@@ -103,7 +109,6 @@ const OrdenReserva = () => {
       },
     };
 
-
     try {
       // Despachar la acción y esperar a que se resuelva
       await dispatch(createOrderReservation(reservationData));
@@ -113,7 +118,6 @@ const OrdenReserva = () => {
       });
       navigate("/reservas");
     } catch (error) {
-      // Si ocurre un error, mostrar una alerta o manejar el error adecuadamente
       toast.error(
         `Error al confirmar la reserva: ${error.message || "Ocurrió un error"}`,{
           position: "top-right",
@@ -122,7 +126,7 @@ const OrdenReserva = () => {
     }
   };
 
-  if (loading) {
+  if (loading || loadingUser) {
     return <div className="text-center mt-8">Cargando...</div>;
   }
 

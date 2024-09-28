@@ -9,7 +9,8 @@ import axios from "axios";
 
 const UserReservations = () => {
   const dispatch = useDispatch();
-  const { reservations, loadingReservations, errorReservations } = useSelector(state => state);
+  const  reservations  = useSelector(state => state.reservations);
+  const {  loadingReservations, errorReservations } = useSelector(state => state.reservations);
   const [user, setUser] = useState(null);
 
   // Verificar usuario logueado

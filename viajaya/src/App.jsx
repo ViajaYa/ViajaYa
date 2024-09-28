@@ -24,6 +24,7 @@ import Popup from "./components/popups/Popup"
 import AllPacks from "./components/AllsPacks"
 import PrivateRoute from "./components/PrivateRoute"
 import GestionarPagina from "./components/Panel/GestionarPagina"
+import GestionOrdenes from  "./components/Panel/GestionOrdenes"
 import InstaVideoUploader from "./components/Panel/InstaVideoUploader"
 import UploadCarouselImage from "./components/Panel/UploadCarouselImage "
 import OrdenReserva from "./components/pages/Ordenes/OrdenReserva"
@@ -112,6 +113,12 @@ function App() {
          <Route path="/panelCarousel" element={
         <PrivateRoute>
           <UploadCarouselImage/>
+        </PrivateRoute>
+        }/>
+
+<Route path="/panel/reservas" element={
+        <PrivateRoute>
+          <GestionOrdenes/>
         </PrivateRoute>
         }/>
        <Route path="/panel/popup/popup" element={<Popup/>}/>  
