@@ -6,7 +6,7 @@ import 'react-toastify/dist/ReactToastify.css'; // Asegúrate de tener esto impo
 import QRImage from '../../../assets/QR.png'; // Imagen del QR
 import axios from "axios";
 import { FaQrcode, FaMoneyBillWave, FaWhatsapp } from "react-icons/fa";
-
+import NavBar from "../../layout/NavBar/NavBar";
 // Componente de métodos de pago
 const PaymentMethods = ({ onSelect }) => {
   const [selectedMethod, setSelectedMethod] = useState(null);
@@ -17,6 +17,7 @@ const PaymentMethods = ({ onSelect }) => {
   };
 
   return (
+    
     <div className="flex space-x-4 justify-center mt-4">
       <div 
         onClick={() => handleSelectMethod("QR")}
@@ -86,6 +87,10 @@ const UserReservations = () => {
   }
 
   return (
+    <>
+    <div className="fixed top-0 left-0 z-50 w-full">
+      <NavBar />
+    </div>
     <div className="min-h-screen pt-20 bg-gray-50">
       <div className="container mx-auto mt-8 p-6 bg-white rounded-lg shadow-lg">
         <h2 className="text-3xl font-bold text-gray-700 mb-6">Mis Reservas</h2>
@@ -138,6 +143,7 @@ const UserReservations = () => {
         )}
       </div>
     </div>
+    </>
   );
 };
 
