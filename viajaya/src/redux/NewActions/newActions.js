@@ -311,18 +311,21 @@ export const updateOrder = (id, orderData) => async (dispatch) => {
   }
 };
 
-// Acción para eliminar una orden
-export const deleteOrder = (id) => async (dispatch) => {
+export const deleteOrder = (idOrder) => async (dispatch) => {
   try {
-    await axios.delete(`${BASE_URL}/order/${id}`);
+    await axios.delete(`${BASE_URL}/order/${idOrder}`); // Usa idOrder aquí
+    console.log("Dispatching DELETE_ORDER_SUCCESS with ID:", idOrder); // Log the action dispatch
     dispatch({
       type: DELETE_ORDER_SUCCESS,
-      payload: id,
+      payload: idOrder, // Asegúrate de que esto es idOrder
     });
   } catch (error) {
+    console.error("Error deleting order:", error); // Log the error
     dispatch({
       type: DELETE_ORDER_FAIL,
       payload: error.response ? error.response.data.message : error.message,
     });
+    toast.error("Error al cancelar la reserva: " + (error.response ? error.response.data.message : error.message), { position: "top-right" });
   }
 };
+

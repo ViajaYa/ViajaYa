@@ -529,14 +529,15 @@ const rootReducer = (state = initialState, action) => {
           errorReservations: action.payload, // Guarda el error
         };
   
-      case DELETE_ORDER_SUCCESS:
-        return {
-          ...state,
-          loadingReservations: false,
-          reservations: state.reservations.filter(reservation => reservation.id !== action.payload), 
-          errorReservations: null,
-        };
-  
+        case DELETE_ORDER_SUCCESS:
+          const newState = {
+            ...state,
+            loadingReservations: false,
+            reservations: state.reservations.filter(reservation => reservation.idOrder !== action.payload), // Asegúrate de que este es idOrder
+            errorReservations: null,
+          };
+          console.log("New state after deletion:", newState); // Log the new state after deletion
+          return newState;
       case DELETE_ORDER_FAIL:
         return {
           ...state,
