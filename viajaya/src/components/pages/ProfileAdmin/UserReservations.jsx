@@ -5,14 +5,56 @@ import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css'; // Asegúrate de tener esto importado
 import QRImage from '../../../assets/QR.png'; // Imagen del QR
 import axios from "axios";
+import { FaQrcode, FaMoneyBillWave, FaWhatsapp } from "react-icons/fa";
 
+// Componente de métodos de pago
+const PaymentMethods = ({ onSelect }) => {
+  const [selectedMethod, setSelectedMethod] = useState(null);
+
+  const handleSelectMethod = (method) => {
+    setSelectedMethod(method);
+    onSelect(method); // Devuelve el método seleccionado al componente padre
+  };
+
+  return (
+    <div className="flex space-x-4 justify-center mt-4">
+      <div 
+        onClick={() => handleSelectMethod("QR")}
+        className={`p-4 flex flex-col items-center bg-blue-100 rounded-lg cursor-pointer hover:scale-105 transition-transform ${
+          selectedMethod === "QR" ? "ring-4 ring-blue-500" : ""
+        }`}
+      >
+        <FaQrcode className="text-4xl text-blue-500" />
+        <p className="mt-2 text-gray-800">QR</p>
+      </div>
+      <div 
+        onClick={() => handleSelectMethod("Wompi")}
+        className={`p-4 flex flex-col items-center bg-green-100 rounded-lg cursor-pointer hover:scale-105 transition-transform ${
+          selectedMethod === "Wompi" ? "ring-4 ring-green-500" : ""
+        }`}
+      >
+        <FaMoneyBillWave className="text-4xl text-green-500" />
+        <p className="mt-2 text-gray-800">Wompi</p>
+      </div>
+      <div 
+        onClick={() => handleSelectMethod("WhatsApp")}
+        className={`p-4 flex flex-col items-center bg-yellow-100 rounded-lg cursor-pointer hover:scale-105 transition-transform ${
+          selectedMethod === "WhatsApp" ? "ring-4 ring-yellow-500" : ""
+        }`}
+      >
+        <FaWhatsapp className="text-4xl text-green-600" />
+        <p className="mt-2 text-gray-800">WhatsApp</p>
+      </div>
+    </div>
+  );
+};
 
 const UserReservations = () => {
   const dispatch = useDispatch();
   const reservations = useSelector(state => state.reservations);
   const { loadingReservations, errorReservations } = useSelector(state => state.reservations);
   const [user, setUser] = useState(null);
-
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   // Verificar usuario logueado
   const verify = async () => {
     try {
@@ -62,11 +104,30 @@ const UserReservations = () => {
                 <p><strong>Total Personas:</strong> {reserva.numberOfPeople || "No especificado"}</p>
                 <p><strong>Precio Total:</strong> {Number(reserva.totalPrice).toLocaleString("es-CO", { style: "currency", currency: "COP" })}</p>
                 
-                {/* Mostrar QR si no está pagada */}
+                {/* Mostrar los métodos de pago si la reserva no está pagada */}
                 {!reserva.isPaid && (
                   <div className="mt-4">
                     <p className="text-red-500 font-semibold">Reserva no pagada</p>
-                    <img src={QRImage} alt="Código QR para pagar" className="w-48 h-48 mt-4" />
+                    
+                    {/* Componente de métodos de pago */}
+                    <PaymentMethods onSelect={(method) => setSelectedPaymentMethod(method)} />
+
+                    {/* Mostrar el QR o información adicional según el método seleccionado */}
+                    {selectedPaymentMethod === "QR" && (
+                      <div className="mt-4">
+                        <img src={QRImage} alt="Código QR para pagar" className="w-48 h-48 mt-4 mx-auto" />
+                      </div>
+                    )}
+                    {selectedPaymentMethod === "Wompi" && (
+                      <div className="mt-4 text-center">
+                        <p>Realiza el pago a través de Wompi <a href="https://www.wompi.co" className="text-blue-500 underline">aquí</a>.</p>
+                      </div>
+                    )}
+                    {selectedPaymentMethod === "WhatsApp" && (
+                      <div className="mt-4 text-center">
+                        <p>Para continuar, comunícate con nosotros vía <a href="https://wa.me/123456789" className="text-green-500 underline">WhatsApp</a>.</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
