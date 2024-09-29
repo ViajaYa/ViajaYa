@@ -2,13 +2,15 @@ import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { getAllOrders, updateOrder } from "../../redux/NewActions/newActions"; // Asegúrate de tener la action `updateOrder`
 import { toast } from 'react-toastify';
+import NavBar from "../layout/NavBar/NavBar";
 
 const OrderManagement = () => {
   const dispatch = useDispatch();
-  const { reservations, loadingReservations, errorReservations } = useSelector(state => state);
-  const [filterPaid, setFilterPaid] = useState(false); // Estado para el filtro por `isPaid`
-  const [editingOrder, setEditingOrder] = useState(null); // Para identificar la orden que se está editando
-  const [editedOrders, setEditedOrders] = useState({}); // Almacenar los cambios realizados a la orden
+  const  reservations = useSelector(state => state.reservations);
+  const {  loadingReservations, errorReservations } = useSelector(state => state.reservations);
+  const [filterPaid, setFilterPaid] = useState(false);
+  const [editingOrder, setEditingOrder] = useState(null);
+  const [editedOrders, setEditedOrders] = useState({});
 
   // Obtener todas las órdenes
   useEffect(() => {
@@ -17,8 +19,16 @@ const OrderManagement = () => {
 
   // Filtrar órdenes por `isPaid`
   const filteredOrders = filterPaid ? reservations.filter(order => order.isPaid) : reservations;
+ // Verifica si hay órdenes y maneja duplicados
+const uniqueOrders = filteredOrders.filter((order, index, self) =>
+  index === self.findIndex((o) => o.idOrder === order.idOrder)
+);
+  const formatDate = (dateString) => {
+    const options = { day: '2-digit', month: '2-digit', year: '2-digit' };
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-ES', options);
+  };
 
-  // Manejar el cambio en los campos editables
   const handleChange = (idOrder, e) => {
     const { name, value } = e.target;
     setEditedOrders(prevState => ({
@@ -30,10 +40,9 @@ const OrderManagement = () => {
     }));
   };
 
-  // Guardar cambios en la orden
   const handleSave = (idOrder) => {
     if (!editedOrders[idOrder]) return;
-
+  
     dispatch(updateOrder(idOrder, editedOrders[idOrder]))
       .then(() => {
         toast.success("Orden actualizada con éxito");
@@ -43,6 +52,7 @@ const OrderManagement = () => {
           delete updatedOrders[idOrder]; // Limpiar el estado editado para esa orden
           return updatedOrders;
         });
+        dispatch(getAllOrders()); // Recargar las órdenes después de la actualización
       })
       .catch((error) => {
         toast.error("Error al actualizar la orden");
@@ -58,12 +68,15 @@ const OrderManagement = () => {
   }
 
   return (
+    <div className=" mx-auto mt-12 p-6">
+    <div className='fixed top-0 left-0 z-50 w-full'>
+         <NavBar />
+       </div>
     <div className="min-h-screen pt-20 bg-gray-100">
       <div className="container mx-auto mt-8 p-6 bg-white rounded-lg shadow-lg">
-        <h2 className="text-3xl font-bold text-gray-700 mb-6">Gestión de Órdenes</h2>
+        <h2 className="text-3xl font-bold text-gray-700 mb-6 font-nunito">Gestión de Órdenes</h2>
 
-        {/* Filtro por isPaid */}
-        <div className="mb-4">
+        <div className="mb-4 font-nunito">
           <label>
             <input
               type="checkbox"
@@ -74,27 +87,24 @@ const OrderManagement = () => {
           </label>
         </div>
 
-        {/* Listar las órdenes */}
         {filteredOrders.length > 0 ? (
-          <table className="min-w-full bg-white">
+          <table className="min-w-full bg-white font-nunito">
             <thead>
               <tr>
-                <th className="px-4 py-2">Paquete</th>
-                <th className="px-4 py-2">Fecha de salida</th>
-                <th className="px-4 py-2">Fecha de llegada</th>
-                <th className="px-4 py-2">Número de personas</th>
-                <th className="px-4 py-2">Precio total</th>
-                <th className="px-4 py-2">Pagada</th>
-                <th className="px-4 py-2">Acciones</th>
+                <th className="px-4 py-2 font-nunito text-start">Paquete</th>
+                <th className="px-4 py-2 font-nunito text-start">Fecha de salida</th>
+                <th className="px-4 py-2 font-nunito text-start">Fecha de llegada</th>
+                <th className="px-4 py-2 font-nunito text-start">Número de personas</th>
+                <th className="px-4 py-2 font-nunito text-start">Precio total</th>
+                <th className="px-4 py-2 font-nunito text-start">Pagada</th>
+                <th className="px-4 py-2 font-nunito text-start">Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {filteredOrders.map((order) => (
-                <tr key={order.idOrder}>
-                  {/* Datos de la orden */}
-                  <td className="border px-4 py-2">{order.pack.title}</td>
-                  
-                  {/* Fechas de la reserva */}
+             {uniqueOrders.map((order) => (
+  <tr key={order.idOrder}>
+    {/* Asegúrate de que `order.pack` existe antes de acceder a `title` */}
+    <td className="border px-4 py-2">{order.pack ? order.pack.title : 'Sin título'}</td>
                   <td className="border px-4 py-2">
                     {editingOrder === order.idOrder ? (
                       <input
@@ -104,7 +114,7 @@ const OrderManagement = () => {
                         onChange={(e) => handleChange(order.idOrder, e)}
                       />
                     ) : (
-                      order.fechas.salida
+                      formatDate(order.fechas.salida)
                     )}
                   </td>
 
@@ -117,11 +127,10 @@ const OrderManagement = () => {
                         onChange={(e) => handleChange(order.idOrder, e)}
                       />
                     ) : (
-                      order.fechas.llegada
+                      formatDate(order.fechas.llegada)
                     )}
                   </td>
 
-                  {/* Número de personas */}
                   <td className="border px-4 py-2">
                     {editingOrder === order.idOrder ? (
                       <input
@@ -135,7 +144,6 @@ const OrderManagement = () => {
                     )}
                   </td>
 
-                  {/* Precio total */}
                   <td className="border px-4 py-2">
                     {editingOrder === order.idOrder ? (
                       <input
@@ -149,7 +157,6 @@ const OrderManagement = () => {
                     )}
                   </td>
 
-                  {/* Estado de pago */}
                   <td className="border px-4 py-2">
                     {editingOrder === order.idOrder ? (
                       <select
@@ -165,18 +172,17 @@ const OrderManagement = () => {
                     )}
                   </td>
 
-                  {/* Acciones: Editar/Guardar */}
                   <td className="border px-4 py-2">
                     {editingOrder === order.idOrder ? (
                       <button
-                        className="bg-blue-500 text-white px-4 py-2 rounded"
+                        className="bg-blue-500 text-white px-4 py-2 rounded font-nunito"
                         onClick={() => handleSave(order.idOrder)}
                       >
                         Guardar
                       </button>
                     ) : (
                       <button
-                        className="bg-yellow-500 text-white px-4 py-2 rounded"
+                        className="bg-yellow-500 text-white px-4 py-2 rounded font-nunito"
                         onClick={() => setEditingOrder(order.idOrder)}
                       >
                         Editar
@@ -188,12 +194,12 @@ const OrderManagement = () => {
             </tbody>
           </table>
         ) : (
-          <div>No hay órdenes disponibles.</div>
+          <div className="font-nunito">No hay órdenes disponibles.</div>
         )}
       </div>
+    </div>
     </div>
   );
 };
 
 export default OrderManagement;
-
