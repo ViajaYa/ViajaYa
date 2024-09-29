@@ -5,7 +5,8 @@ import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import QRImage from '../../../assets/QR.png';
 import axios from "axios";
-import { FaQrcode, FaMoneyBillWave, FaWhatsapp } from "react-icons/fa";
+import { FaQrcode, FaMoneyBillWave, FaWhatsapp, FaUser,FaCalendarAlt} from "react-icons/fa";
+import { GiAirplaneDeparture } from 'react-icons/gi';
 import NavBar from "../../layout/NavBar/NavBar";
 
 const PaymentMethods = ({ onSelect }) => {
@@ -109,16 +110,32 @@ const UserReservations = () => {
           <h2 className="text-3xl font-bold text-gray-200 mb-6 font-nunito text-center bg-ColorMorado">Mis Reservas</h2>
           {reservations.length > 0 ? (
             <div className="space-y-6 font-nunito">
-      {reservations.map((reserva, index) => (
+    {reservations.map((reserva, index) => (
   <div key={index} className="p-4 border rounded-md shadow-md space-y-6">
     <h3 className="text-xl font-semibold text-ColorMorado">
       {reserva.pack?.title || "Paquete no disponible"}
     </h3>
     <div className="border-b border-gray-300 pb-2 font-nunito space-y-4 text-lg ">
-      <p><strong>Fecha de salida:</strong> {new Date(reserva.fechas?.salida).toLocaleDateString("es-CO", { day: '2-digit', month: '2-digit', year: '2-digit' }) || "Fecha no disponible"}</p>
-      <p><strong>Fecha de llegada:</strong> {new Date(reserva.fechas?.llegada).toLocaleDateString("es-CO", { day: '2-digit', month: '2-digit', year: '2-digit' }) || "Fecha no disponible"}</p>
-      <p><strong>Total Personas:</strong> {reserva.numberOfPeople || "No especificado"}</p>
-      <p><strong>Precio Total:</strong> {Number(reserva.totalPrice).toLocaleString("es-CO", { style: "currency", currency: "COP" })}</p>
+      <p className="flex items-center">
+        <FaUser className="mr-2 text-gray-500" /> {/* Icono de personas */}
+        <strong>Cantidad de Personas:</strong>&nbsp; {reserva.numberOfPeople || "No especificado"}
+      </p>
+      <p className="flex items-center">
+        <GiAirplaneDeparture className="mr-2 text-gray-500" /> {/* Icono de avión */}
+        <strong>Destino:</strong>&nbsp; {reserva.pack.title || "Destino no especificado"}
+      </p>
+      <p className="flex items-center">
+        <FaMoneyBillWave className="mr-2 text-gray-500" /> {/* Icono de dinero */}
+        <strong>Precio Total:</strong>&nbsp; {Number(reserva.totalPrice).toLocaleString("es-CO", { style: "currency", currency: "COP" })}
+      </p>
+      <p className="flex items-center">
+      <FaCalendarAlt className="inline mr-2 text-gray-500" />
+        <strong>Fecha de salida:</strong>&nbsp; {new Date(reserva.fechas?.salida).toLocaleDateString("es-CO", { day: '2-digit', month: '2-digit', year: '2-digit' }) || "Fecha no disponible"}
+      </p>
+      <p className="flex items-center">
+      <FaCalendarAlt className="inline mr-2 text-gray-500" />
+        <strong>Fecha de llegada:</strong>&nbsp; {new Date(reserva.fechas?.llegada).toLocaleDateString("es-CO", { day: '2-digit', month: '2-digit', year: '2-digit' }) || "Fecha no disponible"}
+      </p>
     </div>
     <div className="flex justify-end mt-4">
       <button
