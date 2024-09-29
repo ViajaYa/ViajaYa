@@ -17,10 +17,10 @@ const PaymentMethods = ({ onSelect }) => {
   };
 
   return (
-    <div className="flex space-x-4 justify-center mt-4">
+    <div className="flex flex-wrap space-x-4 justify-center mt-4">
       <div
         onClick={() => handleSelectMethod("QR")}
-        className={`p-4 flex flex-col items-center bg-blue-100 rounded-lg cursor-pointer hover:scale-105 transition-transform w-36 h-36 justify-center ${
+        className={`p-4 flex flex-col items-center bg-blue-100 rounded-lg cursor-pointer hover:scale-105 transition-transform w-32 h-32 md:w-36 md:h-36 justify-center ${
           selectedMethod === "QR" ? "ring-4 ring-blue-500" : ""
         }`}
       >
@@ -29,7 +29,7 @@ const PaymentMethods = ({ onSelect }) => {
       </div>
       <div
         onClick={() => handleSelectMethod("Wompi")}
-        className={`p-4 flex flex-col items-center bg-green-100 rounded-lg cursor-pointer hover:scale-105 transition-transform w-36 h-36 justify-center ${
+        className={`p-4 flex flex-col items-center bg-green-100 rounded-lg cursor-pointer hover:scale-105 transition-transform w-32 h-32 md:w-36 md:h-36 justify-center ${
           selectedMethod === "Wompi" ? "ring-4 ring-green-500" : ""
         }`}
       >
@@ -38,7 +38,7 @@ const PaymentMethods = ({ onSelect }) => {
       </div>
       <div
         onClick={() => handleSelectMethod("WhatsApp")}
-        className={`p-4 flex flex-col items-center bg-yellow-100 rounded-lg cursor-pointer hover:scale-105 transition-transform w-36 h-36 justify-center ${
+        className={`p-4 flex flex-col items-center bg-yellow-100 rounded-lg cursor-pointer hover:scale-105 transition-transform w-32 h-32 md:w-36 md:h-36 justify-center ${
           selectedMethod === "WhatsApp" ? "ring-4 ring-yellow-500" : ""
         }`}
       >
@@ -123,7 +123,7 @@ const UserReservations = () => {
     <div className="flex justify-end mt-4">
       <button
         onClick={() => handleCancelReservation(reserva.idOrder)} // Call deleteOrder with reserva ID
-        className="bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors"
+        className="bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors font-nunito"
       >
         Anular Reserva
       </button>
@@ -131,13 +131,13 @@ const UserReservations = () => {
                   
                   {!reserva.isPaid && (
                     <div className="mt-4">
-                      <p className="text-ColorMorado font-nunito text-center font-semibold">ABONA TU RESERVA</p>
+                      <p className="text-ColorMorado font-nunito text-center font-semibold text-xl">ABONA TU RESERVA</p>
                       <PaymentMethods onSelect={(method) => setSelectedPaymentMethod(method)} />
                       {selectedPaymentMethod === "QR" && (
                         <div className="mt-4 text-center">
                           <button
                             onClick={() => setIsQrPopupOpen(true)}
-                            className="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+                            className="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors font-nunito"
                           >
                             Ver QR completo
                           </button>
@@ -145,12 +145,12 @@ const UserReservations = () => {
                       )}
                       {selectedPaymentMethod === "Wompi" && (
                         <div className="mt-4 text-center">
-                          <p>Realiza el pago a través de Wompi <a href="https://www.wompi.co" className="text-blue-500 underline">aquí</a>.</p>
+                          <p>Realiza el pago a través de Wompi <a href="https://www.wompi.co" className="text-blue-500 underline font-nunito">aquí</a>.</p>
                         </div>
                       )}
                       {selectedPaymentMethod === "WhatsApp" && (
                         <div className="mt-4 text-center">
-                          <p>Para continuar, comunícate con nosotros vía <a href="https://wa.link/28unmk" className="text-green-500 underline">WhatsApp</a>.</p>
+                          <p>Para continuar, comunícate con nosotros vía <a href="https://wa.link/28unmk" className="text-green-500 underline font-nunito">WhatsApp</a>.</p>
                         </div>
                       )}
                     </div>
