@@ -4,34 +4,30 @@ import { useDispatch } from "react-redux";
 import { updateOrder } from "../../../redux/NewActions/newActions"; // Asegúrate de importar tu acción
 import { toast } from 'react-toastify';
 import useScript from '../../../useScript';
-
+import { useNavigate } from 'react-router-dom'; // Si estás usando react-router-dom v6
 
 const WompiPaymentWidget = ({ selectedReservation }) => {
   const publicKey = import.meta.env.VITE_WOMPI_PUBLIC_KEY;
   const dispatch = useDispatch();
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const navigate = useNavigate(); // Hook para la navegación en React Router
   const { loaded: scriptLoaded, error: scriptError } = useScript('https://checkout.wompi.co/widget.js');
 
   useEffect(() => {
     if (!scriptLoaded || scriptError) return;
 
     if (selectedReservation) {
-      // Inicializa el widget de Wompi
       const checkout = new window.WidgetCheckout({
         currency: "COP",
         amountInCents: Number(selectedReservation.totalPrice) * 100,
         reference: selectedReservation.idOrder,
         publicKey,
-        //redirectUrl: 'http://localhost:5173/thanks', // URL a la que redirigir después del pago
+        redirectUrl: 'http://localhost:5173/thanks',
       });
 
-      // Abrir el widget de pago de Wompi
       checkout.open((result) => {
         const transaction = result.transaction;
-        console.log("Transaction ID: ", transaction.id);
-        console.log("Transaction object: ", transaction);
 
-        // Manejar el resultado del pago
         if (transaction.status === "APPROVED") {
           setPaymentSuccess(true);
           handlePaymentSuccess();
@@ -40,12 +36,6 @@ const WompiPaymentWidget = ({ selectedReservation }) => {
         }
       });
     }
-
-    return () => {
-      // No es necesario remover manualmente el script
-      // si ya está cargado globalmente
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedReservation, scriptLoaded, scriptError]);
 
   const handlePaymentSuccess = () => {
@@ -55,6 +45,13 @@ const WompiPaymentWidget = ({ selectedReservation }) => {
       toast.success("Pago exitoso, reserva actualizada.");
     }
   };
+
+  // Redirigir a la página de "thanks" después de un pago exitoso
+  useEffect(() => {
+    if (paymentSuccess) {
+      navigate("/thanks"); // Redirige manualmente
+    }
+  }, [paymentSuccess, navigate]);
 
   return (
     <div>
