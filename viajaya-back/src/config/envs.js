@@ -11,6 +11,9 @@ module.exports = {
     JWT_SECRET_KEY: process.env.JWT_SECRET_KEY,
     YOUTUBE_API_KEY:process.env.YOUTUBE_API_KEY,
     CHANNEL_ID:process.env.CHANNEL_ID,
-   
+    WOMPI_PRIVATE_KEY:process.env.WOMPI_PRIVATE_KEY,
+    WOMPI_PUBLIC_KEY:process.env.WOMPI_PUBLIC_KEY,
+    WOMPI_INTEGRITY_SECRET:process.env.WOMPI_INTEGRITY_SECRET,
+    WOMPI_EVENT_KEY:process.env.WOMPI_EVENT_KEY
     
 }  

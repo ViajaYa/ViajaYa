@@ -29,7 +29,9 @@ import InstaVideoUploader from "./components/Panel/InstaVideoUploader"
 import UploadCarouselImage from "./components/Panel/UploadCarouselImage "
 import OrdenReserva from "./components/pages/Ordenes/OrdenReserva"
 import UserReservation from "./components/pages/ProfileAdmin/UserReservations"
+import WompiPaymentWidget from "./components/pages/Ordenes/WompiPaymentWidget"
 import 'react-toastify/dist/ReactToastify.css'; 
+import ThankYouPage from "./components/pages/Ordenes/ThankYouPage"
 
 const Landing = lazy(() => import("./components/pages/Landing/Landing"))
 
@@ -98,6 +100,16 @@ function App() {
        <Route path="/panel/popup" element={
         <PrivateRoute>
           <ManagePopup/>
+        </PrivateRoute>
+        }/>
+        <Route path="/thanks" element={
+        <PrivateRoute>
+          <ThankYouPage/>
+        </PrivateRoute>
+        }/>
+        <Route path="/pay" element={
+        <PrivateRoute>
+          <WompiPaymentWidget/>
         </PrivateRoute>
         }/>
            <Route path="/panelGestion" element={  ///panelInstagram

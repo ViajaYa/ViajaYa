@@ -99,8 +99,8 @@ const initialState = {
   pack: {},
   reservations: [],
   userReservations: [],
-  loadingReservations: false, 
-  errorReservations: null, 
+  loadingReservations: false,
+  errorReservations: null,
   selectedReservation: null,
   token: null,
   loading: false,
@@ -467,83 +467,87 @@ const rootReducer = (state = initialState, action) => {
     case DELETE_PACK_FAILURE:
       return { ...state, loading: false, error: action.payload };
 
-      case CREATE_ORDER_SUCCESS:
-        return {
-          ...state,
-          loadingReservations: false,
-          reservations: [...state.reservations, action.payload], // Agrega la nueva reserva
-          errorReservations: null,
-        };
-  
-      case CREATE_ORDER_FAIL:
-        return {
-          ...state,
-          loadingReservations: false,
-          errorReservations: action.payload, // Guarda el error
-        };
-  
-      case GET_ORDERS_SUCCESS:
-        return {
-          ...state,
-          loadingReservations: false,
-          reservations: action.payload, // Carga las reservas
-          errorReservations: null,
-        };
-  
-      case GET_ORDERS_FAIL:
-        return {
-          ...state,
-          loadingReservations: false,
-          errorReservations: action.payload, // Guarda el error
-        };
-  
-      case GET_ORDER_SUCCESS:
-        return {
-          ...state,
-          loadingReservations: false,
-          selectedReservation: action.payload, // Guarda la reserva específica
-          errorReservations: null,
-        };
-  
-      case GET_ORDER_FAIL:
-        return {
-          ...state,
-          loadingReservations: false,
-          errorReservations: action.payload, // Guarda el error
-        };
-  
-      case UPDATE_ORDER_SUCCESS:
-        return {
-          ...state,
-          loadingReservations: false,
-          reservations: state.reservations.map(reservation =>
+    case CREATE_ORDER_SUCCESS:
+      console.log(action.payload); // Verifica los datos aquí
+      return {
+        ...state,
+        loadingReservations: false,
+        reservations: [...state.reservations, action.payload], // Agrega la nueva reserva
+        errorReservations: null,
+      };
+
+    case CREATE_ORDER_FAIL:
+      return {
+        ...state,
+        loadingReservations: false,
+        errorReservations: action.payload, // Guarda el error
+      };
+
+    case GET_ORDERS_SUCCESS:
+      return {
+        ...state,
+        loadingReservations: false,
+        reservations: action.payload, // Carga las reservas
+        errorReservations: null,
+      };
+
+    case GET_ORDERS_FAIL:
+      return {
+        ...state,
+        loadingReservations: false,
+        errorReservations: action.payload, // Guarda el error
+      };
+
+    case GET_ORDER_SUCCESS:
+      return {
+        ...state,
+        loadingReservations: false,
+        selectedReservation: action.payload, // Guarda la reserva específica
+        errorReservations: null,
+      };
+
+    case GET_ORDER_FAIL:
+      return {
+        ...state,
+        loadingReservations: false,
+        errorReservations: action.payload, // Guarda el error
+      };
+
+    case UPDATE_ORDER_SUCCESS:
+      return {
+        ...state,
+        loadingReservations: false,
+        reservations: state.reservations.map(
+          (reservation) =>
             reservation.id === action.payload.id ? action.payload : reservation // Actualiza la reserva
-          ),
-          errorReservations: null,
-        };
-  
-      case UPDATE_ORDER_FAIL:
-        return {
-          ...state,
-          loadingReservations: false,
-          errorReservations: action.payload, // Guarda el error
-        };
-  
-        case DELETE_ORDER_SUCCESS:
-          const newState = {
-            ...state,
-            loadingReservations: false,
-            reservations: state.reservations.filter(reservation => reservation.idOrder !== action.payload), // Asegúrate de que este es idOrder
-            errorReservations: null,
-          };
-          console.log("New state after deletion:", newState); // Log the new state after deletion
-          return newState;
-      case DELETE_ORDER_FAIL:
-        return {
-          ...state,
-          loadingReservations: false,
-          errorReservations: action.payload, // Guarda el error
-        };
+        ),
+        errorReservations: null,
+      };
+
+    case UPDATE_ORDER_FAIL:
+      return {
+        ...state,
+        loadingReservations: false,
+        errorReservations: action.payload, // Guarda el error
+      };
+
+    case DELETE_ORDER_SUCCESS:
+      const newState = {
+        ...state,
+        loadingReservations: false,
+        reservations: state.reservations.filter(
+          (reservation) => reservation.idOrder !== action.payload
+        ), // Asegúrate de que este es idOrder
+        errorReservations: null,
+      };
+      console.log("New state after deletion:", newState); // Log the new state after deletion
+      return newState;
+    case DELETE_ORDER_FAIL:
+      return {
+        ...state,
+        loadingReservations: false,
+        errorReservations: action.payload, // Guarda el error
+      };
 
     case FETCH_VIDEOS_REQUEST:
       return {

@@ -10,8 +10,8 @@ import "leaflet/dist/leaflet.css";
 import NavBar from "../../layout/NavBar/NavBar";
 import logo from "../../../assets/mascota.png";
 import axios from "axios";
-import { toast} from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const MAP_LAYER_ATTRIBUTION =
   "&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors";
@@ -22,7 +22,7 @@ const OrdenReserva = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const [user, setUser] = useState(null); 
+  const [user, setUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(true); // Estado para gestionar la carga de verificación de usuario
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedReturnDate, setSelectedReturnDate] = useState("");
@@ -104,31 +104,35 @@ const OrdenReserva = () => {
       return;
     }
 
-    // Asegurarse de que packId es un número entero
+    // Asegúrate de que packId es un número entero
     const parsedPackId = parseInt(id, 10);
 
     const reservationData = {
-      userId: user, // Usar el ID del usuario logueado
+      userId: user,
       packId: parsedPackId,
       numberOfPeople: persons,
       totalPrice,
       fechas: {
-        salida: formatDate(selectedDate), // Formatear la fecha
-        llegada: formatDate(selectedReturnDate), // Formatear la fecha
+        salida: formatDate(selectedDate),
+        llegada: formatDate(selectedReturnDate),
       },
     };
 
     try {
-      // Despachar la acción y esperar a que se resuelva
+      console.log("Enviando reserva:", reservationData); // Debugging
       await dispatch(createOrderReservation(reservationData));
 
       toast.success("Reserva confirmada exitosamente. Ya puede abonarla.", {
         position: "top-right",
       });
+
+      console.log("Navegando a /userReservas"); // Debugging
       navigate("/userReservas");
     } catch (error) {
+      console.error("Error al confirmar la reserva:", error); // Captura de errores
       toast.error(
-        `Error al confirmar la reserva: ${error.message || "Ocurrió un error"}`,{
+        `Error al confirmar la reserva: ${error.message || "Ocurrió un error"}`,
+        {
           position: "top-right",
         }
       );
@@ -139,8 +143,8 @@ const OrdenReserva = () => {
     return <div className="text-center mt-8">Cargando...</div>;
   }
 
-  if (!pack || Object.keys(pack).length === 0) {
-    return <div className="text-center mt-8">No se encontró el paquete</div>;
+  if (loading || loadingUser || !pack || Object.keys(pack).length === 0) {
+    return <div className="text-center mt-8">Cargando datos del paquete...</div>;
   }
 
   const center = [parseFloat(pack.lat), parseFloat(pack.lng)];
@@ -198,9 +202,13 @@ const OrdenReserva = () => {
 
         {/* Right Side - Package Details */}
         <div className="md:w-1/2">
-          <h2 className="text-4xl font-bold font-nunito text-gray-700 mb-4">
-            {pack.title}
-          </h2>
+          {pack && pack.title ? (
+            <h2 className="text-4xl font-bold font-nunito text-gray-700 mb-4">
+              {pack.title}
+            </h2>
+          ) : (
+            <div>Cargando título...</div>
+          )}
 
           <div className="bg-white rounded-lg shadow-lg hover:shadow-2xl transition-shadow duration-300 p-4 space-y-4">
             <h3 className="text-xl font-bold font-nunito text-ColorMorado">
