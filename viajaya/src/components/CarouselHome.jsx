@@ -1,19 +1,18 @@
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import nacionales from "../assets/flipcard/destinacionales.jpg";
 import europoa from "../assets/flipcard/europoa.jpg";
 import internacionales from "../assets/flipcard/internacionales.jpg";
 import macarena from "../assets/flipcard/lamacarena.jpg";
 import tierra from "../assets/flipcard/portierra.jpg";
 import Title from "./utils/Title";
-import europa from "../assets/flipcard/EuropaCarousel.jpg";
-import internacional from "../assets/flipcard/dubai.jpg";
-import llano from "../assets/flipcard/llano.jpg";
-import nacionales3 from "../assets/flipcard/nacionales3.jpg";
-import nacionales2 from "../assets/flipcard/nacionales2.png";
+import axios from 'axios';
+
 
 const CarouselHome = () => {
     const navigate = useNavigate();
+    const [newImages, setNewImages] = useState([]);
+
     const initialImages = [
         { src: nacionales, title: "NACIONALES", description: "Explora destinos nacionales increíbles." },
         { src: europoa, title: "EUROPA", description: "Descubre las maravillas de Europa." },
@@ -22,13 +21,23 @@ const CarouselHome = () => {
         { src: tierra, title: "POR TIERRA", description: "Viaja por tierra y descubre nuevas aventuras." }
     ];
 
-    const newImages = [
-        { src: europa, title: "Reservá", description: "Europa.", destino: "Europa" },
-        { src: internacional, title: "Reservá", description: "Internacionales.", destino: "Internacionales" },
-        { src: llano, title: "Reservá", description: "Nacionales.", destino: "Nacionales" },
-        { src: nacionales3, title: "Reservá", description: "Llano.", destino: "Llano" },
-        { src: nacionales2, title: "Reservá", description: "Por Tierra.", destino: "Por Tierra" }
-    ];
+
+    useEffect(() => {
+        const fetchImages = async () => {
+            try {
+                const response = await axios.get("/carousel");
+                const data = response.data;
+
+
+                setNewImages(data);
+            } catch (error) {
+                console.error('Error al obtener las imágenes del carrusel:', error);
+            }
+        };
+
+        fetchImages();
+    }, []);
+
 
     const [currentIndex, setCurrentIndex] = useState(0);
     const [showAll, setShowAll] = useState(true);
@@ -92,7 +101,7 @@ const CarouselHome = () => {
                     {newImages.map((image, index) => (
                         <div
                             key={index}
-                            className="relative w-full h-64 sm:h-80 lg:h-[600px] flex-shrink-0 flex items-center"
+                            className="relative w-full h-64 sm:h-80 lg:h-[600px] flex-shrink-0 flex items-center object-cover"
                             style={{
                                 backgroundImage: `url(${image.src})`,
                                 backgroundSize: 'cover',
@@ -104,7 +113,7 @@ const CarouselHome = () => {
                         >
                             <div className="w-full h-full flex flex-col justify-center items-end mr-4 sm:mr-16 text-white">
                                 <Title styleAdd="text-xl sm:text-2xl lg:text-4xl font-nunito bg-black bg-opacity-50 p-2 border-2 rounded-xl">
-                                    <a href="#">{image.title}</a>
+                                    <a href="#">{image.destino}</a>
                                 </Title>
                             </div>
                         </div>

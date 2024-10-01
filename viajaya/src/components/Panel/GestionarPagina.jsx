@@ -16,7 +16,7 @@ const GestionarPagina = () => {
           className="bg-white font-nunito border border-gray-200 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out transform hover:scale-105 p-6 flex items-center justify-center"
         >
           <div className="text-center">
-            <h2 className="text-xl font-semibold font-nunito  text-blue-500 mb-2">Enlaces Instaram</h2>
+            <h2 className="text-xl font-semibold font-nunito  text-blue-500 mb-2">Enlaces Instagram</h2>
             <p className="text-gray-600 font-nunito ">Administra instagram clientes Felices.</p>
           </div>
         </Link>
@@ -30,7 +30,15 @@ const GestionarPagina = () => {
           </div>
         </Link>
        
-       
+        <Link
+          to="/panelCarousel"
+          className="bg-white font-nunito border border-gray-200 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out transform hover:scale-105 p-6 flex items-center justify-center"
+        >
+          <div className="text-center">
+            <h2 className="text-xl font-semibold font-nunito  text-blue-500 mb-2">Cargar Imagenes Slice Principal</h2>
+            <p className="text-gray-600 font-nunito ">Administra imágenes página principal.</p>
+          </div>
+        </Link>
         
         
       </div>
@@ -40,3 +48,5 @@ const GestionarPagina = () => {
 };
 
 export default GestionarPagina;
+
+

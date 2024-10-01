@@ -94,7 +94,7 @@ const Login = () => {
 />
 
         {login == 2 && <div className={style.loginContainer}>
-            <h2 className={style.title}>Recupera tu cuenta</h2>
+            {/* <h2 className={style.title}>Recupera tu cuenta</h2> */}
             <form className={style.form} onSubmit={(e) => {recoveryPass(); e.preventDefault()}}>
                 <input onChange={handleLogin} key={2} value={user?.email} name="email" type="email" className={style.input} placeholder="Ingresa tu email"/>
                 <button type="submit" className={style.button}>Recuperar</button>
@@ -112,7 +112,7 @@ const Login = () => {
                 {/* <button className={style.buttonGoogle}><FcGoogle className={style.google}/> <span>Entra con google</span></button> */}
 
             </form>
-            <p className={style.register}><p onClick={() => setLogin(2)} className={style.buttonRegister}>Olvide mi contraseña</p></p>
+            {/* <p className={style.register}><p onClick={() => setLogin(2)} className={style.buttonRegister}>Olvide mi contraseña</p></p> */}
             <p className={style.register}>¿Aun no tienes cuenta?<p onClick={() => setLogin(0)} className={style.buttonRegister}>Registrate</p></p>
         </div>}
         {login == 0 && <div className={style.loginContainer}>

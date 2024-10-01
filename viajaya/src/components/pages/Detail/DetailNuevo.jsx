@@ -132,7 +132,7 @@ const DetailNuevo = () => {
             {/* Date Selection */}
             <div className="mt-6">
               <h3 className="text-xl font-bold font-nunito mb-3 text-ColorMorado">
-                Selecciona una fecha
+                Fechas Disponibles
               </h3>
               <select
                 value={selectedDate}
@@ -140,7 +140,7 @@ const DetailNuevo = () => {
                 onChange={handleDateChange}
                 className="w-full px-4 py-2 font-nunito border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-ColorAzul"
               >
-                <option value="">Selecciona una fecha</option>
+               
                 {pack.fechas &&
                   pack.fechas.map((fecha, index) => (
                     <option
@@ -154,7 +154,8 @@ const DetailNuevo = () => {
             </div>
 
             {/* Payment Button */}
-            <Link to={`https://wa.link/28unmk`}>
+            <Link to={`/ordenReserva/${pack.id}`}>
+             
               <button className="bg-ColorAzul hover:bg-ColorMorado text-white font-nunito font-semibold py-3 px-6 rounded-md mt-6 transition duration-300 ease-in-out w-full">
                 Reservar
               </button>

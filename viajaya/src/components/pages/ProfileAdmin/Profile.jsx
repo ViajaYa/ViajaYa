@@ -151,19 +151,17 @@ const Profile = () => {
                               Información Personal<AiOutlineUser className="inline-block mr-1" /> 
                             </button>
                           </li> */}
-                      <li>
-                        <button
-                          onClick={() => setPage(1)}
-                          className={`p-1 rounded text-gray-600 font-nunito ${
-                            page === 1
-                              ? "bg-ColorMorado text-gray-900"
-                              : "hover:bg-pink-600"
-                          }`}
-                        >
-                          Mis compras
-                          <MdPayment className="inline-block ml-1" />
-                        </button>
-                      </li>
+                     <li>
+  <button
+    onClick={() => navigate("/userReservas")}
+    className={`p-1 rounded text-gray-600 font-nunito ${
+      page === 1 ? "bg-ColorMorado text-gray-900" : "hover:bg-pink-600"
+    }`}
+  >
+    Mis Reservas
+    <MdPayment className="inline-block ml-1" />
+  </button>
+</li>
                       {user?.role === 3 && (
                         <li>
                           <Link

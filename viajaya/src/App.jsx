@@ -2,10 +2,11 @@ import { Route, Routes, useLocation, useNavigate } from "react-router-dom"
 import Login from "./components/pages/Login/Login"
 import ProfileAdmin from "./components/pages/ProfileAdmin/Profile"
 import DetailNuevo from "./components/pages/Detail/DetailNuevo"
-import Pay from "./components/pages/Pay/Pay"
 import Politicas from "./components/pages/Politicas/Politicas"
 import Terminos from "./components/pages/Politicas/Terminos"
 import { useEffect, useState } from "react"
+import { ToastContainer } from 'react-toastify';
+
 import { useDispatch} from "react-redux"
 import {Suspense, lazy} from "react"
 import style from "./Spinner.module.css"
@@ -23,8 +24,14 @@ import Popup from "./components/popups/Popup"
 import AllPacks from "./components/AllsPacks"
 import PrivateRoute from "./components/PrivateRoute"
 import GestionarPagina from "./components/Panel/GestionarPagina"
+import GestionOrdenes from  "./components/Panel/GestionOrdenes"
 import InstaVideoUploader from "./components/Panel/InstaVideoUploader"
-
+import UploadCarouselImage from "./components/Panel/UploadCarouselImage "
+import OrdenReserva from "./components/pages/Ordenes/OrdenReserva"
+import UserReservation from "./components/pages/ProfileAdmin/UserReservations"
+import WompiPaymentWidget from "./components/pages/Ordenes/WompiPaymentWidget"
+import 'react-toastify/dist/ReactToastify.css'; 
+import ThankYouPage from "./components/pages/Ordenes/ThankYouPage"
 
 const Landing = lazy(() => import("./components/pages/Landing/Landing"))
 
@@ -55,8 +62,9 @@ function App() {
 
   return (
     <>
+    <ToastContainer />
     <Routes>
-
+    
       <Route exact path="/login" element={<Login/>}/>
       <Route exact path="/rifa" element={<Rifa/>}/>
       {/* <Route exact path="/number" element={<NumberBoard/>}/>  */}
@@ -80,6 +88,7 @@ function App() {
         <PrivateRoute>
           <UserManagement/>
           </PrivateRoute>}/> 
+          
        <Route path="/panel/pack" element={
         <PrivateRoute>
           <PackManagement/>
@@ -93,6 +102,16 @@ function App() {
           <ManagePopup/>
         </PrivateRoute>
         }/>
+        <Route path="/thanks" element={
+        <PrivateRoute>
+          <ThankYouPage/>
+        </PrivateRoute>
+        }/>
+        <Route path="/pay" element={
+        <PrivateRoute>
+          <WompiPaymentWidget/>
+        </PrivateRoute>
+        }/>
            <Route path="/panelGestion" element={  ///panelInstagram
         <PrivateRoute>
           <GestionarPagina/>
@@ -103,13 +122,22 @@ function App() {
           <InstaVideoUploader/>
         </PrivateRoute>
         }/>
+         <Route path="/panelCarousel" element={
+        <PrivateRoute>
+          <UploadCarouselImage/>
+        </PrivateRoute>
+        }/>
+
+<Route path="/panel/reservas" element={
+        <PrivateRoute>
+          <GestionOrdenes/>
+        </PrivateRoute>
+        }/>
        <Route path="/panel/popup/popup" element={<Popup/>}/>  
       <Route exact path="/politicas" element={<Politicas/>}/>
+      <Route exact path="/userReservas" element={<UserReservation/>}/>
       <Route exact path="/terminos" element={<Terminos/>}/>
-      <Route exact path="/pay/:id" element={
-        <PrivateRoute>
-          <Pay/>
-          </PrivateRoute>}/>
+      <Route exact path="/ordenReserva/:id" element={<OrdenReserva/>}/>
       <Route path="/detail/:id" element={<DetailNuevo/>}/>
       <Route path="/allpacks" element={<AllPacks />} />
       <Route exact path="/productos" element={<TabbedImages/>}/>
