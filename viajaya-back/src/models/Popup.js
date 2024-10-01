@@ -6,6 +6,7 @@ module.exports = (sequelize) => {
     type: DataTypes.TEXT,
     allowNull: false,
   },
+  
   isActive: {
     type: DataTypes.BOOLEAN,
     defaultValue: false,

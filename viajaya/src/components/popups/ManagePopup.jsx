@@ -134,7 +134,7 @@ const ManagePopup = () => {
           </label>
           <button
             onClick={handleSubmit}
-            className="w-full bg-green-500 text-white py-2 rounded-md hover:bg-green-600 transition duration-200"
+            className="w-full bg-ColorMorado text-white py-2 rounded-md hover:bg-ColorMorado transition duration-200"
             disabled={loading} // Deshabilitar botón si está cargando
           >
             Crear Popup

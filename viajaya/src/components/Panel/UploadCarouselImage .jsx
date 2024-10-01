@@ -82,7 +82,7 @@ const UploadCarouselImage = () => {
     <div className='fixed top-0 left-0 z-50 w-full'>
       <NavBar />
     </div>
-    <h1 className="bg-ColorMorado text-2xl font-bold font-nunito p-2 text-gray-200 mb-8 mt-28">Cargar Imagenes para Carousel Principal </h1>
+    <h1 className="bg-ColorMorado text-2xl font-bold font-nunito p-2 text-gray-200 mb-8 mt-28">Cargar Imagenes para Carrusel Principal </h1>
     <form onSubmit={handleSubmit} encType="multipart/form-data">
         <div className="mb-4">
           <label htmlFor="title" className="block text-sm font-medium text-gray-700">Título</label>
