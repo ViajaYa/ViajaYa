@@ -150,19 +150,23 @@ const UserManagment = () => {
                     user.email
                   )}
                 </td>
-                <td className="py-2  px-4 border-b">
-                  {editUser?.id === user.id ? (
-                    <input
-                      type="number"
-                      name="role"
-                      value={editUser.role}
-                      onChange={handleChange}
-                      className="p-1 border border-gray-300 rounded"
-                    />
-                  ) : (
-                    user.role
-                  )}
-                </td>
+                <td className="py-2 px-4 border-b">
+  {editUser?.id === user.id ? (
+    <select
+      name="role"
+      value={editUser.role}
+      onChange={handleChange}
+      className="p-1 border border-gray-300 rounded"
+    >
+      <option value={1}>Cliente</option>
+      <option value={2}>Asesor</option>
+      <option value={3}>Admin</option>
+    </select>
+  ) : (
+    user.role === 1 ? "Cliente" : user.role === 2 ? "Asesor" : "Admin"
+  )}
+</td>
+
                 <td className="py-2 font-nunito px-4 border-b">{user.referral_code}</td>
                 <td className="py-2 px-4 font-nunito border-b">
                   {editUser?.id === user.id ? (
