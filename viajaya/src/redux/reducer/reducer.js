@@ -1,3 +1,4 @@
+/* eslint-disable no-case-declarations */
 import {
   SET_USER,
   FIND_PAQUETES,
@@ -11,6 +12,8 @@ import {
   FILTER_PACKSCHARS,
   FILTER_PACKSTITLE,
   DATA_PAY,
+  GET_ALL_POPUPS_SUCCESS,
+  GET_ALL_POPUPS_FAIL,
 } from "../actions/actions-types";
 
 import {
@@ -95,6 +98,7 @@ const initialState = {
   pay: {},
   word: "",
   popup: null,
+  popups:[],
   packs: [],
   pack: {},
   reservations: [],
@@ -343,7 +347,18 @@ const rootReducer = (state = initialState, action) => {
     case POST_POPUP_FAIL:
     case PUT_POPUP_FAIL:
       return { ...state, error: action.payload, loading: false };
-
+    case GET_ALL_POPUPS_SUCCESS:
+      return {
+        ...state,
+        popups: action.payload, // Guardas los popups obtenidos
+        loading: false,
+      };
+    case GET_ALL_POPUPS_FAIL:
+      return {
+        ...state,
+        error: action.payload,
+        loading: false,
+      };
     case USER_REGISTER_REQUEST:
       return { ...state, loading: true };
     case USER_REGISTER_SUCCESS:

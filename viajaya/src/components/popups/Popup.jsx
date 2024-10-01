@@ -9,7 +9,8 @@ const Popup = ({ id }) => {
   const [isVisible, setIsVisible] = useState(true);
   
   const dispatch = useDispatch();
-  const popup = useSelector(state => state.popup); // Asegúrate de que el estado esté configurado correctamente
+  const popup = useSelector(state => state.popup); 
+  // Asegúrate de que el estado esté configurado correctamente
 
   // Cargar el popup cuando se monta el componente
   useEffect(() => {
@@ -44,7 +45,7 @@ const Popup = ({ id }) => {
         </button>
 
         {/* Título del Popup */}
-        <h2 className="text-2xl sm:text-4xl font-bold text-gray-700 mb-6 text-center">SORTEO VIAJA YA</h2>
+        <h2 className="text-2xl sm:text-4xl font-bold text-gray-700 mb-6 text-center">{popup.title}</h2>
         
         {/* Contenido del Popup */}
         <p className="text-xl sm:text-3xl font-nunito text-gray-800 text-center mb-8">{popup.content}</p>
@@ -52,7 +53,7 @@ const Popup = ({ id }) => {
         {/* Botón de Participación */}
         <div className="mb-8 mt-12 flex justify-center">
           <button 
-            onClick={() => window.location.href = "/rifa"} 
+             onClick={() => window.location.href = popup.boton}  
             className="bg-yellow-300 text-gray-800 px-6 sm:px-8 py-2 sm:py-3 rounded-lg font-nunito hover:bg-yellow-400 transition-all duration-300"
           >
             PARTICIPA

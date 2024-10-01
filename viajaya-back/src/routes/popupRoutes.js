@@ -5,6 +5,8 @@ const popupRoutes = Router()
 
 popupRoutes.get('/', popupController.getPopup);
 
+popupRoutes.get("/all", popupController.getAllPopups)
+
 popupRoutes.put('/:id', popupController.putPopup);
 
 popupRoutes.post('/', popupController.postPopup);

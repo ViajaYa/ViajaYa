@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { postPopup, putPopup, getPopup } from '../../redux/actions/actions';
+import { postPopup, putPopup, getAllPopups } from '../../redux/actions/actions';
 import NavBar from '../layout/NavBar/NavBar';
 
 const ManagePopup = () => {
   const dispatch = useDispatch();
   const loading = useSelector((state) => state.loading);
   const  error  = useSelector((state) => state.error);
-  const popup = useSelector((state) => state.popup);
+  const popup = useSelector((state) => state.popups);
+  console.log(popup)
 
   const [content, setContent] = useState('');
   const [isActive, setIsActive] = useState(false);
@@ -16,10 +17,8 @@ const ManagePopup = () => {
 
   // Cargar el popup existente al cargar el componente
   useEffect(() => {
-    if (!popup) { // Ensure we fetch only if popup is not already loaded
-      dispatch(getPopup());
-    }
-  }, [dispatch, popup]);
+    dispatch(getAllPopups()); // Despacha la acción al montar el componente
+  }, [dispatch]);
 
   // Rellenar los campos cuando haya un popup en el estado
   useEffect(() => {
