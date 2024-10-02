@@ -340,8 +340,14 @@ const rootReducer = (state = initialState, action) => {
     case POST_POPUP_SUCCESS:
       return { ...state, popup: action.payload, loading: false };
 
-    case PUT_POPUP_SUCCESS:
-      return { ...state, popup: action.payload, loading: false };
+      case PUT_POPUP_SUCCESS:
+        return {
+          ...state,
+          popups: state.popups.map(popup =>
+            popup.id === action.payload.id ? action.payload : popup
+          ),
+          loading: false,
+        };
 
     case GET_POPUP_FAIL:
     case POST_POPUP_FAIL:

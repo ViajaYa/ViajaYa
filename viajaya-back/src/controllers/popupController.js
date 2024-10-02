@@ -56,7 +56,7 @@ module.exports = {
 
         await popup.save();
       } else {
-        popup = await Popup.create({ content, isActive,  });
+        popup = await Popup.create({ content, isActive, title, boton });
       }
 
       res.json(popup);

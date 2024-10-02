@@ -14,6 +14,9 @@ const ManagePopup = () => {
   const [isActive, setIsActive] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
+  const [title, setTitle] = useState("")
+  const [boton, setBoton] = useState("")
+
 
   // Cargar el popup existente al cargar el componente
   useEffect(() => {
@@ -25,11 +28,16 @@ const ManagePopup = () => {
     if (popup && popup.id) {
       setContent(popup.content);
       setIsActive(popup.isActive);
+      setTitle(popup.title);
+      setBoton(popup.boton)
+
       setIsEditing(true); // Establecer modo de edición si existe un popup
     } else {
       // Resetear si no hay popup
       setContent('');
       setIsActive(false);
+      setTitle("")
+      setBoton("")
       setIsEditing(false);
     }
   }, [popup]);
@@ -95,6 +103,12 @@ const ManagePopup = () => {
             onChange={(e) => setContent(e.target.value)}
             placeholder="Ingresa el contenido del popup"
           />
+          <textarea
+            className="w-full p-2 border border-gray-300 rounded-md mb-2 font-nunito"
+            value={title}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Ingresa el título del popup"
+          />
           <label className="flex items-center mb-4 font-nunito">
             <input
               type="checkbox"
@@ -102,6 +116,12 @@ const ManagePopup = () => {
               onChange={() => setIsActive(!isActive)}
               className="mr-2"
             />
+            <select>
+              <option>Reservas</option>
+              <option>Rifa</option>
+
+            </select>
+
             <span>Activo</span>
           </label>
           <button

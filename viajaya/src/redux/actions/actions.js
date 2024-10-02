@@ -148,7 +148,7 @@ export const putPopup = (id, popupData) => async (dispatch) => {
   try {
     dispatch({ type: PUT_POPUP_REQUEST }); // Para indicar que la solicitud ha comenzado
     const response = await axios.put(`${BASE_URL}/popup/${id}`, popupData);
-    dispatch({ type: PUT_POPUP_SUCCESS, payload: response.data });
+    dispatch({ type: PUT_POPUP_SUCCESS, payload: response.data }); // Enviar el popup actualizado al reducer
   } catch (error) {
     dispatch({ type: PUT_POPUP_FAIL, payload: error.message });
   }
