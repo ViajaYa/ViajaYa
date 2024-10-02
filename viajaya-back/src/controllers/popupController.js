@@ -11,15 +11,27 @@ module.exports = {
     }
   },
 
+  getAllPopups: async (req, res) => {
+    try {
+      const popups = await Popup.findAll(); 
+      res.json(popups);
+    } catch (error) {
+      res.status(500).json({ error: "Error fetching all popups" });
+    }
+  },
+
   // Actualizar popup existente
   putPopup: async (req, res) => {
     try {
       const { id } = req.params;
-      const { content, isActive } = req.body;
+      const { content, isActive, title, boton } = req.body;
       const popup = await Popup.findByPk(id);
       if (popup) {
         popup.content = content;
         popup.isActive = isActive;
+        popup.title = title
+        popup.boton = boton
+
         await popup.save();
         res.json(popup);
       } else {
@@ -33,15 +45,18 @@ module.exports = {
   // Crear o actualizar popup
   postPopup: async (req, res) => {
     try {
-      const { content, isActive } = req.body;
+      const { content, isActive,  title, boton } = req.body;
       let popup = await Popup.findOne({ where: { isActive: true } });
 
       if (popup) {
         popup.content = content;
         popup.isActive = isActive;
+        popup.title = title
+        popup.boton = boton
+
         await popup.save();
       } else {
-        popup = await Popup.create({ content, isActive });
+        popup = await Popup.create({ content, isActive, title, boton });
       }
 
       res.json(popup);

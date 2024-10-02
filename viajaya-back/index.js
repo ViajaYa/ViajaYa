@@ -1,6 +1,8 @@
 const app = require("./src/app.js")
 const {conn} = require("./src/db.js")
-const {Promo, Char} = require("./src/db.js")
+
+
+
 
 conn.sync({ alter :true }).then(() =>{
     app.listen(3001, () => {

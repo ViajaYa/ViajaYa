@@ -23,8 +23,10 @@ POST_POPUP_FAIL,
 PUT_POPUP_REQUEST, 
 PUT_POPUP_SUCCESS,
 PUT_POPUP_FAIL ,
+GET_ALL_POPUPS_SUCCESS,
+GET_ALL_POPUPS_FAIL,
 USER_REGISTER_SUCCESS,
-USER_REGISTER_FAIL
+USER_REGISTER_FAIL,
 } from './actions-types'
 
 const BASE_URL = 'https://viajaya-mve8.onrender.com'
@@ -130,7 +132,7 @@ export const getPopup = () => async (dispatch) => {
 };
 
 
-// Crear popup
+
 export const postPopup = (popupData) => async (dispatch) => {
   try {
     dispatch({ type: POST_POPUP_REQUEST }); // Para indicar que la solicitud ha comenzado
@@ -146,8 +148,23 @@ export const putPopup = (id, popupData) => async (dispatch) => {
   try {
     dispatch({ type: PUT_POPUP_REQUEST }); // Para indicar que la solicitud ha comenzado
     const response = await axios.put(`${BASE_URL}/popup/${id}`, popupData);
-    dispatch({ type: PUT_POPUP_SUCCESS, payload: response.data });
+    dispatch({ type: PUT_POPUP_SUCCESS, payload: response.data }); // Enviar el popup actualizado al reducer
   } catch (error) {
     dispatch({ type: PUT_POPUP_FAIL, payload: error.message });
+  }
+};
+
+export const getAllPopups = () => async (dispatch) => {
+  try {
+    const response = await axios.get(`${BASE_URL}/popup/all`); 
+    dispatch({
+      type: GET_ALL_POPUPS_SUCCESS,
+      payload: response.data, 
+    });
+  } catch (error) {
+    dispatch({
+      type: GET_ALL_POPUPS_FAIL,
+      payload: error.response ? error.response.data.error : "Error fetching popups",
+    });
   }
 };
