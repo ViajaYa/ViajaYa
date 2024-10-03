@@ -116,7 +116,7 @@ const Form = ({ selectedNumbers, onBack }) => {
             
 
           </div><h1 className="text-3xl font-nunito mt-16">
-        Escanea el QR para abonar este número y envianos el comprobante por WhatsApp
+          Haz el pago en los medios autorizados y envíanos el comprobante por WhatsApp
       </h1>
         </div>
         <div className="flex-row ">

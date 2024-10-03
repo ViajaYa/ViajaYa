@@ -20,34 +20,50 @@ const Login = () => {
     const phoneReg = /^\d{10}$/;
 
     const createUser = () => {
-        if(!newUser?.name.length ||newUser?.name.length < 3) return toast.error("El nombre debe tener al menos 3 caracteres")
-        if(newUser?.lastname.length < 3) return toast.error("El apellido debe tener al menos 3 caracteres")
-        if(!phoneReg.test(newUser?.phone)) return toast.error("Debes ingresar un numero valido")
-        if(!emailReg.test(newUser?.email)) return toast.error("Debes ingresar un email valido")
-        if(!newUser?.password.length || newUser?.password.length < 8) return toast.error("La contraseña debe tener al menos 8 caracteres")
-        if(newUser?.password !== newUser?.password2) return toast.error("Las contraseñas no coinciden")
-            const newUser = {
-                ...newUser,
-                referral_code: referral_code || null, // o 'referred_by'
-            };
-        
-        
-        
-            axios.post("/user", newUser).then(() => {
-            setLogin(true)
-            //Limpiar form y enviar toast
-            toast.success("Te has registrado exitosamente")
-            setNewUser({
-                name:"",
-                lastname:"",
-                phone:"",
-                email:"",
-                password:"",
-                password2:"",
+        // Validaciones
+        if (!newUser?.name.length || newUser?.name.length < 3) {
+            return toast.error("El nombre debe tener al menos 3 caracteres");
+        }
+        if (newUser?.lastname.length < 3) {
+            return toast.error("El apellido debe tener al menos 3 caracteres");
+        }
+        if (!phoneReg.test(newUser?.phone)) {
+            return toast.error("Debes ingresar un número válido");
+        }
+        if (!emailReg.test(newUser?.email)) {
+            return toast.error("Debes ingresar un email válido");
+        }
+        if (!newUser?.password.length || newUser?.password.length < 8) {
+            return toast.error("La contraseña debe tener al menos 8 caracteres");
+        }
+        if (newUser?.password !== newUser?.password2) {
+            return toast.error("Las contraseñas no coinciden");
+        }
+    
+        // Crear el nuevo objeto de usuario después de las validaciones
+        const userData = {
+            ...newUser,
             
-            })
-        }, (err) => toast.error("Email existente"))
-    }
+        };
+        
+        
+        
+        axios.post("/user", userData).then(() => {
+            setLogin(true);
+            // Limpiar form y enviar toast
+            toast.success("Te has registrado exitosamente");
+            setNewUser({
+                name: "",
+                lastname: "",
+                phone: "",
+                email: "",
+                password: "",
+                password2: "",
+            });
+        }).catch((err) => {
+            toast.error(err.response?.data?.message || "Email existente");
+        });
+    };
 
     const authUser = async () => {
         const auth = await axios.post("/user/auth", user)
