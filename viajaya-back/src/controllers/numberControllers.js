@@ -1,4 +1,4 @@
-const { Number } = require('../models/Number');
+const { Number } = require('../db');
 
 module.exports = {
   // Obtener todos los números ordenados
@@ -54,25 +54,31 @@ module.exports = {
     const { page = 1, limit = 20 } = pagination;
     const offset = (page - 1) * limit;
 
-    try {
-      const { count, rows: availableNumbers } = await Number.findAndCountAll({
-        where: { selected: false },
-        offset,
-        limit,
-        order: [['value', 'ASC']],
-      });
+    console.log(`Paginación: página ${page}, límite ${limit}, offset ${offset}`);
 
-      return {
-        total: count,
-        totalPages: Math.ceil(count / limit),
-        currentPage: page,
-        availableNumbers,
-      };
+    try {
+        const { count, rows: availableNumbers } = await Number.findAndCountAll({
+            where: { selected: false },
+            offset,
+            limit,
+            order: [['value', 'ASC']],
+        });
+
+        console.log(`Total disponible: ${count}`);
+        console.log('Números disponibles:', availableNumbers);
+
+        return {
+            total: count,
+            totalPages: Math.ceil(count / limit),
+            currentPage: page,
+            availableNumbers,
+        };
     } catch (error) {
-      console.error('Error al obtener números disponibles:', error);
-      throw new Error('Error al obtener números disponibles');
+        console.error('Error al obtener números disponibles:', error);
+        throw new Error('Error al obtener números disponibles');
     }
-  },
+},
+
 
   // Obtener números seleccionados
   getSelectedNumbers: async () => {

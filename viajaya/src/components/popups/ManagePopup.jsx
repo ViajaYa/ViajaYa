@@ -6,41 +6,40 @@ import NavBar from '../layout/NavBar/NavBar';
 const ManagePopup = () => {
   const dispatch = useDispatch();
   const loading = useSelector((state) => state.loading);
-  const  error  = useSelector((state) => state.error);
-  const popup = useSelector((state) => state.popups);
-  console.log(popup)
+  const error = useSelector((state) => state.error);
+  const popups = useSelector((state) => state.popups);
+  console.log(popups);
 
   const [content, setContent] = useState('');
   const [isActive, setIsActive] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
-  const [title, setTitle] = useState("")
-  const [boton, setBoton] = useState("")
+  const [title, setTitle] = useState('');
+  const [boton, setBoton] = useState('');
+  const [selectedPopup, setSelectedPopup] = useState(null); // Estado para el popup seleccionado
 
-
-  // Cargar el popup existente al cargar el componente
+  // Cargar todos los popups al cargar el componente
   useEffect(() => {
-    dispatch(getAllPopups()); // Despacha la acción al montar el componente
+    dispatch(getAllPopups());
   }, [dispatch]);
 
-  // Rellenar los campos cuando haya un popup en el estado
+  // Rellenar los campos cuando haya un popup seleccionado
   useEffect(() => {
-    if (popup && popup.id) {
-      setContent(popup.content);
-      setIsActive(popup.isActive);
-      setTitle(popup.title);
-      setBoton(popup.boton)
-
+    if (selectedPopup) {
+      setContent(selectedPopup.content);
+      setIsActive(selectedPopup.isActive);
+      setTitle(selectedPopup.title);
+      setBoton(selectedPopup.boton);
       setIsEditing(true); // Establecer modo de edición si existe un popup
     } else {
-      // Resetear si no hay popup
+      // Resetear si no hay popup seleccionado
       setContent('');
       setIsActive(false);
-      setTitle("")
-      setBoton("")
+      setTitle('');
+      setBoton('');
       setIsEditing(false);
     }
-  }, [popup]);
+  }, [selectedPopup]);
 
   // Desaparecer el mensaje de éxito después de 3 segundos
   useEffect(() => {
@@ -49,29 +48,23 @@ const ManagePopup = () => {
       return () => clearTimeout(timer); // Limpiar el timeout cuando el componente se desmonte o cambie
     }
   }, [alertMessage]);
-  const handleSubmit = () => {
-    const popupData = { content, isActive };
 
-    // Check if in edit mode and we have an id to update
-    if (isEditing && popup?.id) {
-        // Confirm with the user before updating
-        const confirmUpdate = window.confirm('¿Estás seguro de que deseas actualizar este popup?');
-        if (confirmUpdate) {
-            // Verificar que el id no sea undefined
-            if (popup.id !== undefined) {
-                console.log('Dispatching PUT with id:', popup.id);
-                dispatch(putPopup(popup.id, popupData));
-                setAlertMessage('Popup actualizado exitosamente!');
-            } else {
-                console.error('ID del popup es undefined');
-            }
-        }
+  const handleSubmit = () => {
+    const popupData = { content, isActive, title, boton }; // Agregar title y boton al objeto de datos
+
+    if (isEditing && selectedPopup?.id) {
+      // Confirmar actualización
+      const confirmUpdate = window.confirm('¿Estás seguro de que deseas actualizar este popup?');
+      if (confirmUpdate) {
+        dispatch(putPopup(selectedPopup.id, popupData));
+        setAlertMessage('Popup actualizado exitosamente!');
+      }
     } else {
-        // Otherwise, create a new popup
-        dispatch(postPopup(popupData));
-        setAlertMessage('Popup creado exitosamente!');
+      // Crear un nuevo popup
+      dispatch(postPopup(popupData));
+      setAlertMessage('Popup creado exitosamente!');
     }
-};
+  };
 
   return (
     <div className="mb-64 pt-20 p-8">
@@ -91,84 +84,82 @@ const ManagePopup = () => {
         </div>
       )}
 
-      {/* Mostrar los detalles del popup existente */}
-      {popup && popup.id ? (
-        <div className="mb-6 mt-10">
-          <h1 className="bg-ColorMorado text-2xl text-center font-bold font-nunito p-2 text-gray-200 mb-8">
-            Popup Existente
-          </h1>
-          <textarea
-            className="w-full p-2 border border-gray-300 rounded-md mb-2 font-nunito"
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Ingresa el contenido del popup"
-          />
-          <textarea
-            className="w-full p-2 border border-gray-300 rounded-md mb-2 font-nunito"
-            value={title}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Ingresa el título del popup"
-          />
-          <label className="flex items-center mb-4 font-nunito">
-            <input
-              type="checkbox"
-              checked={isActive}
-              onChange={() => setIsActive(!isActive)}
-              className="mr-2"
-            />
-            <select>
-              <option>Reservas</option>
-              <option>Rifa</option>
+      {/* Selección de Popup existente */}
+      <div className="mb-6 mt-10">
+        <h1 className="bg-ColorMorado text-2xl text-center font-bold font-nunito p-2 text-gray-200 mb-8">
+          Seleccionar Popup
+        </h1>
+        <select
+          onChange={(e) => setSelectedPopup(popups.find(p => p.id === parseInt(e.target.value)))}
+          className="w-full p-2 border border-gray-300 rounded-md mb-4"
+        >
+          <option value="">Selecciona un Popup</option>
+          {popups.map(popup => (
+            <option key={popup.id} value={popup.id}>{popup.title}</option>
+          ))}
+        </select>
+      </div>
 
-            </select>
-
-            <span>Activo</span>
-          </label>
-          <button
-            onClick={handleSubmit}
-            className="bg-ColorAzul hover:bg-blue-300 text-gray-600 font-bold font-nunito py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-            disabled={loading} // Deshabilitar botón si está cargando
-          >
-            {isEditing ? 'Actualizar Popup' : 'Crear Popup'}
-          </button>
-        </div>
-      ) : (
-        // Mostrar formulario para crear un nuevo popup
-        <div className="mt-10">
-          <h3 className="text-xl font-semibold mb-2">Crear Nuevo Popup</h3>
-          <textarea
-            className="w-full p-2 border border-gray-300 rounded-md mb-2"
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Ingresa el contenido del nuevo popup"
+      {/* Formulario para editar o crear un popup */}
+      <div className="mb-6">
+        <h3 className="text-xl font-nunito font-semibold mb-2">
+          {isEditing ? 'Editar Popup' : 'Crear Nuevo Popup'}
+        </h3>
+        <textarea
+          className="w-full p-2 border border-gray-300 rounded-md mb-2"
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder="Ingresa el contenido del popup"
+        />
+        <textarea
+          className="w-full p-2 border border-gray-300 rounded-md mb-2"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Ingresa el título del popup"
+        />
+        <label className="flex items-center mb-4">
+          <input
+            type="checkbox"
+            checked={isActive}
+            onChange={() => setIsActive(!isActive)}
+            className="mr-2"
           />
-          <label className="flex items-center mb-4">
-            <input
-              type="checkbox"
-              checked={isActive}
-              onChange={() => setIsActive(!isActive)}
-              className="mr-2"
-            />
-            <span>Activo</span>
-          </label>
-          <button
-            onClick={handleSubmit}
-            className="w-full bg-ColorMorado text-white py-2 rounded-md hover:bg-ColorMorado transition duration-200"
-            disabled={loading} // Deshabilitar botón si está cargando
+          <span>Activo</span>
+        </label>
+        <label className="mb-4">
+          Botón:
+          <select
+            value={boton}
+            onChange={(e) => setBoton(e.target.value)}
+            className="w-full p-2 border border-gray-300 rounded-md"
           >
-            Crear Popup
-          </button>
-        </div>
-      )}
+            <option value="">Selecciona un botón</option>
+            <option value="Reservas">Reservas</option>
+            <option value="Rifa">Rifa</option>
+            {/* Agrega más opciones aquí según sea necesario */}
+          </select>
+        </label>
+        <button
+          onClick={handleSubmit}
+          className="bg-ColorAzul hover:bg-blue-300 text-gray-600 font-bold font-nunito py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+          disabled={loading} // Deshabilitar botón si está cargando
+        >
+          {isEditing ? 'Actualizar Popup' : 'Crear Popup'}
+        </button>
+      </div>
 
       {/* Mostrar Popup siempre que esté activo */}
-      {popup && popup.isActive && (
+      {popups && popups.some(p => p.isActive) && (
         <div className="mt-10 p-4 border border-green-400 bg-green-100 rounded-md">
-          <h2 className="text-lg font-bold">Popup Activo:</h2>
-          <p>{popup.content}</p>
-          <p className={popup.isActive ? 'text-green-500' : 'text-red-500'}>
-            {popup.isActive ? 'Activo' : 'Inactivo'}
-          </p>
+          <h2 className="text-lg font-nunito font-bold">Popup Activo:</h2>
+          {popups.filter(p => p.isActive).map(popup => (
+            <div key={popup.id}>
+              <p>{popup.content}</p>
+              <p className={popup.isActive ? 'text-green-500' : 'text-red-500'}>
+                {popup.isActive ? 'Activo' : 'Inactivo'}
+              </p>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -176,6 +167,8 @@ const ManagePopup = () => {
 };
 
 export default ManagePopup;
+
+
 
 
 
