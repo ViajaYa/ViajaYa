@@ -6,7 +6,7 @@ const promoRoutes = require("./promoRoutes")
 const orderRoutes = require("./orderRoutes")
 const popupRoutes= require("./popupRoutes")
 const numberRoutes= require("./numberRoutes")
-const instagramVideoRoutes = require(("./instagramVideoRoutes"))
+const instagramVideoRoutes = require("./instagramVideoRoutes")
 const carouselRoutes = require("./carouselRoutes")
 const routes = Router()
 
@@ -17,8 +17,8 @@ routes
 .use("/promo", promoRoutes)
 .use("/order", orderRoutes)
 .use("/popup", popupRoutes)
-.use("/rifa", numberRoutes)
-.use("number", numberRoutes)
+.use("/numbers", numberRoutes)
 .use("/insta", instagramVideoRoutes)
 .use("/carousel", carouselRoutes)
+
 module.exports = routes

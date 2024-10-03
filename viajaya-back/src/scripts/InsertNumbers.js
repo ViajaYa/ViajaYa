@@ -1,7 +1,7 @@
-import Number from '../models/Number.js';
+const {Number} = require ('../db');
 
 // Función para insertar números del 000 al 999
-export const insertNumbers = async () => {
+module.exports = insertNumbers = async () => {
   try {
     // Obtener todos los registros existentes en la base de datos
     const existingNumbers = await Number.findAll({
