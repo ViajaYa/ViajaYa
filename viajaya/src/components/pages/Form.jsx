@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import pdf from "../../assets/rifa/pdf.png";
 import NavBar from "../layout/NavBar/NavBar";
-import QRImage from "../../assets/QR.png";
+import QRImage from "../../assets/rifa/pagoRifa.jpeg";
 
 const generatePDF = (numbers, name, phone) => {
   const a4Width = 100;
@@ -123,7 +123,7 @@ const Form = ({ selectedNumbers, onBack }) => {
           <img
             src={QRImage}
             alt="Código QR"
-            className="w-[350px] h-[480px]" // Limita el tamaño máximo de la imagen
+            className="w-[480px] h-[480px]" // Limita el tamaño máximo de la imagen
           />
           <button
               type="submit"

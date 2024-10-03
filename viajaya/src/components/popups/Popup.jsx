@@ -45,7 +45,7 @@ const Popup = ({ id }) => {
         </button>
 
         {/* Título del Popup */}
-        <h2 className="text-2xl sm:text-4xl font-bold text-gray-700 mb-6 text-center">{popup.title}</h2>
+        <h2 className="text-2xl sm:text-4xl font-bold font-nunito text-gray-700 mb-6 text-center">{popup.title}</h2>
         
         {/* Contenido del Popup */}
         <p className="text-xl sm:text-3xl font-nunito text-gray-800 text-center mb-8">{popup.content}</p>

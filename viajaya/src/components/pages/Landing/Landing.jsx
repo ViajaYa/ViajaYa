@@ -41,7 +41,7 @@ const Landing = ({ ruta }) => {
       {/* <Operador /> */}
       
        
-      <InstagramCarousel/>
+      {/* <InstagramCarousel/> */}
     {/* <Clients2/> */}
       <Clients />
       <Contact />
