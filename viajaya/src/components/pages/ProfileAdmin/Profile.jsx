@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-
+import { FaRegCopy } from "react-icons/fa6";
 import { MdPayment, MdExitToApp } from "react-icons/md";
 import axios from "axios";
 import { findUsers, setUsers } from "../../../redux/actions/actions";
@@ -25,6 +25,7 @@ const Profile = () => {
   const [user, setUser] = useState(null); // Inicializar con null para evitar errores antes de que cargue el usuario
   const [changePass, setChangePass] = useState(false);
   const dispatch = useDispatch();
+  
   const [loading, setLoading] = useState(true);
   const referralLink = `http://localhost:5173/login/${user?.referral_code}`;
 
@@ -35,7 +36,8 @@ const Profile = () => {
   const copyToClipboard = () => {
     navigator.clipboard
       .writeText(referralLink)
-      .then(() => alert("Enlace copiado al portapapeles!"))
+      .then(() =>  toast.success("Ya Puedes pegar tu codigo Refiere y Gana YA "))
+      
       .catch((err) => console.error("Error al copiar el enlace: ", err));
   };
 
@@ -108,10 +110,7 @@ const Profile = () => {
     });
   };
 
-  const handleGoHome = () => {
-    navigate("/");
-  };
-
+  
   return (
     <>
       <div className="fixed top-0 left-0 z-50 w-full">
@@ -146,14 +145,19 @@ const Profile = () => {
                 </div>
 
                 <div className="flex flex-col">
-                  <span className="text-lg text-gray-600 font-semibold font-nunito uppercase">
+                  {/* <span className="text-lg text-gray-600 font-semibold font-nunito uppercase">
                     {user?.name + " " + user?.lastname || "Mi perfil"}
-                  </span>
+                  </span> */}
                   <ul className="flex-col space-y-2 mt-2">
                    
-                    <button onClick={copyToClipboard} className="p-1 text-gray-600 font-nunito rounded hover:bg-pink-600">
-                      Copiar enlace
-                    </button>
+                  <button 
+        onClick={copyToClipboard} 
+        className="p-1 text-gray-800 font-nunito font-semibold rounded bg-ColorAzul hover:bg-blue-300 flex items-center" // Añadido 'flex items-center' para centrar el ícono
+      >
+        Refiere y Gana YA 
+        <FaRegCopy className="ml-2" /> {/* Espacio entre el texto y el ícono */}
+      </button>
+                    <p className="text-gray-800 font-nunito text-xs"> {referralLink}  </p>
                     <li>
                       <button
                         onClick={() => navigate("/userReservas")}
