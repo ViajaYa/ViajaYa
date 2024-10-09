@@ -21,15 +21,7 @@ const Login = () => {
 
     const createUser = () => {
         // Validaciones
-        if (!newUser?.name.length || newUser?.name.length < 3) {
-            return toast.error("El nombre debe tener al menos 3 caracteres");
-        }
-        if (newUser?.lastname.length < 3) {
-            return toast.error("El apellido debe tener al menos 3 caracteres");
-        }
-        if (!phoneReg.test(newUser?.phone)) {
-            return toast.error("Debes ingresar un número válido");
-        }
+       
         if (!emailReg.test(newUser?.email)) {
             return toast.error("Debes ingresar un email válido");
         }
@@ -53,9 +45,7 @@ const Login = () => {
             // Limpiar form y enviar toast
             toast.success("Te has registrado exitosamente");
             setNewUser({
-                name: "",
-                lastname: "",
-                phone: "",
+               
                 email: "",
                 password: "",
                 password2: "",
@@ -134,12 +124,11 @@ const Login = () => {
         {login == 0 && <div className={style.loginContainer}>
         <h2 className={style.title}>Registrarme</h2>
         <form className={style.form}>
-            <input onChange={handleChange} key={3} value={newUser?.name} name="name" type="text" className={style.input} placeholder="Nombre"/>
-            <input onChange={handleChange} key={4} value={newUser?.lastname} name="lastname" type="text" className={style.input} placeholder="Apellido"/>
-            <input onChange={handleChange} key={5} value={newUser?.phone} name="phone" type="text" className={style.input} placeholder="Telefono"/>
+            
             <input onChange={handleChange} key={8} value={newUser?.email} name="email" type="email" className={style.input} placeholder="Email"/>
             <input onChange={handleChange} key={6} value={newUser?.password} name="password" type="password" className={style.input} placeholder="Contraseña"/>
             <input onChange={handleChange} key={7} value={newUser?.password2} name="password2" type="password" className={style.input} placeholder="Repetir contraseña"/>
+            <input onChange={handleChange} key={5} value={newUser?.referred_by} name="referred_by" type="string" className={style.input} placeholder="Ingresa el enlace"/>
             <input onClick={createUser} type="button" value="Registrarme" className={style.button}/>
             {/* <button className={style.buttonGoogle}><FcGoogle className={style.google}/> <span>Registrate con google</span></button> */}
         </form>

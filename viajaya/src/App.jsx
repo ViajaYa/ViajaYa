@@ -71,7 +71,8 @@ function App() {
     <>
       <ToastContainer />
       <Routes>
-        <Route exact path="/login" element={<Login />} />
+      <Route exact path="/login" element={<Login />} />
+      <Route exact path="/login/:referral_code" element={<Login />} />
         <Route exact path="/rifa" element={<Rifa />} />
         <Route
           path="/number"

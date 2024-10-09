@@ -26,7 +26,18 @@ const Profile = () => {
   const [changePass, setChangePass] = useState(false);
   const dispatch = useDispatch();
   const [loading, setLoading] = useState(true);
+  const referralLink = `http://localhost:5173/login/${user?.referral_code}`;
+
+  console.log(referralLink);
+
   const users = useSelector((s) => s.users);
+
+  const copyToClipboard = () => {
+    navigator.clipboard
+      .writeText(referralLink)
+      .then(() => alert("Enlace copiado al portapapeles!"))
+      .catch((err) => console.error("Error al copiar el enlace: ", err));
+  };
 
   useEffect(() => {
     axios.get("/user").then((data) => {
@@ -106,210 +117,202 @@ const Profile = () => {
       <div className="fixed top-0 left-0 z-50 w-full">
         <NavBar />
       </div>
-      
-        <div className="flex flex-col md:flex-row min-h-screen">
-          {/* Contenedor principal */}
-          <div className="flex flex-grow mt-8 ">
-           
-            <div className="w-full lg:w-1/2 p-12 flex flex-col justify-center items-center  ">
-              <Toaster />
-              <div className=" opacity-70 text-white p-4 rounded-lg shadow-md mb-4 w-full">
-                <nav className="flex items-center">
-                  <div className="relative">
-                    <img
-                      className="w-24 h-24 rounded-full border-2 border-gray-300 cursor-pointer mb-4 mr-4 object-cover hidden sm:block"
-                      src={
-                        user?.image
-                          ? user.image
-                          : "https://cdn.landesa.org/wp-content/uploads/default-user-image.png"
-                      }
-                      alt="Perfil"
-                      onClick={() =>
-                        document.getElementById("fileInput").click()
-                      }
-                    />
-                    <input
-                      id="fileInput"
-                      type="file"
-                      className="absolute inset-0 opacity-0 cursor-pointer"
-                      onChange={(e) => {
-                        /* Tu lógica para manejar la selección de archivos */
-                      }}
-                    />
-                  </div>
+      <div className="flex flex-col md:flex-row min-h-screen">
+        {/* Contenedor principal */}
+        <div className="flex flex-grow mt-8 ">
+          <div className="w-full lg:w-1/2 p-12 flex flex-col justify-center items-center  ">
+            <Toaster />
+            <div className=" opacity-70 text-white p-4 rounded-lg shadow-md mb-4 w-full">
+              <nav className="flex items-center">
+                <div className="relative">
+                  <img
+                    className="w-24 h-24 rounded-full border-2 border-gray-300 cursor-pointer mb-4 mr-4 object-cover hidden sm:block"
+                    src={
+                      user?.image
+                        ? user.image
+                        : "https://cdn.landesa.org/wp-content/uploads/default-user-image.png"
+                    }
+                    alt="Perfil"
+                    onClick={() => document.getElementById("fileInput").click()}
+                  />
+                  <input
+                    id="fileInput"
+                    type="file"
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    onChange={(e) => {
+                      /* Tu lógica para manejar la selección de archivos */
+                    }}
+                  />
+                </div>
 
-                  <div className="flex flex-col">
-                    <span className="text-lg text-gray-600 font-semibold font-nunito uppercase">
-                      {user?.name + " " + user?.lastname || "Mi perfil"}
-                    </span>
-                    <ul className="flex-col space-y-2 mt-2">
-                      {/* <li>
-                            <button
-                              onClick={() => setPage(0)}
-                              className={`p-1 rounded font-nunito ${page === 0 ? 'bg-ColorMorado text-gray-900' : 'hover:bg-pink-600'}`}
-                            >
-                              Información Personal<AiOutlineUser className="inline-block mr-1" /> 
-                            </button>
-                          </li> */}
-                     <li>
-  <button
-    onClick={() => navigate("/userReservas")}
-    className={`p-1 rounded text-gray-600 font-nunito ${
-      page === 1 ? "bg-ColorMorado text-gray-900" : "hover:bg-pink-600"
-    }`}
-  >
-    Mis Reservas
-    <MdPayment className="inline-block ml-1" />
-  </button>
-</li>
-                      {user?.role === 3 && (
-                        <li>
-                          <Link
-                            to="/panel"
-                            className="px-6 py-2 rounded font-nunito bg-ColorMorado hover:bg-pink-600"
-                          >
-                            Panel
-                          </Link>
-                        </li>
-                      )}
+                <div className="flex flex-col">
+                  <span className="text-lg text-gray-600 font-semibold font-nunito uppercase">
+                    {user?.name + " " + user?.lastname || "Mi perfil"}
+                  </span>
+                  <ul className="flex-col space-y-2 mt-2">
+                   
+                    <button onClick={copyToClipboard} className="p-1 text-gray-600 font-nunito rounded hover:bg-pink-600">
+                      Copiar enlace
+                    </button>
+                    <li>
+                      <button
+                        onClick={() => navigate("/userReservas")}
+                        className={`p-1 rounded text-gray-600 font-nunito ${
+                          page === 1
+                            ? "bg-ColorMorado text-gray-900"
+                            : "hover:bg-pink-600"
+                        }`}
+                      >
+                        Mis Reservas
+                        <MdPayment className="inline-block ml-1" />
+                      </button>
+                    </li>
+                    {user?.role === 3 && (
                       <li>
-                        <button
-                          onClick={() => {
-                            navigate("/");
-                            localStorage.removeItem("token");
-                            dispatch(setUser(false));
-                          }}
-                          className="p-1 text-gray-600 font-nunito rounded hover:bg-pink-600"
+                        <Link
+                          to="/panel"
+                          className="px-6 py-2 rounded font-nunito bg-ColorMorado hover:bg-pink-600"
                         >
-                          Cerrar sesión{" "}
-                          <MdExitToApp className="inline-block ml-1" />
-                        </button>
+                          Panel
+                        </Link>
                       </li>
-                    </ul>
-                  </div>
-                </nav>
-              </div>
-              <input
-                id="fileInput"
-                type="file"
-                className="hidden"
-                onChange={uploadUserImage}
-              />
-              {page === 0 && (
-                <div className="w-full max-w-md mx-auto bg-white p-2 rounded-lg shadow-lg">
-                  <form onSubmit={(e) => e.preventDefault()}>
-                    {!changePass ? (
-                      <>
-                        <span className="text-lg font-bold font-nunito text-center text-gray-700">
-                          {" "}
-                          Mis Datos
-                        </span>
-                        <div className="flex space-x-4 mb-4 mt-6">
-                          <div className="flex-1">
-                            <input
-                              className="w-full p-2 border font-nunito border-gray-300 rounded"
-                              onChange={handleUser}
-                              name="name"
-                              value={user?.name || ""}
-                              placeholder="Nombre"
-                            />
-                            <input
-                              className="w-full p-2 border font-nunito border-gray-300 rounded mt-2"
-                              onChange={handleUser}
-                              name="lastname"
-                              value={user?.lastname || ""}
-                              placeholder="Apellido"
-                            />
-                          </div>
-                          <div className="flex-1">
-                            <input
-                              className="w-full p-2 border font-nunito border-gray-300 rounded"
-                              onChange={handleUser}
-                              name="email"
-                              value={user?.email || ""}
-                              placeholder="Email"
-                            />
-                            <input
-                              className="w-full p-2 border font-nunito border-gray-300 rounded mt-2"
-                              onChange={handleUser}
-                              name="phone"
-                              value={user?.phone || ""}
-                              placeholder="Teléfono"
-                            />
-                          </div>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="mb-4">
+                    )}
+                    <li>
+                      <button
+                        onClick={() => {
+                          navigate("/");
+                          localStorage.removeItem("token");
+                          dispatch(setUser(false));
+                        }}
+                        className="p-1 text-gray-600 font-nunito rounded hover:bg-pink-600"
+                      >
+                        Cerrar sesión{" "}
+                        <MdExitToApp className="inline-block ml-1" />
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              </nav>
+            </div>
+            <input
+              id="fileInput"
+              type="file"
+              className="hidden"
+              onChange={uploadUserImage}
+            />
+            {page === 0 && (
+              <div className="w-full max-w-md mx-auto bg-white p-2 rounded-lg shadow-lg">
+                <form onSubmit={(e) => e.preventDefault()}>
+                  {!changePass ? (
+                    <>
+                      <span className="text-lg font-bold font-nunito text-center text-gray-700">
+                        {" "}
+                        Mis Datos
+                      </span>
+                      <div className="flex space-x-4 mb-4 mt-6">
+                        <div className="flex-1">
                           <input
                             className="w-full p-2 border font-nunito border-gray-300 rounded"
                             onChange={handleUser}
-                            name="passwordLast"
-                            type="password"
-                            placeholder="Contraseña actual"
+                            name="name"
+                            value={user?.name || ""}
+                            placeholder="Nombre"
                           />
                           <input
                             className="w-full p-2 border font-nunito border-gray-300 rounded mt-2"
                             onChange={handleUser}
-                            name="password2"
-                            type="password"
-                            placeholder="Nueva contraseña"
-                          />
-                          <input
-                            className="w-full p-2 border font-nunito border-gray-300 rounded mt-2"
-                            onChange={handleUser}
-                            name="password3"
-                            type="password"
-                            placeholder="Confirmar nueva contraseña"
+                            name="lastname"
+                            value={user?.lastname || ""}
+                            placeholder="Apellido"
                           />
                         </div>
-                      </>
-                    )}
-                    <button
-                      onClick={updateUser}
-                      className="w-full bg-ColorMorado font-nunito text-white p-2 rounded hover:bg-pink-600"
-                    >
-                      {changePass
-                        ? "Actualizar contraseña"
-                        : "Actualizar datos"}
-                    </button>
-                    <button
-                      onClick={() => setChangePass(!changePass)}
-                      className="w-full mt-2 font-nunito text-slate-700 hover:underline"
-                    >
-                      {changePass
-                        ? "Cancelar cambio de contraseña"
-                        : "Cambiar contraseña"}
-                    </button>
-                  </form>
-                </div>
-              )}
-              {/* <button
+                        <div className="flex-1">
+                          <input
+                            className="w-full p-2 border font-nunito border-gray-300 rounded"
+                            onChange={handleUser}
+                            name="email"
+                            value={user?.email || ""}
+                            placeholder="Email"
+                          />
+                          <input
+                            className="w-full p-2 border font-nunito border-gray-300 rounded mt-2"
+                            onChange={handleUser}
+                            name="phone"
+                            value={user?.phone || ""}
+                            placeholder="Teléfono"
+                          />
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="mb-4">
+                        <input
+                          className="w-full p-2 border font-nunito border-gray-300 rounded"
+                          onChange={handleUser}
+                          name="passwordLast"
+                          type="password"
+                          placeholder="Contraseña actual"
+                        />
+                        <input
+                          className="w-full p-2 border font-nunito border-gray-300 rounded mt-2"
+                          onChange={handleUser}
+                          name="password2"
+                          type="password"
+                          placeholder="Nueva contraseña"
+                        />
+                        <input
+                          className="w-full p-2 border font-nunito border-gray-300 rounded mt-2"
+                          onChange={handleUser}
+                          name="password3"
+                          type="password"
+                          placeholder="Confirmar nueva contraseña"
+                        />
+                      </div>
+                    </>
+                  )}
+                  <button
+                    onClick={updateUser}
+                    className="w-full bg-ColorMorado font-nunito text-white p-2 rounded hover:bg-pink-600"
+                  >
+                    {changePass ? "Actualizar contraseña" : "Actualizar datos"}
+                  </button>
+                  <button
+                    onClick={() => setChangePass(!changePass)}
+                    className="w-full mt-2 font-nunito text-slate-700 hover:underline"
+                  >
+                    {changePass
+                      ? "Cancelar cambio de contraseña"
+                      : "Cambiar contraseña"}
+                  </button>
+                </form>
+              </div>
+            )}
+            {/* <button
                     onClick={handleGoHome}
                     className="w-full bg-ColorMorado text-white p-2 rounded font-nunito hover:bg-pink-600 mb-4"
                   >
                     <MdHome className="inline-block mr-1" /> Ir a la página principal
                   </button> */}
-              {page === 1 && (
-                <div className="w-full max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg">
-                  {/* Aquí puedes agregar el contenido de las compras */}
-                </div>
-              )}
-            </div>
+            {page === 1 && (
+              <div className="w-full max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg">
+                {/* Aquí puedes agregar el contenido de las compras */}
+              </div>
+            )}
+          </div>
 
-            {/* Imagen en la mitad izquierda */}
-            <div className="w-full lg:w-1/2 items-center justify-center mt-40 lg:mt-32 hidden sm:block">
-              <Link to="/productos">
-                <img
-                  src="/tarjeta.png"
-                  alt="Tarjeta"
-                  className="w-1/2 h-auto max-w-md ml-32 cursor-pointer border-4 border-ColorAzul"
-                />
-              </Link>
-            </div>
+          {/* Imagen en la mitad izquierda */}
+          <div className="w-full lg:w-1/2 items-center justify-center mt-40 lg:mt-32 hidden sm:block">
+            <Link to="/productos">
+              <img
+                src="/tarjeta.png"
+                alt="Tarjeta"
+                className="w-1/2 h-auto max-w-md ml-32 cursor-pointer border-4 border-ColorAzul"
+              />
+            </Link>
           </div>
         </div>
+      </div>
       )
     </>
   );

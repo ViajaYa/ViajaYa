@@ -8,6 +8,7 @@ import { MdAirplaneTicket } from 'react-icons/md';
 import { PiSwimmingPoolThin } from 'react-icons/pi';
 import { CgGym } from 'react-icons/cg';
 import { RiHotelBedLine } from 'react-icons/ri';
+import { GiMeal } from "react-icons/gi";
 import { Link } from 'react-router-dom';
 import Slider from 'react-slick';
 import "slick-carousel/slick/slick.css"; 
@@ -58,6 +59,7 @@ const PackCard = () => {
     piscina: <PiSwimmingPoolThin className="text-2xl text-gray-600" />,
     gym: <CgGym className="text-2xl text-gray-600" />,
     Hotel: <RiHotelBedLine className="text-2xl text-gray-600" />,
+    Alimentacion:<GiMeal className="text-2xl text-gray-600" />
   };
 
   const filteredPacks = packs.filter(pack => pack.isActive && !pack.isYapaya);
