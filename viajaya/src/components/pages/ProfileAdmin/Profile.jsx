@@ -181,6 +181,16 @@ const Profile = () => {
                         </Link>
                       </li>
                     )}
+                    {user?.role === 2 && (
+                      <li>
+                        <Link
+                          to="/capacitacion"
+                          className="px-6 py-2 rounded font-nunito bg-ColorMorado hover:bg-pink-600"
+                        >
+                          Capacitaciones
+                        </Link>
+                      </li>
+                    )}
                     <li>
                       <button
                         onClick={() => {

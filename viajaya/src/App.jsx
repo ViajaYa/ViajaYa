@@ -27,10 +27,12 @@ import PrivateRoute from "./components/PrivateRoute";
 import GestionarPagina from "./components/Panel/GestionarPagina";
 import GestionOrdenes from "./components/Panel/GestionOrdenes";
 import InstaVideoUploader from "./components/Panel/InstaVideoUploader";
+import AsesoresVideos from "./components/Panel/AsesoresVideos";
 import UploadCarouselImage from "./components/Panel/UploadCarouselImage ";
 import OrdenReserva from "./components/pages/Ordenes/OrdenReserva";
 import UserReservation from "./components/pages/ProfileAdmin/UserReservations";
 import WompiPaymentWidget from "./components/pages/Ordenes/WompiPaymentWidget";
+import Capacitaciones from "./components/pages/Capacitaciones";
 import "react-toastify/dist/ReactToastify.css";
 import ThankYouPage from "./components/pages/Ordenes/ThankYouPage";
 
@@ -179,6 +181,23 @@ function App() {
             </PrivateRoute>
           }
         />
+        <Route
+          path="/asesores"
+          element={
+            <PrivateRoute>
+              <AsesoresVideos />
+            </PrivateRoute>
+          }
+        />
+  <Route
+          path="/capacitacion"
+          element={
+            <PrivateRoute>
+              <Capacitaciones />
+            </PrivateRoute>
+          }
+        />
+
         <Route
           path="/panelCarousel"
           element={

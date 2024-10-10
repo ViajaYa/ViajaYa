@@ -74,6 +74,10 @@ import {
   FETCH_VIDEOS_SUCCESS,
   FETCH_VIDEOS_FAILURE,
   REMOVE_VIDEO,
+  FETCH_CAPACITACIONES_REQUEST,
+  FETCH_CAPACITACIONES_SUCCESS,
+  FETCH_CAPACITACIONES_FAILURE,
+  REMOVE_CAPACITACION,
   INFO_USERS,
 } from "../NewActions/NewActions-Types";
 
@@ -107,9 +111,10 @@ const initialState = {
   errorReservations: null,
   selectedReservation: null,
   token: null,
+  capacitaciones:[],
+  videos: [],
   loading: false,
   error: null,
-  videos: [],
 };
 const rootReducer = (state = initialState, action) => {
   switch (action.type) {
@@ -602,6 +607,35 @@ const rootReducer = (state = initialState, action) => {
         ...state,
         videos: state.videos.filter((video) => video.id !== action.payload),
       };
+
+      case FETCH_CAPACITACIONES_REQUEST:
+        return {
+          ...state,
+          loading: true,
+        };
+      case FETCH_CAPACITACIONES_SUCCESS:
+        console.log("Fetched capacitaciones:", action.payload); // Agrega este console.log para depuración
+        return {
+          ...state,
+          loading: false,
+          capacitaciones: action.payload,
+          error: "",
+        };
+  
+      case FETCH_CAPACITACIONES_FAILURE:
+        return {
+          ...state,
+          loading: false,
+          capacitaciones: [],
+          error: action.payload,
+        };
+      case REMOVE_CAPACITACION:
+        return {
+          ...state,
+          capacitaciones: state.capacitaciones.filter((capacitacion) => capacitacion.id !== action.payload),
+        };
+
+
     case INFO_USERS:
       console.log("Users information received:", action.payload); // Verifica que el payload traiga la información correcta
       return {
