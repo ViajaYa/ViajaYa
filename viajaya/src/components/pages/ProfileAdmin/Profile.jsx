@@ -27,7 +27,7 @@ const Profile = () => {
   const dispatch = useDispatch();
   
   const [loading, setLoading] = useState(true);
-  const referralLink = `http://localhost:5173/login/${user?.referral_code}`;
+  const referralLink = `https://viajaya.com/login/${user?.referral_code}`;
 
   console.log(referralLink);
 
