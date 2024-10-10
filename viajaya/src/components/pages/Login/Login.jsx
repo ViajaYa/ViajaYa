@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import style from './Login.module.css'
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
-import {FcGoogle} from "react-icons/fc";
+import {  Navigate, useNavigate, useParams } from 'react-router-dom';
+
 import axios from "axios"
 import {toast, Toaster} from "react-hot-toast"
-import { useEffect } from 'react';
+
 import NavBar from '../../layout/NavBar/NavBar';
  
 const Login = () => {
@@ -17,11 +17,10 @@ const Login = () => {
 
 
     const emailReg = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const phoneReg = /^\d{10}$/;
+    
 
     const createUser = () => {
         // Validaciones
-       
         if (!emailReg.test(newUser?.email)) {
             return toast.error("Debes ingresar un email válido");
         }
@@ -35,24 +34,26 @@ const Login = () => {
         // Crear el nuevo objeto de usuario después de las validaciones
         const userData = {
             ...newUser,
-            
+            referred_by: referral_code, // Asegúrate de incluir el código aquí
         };
+    
+        // Imprimir el cuerpo que se enviará al backend
+        console.log("Cuerpo del request:", userData);
         
-        
-        
-        axios.post("/user", userData).then(() => {
-            setLogin(true);
-            // Limpiar form y enviar toast
-            toast.success("Te has registrado exitosamente");
-            setNewUser({
-               
-                email: "",
-                password: "",
-                password2: "",
+        axios.post("/user", userData)
+            .then(() => {
+                setLogin(true);
+                // Limpiar form y enviar toast
+                toast.success("Te has registrado exitosamente");
+                setNewUser({
+                    email: "",
+                    password: "",
+                    password2: "",
+                });
+            })
+            .catch((err) => {
+                toast.error(err.response?.data?.message || "Email existente");
             });
-        }).catch((err) => {
-            toast.error(err.response?.data?.message || "Email existente");
-        });
     };
 
     const authUser = async () => {

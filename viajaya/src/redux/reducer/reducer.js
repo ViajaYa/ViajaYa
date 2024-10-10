@@ -290,16 +290,22 @@ const rootReducer = (state = initialState, action) => {
       };
     }
     case SET_USERS: {
-      return {
-        ...state,
-        pagina: 1,
-        users: action.payload.slice(
-          (state.pagina - 1) * perPage,
-          perPage * state.pagina
-        ),
-        usersOrigin: action.payload,
-        maxPagesUser: Math.ceil(action.payload.length / perPage),
-      };
+      // Verificar que action.payload sea un array
+      if (Array.isArray(action.payload)) {
+        return {
+          ...state,
+          pagina: 1,
+          users: action.payload.slice(
+            (state.pagina - 1) * perPage,
+            perPage * state.pagina
+          ),
+          usersOrigin: action.payload,
+          maxPagesUser: Math.ceil(action.payload.length / perPage),
+        };
+      } else {
+        console.error("El payload de SET_USERS no es un array", action.payload);
+        return state; // O devuelve un estado por defecto
+      }
     }
     case FIND_USERS: {
       return {

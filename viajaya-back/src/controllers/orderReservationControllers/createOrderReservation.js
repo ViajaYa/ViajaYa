@@ -9,13 +9,27 @@ const createOrderReservation = async (req, res) => {
       return res.status(400).json({ message: 'Fechas de salida y llegada son requeridas.' });
     }
 
+    // Crea la nueva orden
     const newOrder = await OrderReservation.create({
       userId,
       packId,
       numberOfPeople,
       totalPrice,
-      fechas, // Agregamos el campo de fechas aquí
+      fechas,
     });
+
+    // Obtiene el usuario que hace la reserva
+    const user = await User.findByPk(userId);
+    
+    // Maneja la lógica de referidos
+    if (user && user.referred_by) {
+      const referrer = await User.findOne({ where: { referral_code: user.referred_by } });
+      if (referrer) {
+        const pointsEarned = Math.floor(totalPrice / 50000); // Calcula puntos ganados
+        await referrer.increment('points', { by: pointsEarned }); // Sumar puntos al referido
+        console.log(`Puntos agregados al usuario referido: ${referrer.id}, Puntos: ${pointsEarned}`);
+      }
+    }
 
     return res.status(201).json(newOrder);
   } catch (error) {
@@ -24,5 +38,7 @@ const createOrderReservation = async (req, res) => {
 };
 
 module.exports = createOrderReservation;
+
+
 
 
