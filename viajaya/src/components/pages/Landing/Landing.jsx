@@ -11,7 +11,7 @@ import Destinos from "../Destinos/Destinos"
 import Clients from "../Clients/Clients"
 import Contact from "../Contact/Contact"
 import YapayaCard from "../../YapayaCard"
-import ReferralInfo from '../../ReferralInfo';
+
 
 //import Operador from "../Operador/Operador"
 import WhatssapButton from './WhatssapButton'
@@ -48,7 +48,7 @@ const Landing = ({ ruta }) => {
       <Clients />
       <Contact />
       <Convenios/>
-      <ReferralInfo/>
+      
       <Footer />
       <WhatssapButton />
       {popup && popup.isActive && <Popup content={popup.content} />}

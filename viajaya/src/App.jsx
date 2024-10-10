@@ -7,12 +7,14 @@ import Terminos from "./components/pages/Politicas/Terminos";
 import { useEffect, useState } from "react";
 import { ToastContainer } from "react-toastify";
 
+
 import { useDispatch } from "react-redux";
 import { Suspense, lazy } from "react";
 import style from "./Spinner.module.css";
 import About from "./components/pages/About/About";
 import Rifa from "./components/pages/Rifa";
 import NumberBoard from "./components/pages/NumberBoard";
+import ReferralInfo from "./components/ReferralInfo"
 import Form from "./components/pages/Form";
 import SelectedNumbersList from "./components/pages/SelectedNumberList";
 import UserManagement from "./components/Panel/UserManagment";
@@ -217,6 +219,7 @@ function App() {
         />
         <Route path="/panel/popup/popup" element={<Popup />} />
         <Route exact path="/politicas" element={<Politicas />} />
+        <Route exact path="/puntos" element={<ReferralInfo />} />
         <Route exact path="/userReservas" element={<UserReservation />} />
         <Route exact path="/terminos" element={<Terminos />} />
         <Route exact path="/ordenReserva/:id" element={<OrdenReserva />} />

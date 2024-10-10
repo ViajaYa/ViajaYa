@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { useDispatch, useSelector } from "react-redux";
 import { setUsers } from "../redux/actions/actions"; // Importa tus acciones
+import NavBar from './layout/NavBar/NavBar';
 
 const ReferralInfo = () => {
   const [user, setUser] = useState(null); // Estado para el usuario logueado
@@ -34,13 +35,32 @@ const ReferralInfo = () => {
   if (loading) return <div>Loading...</div>;
 
   return (
-    <div>
-      <h1>Bienvenido, {user?.email}</h1>
-      <p>Puntos acumulados: {user?.points}</p>
+    <div className="relative bg-cover bg-center h-screen bg-ColorMorado "  >
+    <div className="fixed top-0 left-0 z-50 w-full">
+        <NavBar />
+      </div>
+      <div className="w-full h-full flex flex-col justify-center items-center p-6">
+        <div className="bg-gray-100 bg-opacity-90 rounded-lg shadow-lg max-w-3xl  text-center md: p-4">
+          <h1 className="text-2xl font-nunito font-bold text-gray-800 mb-4">¡Bienvenido, {user?.email}!</h1>
+          <p className="text-xl font-nunito font-semibold text-green-600 mb-6">Puntos acumulados: {user?.points}</p>
+          
+          <p className="text-gray-700 mb-6 font-nunito text-xl">
+            ¿Te encanta viajar y recomendar experiencias inolvidables a tus amigos y familiares? ¡Ahora puedes ganar increíbles recompensas mientras lo haces!
+            <br /> <br />
+            Con nuestro exclusivo programa <span className="font-bold text-blue-600">Refiere y Gana YA</span>, por cada persona que compre un paquete de viaje gracias a tu recomendación, ¡acumularás puntos que podrás canjear por premios irresistibles!
+            <br /> <br />
+            <spam className="font-bold text-blue-600" >Regístrate. Comparte tu código y Gana YA </spam>
+          </p>
+          
+          
+          
+        </div>
+      </div>
     </div>
   );
 };
 
 export default ReferralInfo;
+
 
 
