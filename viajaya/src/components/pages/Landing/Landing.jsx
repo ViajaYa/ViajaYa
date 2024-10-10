@@ -6,17 +6,19 @@ import Popup from '../../../components/popups/Popup'
 import NavBar from "../../layout/NavBar/NavBar"
 import Footer from "../../layout/Footer/Footer"
 import Home from "../Home/Home"
-import Paquetes from "../Paquetes/Paquetes"
+//import Paquetes from "../Paquetes/Paquetes"
 import Destinos from "../Destinos/Destinos"
 import Clients from "../Clients/Clients"
 import Contact from "../Contact/Contact"
 import YapayaCard from "../../YapayaCard"
 
+
 //import Operador from "../Operador/Operador"
 import WhatssapButton from './WhatssapButton'
-import InstagramCarousel from '../Clients/InstagramReelCarousel';
+//import InstagramCarousel from '../Clients/InstagramReelCarousel';
 import PackCard from '../../../components/PackCard'
 import Convenios from '../Clients/Convenios';
+import VideoCarousel from '../VideoCarousel';
 
 // eslint-disable-next-line react/prop-types
 const Landing = ({ ruta }) => {
@@ -41,11 +43,12 @@ const Landing = ({ ruta }) => {
       {/* <Operador /> */}
       
        
-      {/* <InstagramCarousel/> */}
-    {/* <Clients2/> */}
+      {/* <InstagramCarousel/>  */}
+     <VideoCarousel/>
       <Clients />
       <Contact />
       <Convenios/>
+      
       <Footer />
       <WhatssapButton />
       {popup && popup.isActive && <Popup content={popup.content} />}

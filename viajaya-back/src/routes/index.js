@@ -6,6 +6,7 @@ const promoRoutes = require("./promoRoutes")
 const orderRoutes = require("./orderRoutes")
 const popupRoutes= require("./popupRoutes")
 const numberRoutes= require("./numberRoutes")
+const asesoresCapacitaciones = require('./asesoresCapacitaciones')
 const instagramVideoRoutes = require("./instagramVideoRoutes")
 const carouselRoutes = require("./carouselRoutes")
 const routes = Router()
@@ -19,6 +20,7 @@ routes
 .use("/popup", popupRoutes)
 .use("/numbers", numberRoutes)
 .use("/insta", instagramVideoRoutes)
+.use("/asesores", asesoresCapacitaciones)
 .use("/carousel", carouselRoutes)
 
 module.exports = routes

@@ -7,12 +7,14 @@ import Terminos from "./components/pages/Politicas/Terminos";
 import { useEffect, useState } from "react";
 import { ToastContainer } from "react-toastify";
 
+
 import { useDispatch } from "react-redux";
 import { Suspense, lazy } from "react";
 import style from "./Spinner.module.css";
 import About from "./components/pages/About/About";
 import Rifa from "./components/pages/Rifa";
 import NumberBoard from "./components/pages/NumberBoard";
+import ReferralInfo from "./components/ReferralInfo"
 import Form from "./components/pages/Form";
 import SelectedNumbersList from "./components/pages/SelectedNumberList";
 import UserManagement from "./components/Panel/UserManagment";
@@ -27,10 +29,12 @@ import PrivateRoute from "./components/PrivateRoute";
 import GestionarPagina from "./components/Panel/GestionarPagina";
 import GestionOrdenes from "./components/Panel/GestionOrdenes";
 import InstaVideoUploader from "./components/Panel/InstaVideoUploader";
+import AsesoresVideos from "./components/Panel/AsesoresVideos";
 import UploadCarouselImage from "./components/Panel/UploadCarouselImage ";
 import OrdenReserva from "./components/pages/Ordenes/OrdenReserva";
 import UserReservation from "./components/pages/ProfileAdmin/UserReservations";
 import WompiPaymentWidget from "./components/pages/Ordenes/WompiPaymentWidget";
+import Capacitaciones from "./components/pages/Capacitaciones";
 import "react-toastify/dist/ReactToastify.css";
 import ThankYouPage from "./components/pages/Ordenes/ThankYouPage";
 
@@ -71,7 +75,8 @@ function App() {
     <>
       <ToastContainer />
       <Routes>
-        <Route exact path="/login" element={<Login />} />
+      <Route exact path="/login" element={<Login />} />
+      <Route exact path="/login/:referral_code" element={<Login />} />
         <Route exact path="/rifa" element={<Rifa />} />
         <Route
           path="/number"
@@ -179,6 +184,23 @@ function App() {
           }
         />
         <Route
+          path="/asesores"
+          element={
+            <PrivateRoute>
+              <AsesoresVideos />
+            </PrivateRoute>
+          }
+        />
+  <Route
+          path="/capacitacion"
+          element={
+            <PrivateRoute>
+              <Capacitaciones />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
           path="/panelCarousel"
           element={
             <PrivateRoute>
@@ -197,6 +219,7 @@ function App() {
         />
         <Route path="/panel/popup/popup" element={<Popup />} />
         <Route exact path="/politicas" element={<Politicas />} />
+        <Route exact path="/puntos" element={<ReferralInfo />} />
         <Route exact path="/userReservas" element={<UserReservation />} />
         <Route exact path="/terminos" element={<Terminos />} />
         <Route exact path="/ordenReserva/:id" element={<OrdenReserva />} />

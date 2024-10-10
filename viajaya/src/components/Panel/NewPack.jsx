@@ -185,6 +185,7 @@ const NewPack = () => {
             <option value="aereos">Aereos Incluidos</option>
             <option value="piscina">Piscina</option>
             <option value="Desayuno">Desayuno Incluido</option>
+            <option value="Alimentacion">Alimentación Completa</option>
             <option value="Wifi">Wifi</option>
             <option value="gym">Gimnasio</option>
           </select>

@@ -38,7 +38,7 @@ const NavBar = ({ showFullMenu = true }) => {
   const isPanelUserPage = currentPath === '/panel/user';
   const isPanelPackPage = currentPath === '/panel/pack';
   const isPanelNewPage = currentPath ==='/panel/newPack';
-
+const isBeneficiosNewPage = currentPath === "/puntos"
 
   return (
     <nav className={style.nav}>
@@ -121,7 +121,7 @@ const NavBar = ({ showFullMenu = true }) => {
           </>
         )}
         {/* Mostrar elementos generales */}
-        {!isLoginPage && !isProductsPage && !isPanelPage && !isProfilePage && !isPanelUserPage && !isPanelPackPage && !isPanelNewPage && (
+        {!isLoginPage && !isProductsPage && !isPanelPage && !isProfilePage && !isPanelUserPage && !isPanelPackPage && !isPanelNewPage && !isBeneficiosNewPage && (
           <>
             {isAboutPage ? (
               <>
@@ -132,6 +132,7 @@ const NavBar = ({ showFullMenu = true }) => {
                   <li className={style.libutton} onClick={() => navigate("/login")}>Ingresar</li>
                 )}
               </>
+              
             ) : (
               <>
                 <RouterLink to="/about" className={style.noLink}>
@@ -143,9 +144,9 @@ const NavBar = ({ showFullMenu = true }) => {
                 <RouterLink to="/productos" className={style.noLink}>
                   <li className={style.li}>Productos</li>
                 </RouterLink>
-                <ScrollLink to="contactanos" smooth={true} duration={500}>
+                <RouterLink to="/puntos" smooth={true} duration={500}>
                   <li className={style.li}>Obtén Descuentos</li>
-                </ScrollLink>
+                </RouterLink>
                 {!user && (
                   <li className={style.libutton} onClick={() => navigate("/login")}>Ingresar</li>
                 )}
