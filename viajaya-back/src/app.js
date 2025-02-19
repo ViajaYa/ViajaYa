@@ -4,7 +4,7 @@ const morgan = require("morgan")
 const routes = require("./routes/index.js")
 
 const allowedOrigins = [
-    'http://localhost:5173', // Permitir localhost para desarrollo
+    // 'http://localhost:5173', // Permitir localhost para desarrollo
     'https://viajaya.com.co'  // Permitir tu dominio en producción
   ];
 
