@@ -30,32 +30,43 @@ const AllPacks = () => {
       <div className='fixed top-0 left-0 z-50 w-full'>
         <NavBar />
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-20">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-20 p-6">
         {filteredPacks.length > 0 ? (
           filteredPacks.map((pack) => (
+               <Link key={pack.id} to={`/detail/${pack.id}`} className="block hover:shadow-xl transition-shadow duration-300 rounded-lg"> {/* Link envuelve toda la tarjeta */}
             <div key={pack.id} className="bg-white rounded-lg shadow-md overflow-hidden">
-              <img src={pack.images[0]} alt={pack.title} className="w-full h-48 object-cover" />
-              <div className="p-4">
-                <h3 className="text-xl font-semibold font-nunito">{pack.title}</h3>
-                <p className="text-gray-600 font-nunito">Destinos {pack.destino}</p>
-                <div className="flex justify-between items-center mt-4">
-                  <p className="text-green-600 font-bold font-nunito text-lg">
-                    <FaCoins className="inline-block mr-1 text-yellow-500" />
-                    {Number(pack.price).toLocaleString('es-CO', { style: 'currency', currency: 'COP' })}   
-                    <FaTag className="inline-block mr-1 text-gray-600" />    
+              <img 
+                src={pack.images[0]} 
+                alt={pack.title} 
+                className="w-full aspect-square object-cover" // Square image
+              />
+              <div className="p-5 flex-grow flex flex-col"> {/* Consistent padding */}
+                <div>
+                  <h3 className="text-xl font-bold font-nunito text-gray-800 mb-1 truncate uppercase" title={pack.title}>
+                    {pack.title}
+                  </h3>
+                  <p className="text-base text-gray-600 font-nunito mb-3">
+                    Destino: {pack.destino}
                   </p>
-                  <span className="bg-ColorAzul text-gray-600 text-lg font-semibold font-nunito border-2 px-6 py-1 rounded-md"> 
-                    {pack.days} días
-                  </span>
+                  <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-2">
+                    <p className="text-2xl text-green-700 font-bold font-nunito">
+                      <FaCoins className="inline-block mr-1.5 text-yellow-500" />
+                      {Number(pack.price).toLocaleString('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </p>
+                    <span className="bg-ColorAzul text-white text-sm sm:text-base font-semibold font-nunito px-3 py-1.5 rounded-md self-start sm:self-center">
+                      {pack.days} días
+                    </span>
+                  </div>
                 </div>
                 <div className="mt-2 flex justify-start items-center">
-                  <Link to={`/detail/${pack.id}`} className="flex items-center gap-2">
+                
                     <FaPlaneDeparture className="text-ColorAzul hover:text-gray-400 text-2xl cursor-pointer" />
                     <span className="text-gray-600 hover:text-gray-400 font-semibold font-nunito text-lg">Reserva</span>
-                  </Link>
+                 
                 </div>
               </div>
             </div>
+             </Link>
           ))
         ) : (
           <p className="text-center text-gray-600">No se encontraron paquetes para el destino seleccionado.</p>
