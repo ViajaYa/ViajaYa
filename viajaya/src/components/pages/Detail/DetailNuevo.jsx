@@ -52,7 +52,7 @@ const DetailNuevo = () => {
           className="w-32 h-32 mr-4 mt-8 transform scale-x-[-1]"
         />
       </div>
-      <div className="container mx-auto mt-8 p-6 bg-white rounded-lg shadow-lg flex flex-col md:flex-row gap-8">
+      <div className="container mx-auto mt-20 p-6 bg-white rounded-lg shadow-lg flex flex-col md:flex-row gap-8">
         {/* Left Side - Image and Map */}
         <div className="md:w-1/2 flex flex-col gap-6">
           {pack.images && pack.images.length > 0 ? (
