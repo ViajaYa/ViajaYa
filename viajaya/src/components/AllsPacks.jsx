@@ -1,18 +1,18 @@
 import { useSelector, useDispatch } from 'react-redux';
 import { useEffect } from 'react';
 import { fetchPacks } from '../redux/NewActions/newActions';
-import { Link, useLocation } from 'react-router-dom'; // Importar useLocation para obtener parámetros de la URL
+import { Link, useLocation } from 'react-router-dom'; 
 import NavBar from './layout/NavBar/NavBar';
-import { FaPlaneDeparture, FaTag, FaCoins } from 'react-icons/fa';
+import { FaPlaneDeparture, FaCoins } from 'react-icons/fa';
 
 const AllPacks = () => {
   const dispatch = useDispatch();
-  const location = useLocation(); // Obtener la ubicación actual para leer los parámetros de la URL
+  const location = useLocation(); 
 
-  // Obtener los paquetes del estado
+  
   const packs = useSelector((state) => state.packs);
 
-  // Obtener el parámetro 'destino' de la URL
+  
   const queryParams = new URLSearchParams(location.search);
   const destinoFilter = queryParams.get('destino');
 
