@@ -33,14 +33,14 @@ const AllPacks = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-20 p-6">
         {filteredPacks.length > 0 ? (
           filteredPacks.map((pack) => (
-               <Link key={pack.id} to={`/detail/${pack.id}`} className="block hover:shadow-xl transition-shadow duration-300 rounded-lg"> {/* Link envuelve toda la tarjeta */}
+               <Link key={pack.id} to={`/detail/${pack.id}`} className="block hover:shadow-xl transition-shadow duration-300 rounded-lg"> 
             <div key={pack.id} className="bg-white rounded-lg shadow-md overflow-hidden">
               <img 
                 src={pack.images[0]} 
                 alt={pack.title} 
-                className="w-full aspect-square object-cover" // Square image
+                className="w-full aspect-square object-cover" 
               />
-              <div className="p-5 flex-grow flex flex-col"> {/* Consistent padding */}
+              <div className="p-5 flex-grow flex flex-col">
                 <div>
                   <h3 className="text-xl font-bold font-nunito text-gray-800 mb-1 truncate uppercase" title={pack.title}>
                     {pack.title}
