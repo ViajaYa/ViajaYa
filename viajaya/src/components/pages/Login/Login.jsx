@@ -129,7 +129,7 @@ const Login = () => {
             <input onChange={handleChange} key={8} value={newUser?.email} name="email" type="email" className={style.input} placeholder="Email"/>
             <input onChange={handleChange} key={6} value={newUser?.password} name="password" type="password" className={style.input} placeholder="Contraseña"/>
             <input onChange={handleChange} key={7} value={newUser?.password2} name="password2" type="password" className={style.input} placeholder="Repetir contraseña"/>
-            <input onChange={handleChange} key={5} value={newUser?.referred_by} name="referred_by" type="string" className={style.input} placeholder="Ingresa el enlace"/>
+            
             <input onClick={createUser} type="button" value="Registrarme" className={style.button}/>
             {/* <button className={style.buttonGoogle}><FcGoogle className={style.google}/> <span>Registrate con google</span></button> */}
         </form>
