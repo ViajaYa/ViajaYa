@@ -82,7 +82,7 @@ const PackCard = () => {
               animation: 'shine 2s infinite linear',
               overflow: 'hidden',
               
-            }}  // Ajustar el tamaño y el box-sizing para asegurar el espaciado uniforme
+            }}  
           >
             <img
               src={pack.images[0]}
@@ -140,6 +140,8 @@ const PackCard = () => {
 };
 
 export default PackCard;
+
+//probando para deployar
 
 
 
