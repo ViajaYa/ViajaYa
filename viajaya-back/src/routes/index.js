@@ -9,6 +9,9 @@ const numberRoutes= require("./numberRoutes")
 const asesoresCapacitaciones = require('./asesoresCapacitaciones')
 const instagramVideoRoutes = require("./instagramVideoRoutes")
 const carouselRoutes = require("./carouselRoutes")
+const quoteRoutes = require("./quoteRoutes")
+const contractRoutes = require("./contractRoutes")
+const paymentRoutes = require("./paymentRoutes")
 const routes = Router()
 
 routes
@@ -22,5 +25,8 @@ routes
 .use("/insta", instagramVideoRoutes)
 .use("/asesores", asesoresCapacitaciones)
 .use("/carousel", carouselRoutes)
+.use("/quotes", quoteRoutes)
+.use("/contracts", contractRoutes)
+.use("/payments", paymentRoutes)
 
 module.exports = routes

@@ -4,7 +4,7 @@ import { generatePDF } from "./Form";
 
 import NavBar from "../layout/NavBar/NavBar";
 
-const SelectedNumbersList = () => {
+const SelectedNumberList = () => {
   const [selectedNumbers, setSelectedNumbers] = useState([]);
 
   useEffect(() => {
@@ -93,4 +93,4 @@ const SelectedNumbersList = () => {
   );
 };
 
-export default SelectedNumbersList;
+export default SelectedNumberList;

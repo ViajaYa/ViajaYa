@@ -5,7 +5,7 @@ import europoa from "../assets/flipcard/europoa.jpg";
 import internacionales from "../assets/flipcard/internacionales.jpg";
 import macarena from "../assets/flipcard/lamacarena.jpg";
 import tierra from "../assets/flipcard/portierra.jpg";
-import Title from "./utils/Title";
+import Title from "../utils/Title";
 import axios from 'axios';
 
 

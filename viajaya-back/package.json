@@ -6,13 +6,18 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "nodemon index.js",
-    "dev": "nodemon -L index.js"
+    "dev": "nodemon -L index.js",
+    "migrate-auth": "node src/scripts/migrationAuth.js",
+    "create-admin": "node -e \"require('./src/scripts/migrationAuth').createInitialAdmin()\"",
+    "migrate-passwords": "node -e \"require('./src/scripts/migrationAuth').migratePasswords()\"",
+    "test-api": "node src/scripts/apiTester.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "axios": "^1.4.0",
+    "bcrypt": "^6.0.0",
     "cloudinary": "^1.41.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

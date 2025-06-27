@@ -1,5 +1,8 @@
 const {User} = require("../db")
 const jwt = require("jsonwebtoken")
+const bcrypt = require("bcrypt")
+const { Op } = require("sequelize")
+require('dotenv').config()
 
 module.exports = {
     getUsers: async () => {
@@ -37,38 +40,78 @@ module.exports = {
     },
     
     postUser: async (user) => {
-        // Verifica si el email ya existe
-        const existingUser = await User.findOne({
-            where: {
-                email: user.email
+        try {
+            // Validaciones básicas
+            if (!user.email || !user.password) {
+                throw new Error("Email y contraseña son requeridos");
             }
-        });
-        if (existingUser) {
-            throw new Error("Email existente");
-        }
-    
-        // Verifica si hay un código de referido
-        if (user.referral_code) {
-            const referringUser = await User.findOne({
+
+            // Validar formato de email
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(user.email)) {
+                throw new Error("Formato de email inválido");
+            }
+
+            // Validar fortaleza de contraseña
+            if (user.password.length < 6) {
+                throw new Error("La contraseña debe tener al menos 6 caracteres");
+            }
+
+            // Verifica si el email ya existe
+            const existingUser = await User.findOne({
                 where: {
-                    referral_code: user.referral_code
+                    email: user.email.toLowerCase()
                 }
             });
-    
-            if (referringUser) {
-                // Si el código de referido es válido, asigna el ID del usuario que refiere
-                user.referred_by = referringUser.referral_code; // Asegúrate de usar el campo correcto
-            } else {
-                // Si el código de referido no es válido, lanza un error
-                throw new Error("Código de referido inválido");
+            if (existingUser) {
+                throw new Error("Email ya registrado");
             }
-        }
-    
-        // Crea el nuevo usuario
-        const newUser = await User.create(user);
-        return { message: "Usuario creado con éxito", user: newUser };
 
-      },
+            // Encriptar contraseña
+            const saltRounds = 12;
+            const hashedPassword = await bcrypt.hash(user.password, saltRounds);
+
+            // Verifica si hay un código de referido
+            if (user.referral_code) {
+                const referringUser = await User.findOne({
+                    where: {
+                        referral_code: user.referral_code
+                    }
+                });
+        
+                if (referringUser) {
+                    // Si el código de referido es válido, asigna el ID del usuario que refiere
+                    user.referred_by = referringUser.referral_code;
+                } else {
+                    // Si el código de referido no es válido, lanza un error
+                    throw new Error("Código de referido inválido");
+                }
+            }
+        
+            // Preparar datos del usuario
+            const userData = {
+                ...user,
+                email: user.email.toLowerCase(),
+                password: hashedPassword,
+                is_active: true,
+                last_login: null,
+                failed_login_attempts: 0,
+                account_locked_until: null
+            };
+
+            // Crea el nuevo usuario
+            const newUser = await User.create(userData);
+            
+            // Remover contraseña de la respuesta
+            const userResponse = { ...newUser.toJSON() };
+            delete userResponse.password;
+            
+            return { message: "Usuario creado con éxito", user: userResponse };
+
+        } catch (error) {
+            throw new Error(error.message);
+        }
+    },
     
    
     recoveryPass: async (email) => {
@@ -97,17 +140,104 @@ module.exports = {
             throw new Error("Error al eliminar el usuario");
         }
     },
-    authUser: async ({email,password}) => {
-        const user = await User.findOne({
-            where:{
-                email:email,
-                password:password
+    authUser: async ({email, password}) => {
+        try {
+            // Validaciones básicas
+            if (!email || !password) {
+                throw new Error("Email y contraseña son requeridos");
             }
-        })
-        if(user){
-            const token = jwt.sign({name:user.name,email:user.email, id:user.id}, 'shhhhh');
-            return {message:true, id:user.id, token}
-        }else return {message:false}
+
+            // Buscar usuario por email
+            const user = await User.findOne({
+                where: {
+                    email: email.toLowerCase()
+                }
+            });
+
+            if (!user) {
+                throw new Error("Credenciales inválidas");
+            }
+
+            // Verificar si la cuenta está bloqueada
+            if (user.account_locked_until && new Date() < user.account_locked_until) {
+                const lockTime = Math.ceil((user.account_locked_until - new Date()) / (1000 * 60));
+                throw new Error(`Cuenta bloqueada. Intenta nuevamente en ${lockTime} minutos`);
+            }
+
+            // Verificar contraseña
+            const isValidPassword = await bcrypt.compare(password, user.password);
+            
+            if (!isValidPassword) {
+                // Incrementar intentos fallidos
+                const failedAttempts = (user.failed_login_attempts || 0) + 1;
+                let updateData = { failed_login_attempts: failedAttempts };
+
+                // Bloquear cuenta después de 5 intentos fallidos
+                if (failedAttempts >= 5) {
+                    updateData.account_locked_until = new Date(Date.now() + 30 * 60 * 1000); // 30 minutos
+                }
+
+                await User.update(updateData, { where: { id: user.id } });
+                
+                throw new Error("Credenciales inválidas");
+            }
+
+            // Verificar si el usuario está activo
+            if (!user.is_active) {
+                throw new Error("Cuenta desactivada. Contacta al administrador");
+            }
+
+            // Login exitoso - resetear intentos fallidos y actualizar último login
+            await User.update({
+                failed_login_attempts: 0,
+                account_locked_until: null,
+                last_login: new Date()
+            }, { 
+                where: { id: user.id } 
+            });
+
+            // Generar token JWT
+            const tokenPayload = {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                role: user.role,
+                iat: Math.floor(Date.now() / 1000),
+                exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60) // 24 horas
+            };
+
+            const token = jwt.sign(
+                tokenPayload, 
+                process.env.JWT_SECRET || 'fallback_secret_key_change_in_production',
+                { algorithm: 'HS256' }
+            );
+
+            // Preparar respuesta del usuario sin información sensible
+            const userResponse = {
+                id: user.id,
+                name: user.name,
+                lastname: user.lastname,
+                email: user.email,
+                role: user.role,
+                phone: user.phone,
+                image: user.image,
+                supervisor_id: user.supervisor_id,
+                is_active_seller: user.is_active_seller
+            };
+
+            return {
+                message: true,
+                user: userResponse,
+                token,
+                expiresIn: '24h'
+            };
+
+        } catch (error) {
+            return {
+                message: false,
+                error: error.message
+            };
+        }
     },
     getUserById: async (id) => {
         const user = await User.findOne({
@@ -118,7 +248,129 @@ module.exports = {
         return user
     },
     verifyToken: async (token) => {
-        const decoded = jwt.verify(token, 'shhhhh');
-        return decoded
+        try {
+            if (!token) {
+                throw new Error("Token no proporcionado");
+            }
+
+            // Verificar y decodificar el token
+            const decoded = jwt.verify(
+                token, 
+                process.env.JWT_SECRET || 'fallback_secret_key_change_in_production'
+            );
+
+            // Verificar que el usuario todavía existe y está activo
+            const user = await User.findOne({
+                where: {
+                    id: decoded.id,
+                    is_active: true
+                },
+                attributes: [
+                    'id', 'name', 'lastname', 'email', 'role', 'phone', 
+                    'image', 'supervisor_id', 'is_active_seller', 'last_login'
+                ]
+            });
+
+            if (!user) {
+                throw new Error("Usuario no encontrado o inactivo");
+            }
+
+            return {
+                valid: true,
+                user: user,
+                decoded: decoded
+            };
+
+        } catch (error) {
+            return {
+                valid: false,
+                error: error.message
+            };
+        }
+    },
+
+    // Nueva función para cambiar contraseña
+    changePassword: async (userId, currentPassword, newPassword) => {
+        try {
+            // Validaciones básicas
+            if (!currentPassword || !newPassword) {
+                throw new Error("Contraseña actual y nueva contraseña son requeridas");
+            }
+
+            if (newPassword.length < 6) {
+                throw new Error("La nueva contraseña debe tener al menos 6 caracteres");
+            }
+
+            // Buscar usuario
+            const user = await User.findByPk(userId);
+            if (!user) {
+                throw new Error("Usuario no encontrado");
+            }
+
+            // Verificar contraseña actual
+            const isValidCurrentPassword = await bcrypt.compare(currentPassword, user.password);
+            if (!isValidCurrentPassword) {
+                throw new Error("Contraseña actual incorrecta");
+            }
+
+            // Encriptar nueva contraseña
+            const saltRounds = 12;
+            const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
+
+            // Actualizar contraseña
+            await User.update(
+                { password: hashedNewPassword },
+                { where: { id: userId } }
+            );
+
+            return { message: "Contraseña actualizada exitosamente" };
+
+        } catch (error) {
+            throw new Error(error.message);
+        }
+    },
+
+    // Nueva función para resetear contraseña (para admins)
+    resetPassword: async (userId, newPassword) => {
+        try {
+            if (!newPassword || newPassword.length < 6) {
+                throw new Error("La nueva contraseña debe tener al menos 6 caracteres");
+            }
+
+            const saltRounds = 12;
+            const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+            await User.update(
+                { 
+                    password: hashedPassword,
+                    failed_login_attempts: 0,
+                    account_locked_until: null
+                },
+                { where: { id: userId } }
+            );
+
+            return { message: "Contraseña reseteada exitosamente" };
+
+        } catch (error) {
+            throw new Error(error.message);
+        }
+    },
+
+    // Función para desbloquear cuenta
+    unlockAccount: async (userId) => {
+        try {
+            await User.update(
+                { 
+                    failed_login_attempts: 0,
+                    account_locked_until: null
+                },
+                { where: { id: userId } }
+            );
+
+            return { message: "Cuenta desbloqueada exitosamente" };
+
+        } catch (error) {
+            throw new Error(error.message);
+        }
     }
 }

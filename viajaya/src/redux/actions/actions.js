@@ -29,8 +29,8 @@ USER_REGISTER_SUCCESS,
 USER_REGISTER_FAIL,
 } from './actions-types'
 
-const BASE_URL = 'https://viajaya-mve8.onrender.com'
-//const BASE_URL = 'http://localhost:3001'
+//const BASE_URL = 'https://viajaya-mve8.onrender.com'
+const BASE_URL = 'http://localhost:3001'
 
 export const setUser = (user) => {
   return (dispatch) => {
