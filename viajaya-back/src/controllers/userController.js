@@ -39,7 +39,7 @@ module.exports = {
         }
     },
     
-    postUser: async (user) => {
+   postUser: async (user) => {
         try {
             // Validaciones básicas
             if (!user.email || !user.password) {
@@ -72,41 +72,48 @@ module.exports = {
             const hashedPassword = await bcrypt.hash(user.password, saltRounds);
 
             // Verifica si hay un código de referido
-            if (user.referral_code) {
+            if (user.referral_code || user.referred_by) {
+                const referralCode = user.referral_code || user.referred_by;
                 const referringUser = await User.findOne({
                     where: {
-                        referral_code: user.referral_code
+                        referral_code: referralCode
                     }
                 });
         
                 if (referringUser) {
-                    // Si el código de referido es válido, asigna el ID del usuario que refiere
                     user.referred_by = referringUser.referral_code;
                 } else {
-                    // Si el código de referido no es válido, lanza un error
                     throw new Error("Código de referido inválido");
                 }
             }
         
-            // Preparar datos del usuario
+            // ✅ Preparar datos del usuario con campos consistentes
             const userData = {
                 ...user,
                 email: user.email.toLowerCase(),
                 password: hashedPassword,
-                is_active: true,
+                is_active: true,                    // ✅ Usuario activo por defecto
+                is_active_seller: user.is_active_seller || false, // ✅ Vendedor solo si se especifica
                 last_login: null,
                 failed_login_attempts: 0,
-                account_locked_until: null
+                account_locked_until: null,
+                points: 0,                          // ✅ Puntos iniciales
             };
 
             // Crea el nuevo usuario
             const newUser = await User.create(userData);
             
-            // Remover contraseña de la respuesta
+            // ✅ Respuesta normalizada sin contraseña
             const userResponse = { ...newUser.toJSON() };
             delete userResponse.password;
+            delete userResponse.failed_login_attempts;
+            delete userResponse.account_locked_until;
             
-            return { message: "Usuario creado con éxito", user: userResponse };
+            return { 
+                success: true,
+                message: "Usuario creado con éxito", 
+                user: userResponse 
+            };
 
         } catch (error) {
             throw new Error(error.message);
@@ -140,7 +147,7 @@ module.exports = {
             throw new Error("Error al eliminar el usuario");
         }
     },
-    authUser: async ({email, password}) => {
+authUser: async ({email, password}) => {
         try {
             // Validaciones básicas
             if (!email || !password) {
@@ -182,10 +189,15 @@ module.exports = {
                 throw new Error("Credenciales inválidas");
             }
 
-            // Verificar si el usuario está activo
+            // ✅ CORREGIR: Verificar is_active (no is_active_seller)
             if (!user.is_active) {
                 throw new Error("Cuenta desactivada. Contacta al administrador");
             }
+
+            // ✅ OPCIONAL: También verificar is_active_seller si es necesario
+            // if (!user.is_active_seller) {
+            //     throw new Error("Usuario no habilitado como vendedor");
+            // }
 
             // Login exitoso - resetear intentos fallidos y actualizar último login
             await User.update({
@@ -212,7 +224,7 @@ module.exports = {
                 { algorithm: 'HS256' }
             );
 
-            // Preparar respuesta del usuario sin información sensible
+            // ✅ MEJORAR: Preparar respuesta con campos normalizados
             const userResponse = {
                 id: user.id,
                 name: user.name,
@@ -222,10 +234,17 @@ module.exports = {
                 phone: user.phone,
                 image: user.image,
                 supervisor_id: user.supervisor_id,
-                is_active_seller: user.is_active_seller
+                // ✅ Incluir ambos campos para compatibilidad
+                is_active: user.is_active,           // Campo principal
+                is_active_seller: user.is_active_seller, // Campo específico
+                // ✅ Campos adicionales útiles
+                referral_code: user.referral_code,
+                points: user.points || 0,
+                last_login: user.last_login,
             };
 
             return {
+                success: true, // ✅ Consistente con la respuesta mostrada
                 message: true,
                 user: userResponse,
                 token,
@@ -234,6 +253,7 @@ module.exports = {
 
         } catch (error) {
             return {
+                success: false, // ✅ Consistente en errores
                 message: false,
                 error: error.message
             };
@@ -247,7 +267,7 @@ module.exports = {
         })
         return user
     },
-    verifyToken: async (token) => {
+     verifyToken: async (token) => {
         try {
             if (!token) {
                 throw new Error("Token no proporcionado");
@@ -259,15 +279,16 @@ module.exports = {
                 process.env.JWT_SECRET || 'fallback_secret_key_change_in_production'
             );
 
-            // Verificar que el usuario todavía existe y está activo
+            // ✅ Verificar que el usuario todavía existe y está activo
             const user = await User.findOne({
                 where: {
                     id: decoded.id,
-                    is_active: true
+                    is_active: true // ✅ Verificar el campo correcto
                 },
                 attributes: [
                     'id', 'name', 'lastname', 'email', 'role', 'phone', 
-                    'image', 'supervisor_id', 'is_active_seller', 'last_login'
+                    'image', 'supervisor_id', 'is_active_seller', 'is_active', // ✅ Incluir ambos
+                    'last_login', 'referral_code', 'points'
                 ]
             });
 
@@ -275,9 +296,26 @@ module.exports = {
                 throw new Error("Usuario no encontrado o inactivo");
             }
 
+            // ✅ Respuesta normalizada
+            const userResponse = {
+                id: user.id,
+                name: user.name,
+                lastname: user.lastname,
+                email: user.email,
+                role: user.role,
+                phone: user.phone,
+                image: user.image,
+                supervisor_id: user.supervisor_id,
+                is_active: user.is_active,
+                is_active_seller: user.is_active_seller,
+                referral_code: user.referral_code,
+                points: user.points || 0,
+                last_login: user.last_login,
+            };
+
             return {
                 valid: true,
-                user: user,
+                user: userResponse,
                 decoded: decoded
             };
 

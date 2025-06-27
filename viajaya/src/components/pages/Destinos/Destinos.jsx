@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import  { useState } from "react";
 import "./Destinos.css";
 import PropTypes from "prop-types";
 import { FaYoutube, FaExternalLinkAlt } from 'react-icons/fa';

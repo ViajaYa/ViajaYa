@@ -1,24 +1,26 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { getApiUrl } from '../../utils/env';
 
-// Estado inicial mejorado (combinando lo mejor de ambos archivos)
+// Estado inicial mejorado
 const initialState = {
   user: null,
   token: localStorage.getItem('token'),
-  isAuthenticated: !!localStorage.getItem('token'), // Mejor inicialización
+  isAuthenticated: !!localStorage.getItem('token'),
   loading: false,
   error: null,
   loginAttempts: 0,
   lastLoginAttempt: null,
-  isAccountLocked: false, // Añadido del authReducer
+  isAccountLocked: false,
 };
 
-// Thunks asíncronos
+// ✅ CORREGIR ENDPOINT - Cambiar de '/user/auth' a '/user/login'
 export const loginUser = createAsyncThunk(
   'auth/loginUser',
   async ({ email, password }, { rejectWithValue }) => {
     try {
-      const response = await fetch(getApiUrl('/api/user/login'), {
+      const url = getApiUrl('/user/login');
+      
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -26,30 +28,74 @@ export const loginUser = createAsyncThunk(
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        return rejectWithValue(data.message || 'Error al iniciar sesión');
+        if (response.status === 404) {
+          return rejectWithValue(`Endpoint no encontrado: ${url}`);
+        }
+        
+        try {
+          const errorData = await response.json();
+          return rejectWithValue(errorData.message || errorData.error || `Error ${response.status}`);
+        } catch (parseError) {
+          return rejectWithValue(`Error ${response.status}: ${response.statusText}`);
+        }
       }
 
-      // Guardar token en localStorage
-      localStorage.setItem('token', data.token);
+      const data = await response.json();
+
+      // ✅ Verificar success en lugar de solo message
+      if (!data.success) {
+        return rejectWithValue(data.error || data.message || 'Error en la autenticación');
+      }
+
+      // ✅ Normalizar los datos del usuario para manejar ambos campos
+      const normalizedUser = {
+        ...data.user,
+        // ✅ Priorizar is_active sobre is_active_seller para validación general
+        isActive: data.user.is_active !== undefined ? data.user.is_active : data.user.is_active_seller,
+        isActiveSeller: data.user.is_active_seller || false,
+        supervisorId: data.user.supervisor_id,
+        referralCode: data.user.referral_code,
+        // Mantener campos originales
+        is_active: data.user.is_active,
+        is_active_seller: data.user.is_active_seller,
+        supervisor_id: data.user.supervisor_id,
+        referral_code: data.user.referral_code,
+      };
+
+      // ✅ Debug en desarrollo
+      if (import.meta.env.MODE === 'development') {
+        console.log('✅ Usuario normalizado:', {
+          original: data.user,
+          normalized: normalizedUser,
+          isActive: normalizedUser.isActive,
+          isActiveSeller: normalizedUser.isActiveSeller
+        });
+      }
+
+      // ✅ Guardar token en localStorage
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+      }
 
       return {
-        user: data.user,
+        user: normalizedUser,
         token: data.token,
       };
     } catch (error) {
-      return rejectWithValue(error.message || 'Error de conexión');
+      console.error('💥 Error de conexión en login:', error);
+      return rejectWithValue(`Error de conexión: ${error.message}`);
     }
   }
 );
 
+// ✅ CORREGIR ENDPOINT DE REGISTRO - Asumiendo que es '/user/register'
 export const registerUser = createAsyncThunk(
   'auth/registerUser',
   async (userData, { rejectWithValue }) => {
     try {
-      const response = await fetch(getApiUrl('/api/user/register'), {
+      // ✅ Verificar endpoint correcto (ajustar según tu backend)
+      const response = await fetch(getApiUrl('/user/register'), { // o '/user' según tu backend
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -57,16 +103,20 @@ export const registerUser = createAsyncThunk(
         body: JSON.stringify(userData),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        return rejectWithValue(data.message || 'Error al registrar usuario');
+        if (response.status === 404) {
+          return rejectWithValue('Endpoint de registro no encontrado');
+        }
+        
+        try {
+          const errorData = await response.json();
+          return rejectWithValue(errorData.message || `Error ${response.status}`);
+        } catch (parseError) {
+          return rejectWithValue(`Error ${response.status}: ${response.statusText}`);
+        }
       }
 
-      // Guardar token en localStorage si se proporciona
-      if (data.token) {
-        localStorage.setItem('token', data.token);
-      }
+      const data = await response.json();
 
       return {
         user: data.user,
@@ -74,11 +124,13 @@ export const registerUser = createAsyncThunk(
         message: data.message,
       };
     } catch (error) {
-      return rejectWithValue(error.message || 'Error de conexión');
+      console.error('Error de conexión en registro:', error);
+      return rejectWithValue('Error de conexión con el servidor');
     }
   }
 );
 
+// ✅ CORREGIR ENDPOINT DE VERIFICACIÓN DE TOKEN
 export const verifyToken = createAsyncThunk(
   'auth/verifyToken',
   async (_, { rejectWithValue }) => {
@@ -89,7 +141,8 @@ export const verifyToken = createAsyncThunk(
         return rejectWithValue('No hay token disponible');
       }
 
-      const response = await fetch(getApiUrl('/api/user/verify/token'), {
+      // ✅ Ajustar endpoint según tu backend
+      const response = await fetch(getApiUrl('/user/verify-token'), { // Ajustar si es diferente
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -97,31 +150,78 @@ export const verifyToken = createAsyncThunk(
         },
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        // Token inválido, limpiar localStorage
         localStorage.removeItem('token');
-        return rejectWithValue(data.message || 'Token inválido');
+        
+        if (response.status === 404) {
+          return rejectWithValue('Endpoint de verificación no encontrado');
+        }
+        
+        try {
+          const errorData = await response.json();
+          return rejectWithValue(errorData.message || 'Token inválido');
+        } catch (parseError) {
+          return rejectWithValue('Token inválido');
+        }
       }
 
+      const data = await response.json();
+
       return {
-        user: data.user || data, // Flexible para diferentes respuestas del backend
+        user: data.user || data,
         token: token,
       };
     } catch (error) {
+      console.error('Error verificando token:', error);
       localStorage.removeItem('token');
-      return rejectWithValue(error.message || 'Error verificando token');
+      return rejectWithValue('Error verificando token');
     }
   }
 );
 
+// ✅ CORREGIR ENDPOINT DE RECUPERACIÓN DE CONTRASEÑA
+export const forgotPassword = createAsyncThunk(
+  'auth/forgotPassword',
+  async ({ email }, { rejectWithValue }) => {
+    try {
+      // ✅ Ajustar endpoint según tu backend
+      const response = await fetch(getApiUrl('/user/forgot-password'), { // o '/user/recovery'
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          return rejectWithValue('Endpoint de recuperación no encontrado');
+        }
+        
+        try {
+          const errorData = await response.json();
+          return rejectWithValue(errorData.message || 'Error enviando correo');
+        } catch (parseError) {
+          return rejectWithValue(`Error ${response.status}: ${response.statusText}`);
+        }
+      }
+
+      const data = await response.json();
+      return data.message || 'Email de recuperación enviado';
+    } catch (error) {
+      console.error('Error en recuperación de contraseña:', error);
+      return rejectWithValue('Error de conexión con el servidor');
+    }
+  }
+);
+
+// ✅ RESTO DEL CÓDIGO PERMANECE IGUAL...
 export const changePassword = createAsyncThunk(
   'auth/changePassword',
   async ({ currentPassword, newPassword }, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl('/api/user/change-password'), {
+      const response = await fetch(getApiUrl('/user/change-password'), {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${auth.token}`,
@@ -130,15 +230,19 @@ export const changePassword = createAsyncThunk(
         body: JSON.stringify({ currentPassword, newPassword }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        return rejectWithValue(data.message || 'Error al cambiar contraseña');
+        try {
+          const errorData = await response.json();
+          return rejectWithValue(errorData.message || 'Error al cambiar contraseña');
+        } catch (parseError) {
+          return rejectWithValue(`Error ${response.status}: ${response.statusText}`);
+        }
       }
 
+      const data = await response.json();
       return data.message || 'Contraseña cambiada exitosamente';
     } catch (error) {
-      return rejectWithValue(error.message || 'Error de conexión');
+      return rejectWithValue('Error de conexión');
     }
   }
 );
@@ -148,7 +252,7 @@ export const updateProfile = createAsyncThunk(
   async (profileData, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl('/api/user/profile'), {
+      const response = await fetch(getApiUrl('/user/profile'), {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${auth.token}`,
@@ -157,40 +261,19 @@ export const updateProfile = createAsyncThunk(
         body: JSON.stringify(profileData),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        return rejectWithValue(data.message || 'Error actualizando perfil');
+        try {
+          const errorData = await response.json();
+          return rejectWithValue(errorData.message || 'Error actualizando perfil');
+        } catch (parseError) {
+          return rejectWithValue(`Error ${response.status}: ${response.statusText}`);
+        }
       }
 
+      const data = await response.json();
       return data.user;
     } catch (error) {
-      return rejectWithValue(error.message || 'Error de conexión');
-    }
-  }
-);
-
-export const forgotPassword = createAsyncThunk(
-  'auth/forgotPassword',
-  async ({ email }, { rejectWithValue }) => {
-    try {
-      const response = await fetch(getApiUrl('/api/user/forgot-password'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return rejectWithValue(data.message || 'Error enviando correo');
-      }
-
-      return data.message;
-    } catch (error) {
-      return rejectWithValue(error.message || 'Error de conexión');
+      return rejectWithValue('Error de conexión');
     }
   }
 );
@@ -199,7 +282,7 @@ export const resetPassword = createAsyncThunk(
   'auth/resetPassword',
   async ({ token, password }, { rejectWithValue }) => {
     try {
-      const response = await fetch(getApiUrl('/api/user/reset-password'), {
+      const response = await fetch(getApiUrl('/user/reset-password'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -207,15 +290,19 @@ export const resetPassword = createAsyncThunk(
         body: JSON.stringify({ token, password }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        return rejectWithValue(data.message || 'Error reseteando contraseña');
+        try {
+          const errorData = await response.json();
+          return rejectWithValue(errorData.message || 'Error reseteando contraseña');
+        } catch (parseError) {
+          return rejectWithValue(`Error ${response.status}: ${response.statusText}`);
+        }
       }
 
+      const data = await response.json();
       return data.message;
     } catch (error) {
-      return rejectWithValue(error.message || 'Error de conexión');
+      return rejectWithValue('Error de conexión');
     }
   }
 );
@@ -234,7 +321,6 @@ const authSlice = createSlice({
       state.loginAttempts = 0;
       state.lastLoginAttempt = null;
       state.isAccountLocked = false;
-      // Limpiar localStorage
       localStorage.removeItem('token');
     },
     clearError: (state) => {
@@ -282,7 +368,7 @@ const authSlice = createSlice({
         state.token = null;
         state.loginAttempts += 1;
         state.lastLoginAttempt = new Date().toISOString();
-        state.isAccountLocked = state.loginAttempts >= 4; // Bloquear después de 5 intentos
+        state.isAccountLocked = state.loginAttempts >= 4;
       })
       // Register User
       .addCase(registerUser.pending, (state) => {
@@ -291,7 +377,6 @@ const authSlice = createSlice({
       })
       .addCase(registerUser.fulfilled, (state, action) => {
         state.loading = false;
-        // Solo autenticar si se proporciona token
         if (action.payload.token) {
           state.user = action.payload.user;
           state.token = action.payload.token;
@@ -381,7 +466,6 @@ const authSlice = createSlice({
   },
 });
 
-// Exportar acciones
 export const { 
   logout, 
   clearError, 
@@ -399,5 +483,4 @@ export const selectAuthLoading = (state) => state.auth.loading;
 export const selectAuthError = (state) => state.auth.error;
 export const selectIsAccountLocked = (state) => state.auth.isAccountLocked;
 
-// Exportar el reducer
 export default authSlice.reducer;

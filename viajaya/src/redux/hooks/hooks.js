@@ -7,13 +7,34 @@ export const useAppDispatch = () => useDispatch();
 export const useAppSelector = useSelector;
 
 // Hooks específicos para cada slice
-export const useAuth = () => useAppSelector((state) => ({
-  user: state.auth.user,
-  token: state.auth.token,
-  isAuthenticated: state.auth.isAuthenticated,
-  loading: state.auth.loading,
-  error: state.auth.error,
-}));
+export const useAuth = () => {
+  const authState = useAppSelector((state) => state.auth);
+  
+  // ✅ Normalizar el usuario si existe
+  const normalizedUser = authState.user ? {
+    ...authState.user,
+    // ✅ Lógica para determinar si está activo
+    isActive: authState.user.is_active !== undefined 
+      ? authState.user.is_active 
+      : authState.user.isActive !== undefined 
+        ? authState.user.isActive 
+        : authState.user.is_active_seller !== undefined
+          ? authState.user.is_active_seller
+          : true, // Por defecto true si no hay información
+    
+    isActiveSeller: authState.user.is_active_seller || authState.user.isActiveSeller || false,
+    supervisorId: authState.user.supervisor_id || authState.user.supervisorId,
+    referralCode: authState.user.referral_code || authState.user.referralCode,
+  } : null;
+
+  return {
+    user: normalizedUser,
+    token: authState.token,
+    isAuthenticated: authState.isAuthenticated,
+    loading: authState.loading,
+    error: authState.error,
+  };
+};
 export const useUsers = () => useAppSelector((state) => state.user);
 export const usePackages = () => {
   const packageState = useAppSelector((state) => state.package);

@@ -1,8 +1,6 @@
 import { useEffect } from 'react';
-// ✅ Cambiar a los nuevos hooks de Redux Toolkit
 import { useAppDispatch } from '../redux/hooks/hooks';
 import { usePackages } from '../redux/hooks/hooks';
-// ✅ Usar la nueva acción de packageSlice
 import { fetchAllPackages } from '../redux/slices/packageSlice';
 import { config } from '../utils/env';
 
@@ -21,16 +19,24 @@ import "slick-carousel/slick/slick-theme.css";
 import logo from '../assets/sn/logoYapaYa.png';
 
 const YapayaCard = () => {
-  // ✅ Usar los nuevos hooks de Redux Toolkit
   const dispatch = useAppDispatch();
   const { packages, loading, error } = usePackages();
 
   useEffect(() => {
-    // ✅ Usar la nueva acción de packageSlice
     dispatch(fetchAllPackages());
   }, [dispatch]);
 
-  // ✅ Manejo de loading y error
+  // ✅ Debug: Verificar datos del backend
+  if (config?.isDevelopment) {
+    console.log('YapayaCard - Datos del backend:', { 
+      packages, 
+      loading, 
+      error,
+      packagesLength: packages?.length,
+      firstPackage: packages?.[0] 
+    });
+  }
+
   if (loading) {
     return (
       <div className="w-full h-96 flex items-center justify-center">
@@ -43,7 +49,6 @@ const YapayaCard = () => {
   }
 
   if (error) {
-    // ✅ Mostrar error solo en desarrollo
     if (config?.isDevelopment) {
       console.error('Error cargando paquetes:', error);
     }
@@ -63,26 +68,45 @@ const YapayaCard = () => {
     );
   }
 
-  // ✅ Filtrar paquetes YapaYa activos
-  const filteredPacks = packages.filter(pack => pack.isYapaya && pack.isActive);
+  // ✅ Validación defensiva y uso de campos correctos del backend
+  const safePackages = Array.isArray(packages) ? packages : [];
+  
+  // ✅ Filtrar usando los campos correctos del backend: isYapaya y isActive
+  const filteredPacks = safePackages.filter(pack => 
+    pack && 
+    typeof pack === 'object' && 
+    pack.isYapaya === true && 
+    pack.isActive === true
+  );
 
-  // ✅ Si no hay paquetes, mostrar mensaje
   if (filteredPacks.length === 0) {
     return (
-      <div className="w-full h-96 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600 font-nunito text-lg">No hay ofertas disponibles en este momento</p>
-          <Link to="/allpacks">
-            <button className="mt-4 bg-ColorAzul text-white px-6 py-2 rounded hover:bg-ColorMorado transition">
-              Ver todos los paquetes
-            </button>
-          </Link>
+      <div>
+        <h1 className='font-nunito bg-ColorAzul text-gray-700 font-bold p-2 text-2xl w-screen mx-0 px-0 text-center mb-4 mt-4'>
+          CONOCE LAS OFERTAS DEL DÍA
+        </h1>
+        <div className="w-full h-96 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-gray-600 font-nunito text-lg">No hay ofertas disponibles en este momento</p>
+            <Link to="/allpacks">
+              <button className="mt-4 bg-ColorAzul text-white px-6 py-2 rounded hover:bg-ColorMorado transition">
+                Ver todos los paquetes
+              </button>
+            </Link>
+            {config?.isDevelopment && (
+              <div className="mt-4 p-2 bg-gray-100 rounded text-xs text-gray-600">
+                <p>Total packages: {safePackages.length}</p>
+                <p>YapaYa packages: {safePackages.filter(p => p.isYapaya).length}</p>
+                <p>Active YapaYa packages: {filteredPacks.length}</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
   }
 
-  // ✅ Configuración del slider mejorada
+  // Configuración del slider
   const settings = {
     dots: true,
     infinite: filteredPacks.length > 3,
@@ -91,10 +115,10 @@ const YapayaCard = () => {
     slidesToScroll: 1,
     centerMode: filteredPacks.length < 3,
     centerPadding: filteredPacks.length === 1 ? '25%' : filteredPacks.length === 2 ? '10%' : '0px',
-    autoplay: filteredPacks.length > 1, // ✅ Auto-play solo si hay más de 1 paquete
+    autoplay: filteredPacks.length > 1,
     autoplaySpeed: 4000,
     pauseOnHover: true,
-    arrows: filteredPacks.length > 1, // ✅ Flechas solo si hay más de 1 paquete
+    arrows: filteredPacks.length > 1,
     
     responsive: [
       {
@@ -119,7 +143,7 @@ const YapayaCard = () => {
     ],
   };
 
-  // ✅ Mapa de iconos mejorado
+  // ✅ Mapa de iconos usando los nombres del backend
   const iconMap = {
     Wifi: <HiWifi className="text-2xl text-gray-600" title="WiFi" />,
     Desayuno: <GrCafeteria className="text-2xl text-gray-600" title="Desayuno" />,
@@ -149,19 +173,18 @@ const YapayaCard = () => {
                 overflow: 'hidden',
               }}
             >
-              {/* ✅ Manejo mejorado de imágenes */}
+              {/* ✅ Usar el campo correcto del backend: images */}
               <img
                 src={pack.images?.[0] || '/placeholder-image.jpg'}
                 alt={pack.title || 'Paquete turístico'}
                 className="w-full h-80 object-cover rounded-t-lg"
                 style={{ borderRadius: '12px' }}
                 onError={(e) => {
-                  e.target.src = '/placeholder-image.jpg'; // ✅ Imagen de respaldo
+                  e.target.src = '/placeholder-image.jpg';
                 }}
-                loading="lazy" // ✅ Lazy loading para mejor rendimiento
+                loading="lazy"
               />
               
-              {/* Logo en la esquina */}
               <img
                 src={logo}
                 alt="Logo YapaYa"
@@ -175,6 +198,7 @@ const YapayaCard = () => {
                   <h3 className="text-xl font-semibold font-nunito text-gray-600">
                     {pack.title || 'Paquete sin título'}
                   </h3>
+                  {/* ✅ Usar el campo correcto del backend: destino */}
                   <p className="text-gray-600 font-nunito">
                     Destino: {pack.destino || 'Por definir'}
                   </p>
@@ -182,7 +206,6 @@ const YapayaCard = () => {
                   <div className="flex justify-between items-center mt-2">
                     <p className="text-green-600 font-bold font-nunito text-lg">
                       <FaCoins className="inline-block mr-1 text-yellow-500" />
-                      {/* ✅ Manejo seguro del precio */}
                       {pack.price ? 
                         Number(pack.price).toLocaleString('es-CO', { 
                           style: 'currency', 
@@ -191,6 +214,7 @@ const YapayaCard = () => {
                         'Precio a consultar'
                       }
                     </p>
+                    {/* ✅ Usar el campo correcto del backend: days */}
                     <span className="bg-ColorAzul text-gray-600 text-lg font-semibold font-nunito border-2 px-6 py-1 rounded-md"> 
                       {pack.days || 0} días
                     </span>
@@ -210,13 +234,15 @@ const YapayaCard = () => {
                   </Link>
                 </div>
 
-                {/* ✅ Características del paquete mejoradas */}
+                {/* ✅ Usar el campo correcto del backend: chars */}
                 <div className="flex flex-wrap gap-2 mt-2">
-                  {pack?.chars?.map((char, index) => (
-                    <div key={index} className="flex items-center gap-1 tooltip">
-                      {iconMap[char] || <span className="text-gray-600 text-sm">{char}</span>}
-                    </div>
-                  )) || (
+                  {Array.isArray(pack?.chars) && pack.chars.length > 0 ? (
+                    pack.chars.map((char, index) => (
+                      <div key={index} className="flex items-center gap-1 tooltip">
+                        {iconMap[char] || <span className="text-gray-600 text-sm">{char}</span>}
+                      </div>
+                    ))
+                  ) : (
                     <p className="text-gray-500 text-sm">Sin características especificadas</p>
                   )}
                 </div>
@@ -234,10 +260,9 @@ const YapayaCard = () => {
           </Link>
         </div>
 
-        {/* ✅ Debug info solo en desarrollo */}
         {config?.isDevelopment && (
           <div className="mt-4 p-2 bg-gray-100 rounded text-sm text-gray-600">
-            <p>Paquetes totales: {packages.length}</p>
+            <p>Paquetes totales: {safePackages.length}</p>
             <p>Paquetes YapaYa activos: {filteredPacks.length}</p>
             <p>Estado: {loading ? 'Cargando...' : 'Cargado'}</p>
           </div>

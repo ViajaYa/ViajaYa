@@ -3,11 +3,11 @@ import axios from 'axios';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-// Estado inicial
+// ✅ Estado inicial con arrays vacíos para evitar errores de .filter()
 const initialState = {
-  packages: [],
-  allPackages: [],
-  filteredPackages: [],
+  packages: [], // ✅ Siempre array
+  allPackages: [], // ✅ Siempre array
+  filteredPackages: [], // ✅ Siempre array
   currentPackage: null,
   loading: false,
   error: null,
@@ -25,14 +25,25 @@ const initialState = {
   },
 };
 
-// Thunks asíncronos
+// ✅ Thunk mejorado con validación de respuesta
 export const fetchAllPackages = createAsyncThunk(
   'package/fetchAllPackages',
   async (_, { rejectWithValue }) => {
     try {
       const response = await axios.get(`${BASE_URL}/pack`);
-      return response.data;
+      
+      // ✅ Validar que la respuesta sea un array
+      const data = response.data;
+      
+      if (!Array.isArray(data)) {
+        console.warn('La respuesta del endpoint no es un array:', data);
+        return []; // Devolver array vacío si no es array
+      }
+      
+      console.log('Paquetes obtenidos del backend:', data.length);
+      return data;
     } catch (error) {
+      console.error('Error en fetchAllPackages:', error);
       return rejectWithValue(
         error.response?.data?.message || 'Error al obtener paquetes'
       );
@@ -59,13 +70,12 @@ const packageSlice = createSlice({
   name: 'package',
   initialState,
   reducers: {
-    // Equivalente a SET_PAQUETES
     setPackages: (state, action) => {
-      state.packages = action.payload;
-      state.allPackages = action.payload;
-      state.filteredPackages = action.payload;
+      const packages = Array.isArray(action.payload) ? action.payload : [];
+      state.packages = packages;
+      state.allPackages = packages;
+      state.filteredPackages = packages;
     },
-    // Equivalente a FIND_PAQUETES
     searchPackages: (state, action) => {
       const searchTerm = action.payload.toLowerCase();
       state.searchTerm = searchTerm;
@@ -76,12 +86,11 @@ const packageSlice = createSlice({
       } else {
         state.filteredPackages = state.allPackages.filter(pkg =>
           pkg.title?.toLowerCase().includes(searchTerm) ||
-          pkg.description?.toLowerCase().includes(searchTerm) ||
-          pkg.destination?.toLowerCase().includes(searchTerm)
+          pkg.detail?.toLowerCase().includes(searchTerm) || // ✅ Backend usa "detail"
+          pkg.destino?.toLowerCase().includes(searchTerm) // ✅ Backend usa "destino"
         );
       }
     },
-    // Equivalente a FILTER_PACKS
     filterPackages: (state, action) => {
       const [filterType, filterValue] = action.payload;
       
@@ -99,7 +108,7 @@ const packageSlice = createSlice({
           );
           break;
         case 'duration':
-          filtered = filtered.filter(pkg => pkg.duration === filterValue);
+          filtered = filtered.filter(pkg => pkg.days === filterValue); // ✅ Backend usa "days"
           break;
         default:
           break;
@@ -107,7 +116,6 @@ const packageSlice = createSlice({
       
       state.filteredPackages = filtered;
     },
-    // Equivalente a FILTER_PACKSCHARS
     filterPackagesByCharacteristics: (state, action) => {
       const characteristics = action.payload;
       state.filters.characteristics = characteristics;
@@ -117,12 +125,11 @@ const packageSlice = createSlice({
       } else {
         state.filteredPackages = state.allPackages.filter(pkg =>
           characteristics.every(char => 
-            pkg.characteristics?.includes(char)
+            pkg.chars?.includes(char) // ✅ Backend usa "chars"
           )
         );
       }
     },
-    // Equivalente a FILTER_PACKSTITLE
     filterPackagesByTitle: (state, action) => {
       const title = action.payload.toLowerCase();
       state.filters.title = title;
@@ -135,7 +142,6 @@ const packageSlice = createSlice({
         );
       }
     },
-    // Equivalente a SET_PAGINA
     setCurrentPage: (state, action) => {
       state.pagination.currentPage = action.payload;
     },
@@ -162,13 +168,19 @@ const packageSlice = createSlice({
       })
       .addCase(fetchAllPackages.fulfilled, (state, action) => {
         state.loading = false;
-        state.packages = action.payload;
-        state.allPackages = action.payload;
-        state.filteredPackages = action.payload;
+        // ✅ Asegurar que siempre sean arrays
+        const packages = Array.isArray(action.payload) ? action.payload : [];
+        state.packages = packages;
+        state.allPackages = packages;
+        state.filteredPackages = packages;
       })
       .addCase(fetchAllPackages.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+        // ✅ Mantener arrays vacíos en error
+        state.packages = [];
+        state.allPackages = [];
+        state.filteredPackages = [];
       })
       // Fetch Package by ID
       .addCase(fetchPackageById.pending, (state) => {
