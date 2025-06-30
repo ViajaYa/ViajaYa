@@ -10,6 +10,7 @@ import style from './NavBar.module.css';
 import logo from "../../../assets/logo2.png";
 import { Link as RouterLink } from 'react-router-dom';
 
+
 // Importa los íconos de redes sociales
 import { FaFacebookF, FaInstagram, FaTiktok, FaTelegramPlane, FaWhatsapp, FaBars, FaTimes } from 'react-icons/fa';
 

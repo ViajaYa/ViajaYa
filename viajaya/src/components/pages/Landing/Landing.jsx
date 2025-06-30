@@ -17,6 +17,7 @@ import WhatssapButton from './WhatssapButton'
 import PackCard from '../../../components/PackCard'
 import Convenios from '../Clients/Convenios';
 import VideoCarousel from '../VideoCarousel';
+import QuotePopup from '../../popups/QuotePopup';
 
 // eslint-disable-next-line react/prop-types
 const Landing = ({ ruta }) => {
@@ -66,6 +67,7 @@ const Landing = ({ ruta }) => {
       <Contact />
       <Convenios />
       <Footer />
+      <QuotePopup />
       <WhatssapButton />
       
       {/* ✅ Popup con mejor validación */}

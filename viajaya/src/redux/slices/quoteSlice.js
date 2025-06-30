@@ -62,7 +62,7 @@ export const fetchQuotes = createAsyncThunk(
         ...filters,
       });
 
-      const response = await fetch(getApiUrl(`/api/quotes?${queryParams}`), {
+      const response = await fetch(getApiUrl(`/quotes?${queryParams}`), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${auth.token}`,
@@ -88,7 +88,7 @@ export const fetchQuoteById = createAsyncThunk(
   async (quoteId, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl(`/api/quotes/${quoteId}`), {
+      const response = await fetch(getApiUrl(`/quotes/${quoteId}`), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${auth.token}`,
@@ -114,12 +114,16 @@ export const createQuote = createAsyncThunk(
   async (quoteData, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl('/api/quotes'), {
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      if (auth.token) {
+        headers['Authorization'] = `Bearer ${auth.token}`;
+      }
+
+      const response = await fetch(getApiUrl('/quotes'), {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${auth.token}`,
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(quoteData),
       });
 
@@ -141,7 +145,7 @@ export const updateQuote = createAsyncThunk(
   async ({ id, updates }, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl(`/api/quotes/${id}`), {
+      const response = await fetch(getApiUrl(`/quotes/${id}`), {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${auth.token}`,
@@ -168,7 +172,7 @@ export const deleteQuote = createAsyncThunk(
   async (quoteId, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl(`/api/quotes/${quoteId}`), {
+      const response = await fetch(getApiUrl(`/quotes/${quoteId}`), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${auth.token}`,
@@ -193,7 +197,7 @@ export const sendQuote = createAsyncThunk(
   async ({ quoteId, emailData }, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl(`/api/quotes/${quoteId}/send`), {
+      const response = await fetch(getApiUrl(`/quotes/${quoteId}/send`), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${auth.token}`,
@@ -220,7 +224,7 @@ export const approveQuote = createAsyncThunk(
   async ({ quoteId, approvalData }, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl(`/api/quotes/${quoteId}/approve`), {
+      const response = await fetch(getApiUrl(`/quotes/${quoteId}/approve`), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${auth.token}`,
@@ -247,7 +251,7 @@ export const rejectQuote = createAsyncThunk(
   async ({ quoteId, reason }, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl(`/api/quotes/${quoteId}/reject`), {
+      const response = await fetch(getApiUrl(`/quotes/${quoteId}/reject`), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${auth.token}`,
@@ -274,7 +278,7 @@ export const duplicateQuote = createAsyncThunk(
   async (quoteId, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl(`/api/quotes/${quoteId}/duplicate`), {
+      const response = await fetch(getApiUrl(`/quotes/${quoteId}/duplicate`), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${auth.token}`,
@@ -300,7 +304,7 @@ export const generateQuotePDF = createAsyncThunk(
   async (quoteId, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl(`/api/quotes/${quoteId}/pdf`), {
+      const response = await fetch(getApiUrl(`/quotes/${quoteId}/pdf`), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${auth.token}`,
@@ -335,7 +339,7 @@ export const convertQuoteToContract = createAsyncThunk(
   async ({ quoteId, contractData }, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl(`/api/quotes/${quoteId}/convert-to-contract`), {
+      const response = await fetch(getApiUrl(`/quotes/${quoteId}/convert-to-contract`), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${auth.token}`,
@@ -362,7 +366,7 @@ export const fetchQuoteTemplates = createAsyncThunk(
   async (_, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl('/api/quotes/templates'), {
+      const response = await fetch(getApiUrl('/quotes/templates'), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${auth.token}`,
@@ -388,7 +392,7 @@ export const createQuoteFromTemplate = createAsyncThunk(
   async ({ templateId, quoteData }, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl(`/api/quotes/from-template/${templateId}`), {
+      const response = await fetch(getApiUrl(`/quotes/from-template/${templateId}`), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${auth.token}`,
@@ -419,7 +423,7 @@ export const fetchQuoteStats = createAsyncThunk(
       if (startDate) queryParams.append('startDate', startDate);
       if (endDate) queryParams.append('endDate', endDate);
 
-      const response = await fetch(getApiUrl(`/api/quotes/stats?${queryParams}`), {
+      const response = await fetch(getApiUrl(`/quotes/stats?${queryParams}`), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${auth.token}`,
@@ -450,7 +454,7 @@ export const searchQuotes = createAsyncThunk(
         ...filters,
       });
 
-      const response = await fetch(getApiUrl(`/api/quotes/search?${queryParams}`), {
+      const response = await fetch(getApiUrl(`/quotes/search?${queryParams}`), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${auth.token}`,

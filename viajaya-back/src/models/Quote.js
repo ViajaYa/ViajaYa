@@ -13,10 +13,22 @@ module.exports = (sequelize) => {
       unique: true,
       allowNull: false,
     },
+    nombre_cliente: {
+  type: DataTypes.STRING,
+  allowNull: true,
+},
+email_cliente: {
+  type: DataTypes.STRING,
+  allowNull: true,
+},
+telefono_cliente: {
+  type: DataTypes.STRING,
+  allowNull: true,
+},
     // IDs de la jerarquía de ventas
     asesor_id: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
       references: {
         model: 'users',
         key: 'id'
@@ -40,7 +52,7 @@ module.exports = (sequelize) => {
     },
     cliente_id: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
       references: {
         model: 'users',
         key: 'id'

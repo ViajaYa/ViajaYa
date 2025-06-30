@@ -9,7 +9,7 @@ const {
 } = require('../middlewares/authMiddleware');
 
 // Crear nueva cotización (Solo vendedores: Asesor, Líder, Gerente y superiores)
-router.post('/', authenticateToken, canCreateQuotes, quoteController.createQuote);
+router.post('/', quoteController.createQuote);
 
 // Obtener todas las cotizaciones (Solo Admin y superiores)
 router.get('/', authenticateToken, authorizeRoles(5, 6, 7), quoteController.getAllQuotes);
