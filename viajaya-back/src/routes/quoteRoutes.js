@@ -4,28 +4,40 @@ const quoteController = require('../controllers/quoteController');
 const {
     authenticateToken,
     authorizeRoles,
-    canCreateQuotes,
     authorizeHierarchy
 } = require('../middlewares/authMiddleware');
 
-// Crear nueva cotización (Solo vendedores: Asesor, Líder, Gerente y superiores)
+// ✅ RUTAS PÚBLICAS (sin autenticación)
+// Crear nueva cotización (Visitantes y usuarios autenticados)
 router.post('/', quoteController.createQuote);
 
-// Obtener todas las cotizaciones (Solo Admin y superiores)
-router.get('/', authenticateToken, authorizeRoles(5, 6, 7), quoteController.getAllQuotes);
+// Aprobar cotización (Cliente puede aprobar sin estar autenticado usando token en URL)
+router.patch('/:id/approve', quoteController.approveQuote);
 
+// Rechazar cotización (Cliente puede rechazar sin estar autenticado usando token en URL)
+router.patch('/:id/reject', quoteController.rejectQuote);
+
+// Solicitar recotización (Cliente puede solicitar modificaciones)
+router.patch('/:id/requote', quoteController.requestRequote);
+
+// ✅ RUTAS CON AUTENTICACIÓN BÁSICA
 // Obtener cotización por ID (Vendedores pueden ver sus propias cotizaciones, Admin y superiores todas)
 router.get('/:id', authenticateToken, quoteController.getQuoteById);
 
-// Actualizar cotización - completar por Admin (Solo Admin y superiores)
+// ✅ RUTAS PARA ROLES ALTOS (Owner, Admin)
+// Obtener todas las cotizaciones (Solo Owner y Admin)
+router.get('/', authenticateToken, authorizeRoles(5, 6, 7), quoteController.getAllQuotes);
+
+// Actualizar cotización - completar por Owner/Admin (Solo Owner y Admin)
 router.put('/:id', authenticateToken, authorizeRoles(5, 6, 7), quoteController.updateQuote);
 
-// Aprobar cotización (Cliente o Admin/Owner)
-router.patch('/:id/approve', authenticateToken, quoteController.approveQuote);
+// Enviar cotización al cliente (Solo Owner y Admin)
+router.put('/:id/send', authenticateToken, authorizeRoles(5, 6, 7), quoteController.sendQuote);
 
-// Rechazar cotización (Cliente o Admin/Owner)  
-router.patch('/:id/reject', authenticateToken, quoteController.rejectQuote);
+// Marcar cotizaciones expiradas (Proceso automatizado - Solo Admin)
+router.post('/mark-expired', authenticateToken, authorizeRoles(7), quoteController.markExpiredQuotes);
 
+// ✅ RUTAS CON JERARQUÍA
 // Obtener cotizaciones por vendedor (Con verificación de jerarquía)
 router.get('/vendedor/:tipo/:vendedor_id', authenticateToken, authorizeHierarchy, quoteController.getQuotesByVendedor);
 

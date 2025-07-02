@@ -67,6 +67,12 @@ telefono_cliente: {
       type: DataTypes.DATE,
       allowNull: false,
     },
+   
+   
+    alimentacion: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
     fecha_regreso: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -82,6 +88,11 @@ telefono_cliente: {
     acomodacion: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+     traslado: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false,
     },
     tipo_hotel: {
       type: DataTypes.STRING,
@@ -101,7 +112,7 @@ telefono_cliente: {
     },
     // Estados y precios
     status: {
-      type: DataTypes.ENUM('pending', 'completed', 'approved', 'rejected'),
+      type: DataTypes.ENUM('pending', 'completed', 'sent', 'approved', 'requote', 'rejected', 'expired'),
       defaultValue: 'pending',
     },
     precio_total: {

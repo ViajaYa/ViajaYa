@@ -2,133 +2,188 @@ const { Quote, User, Contract } = require("../db");
 
 const quoteController = {
   // Crear nueva cotización
- createQuote: async (req, res) => {
-  try {
-    const {
-      asesor_id,
-      lider_id,
-      gerente_id,
-      cliente_id,
-      numero_personas,
-      fecha_ida,
-      fecha_regreso,
-      destino,
-      origen,
-      acomodacion,
-      tipo_hotel,
-      ninos,
-      edades_ninos,
-      observaciones,
-      nombre_cliente,
-      email_cliente,
-      telefono_cliente,
-    } = req.body;
+  createQuote: async (req, res) => {
+    try {
+      const {
+        asesor_id,
+        lider_id,
+        gerente_id,
+        cliente_id,
+        numero_personas,
+        fecha_ida,
+        fecha_regreso,
+        destino,
+        origen,
+        acomodacion,
+        tipo_hotel,
+        ninos,
+        edades_ninos,
+        observaciones,
+        nombre_cliente,
+        email_cliente,
+        telefono_cliente,
+      } = req.body;
 
-    // Buscar cliente por email si no hay cliente_id
-    let clienteIdFinal = cliente_id || null;
-    if (email_cliente) {
-      const existingUser = await User.findOne({ where: { email: email_cliente } });
-      if (existingUser) {
-        clienteIdFinal = existingUser.id;
+      // Buscar cliente por email si no hay cliente_id
+      let clienteIdFinal = cliente_id || null;
+      if (email_cliente) {
+        const existingUser = await User.findOne({
+          where: { email: email_cliente },
+        });
+        if (existingUser) {
+          clienteIdFinal = existingUser.id;
+        }
       }
-    }
 
-    // Si no hay asesor_id, buscar el primer owner (role: 5)
-    let asesorIdFinal = asesor_id || null;
-    if (!asesorIdFinal) {
-      const owner = await User.findOne({ where: { role: 7 }, order: [['id', 'ASC']] });
-      if (owner) {
-        asesorIdFinal = owner.id;
-      } else {
-        return res.status(400).json({ message: "No hay owner disponible para asignar la cotización." });
+      // Si no hay asesor_id, buscar el primer owner (role: 5)
+      let asesorIdFinal = asesor_id || null;
+      if (!asesorIdFinal) {
+        const owner = await User.findOne({
+          where: { role: 7 },
+          order: [["id", "ASC"]],
+        });
+        if (owner) {
+          asesorIdFinal = owner.id;
+        } else {
+          return res
+            .status(400)
+            .json({
+              message: "No hay owner disponible para asignar la cotización.",
+            });
+        }
       }
+
+      // Generar número de cotización único
+      const currentDate = new Date();
+      const year = currentDate.getFullYear();
+      const month = String(currentDate.getMonth() + 1).padStart(2, "0");
+      const day = String(currentDate.getDate()).padStart(2, "0");
+
+      const lastQuote = await Quote.findOne({
+        where: {
+          quote_number: {
+            [require("sequelize").Op.startsWith]: `COT-${year}${month}${day}-`,
+          },
+        },
+        order: [["created_at", "DESC"]],
+      });
+
+      let sequence = 1;
+      if (lastQuote) {
+        const lastSequence = parseInt(lastQuote.quote_number.split("-")[2]);
+        sequence = lastSequence + 1;
+      }
+
+      const quote_number = `COT-${year}${month}${day}-${String(
+        sequence
+      ).padStart(3, "0")}`;
+
+      const newQuote = await Quote.create({
+        quote_number,
+        asesor_id: asesorIdFinal,
+        lider_id,
+        gerente_id,
+        cliente_id: clienteIdFinal,
+        numero_personas,
+        fecha_ida,
+        fecha_regreso,
+        destino,
+        origen,
+        acomodacion,
+        tipo_hotel,
+        ninos: ninos || 0,
+        edades_ninos: edades_ninos || [],
+        observaciones,
+        nombre_cliente: clienteIdFinal ? null : nombre_cliente,
+        email_cliente: clienteIdFinal ? null : email_cliente,
+        telefono_cliente: clienteIdFinal ? null : telefono_cliente,
+        status: "pending",
+      });
+
+      // Incluir información de los usuarios relacionados
+      const quoteWithUsers = await Quote.findByPk(newQuote.id, {
+        include: [
+          {
+            model: User,
+            as: "Asesor",
+            attributes: ["id", "name", "lastname", "email"],
+          },
+          {
+            model: User,
+            as: "Lider",
+            attributes: ["id", "name", "lastname", "email"],
+          },
+          {
+            model: User,
+            as: "Gerente",
+            attributes: ["id", "name", "lastname", "email"],
+          },
+          {
+            model: User,
+            as: "Cliente",
+            attributes: ["id", "name", "lastname", "email", "phone"],
+          },
+        ],
+      });
+
+      res.status(201).json({
+        message: "Cotización creada exitosamente",
+        quote: quoteWithUsers,
+      });
+    } catch (error) {
+      console.error("Error creating quote:", error);
+      res.status(500).json({
+        message: "Error al crear la cotización",
+        error: error.message,
+      });
     }
+  },
 
-    // Generar número de cotización único
-    const currentDate = new Date();
-    const year = currentDate.getFullYear();
-    const month = String(currentDate.getMonth() + 1).padStart(2, "0");
-    const day = String(currentDate.getDate()).padStart(2, "0");
+  sendQuote: async (req, res) => {
+    try {
+      const { id } = req.params;
 
-    const lastQuote = await Quote.findOne({
-      where: {
-        quote_number: {
-          [require("sequelize").Op.startsWith]: `COT-${year}${month}${day}-`,
-        },
-      },
-      order: [["created_at", "DESC"]],
-    });
+      const quote = await Quote.findByPk(id);
 
-    let sequence = 1;
-    if (lastQuote) {
-      const lastSequence = parseInt(lastQuote.quote_number.split("-")[2]);
-      sequence = lastSequence + 1;
+      if (!quote) {
+        return res.status(404).json({ message: "Cotización no encontrada" });
+      }
+
+      if (quote.status !== "completed") {
+        return res.status(400).json({
+          message: "La cotización debe estar completada antes de ser enviada",
+        });
+      }
+
+      // ✅ Validar que tenga precio
+      if (!quote.precio_total) {
+        return res.status(400).json({
+          message:
+            "La cotización debe tener un precio total antes de ser enviada",
+        });
+      }
+
+      const sentAt = new Date();
+      const expiresAt = new Date(sentAt.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 días
+
+      await quote.update({
+        status: "sent",
+        sent_at: sentAt,
+        expires_at: expiresAt,
+      });
+
+      res.json({
+        message: "Cotización enviada exitosamente",
+        quote,
+      });
+    } catch (error) {
+      console.error("Error sending quote:", error);
+      res.status(500).json({
+        message: "Error al enviar la cotización",
+        error: error.message,
+      });
     }
-
-    const quote_number = `COT-${year}${month}${day}-${String(
-      sequence
-    ).padStart(3, "0")}`;
-
-    const newQuote = await Quote.create({
-      quote_number,
-      asesor_id: asesorIdFinal,
-      lider_id,
-      gerente_id,
-      cliente_id: clienteIdFinal,
-      numero_personas,
-      fecha_ida,
-      fecha_regreso,
-      destino,
-      origen,
-      acomodacion,
-      tipo_hotel,
-      ninos: ninos || 0,
-      edades_ninos: edades_ninos || [],
-      observaciones,
-      nombre_cliente: clienteIdFinal ? null : nombre_cliente,
-      email_cliente: clienteIdFinal ? null : email_cliente,
-      telefono_cliente: clienteIdFinal ? null : telefono_cliente,
-      status: "pending",
-    });
-
-    // Incluir información de los usuarios relacionados
-    const quoteWithUsers = await Quote.findByPk(newQuote.id, {
-      include: [
-        {
-          model: User,
-          as: "Asesor",
-          attributes: ["id", "name", "lastname", "email"],
-        },
-        {
-          model: User,
-          as: "Lider",
-          attributes: ["id", "name", "lastname", "email"],
-        },
-        {
-          model: User,
-          as: "Gerente",
-          attributes: ["id", "name", "lastname", "email"],
-        },
-        {
-          model: User,
-          as: "Cliente",
-          attributes: ["id", "name", "lastname", "email", "phone"],
-        },
-      ],
-    });
-
-    res.status(201).json({
-      message: "Cotización creada exitosamente",
-      quote: quoteWithUsers,
-    });
-  } catch (error) {
-    console.error("Error creating quote:", error);
-    res.status(500).json({
-      message: "Error al crear la cotización",
-      error: error.message,
-    });
-  }
-},
+  },
 
   // Obtener todas las cotizaciones
   getAllQuotes: async (req, res) => {
@@ -243,20 +298,46 @@ const quoteController = {
   updateQuote: async (req, res) => {
     try {
       const { id } = req.params;
-      const { precio_total, observaciones, status } = req.body;
+      const {
+        precio_total,
+        observaciones,
+        status,
+        numero_personas,
+        fecha_ida,
+        fecha_regreso,
+        destino,
+        origen,
+        acomodacion,
+        tipo_hotel,
+        ninos,
+        edades_ninos,
+      } = req.body;
 
       const quote = await Quote.findByPk(id);
 
       if (!quote) {
         return res.status(404).json({ message: "Cotización no encontrada" });
       }
-
-      await quote.update({
+      const updateData = {
         precio_total,
+        numero_personas,
+        fecha_ida,
+        fecha_regreso,
+        destino,
+        origen,
+        acomodacion,
+        tipo_hotel,
+        ninos,
+        edades_ninos,
         observaciones: observaciones || quote.observaciones,
         status: status || quote.status,
-        completed_at: status === "completed" ? new Date() : quote.completed_at,
-      });
+      };
+
+      if (status === "completed" && quote.status !== "completed") {
+        updateData.completed_at = new Date();
+      }
+
+      await quote.update(updateData);
 
       const updatedQuote = await Quote.findByPk(id, {
         include: [
@@ -345,9 +426,8 @@ const quoteController = {
 
       await quote.update({
         status: "rejected",
-        observaciones: `${
-          quote.observaciones || ""
-        }\n\nMOTIVO DE RECHAZO: ${motivo_rechazo}`,
+        rejected_at: new Date(),
+        motivo_rechazo,
       });
 
       res.json({
@@ -358,6 +438,70 @@ const quoteController = {
       console.error("Error rejecting quote:", error);
       res.status(500).json({
         message: "Error al rechazar la cotización",
+        error: error.message,
+      });
+    }
+  },
+
+  // ✅ NUEVO: Solicitar recotización
+  requestRequote: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { requote_reason } = req.body;
+
+      const quote = await Quote.findByPk(id);
+
+      if (!quote) {
+        return res.status(404).json({ message: "Cotización no encontrada" });
+      }
+
+      if (quote.status !== "sent") {
+        return res.status(400).json({
+          message:
+            "Solo se pueden solicitar recotizaciones en cotizaciones enviadas",
+        });
+      }
+
+      await quote.update({
+        status: "requote",
+        requote_at: new Date(),
+        requote_reason,
+      });
+
+      res.json({
+        message: "Recotización solicitada exitosamente",
+        quote,
+      });
+    } catch (error) {
+      console.error("Error requesting requote:", error);
+      res.status(500).json({
+        message: "Error al solicitar recotización",
+        error: error.message,
+      });
+    }
+  },
+
+  // ✅ NUEVO: Marcar cotizaciones expiradas
+  markExpiredQuotes: async (req, res) => {
+    try {
+      const expiredQuotes = await Quote.update(
+        { status: "expired" },
+        {
+          where: {
+            status: "sent",
+            expires_at: { [Op.lt]: new Date() },
+          },
+        }
+      );
+
+      res.json({
+        message: `${expiredQuotes[0]} cotizaciones marcadas como expiradas`,
+        count: expiredQuotes[0],
+      });
+    } catch (error) {
+      console.error("Error marking expired quotes:", error);
+      res.status(500).json({
+        message: "Error al marcar cotizaciones expiradas",
         error: error.message,
       });
     }

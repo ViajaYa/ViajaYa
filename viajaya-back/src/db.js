@@ -58,7 +58,8 @@ const {
   Commission, 
   SupportDocument, 
   AutoMessage, 
-  Invoice 
+  Invoice,
+  QuoteItem 
 } = sequelize.models;
 
 // Relaciones existentes
@@ -124,6 +125,15 @@ Quote.belongsTo(User, { as: 'Cliente', foreignKey: 'cliente_id' });
 Quote.hasOne(Contract, { foreignKey: 'quote_id' });
 Contract.belongsTo(Quote, { foreignKey: 'quote_id' });
 
+Quote.hasMany(QuoteItem, { 
+  foreignKey: 'quote_id', 
+  as: 'items'
+  
+});
+QuoteItem.belongsTo(Quote, { 
+  foreignKey: 'quote_id', 
+  as: 'quote' 
+}); 
 User.hasMany(Contract, { as: 'ContractsAsCliente', foreignKey: 'cliente_id' });
 Contract.belongsTo(User, { as: 'Cliente', foreignKey: 'cliente_id' });
 

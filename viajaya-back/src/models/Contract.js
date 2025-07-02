@@ -29,7 +29,7 @@ module.exports = (sequelize) => {
         key: 'id'
       }
     },
-    // Detalles financieros
+    // Detalles financieros principales
     precio_total: {
       type: DataTypes.DECIMAL(12, 2),
       allowNull: false,
@@ -38,18 +38,60 @@ module.exports = (sequelize) => {
       type: DataTypes.ENUM('contado', 'cuotas'),
       allowNull: false,
     },
-    numero_cuotas: {
-      type: DataTypes.INTEGER,
-      defaultValue: 1,
+    
+    // ✅ ESTRUCTURA MEJORADA PARA CUOTAS
+    // Cuota inicial (seña/anticipo)
+    tiene_cuota_inicial: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
     },
-    valor_cuota: {
+    cuota_inicial_porcentaje: {
+      type: DataTypes.DECIMAL(5, 2), // ej: 30.00 para 30%
+      allowNull: true,
+    },
+    cuota_inicial_monto: {
       type: DataTypes.DECIMAL(12, 2),
       allowNull: true,
     },
-    fecha_vencimiento_cuotas: {
+    fecha_vencimiento_inicial: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    cuota_inicial_pagada: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    fecha_pago_inicial: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    
+    // Cuotas restantes
+    numero_cuotas_restantes: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0, // Número de cuotas después de la inicial
+    },
+    monto_restante: {
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: true, // precio_total - cuota_inicial_monto
+    },
+    valor_cuota_restante: {
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: true, // monto_restante / numero_cuotas_restantes
+    },
+    fechas_vencimiento_cuotas: {
       type: DataTypes.ARRAY(DataTypes.DATE),
       defaultValue: [],
     },
+    cuotas_pagadas: {
+      type: DataTypes.ARRAY(DataTypes.BOOLEAN),
+      defaultValue: [], // [false, false, false] para trackear cuáles están pagas
+    },
+    fechas_pago_cuotas: {
+      type: DataTypes.ARRAY(DataTypes.DATE),
+      defaultValue: [], // Fechas reales de pago de cada cuota
+    },
+    
     // Estados del contrato
     status: {
       type: DataTypes.ENUM('draft', 'sent', 'signed', 'completed', 'cancelled'),
@@ -67,7 +109,8 @@ module.exports = (sequelize) => {
       type: DataTypes.DATE,
       allowNull: false,
     },
-    // Control de pagos
+    
+    // Control de pagos consolidado
     total_pagado: {
       type: DataTypes.DECIMAL(12, 2),
       defaultValue: 0.00,
@@ -76,6 +119,7 @@ module.exports = (sequelize) => {
       type: DataTypes.DECIMAL(12, 2),
       allowNull: false,
     },
+    
     // URLs de documentos
     contrato_pdf_url: {
       type: DataTypes.STRING,

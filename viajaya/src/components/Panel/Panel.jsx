@@ -466,7 +466,7 @@ const Panel = () => {
                 >
                   <MdPayment className={style.icon} /> Mis compras
                 </li>
-                {user?.role == 3 && (
+                {user?.role == 7 && (
                   <li
                     onClick={() => {
                       setPage(2);
@@ -478,7 +478,7 @@ const Panel = () => {
                     <FiUsers className={style.icon} /> Usuarios
                   </li>
                 )}
-                {user?.role == 3 && (
+                {user?.role == 7 && (
                   <li
                     onClick={() => {
                       setPage(3);
@@ -490,7 +490,7 @@ const Panel = () => {
                     <BsBoxSeam className={style.icon} /> Paquetes
                   </li>
                 )}
-                {user?.role == 3 && (
+                {user?.role == 7 && (
                   <li
                     onClick={() => {
                       setPage(4);
@@ -575,7 +575,7 @@ const Panel = () => {
           )}
         
 
-          {page == 3 && user?.role == 3 && !creator && (
+          {page == 3 && user?.role == 7 && !creator && (
             <div className={style.view}>
               <div className={style.top}>
                 <button
@@ -645,7 +645,7 @@ const Panel = () => {
               </div>
             </div>
           )}
-          {page == 3 && user?.role == 3 && creator && packDetail && (
+          {page == 3 && user?.role == 7 && creator && packDetail && (
             <div className={style.view}>
               <div className={style.creator}>
                 <div className={style.formPaquete}>
@@ -725,7 +725,7 @@ const Panel = () => {
               </div>
             </div>
           )}
-          {page == 3 && user?.role == 3 && creator && !packDetail && (
+          {page == 3 && user?.role == 7 && creator && !packDetail && (
             <div className={style.view}>
               <div className={style.creator}>
                 <div className={style.formPaquete}>
@@ -880,7 +880,7 @@ const Panel = () => {
               </div>
             </div>
           )}
-          {page == 4 && user?.role == 3 && (
+          {page == 4 && user?.role == 7 && (
             <div className={style.view}>
               <div className={style.editContainer}>
                 <div className={style.edit}>
@@ -934,7 +934,7 @@ const Panel = () => {
           )}
           {page == 5 && user?.role >= 2 && !creator && (
             <div className={style.view}>
-              {user?.role == 3 ? (
+              {user?.role == 7 ? (
                 <>
                   <div className={style.top}>
                     <button
@@ -964,10 +964,10 @@ const Panel = () => {
                       <td className={style.topTd}>Nombre de la capacitacion</td>
                       <td className={style.topTd}>Link</td>
                       <td className={style.topTd}>Creado por</td>
-                      {user?.role == 3 && (
+                      {user?.role == 7 && (
                         <td className={style.topTd}>Estado</td>
                       )}
-                      {user?.role == 3 && (
+                      {user?.role == 7 && (
                         <td className={style.topTd}>Acciones</td>
                       )}
                     </tr>
@@ -981,7 +981,7 @@ const Panel = () => {
                             </a>
                           </td>
                           <td className={style.td}>{c.created}</td>
-                          {user?.role == 3 && (
+                          {user?.role == 7 && (
                             <td
                               className={style.td}
                               style={{ cursor: "pointer" }}
@@ -990,7 +990,7 @@ const Panel = () => {
                               {c.status == false ? "Publicar" : "Archivar"}
                             </td>
                           )}
-                          {user?.role == 3 && (
+                          {user?.role == 7 && (
                             <td
                               className={style.td}
                               style={{ cursor: "pointer" }}
@@ -1037,7 +1037,7 @@ const Panel = () => {
               )}
             </div>
           )}
-          {page == 5 && user?.role == 3 && creator && (
+          {page == 5 && user?.role == 7 && creator && (
             <div className={style.view}>
               <form className={style.formCapacitacion}>
                 <div className={style.containerCapacita}>

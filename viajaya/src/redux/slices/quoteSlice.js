@@ -40,14 +40,14 @@ const initialState = {
 
 // Estados de cotización
 export const QUOTE_STATUSES = {
-  DRAFT: 'draft',
   PENDING: 'pending',
+  COMPLETED: 'completed',
   SENT: 'sent',
-  VIEWED: 'viewed',
   APPROVED: 'approved',
   REJECTED: 'rejected',
+  REQUOTE: 'requote',
   EXPIRED: 'expired',
-  CONVERTED: 'converted',
+  CONVERTED: 'converted', // cuando se convierte a contrato
 };
 
 // Thunks asíncronos
@@ -475,6 +475,169 @@ export const searchQuotes = createAsyncThunk(
   }
 );
 
+export const sendQuoteToClient = createAsyncThunk(
+  'quote/sendQuoteToClient',
+  async (quoteId, { rejectWithValue, getState }) => {
+    try {
+      const { auth } = getState();
+      const response = await fetch(getApiUrl(`/quotes/${quoteId}/send`), {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${auth.token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return rejectWithValue(data.message || 'Error enviando cotización al cliente');
+      }
+
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Error de conexión');
+    }
+  }
+);
+
+export const requestRequote = createAsyncThunk(
+  'quote/requestRequote',
+  async ({ quoteId, requote_reason }, { rejectWithValue }) => {
+    try {
+      const response = await fetch(getApiUrl(`/quotes/${quoteId}/requote`), {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ requote_reason }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return rejectWithValue(data.message || 'Error solicitando recotización');
+      }
+
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Error de conexión');
+    }
+  }
+);
+
+export const approveQuotePublic = createAsyncThunk(
+  'quote/approveQuotePublic',
+  async (quoteId, { rejectWithValue }) => {
+    try {
+      const response = await fetch(getApiUrl(`/quotes/${quoteId}/approve`), {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return rejectWithValue(data.message || 'Error aprobando cotización');
+      }
+
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Error de conexión');
+    }
+  }
+);
+
+export const fetchQuotesByVendedor = createAsyncThunk(
+  'quote/fetchQuotesByVendedor',
+  async ({ tipo, vendedor_id, status, page = 1, limit = 10 }, { rejectWithValue, getState }) => {
+    try {
+      const { auth } = getState();
+      const queryParams = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+      });
+      
+      if (status) queryParams.append('status', status);
+
+      const response = await fetch(getApiUrl(`/quotes/vendedor/${tipo}/${vendedor_id}?${queryParams}`), {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${auth.token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return rejectWithValue(data.message || 'Error obteniendo cotizaciones del vendedor');
+      }
+
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Error de conexión');
+    }
+  }
+);
+
+
+
+export const rejectQuotePublic = createAsyncThunk(
+  'quote/rejectQuotePublic',
+  async ({ quoteId, motivo_rechazo }, { rejectWithValue }) => {
+    try {
+      const response = await fetch(getApiUrl(`/quotes/${quoteId}/reject`), {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ motivo_rechazo }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return rejectWithValue(data.message || 'Error rechazando cotización');
+      }
+
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Error de conexión');
+    }
+  }
+);
+
+export const markExpiredQuotes = createAsyncThunk(
+  'quote/markExpiredQuotes',
+  async (_, { rejectWithValue, getState }) => {
+    try {
+      const { auth } = getState();
+      const response = await fetch(getApiUrl('/quotes/mark-expired'), {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${auth.token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return rejectWithValue(data.message || 'Error marcando cotizaciones expiradas');
+      }
+
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Error de conexión');
+    }
+  }
+);
+
+
+
 // Slice
 const quoteSlice = createSlice({
   name: 'quote',
@@ -752,7 +915,109 @@ const quoteSlice = createSlice({
       .addCase(searchQuotes.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
-      });
+      })
+       .addCase(sendQuoteToClient.pending, (state) => {
+      state.loading = true;
+      state.error = null;
+    })
+      .addCase(sendQuoteToClient.fulfilled, (state, action) => {
+      state.loading = false;
+      const index = state.quotes.findIndex(q => q.id === action.payload.quote.id);
+      if (index !== -1) {
+        state.quotes[index] = action.payload.quote;
+      }
+      if (state.currentQuote?.id === action.payload.quote.id) {
+        state.currentQuote = action.payload.quote;
+      }
+    })
+    .addCase(sendQuoteToClient.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.payload;
+    })
+
+    // Request Requote
+    .addCase(requestRequote.pending, (state) => {
+      state.loading = true;
+      state.error = null;
+    })
+    .addCase(requestRequote.fulfilled, (state, action) => {
+      state.loading = false;
+      const index = state.quotes.findIndex(q => q.id === action.payload.quote.id);
+      if (index !== -1) {
+        state.quotes[index] = action.payload.quote;
+      }
+      if (state.currentQuote?.id === action.payload.quote.id) {
+        state.currentQuote = action.payload.quote;
+      }
+    })
+    .addCase(requestRequote.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.payload;
+    })
+
+    // Approve Quote Public
+    .addCase(approveQuotePublic.fulfilled, (state, action) => {
+      const index = state.quotes.findIndex(q => q.id === action.payload.quote.id);
+      if (index !== -1) {
+        state.quotes[index] = action.payload.quote;
+      }
+      if (state.currentQuote?.id === action.payload.quote.id) {
+        state.currentQuote = action.payload.quote;
+      }
+      // Actualizar estadísticas
+      state.stats.approvedQuotes += 1;
+      if (action.payload.quote.previousStatus === 'sent') {
+        // Ajustar contadores según sea necesario
+      }
+    })
+
+    // Reject Quote Public
+    .addCase(rejectQuotePublic.fulfilled, (state, action) => {
+      const index = state.quotes.findIndex(q => q.id === action.payload.quote.id);
+      if (index !== -1) {
+        state.quotes[index] = action.payload.quote;
+      }
+      if (state.currentQuote?.id === action.payload.quote.id) {
+        state.currentQuote = action.payload.quote;
+      }
+      // Actualizar estadísticas
+      state.stats.rejectedQuotes += 1;
+    })
+
+    // Mark Expired Quotes
+    .addCase(markExpiredQuotes.pending, (state) => {
+      state.loading = true;
+      state.error = null;
+    })
+    .addCase(markExpiredQuotes.fulfilled, (state, action) => {
+      state.loading = false;
+      // Opcionalmente refrescar las cotizaciones después de marcar como expiradas
+      // o actualizar localmente las que han expirado
+    })
+    .addCase(markExpiredQuotes.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.payload;
+    })
+
+    // Fetch Quotes By Vendedor
+    .addCase(fetchQuotesByVendedor.pending, (state) => {
+      state.loading = true;
+      state.error = null;
+    })
+    .addCase(fetchQuotesByVendedor.fulfilled, (state, action) => {
+      state.loading = false;
+      state.quotes = action.payload.quotes || [];
+      state.pagination = {
+        ...state.pagination,
+        page: action.payload.currentPage || 1,
+        total: action.payload.total || 0,
+        totalPages: action.payload.totalPages || 0,
+      };
+    })
+    .addCase(fetchQuotesByVendedor.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.payload;
+    });
   },
 });
 
@@ -782,6 +1047,17 @@ export const selectQuoteStats = (state) => state.quote.stats;
 export const selectQuoteTemplates = (state) => state.quote.quoteTemplates;
 export const selectSearchHistory = (state) => state.quote.searchHistory;
 
+export const selectRequoteQuotes = (state) =>
+  state.quote.quotes.filter(quote => quote.status === QUOTE_STATUSES.REQUOTE);
+
+export const selectSentQuotes = (state) =>
+  state.quote.quotes.filter(quote => quote.status === QUOTE_STATUSES.SENT);
+
+export const selectCompletedQuotes = (state) =>
+  state.quote.quotes.filter(quote => quote.status === QUOTE_STATUSES.COMPLETED);
+
+export const selectExpiredQuotesNew = (state) =>
+  state.quote.quotes.filter(quote => quote.status === QUOTE_STATUSES.EXPIRED);
 // Selectores adicionales
 export const selectQuotesByStatus = (status) => (state) =>
   state.quote.quotes.filter(quote => quote.status === status);
@@ -798,6 +1074,19 @@ export const selectExpiredQuotes = (state) => {
     const expiryDate = new Date(quote.expiryDate);
     return expiryDate < now && quote.status !== QUOTE_STATUSES.CONVERTED;
   });
+};
+
+export const selectQuotesByVendedorType = (tipo, vendedorId) => (state) => {
+  const fieldMap = {
+    'asesor': 'asesor_id',
+    'lider': 'lider_id', 
+    'gerente': 'gerente_id'
+  };
+  
+  const field = fieldMap[tipo];
+  if (!field) return [];
+  
+  return state.quote.quotes.filter(quote => quote[field] === vendedorId);
 };
 
 export const selectQuotesByAgent = (agentId) => (state) =>
