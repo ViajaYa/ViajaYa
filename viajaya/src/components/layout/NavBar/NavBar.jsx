@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-// ✅ Usar los nuevos hooks de Redux Toolkit en lugar de axios directo
-import { useAppDispatch } from '../../../redux/hooks/hooks';
-import { useAuth } from '../../../redux/hooks/hooks';
-import { verifyToken, logout } from '../../../redux/slices/authSlice';
-import { config } from '../../../utils/env';
+import { useDispatch, useSelector } from 'react-redux';
+import { 
+  verifyToken, 
+  logout, 
+  selectUser, 
+  selectIsAuthenticated, 
+  selectAuthLoading 
+} from '../../../redux/slices/authSlice';
 
 import style from './NavBar.module.css';
 import logo from "../../../assets/logo2.png";
 import { Link as RouterLink } from 'react-router-dom';
-
 
 // Importa los íconos de redes sociales
 import { FaFacebookF, FaInstagram, FaTiktok, FaTelegramPlane, FaWhatsapp, FaBars, FaTimes } from 'react-icons/fa';
@@ -17,10 +19,12 @@ import { FaFacebookF, FaInstagram, FaTiktok, FaTelegramPlane, FaWhatsapp, FaBars
 const NavBar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const dispatch = useAppDispatch();
+  const dispatch = useDispatch();
   
-  // ✅ Usar el estado de Redux en lugar de estado local
-  const { user, isAuthenticated, loading } = useAuth();
+  // ✅ Usar selectores del authSlice
+  const user = useSelector(selectUser);
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const loading = useSelector(selectAuthLoading);
   
   // Estados locales para la UI
   const [showSocialMenu, setShowSocialMenu] = useState(false);
@@ -34,7 +38,7 @@ const NavBar = () => {
     }
   }, [dispatch, user]);
 
-  // ✅ Función para manejar logout
+  // ✅ Función para manejar logout mejorada
   const handleLogout = () => {
     dispatch(logout());
     navigate('/');
@@ -76,6 +80,16 @@ const NavBar = () => {
   const isPanelPackPage = currentPath === '/panel/pack';
   const isPanelNewPage = currentPath === '/panel/newPack';
   const isBeneficiosNewPage = currentPath === "/puntos";
+
+  // ✅ Función para verificar roles de admin
+  const isAdmin = () => {
+    return user && (user.role >= 7 || user.role === 'ADMIN' || user.role === 'OWNER');
+  };
+
+  // ✅ Función para verificar si puede acceder a capacitaciones
+  const canAccessTraining = () => {
+    return user && (user.role >= 2);
+  };
 
   // ✅ Mostrar indicador de carga si está verificando el token
   if (loading && !user) {
@@ -274,11 +288,21 @@ const NavBar = () => {
                 <button onClick={() => {navigate('/userReservas'); setMenuOpen(false);}} className={style.dropdownItem}>
                   Mis Reservas
                 </button>
-                {user.role === 'ADMIN' || user.role === 'OWNER' ? (
+                
+                {/* ✅ Verificar acceso a capacitaciones */}
+                {canAccessTraining() && (
+                  <button onClick={() => {navigate('/capacitacion'); setMenuOpen(false);}} className={style.dropdownItem}>
+                    Capacitaciones
+                  </button>
+                )}
+                
+                {/* ✅ Verificar acceso a panel de admin con nueva lógica de roles */}
+                {isAdmin() && (
                   <button onClick={() => {navigate('/panel'); setMenuOpen(false);}} className={style.dropdownItem}>
                     Panel Admin
                   </button>
-                ) : null}
+                )}
+                
                 <hr className={style.dropdownDivider} />
                 <button onClick={handleLogout} className={`${style.dropdownItem} ${style.logoutButton}`}>
                   Cerrar Sesión
@@ -352,10 +376,11 @@ const NavBar = () => {
       </ul>
 
       {/* ✅ Debug info solo en desarrollo */}
-      {config?.isDevelopment && (
+      {import.meta.env.MODE === 'development' && (
         <div className={style.debugInfo}>
           <small>
             Usuario: {isAuthenticated ? user?.name : 'No autenticado'} | 
+            Rol: {user?.role || 'N/A'} |
             Ruta: {currentPath}
           </small>
         </div>
@@ -365,10 +390,3 @@ const NavBar = () => {
 };
 
 export default NavBar;
-
-
-
-
-
-
-

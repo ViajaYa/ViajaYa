@@ -9,7 +9,15 @@ import { toast, Toaster } from "react-hot-toast";
 import dayjs from "dayjs";
 import "dayjs/locale/es";
 
-//import tarjeta from 'src/assets/newImg/viajaYaImg/tarjeta.png';
+// ✅ CORREGIR IMPORTS - cambiar selectLoading por selectAuthLoading
+import { 
+  logout, 
+  selectUser, 
+  selectIsAuthenticated, 
+  selectAuthLoading, // ✅ Corregido: era selectLoading
+  updateProfile,
+  changePassword
+} from "../../../redux/slices/authSlice";
 
 import NavBar from "../../layout/NavBar/NavBar";
 
@@ -22,42 +30,86 @@ const phoneReg = /^[0-9]{10}$/;
 const Profile = () => {
   const [page, setPage] = useState(0);
   const navigate = useNavigate();
-  const [user, setUser] = useState(null); // Inicializar con null para evitar errores antes de que cargue el usuario
-  const [changePass, setChangePass] = useState(false);
-  const dispatch = useDispatch();
   
+  // ✅ Usar selectores del authSlice con nombres correctos
+  const dispatch = useDispatch();
+  const user = useSelector(selectUser);
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const authLoading = useSelector(selectAuthLoading); // ✅ Nombre correcto
+  
+  const [changePass, setChangePass] = useState(false);
   const [loading, setLoading] = useState(true);
-  const referralLink = `https://viajaya.com/login/${user?.referral_code}`;
+  
+  // ✅ Estados locales para el formulario
+  const [formData, setFormData] = useState({
+    name: '',
+    lastname: '',
+    email: '',
+    phone: '',
+    passwordLast: '',
+    password2: '',
+    password3: ''
+  });
 
-  console.log(referralLink);
+  // ✅ Protección de ruta
+  if (!isAuthenticated) {
+    navigate("/login");
+    return null;
+  }
+
+  // ✅ Generar link de referido usando el usuario del authSlice
+  const referralLink = user?.referral_code 
+    ? `https://viajaya.com/login/${user.referral_code}` 
+    : '';
 
   const users = useSelector((s) => s.users);
 
   const copyToClipboard = () => {
-    navigator.clipboard
-      .writeText(referralLink)
-      .then(() =>  toast.success("Ya Puedes pegar tu codigo Refiere y Gana YA "))
-      
-      .catch((err) => console.error("Error al copiar el enlace: ", err));
+    if (referralLink) {
+      navigator.clipboard
+        .writeText(referralLink)
+        .then(() => toast.success("Ya Puedes pegar tu codigo Refiere y Gana YA"))
+        .catch((err) => console.error("Error al copiar el enlace: ", err));
+    } else {
+      toast.error("No hay código de referido disponible");
+    }
   };
 
   useEffect(() => {
-    axios.get("/user").then((data) => {
-      dispatch(setUsers(data.data));
-      setTimeout(() => {
+    // ✅ Cargar datos solo si está autenticado
+    if (isAuthenticated) {
+      // Cargar usuarios (para admin)
+      axios.get("/user").then((data) => {
+        dispatch(setUsers(data.data));
+        setTimeout(() => {
+          setLoading(false);
+        }, 500);
+      }).catch((error) => {
+        console.error('Error loading users:', error);
         setLoading(false);
-      }, 500);
-    });
+      });
+    }
+  }, [dispatch, isAuthenticated]);
 
-    axios.get(`/user/verify/${localStorage.getItem("token")}`).then((data) => {
-      axios.get(`/user/${data.data.id}`).then((data) => setUser(data.data));
-    });
-  }, [dispatch]);
+  // ✅ Sincronizar formData con el usuario del authSlice
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name || '',
+        lastname: user.lastname || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        passwordLast: '',
+        password2: '',
+        password3: ''
+      });
+    }
+  }, [user]);
 
   const handleUser = (e) => {
     const { name, value } = e.target;
-    setUser({
-      ...user,
+    setFormData({
+      ...formData,
       [name]: value,
     });
   };
@@ -66,51 +118,118 @@ const Profile = () => {
     dispatch(findUsers(e.target.value));
   };
 
-  const updateUser = () => {
-    if (changePass) {
-      if (!user?.password2?.length || user.password2.length < 8)
-        return toast.error("La contraseña debe tener al menos 8 caracteres");
-      if (user.passwordLast === user.password) {
-        if (user.password2 === user.password3) {
-          axios.put("/user", { ...user, password: user.password2 }).then(() => {
-            toast.success("Contraseña actualizada");
-            setChangePass(false);
-          });
-        } else {
+  // ✅ Función de actualización mejorada usando authSlice
+  const updateUser = async () => {
+    try {
+      if (changePass) {
+        // Validaciones para cambio de contraseña
+        if (!formData.password2?.length || formData.password2.length < 8) {
+          return toast.error("La contraseña debe tener al menos 8 caracteres");
+        }
+        if (formData.password2 !== formData.password3) {
           return toast.error("Las contraseñas no coinciden");
         }
+        if (!formData.passwordLast?.length) {
+          return toast.error("Debes ingresar tu contraseña actual");
+        }
+
+        // ✅ Usar acción del authSlice para cambiar contraseña
+        await dispatch(changePassword({
+          currentPassword: formData.passwordLast,
+          newPassword: formData.password2
+        })).unwrap();
+
+        toast.success("Contraseña actualizada exitosamente");
+        setChangePass(false);
+        setFormData({
+          ...formData,
+          passwordLast: '',
+          password2: '',
+          password3: ''
+        });
+
       } else {
-        return toast.error("Esa no es tu contraseña");
+        // Validaciones para datos personales
+        if (!formData.name?.length || formData.name.length < 2) {
+          return toast.error("El nombre debe tener al menos 2 caracteres");
+        }
+        if (!formData.lastname?.length || formData.lastname.length < 2) {
+          return toast.error("El apellido debe tener al menos 2 caracteres");
+        }
+        if (!emailReg.test(formData.email)) {
+          return toast.error("Ingresa un email válido");
+        }
+        if (!phoneReg.test(formData.phone)) {
+          return toast.error("Ingresa un número válido");
+        }
+
+        // ✅ Usar acción del authSlice para actualizar perfil
+        await dispatch(updateProfile({
+          name: formData.name,
+          lastname: formData.lastname,
+          email: formData.email,
+          phone: formData.phone
+        })).unwrap();
+
+        toast.success("Datos actualizados exitosamente");
       }
-    } else {
-      if (!user?.name?.length || user.name.length < 2)
-        return toast.error("El nombre debe tener al menos 2 caracteres");
-      if (!user?.lastname?.length || user.lastname.length < 2)
-        return toast.error("El apellido debe tener al menos 2 caracteres");
-      if (!emailReg.test(user?.email))
-        return toast.error("Ingresa un email válido");
-      if (!phoneReg.test(user?.phone))
-        return toast.error("Ingresa un número válido");
-      axios.put("/user", user).then(() => toast.success("Datos actualizados"));
+    } catch (error) {
+      console.error('Error updating user:', error);
+      toast.error(error || 'Error al actualizar datos');
     }
   };
 
+  // ✅ Función de subida de imagen (usando fetch directo por ahora)
   const uploadUserImage = async (e) => {
-    const files = e.target.files;
-    const data = new FormData();
-    data.append("file", files[0]);
-    data.append("upload_preset", "viajaya");
-    const res = await axios.post(
-      "https://api.cloudinary.com/v1_1/dbxwx3m3l/image/upload",
-      data
-    );
-    setUser({
-      ...user,
-      image: res.data.secure_url,
-    });
+    try {
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
+
+      // ✅ Subir a Cloudinary (como en el código original)
+      const data = new FormData();
+      data.append("file", files[0]);
+      data.append("upload_preset", "viajaya");
+      data.append("api_key", "612393625364863");
+      data.append("timestamp", 0);
+      
+      const res = await axios.post(
+        "https://api.cloudinary.com/v1_1/dftvenl2z/image/upload",
+        data
+      );
+
+      // Actualizar perfil con nueva imagen
+      await dispatch(updateProfile({
+        image: res.data.secure_url
+      })).unwrap();
+
+      toast.success("Imagen actualizada exitosamente");
+
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast.error('Error al subir la imagen');
+    }
   };
 
-  
+  // ✅ Función de logout mejorada
+  const handleLogout = async () => {
+    try {
+      dispatch(logout());
+      navigate("/");
+    } catch (error) {
+      console.error('Error during logout:', error);
+      navigate("/");
+    }
+  };
+
+  // ✅ Mostrar loading mientras se cargan los datos
+  if (authLoading || loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="fixed top-0 left-0 z-50 w-full">
@@ -138,26 +257,26 @@ const Profile = () => {
                     id="fileInput"
                     type="file"
                     className="absolute inset-0 opacity-0 cursor-pointer"
-                    onChange={(e) => {
-                      /* Tu lógica para manejar la selección de archivos */
-                    }}
+                    onChange={uploadUserImage} // ✅ Usar función mejorada
                   />
                 </div>
 
                 <div className="flex flex-col">
-                  {/* <span className="text-lg text-gray-600 font-semibold font-nunito uppercase">
-                    {user?.name + " " + user?.lastname || "Mi perfil"}
-                  </span> */}
                   <ul className="flex-col space-y-2 mt-2">
-                   
-                  <button 
-        onClick={copyToClipboard} 
-        className="p-1 text-gray-800 font-nunito font-semibold rounded bg-ColorAzul hover:bg-blue-300 flex items-center" // Añadido 'flex items-center' para centrar el ícono
-      >
-        Refiere y Gana YA 
-        <FaRegCopy className="ml-2" /> {/* Espacio entre el texto y el ícono */}
-      </button>
-                    <p className="text-gray-800 font-nunito text-xs"> {referralLink}  </p>
+                    {/* ✅ Mostrar botón solo si hay código de referido */}
+                    {user?.referral_code && (
+                      <>
+                        <button 
+                          onClick={copyToClipboard} 
+                          className="p-1 text-gray-800 font-nunito font-semibold rounded bg-ColorAzul hover:bg-blue-300 flex items-center"
+                        >
+                          Refiere y Gana YA 
+                          <FaRegCopy className="ml-2" />
+                        </button>
+                        <p className="text-gray-800 font-nunito text-xs">{referralLink}</p>
+                      </>
+                    )}
+                    
                     <li>
                       <button
                         onClick={() => navigate("/userReservas")}
@@ -171,7 +290,9 @@ const Profile = () => {
                         <MdPayment className="inline-block ml-1" />
                       </button>
                     </li>
-                    {user?.role === 3 && (
+                    
+                    {/* ✅ Verificar roles con el usuario del authSlice */}
+                    {user?.role >= 7 && (
                       <li>
                         <Link
                           to="/panel"
@@ -181,7 +302,8 @@ const Profile = () => {
                         </Link>
                       </li>
                     )}
-                    {user?.role === 2 && (
+                    
+                    {user?.role >= 2 && (
                       <li>
                         <Link
                           to="/capacitacion"
@@ -191,13 +313,10 @@ const Profile = () => {
                         </Link>
                       </li>
                     )}
+                    
                     <li>
                       <button
-                        onClick={() => {
-                          navigate("/");
-                          localStorage.removeItem("token");
-                          dispatch(setUser(false));
-                        }}
+                        onClick={handleLogout} // ✅ Usar función mejorada
                         className="p-1 text-gray-600 font-nunito rounded hover:bg-pink-600"
                       >
                         Cerrar sesión{" "}
@@ -208,19 +327,13 @@ const Profile = () => {
                 </div>
               </nav>
             </div>
-            <input
-              id="fileInput"
-              type="file"
-              className="hidden"
-              onChange={uploadUserImage}
-            />
+            
             {page === 0 && (
               <div className="w-full max-w-md mx-auto bg-white p-2 rounded-lg shadow-lg">
                 <form onSubmit={(e) => e.preventDefault()}>
                   {!changePass ? (
                     <>
                       <span className="text-lg font-bold font-nunito text-center text-gray-700">
-                        {" "}
                         Mis Datos
                       </span>
                       <div className="flex space-x-4 mb-4 mt-6">
@@ -229,14 +342,14 @@ const Profile = () => {
                             className="w-full p-2 border font-nunito border-gray-300 rounded"
                             onChange={handleUser}
                             name="name"
-                            value={user?.name || ""}
+                            value={formData.name}
                             placeholder="Nombre"
                           />
                           <input
                             className="w-full p-2 border font-nunito border-gray-300 rounded mt-2"
                             onChange={handleUser}
                             name="lastname"
-                            value={user?.lastname || ""}
+                            value={formData.lastname}
                             placeholder="Apellido"
                           />
                         </div>
@@ -245,14 +358,14 @@ const Profile = () => {
                             className="w-full p-2 border font-nunito border-gray-300 rounded"
                             onChange={handleUser}
                             name="email"
-                            value={user?.email || ""}
+                            value={formData.email}
                             placeholder="Email"
                           />
                           <input
                             className="w-full p-2 border font-nunito border-gray-300 rounded mt-2"
                             onChange={handleUser}
                             name="phone"
-                            value={user?.phone || ""}
+                            value={formData.phone}
                             placeholder="Teléfono"
                           />
                         </div>
@@ -260,12 +373,16 @@ const Profile = () => {
                     </>
                   ) : (
                     <>
-                      <div className="mb-4">
+                      <span className="text-lg font-bold font-nunito text-center text-gray-700">
+                        Cambiar Contraseña
+                      </span>
+                      <div className="mb-4 mt-6">
                         <input
                           className="w-full p-2 border font-nunito border-gray-300 rounded"
                           onChange={handleUser}
                           name="passwordLast"
                           type="password"
+                          value={formData.passwordLast}
                           placeholder="Contraseña actual"
                         />
                         <input
@@ -273,6 +390,7 @@ const Profile = () => {
                           onChange={handleUser}
                           name="password2"
                           type="password"
+                          value={formData.password2}
                           placeholder="Nueva contraseña"
                         />
                         <input
@@ -280,6 +398,7 @@ const Profile = () => {
                           onChange={handleUser}
                           name="password3"
                           type="password"
+                          value={formData.password3}
                           placeholder="Confirmar nueva contraseña"
                         />
                       </div>
@@ -287,9 +406,15 @@ const Profile = () => {
                   )}
                   <button
                     onClick={updateUser}
-                    className="w-full bg-ColorMorado font-nunito text-white p-2 rounded hover:bg-pink-600"
+                    disabled={authLoading}
+                    className="w-full bg-ColorMorado font-nunito text-white p-2 rounded hover:bg-pink-600 disabled:opacity-50"
                   >
-                    {changePass ? "Actualizar contraseña" : "Actualizar datos"}
+                    {authLoading 
+                      ? "Actualizando..." 
+                      : changePass 
+                        ? "Actualizar contraseña" 
+                        : "Actualizar datos"
+                    }
                   </button>
                   <button
                     onClick={() => setChangePass(!changePass)}
@@ -302,12 +427,7 @@ const Profile = () => {
                 </form>
               </div>
             )}
-            {/* <button
-                    onClick={handleGoHome}
-                    className="w-full bg-ColorMorado text-white p-2 rounded font-nunito hover:bg-pink-600 mb-4"
-                  >
-                    <MdHome className="inline-block mr-1" /> Ir a la página principal
-                  </button> */}
+            
             {page === 1 && (
               <div className="w-full max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg">
                 {/* Aquí puedes agregar el contenido de las compras */}
@@ -327,8 +447,8 @@ const Profile = () => {
           </div>
         </div>
       </div>
-      )
     </>
   );
 };
+
 export default Profile;

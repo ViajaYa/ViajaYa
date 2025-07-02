@@ -22,7 +22,7 @@ const Form = lazy(() => import("./pages/Form"));
 const SelectedNumbersList = lazy(() => import("./pages/SelectedNumberList"));
 const AsesoresVideos = lazy(() => import("./Panel/AsesoresVideos"));
 const Capacitaciones = lazy(() => import("./pages/Capacitaciones"));
-const Panel = lazy(() => import("./Panel/Panel"));
+const PanelPage = lazy(() => import("./Panel/PanelPage"));
 const GestionOrdenes = lazy(() => import("./Panel/GestionOrdenes"));
 const UserManagement = lazy(() => import("./Panel/UserManagment"));  
 const PackManagement = lazy(() => import("./Panel/PackManagement"));
@@ -37,6 +37,9 @@ const Terminos = lazy(() => import("./pages/Politicas/Terminos"));
 const AllsPacks = lazy(() => import("./AllsPacks"));
 const TabbedImages = lazy(() => import("./pages/Operador/TabbedImages"));
 const Popup = lazy(() => import("./popups/Popup"));
+const QuotesList = lazy(() => import("./Panel/Quotes/QuotesList"));
+
+
 
 const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
   return (
@@ -196,7 +199,7 @@ const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
       <Route path="/panel" element={
         <RoleRoute allowedRoles={[USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
           <Suspense fallback={<LoadingSpinner />}>
-            <Panel />
+            <PanelPage />
           </Suspense>
         </RoleRoute>
       } />
@@ -262,6 +265,14 @@ const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
         <RoleRoute allowedRoles={[USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
           <Suspense fallback={<LoadingSpinner />}>
             <UploadCarouselImage />
+          </Suspense>
+        </RoleRoute>
+      } />
+
+      <Route path="/quotesList" element={
+        <RoleRoute allowedRoles={[USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <QuotesList />
           </Suspense>
         </RoleRoute>
       } />

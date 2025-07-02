@@ -142,7 +142,7 @@ export const verifyToken = createAsyncThunk(
       }
 
       // ✅ Ajustar endpoint según tu backend
-      const response = await fetch(getApiUrl('/user/verify-token'), { // Ajustar si es diferente
+      const response = await fetch(getApiUrl('/user/verify/token'), { // Ajustar si es diferente
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
