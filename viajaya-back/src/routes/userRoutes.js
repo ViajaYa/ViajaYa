@@ -10,14 +10,19 @@ const {
     recoveryPass,
     changePassword,
     resetPassword,
-    unlockAccount
+    unlockAccount,
+    getOrganizationStructure,
+    getTeamMetrics
 } = require("../controllers/userController")
 const sendMail = require("../helpers/sendMailContact")
 const Recovery = require("../helpers/Recovery")
 const {
     authenticateToken,
     authorizeRoles,
-    authorizeHierarchy
+    authorizeHierarchy,
+    authorizeOrganizationalAccess,
+    authorizeMetricsAccess,
+    logAction
 } = require("../middlewares/authMiddleware")
 
 const userRoutes = Router()
@@ -126,6 +131,97 @@ userRoutes.get("/", authenticateToken, authorizeRoles(5, 6, 7), async (req,res) 
         });
     }
 });
+
+
+// Obtener estructura organizacional de un usuario (Gerentes y superiores)
+userRoutes.get("/organization/:userId", 
+    authenticateToken,
+    authorizeRoles(3, 4, 5, 6, 7), // Líderes, Gerentes, Admins y superiores
+    authorizeOrganizationalAccess, // ✅ Middleware específico para org
+    logAction('VIEW_ORGANIZATION'), // ✅ Log opcional
+    getOrganizationStructure
+);
+
+// Obtener métricas del equipo de un manager (Gerentes y superiores)
+userRoutes.get("/metrics/:managerId", 
+    authenticateToken,
+    authorizeRoles(4, 5, 6, 7), // Solo Gerentes, Admins y superiores
+    authorizeMetricsAccess, // ✅ Middleware específico para métricas
+    logAction('VIEW_TEAM_METRICS'), // ✅ Log opcional
+    getTeamMetrics
+);
+
+// Dashboard completo para managers (incluye ambos: estructura + métricas)
+userRoutes.get("/dashboard/:managerId", 
+    authenticateToken,
+    authorizeRoles(4, 5, 6, 7), // Solo Gerentes, Admins y superiores
+    authorizeMetricsAccess, // ✅ Reutilizar middleware de métricas
+    logAction('VIEW_DASHBOARD'), // ✅ Log opcional
+    async (req, res) => {
+        try {
+            const { managerId } = req.params;
+            const { period = 'current_month' } = req.query;
+
+            // ✅ La validación de permisos ya se hizo en el middleware
+            // Crear objetos req para reutilizar las funciones existentes
+            const orgReq = { 
+                params: { userId: managerId }, 
+                query: { includeCommissions: 'true', period },
+                user: req.user // ✅ Pasar el usuario autenticado
+            };
+            const metricsReq = { 
+                params: { managerId }, 
+                query: { period },
+                user: req.user // ✅ Pasar el usuario autenticado
+            };
+            
+            // Obtener datos en paralelo
+            const [orgData, metricsData] = await Promise.all([
+                new Promise((resolve, reject) => {
+                    getOrganizationStructure(orgReq, {
+                        json: resolve,
+                        status: (code) => ({ json: (data) => reject({ code, data }) })
+                    });
+                }),
+                new Promise((resolve, reject) => {
+                    getTeamMetrics(metricsReq, {
+                        json: resolve,
+                        status: (code) => ({ json: (data) => reject({ code, data }) })
+                    });
+                })
+            ]);
+
+            res.json({
+                success: true,
+                dashboard: {
+                    organization: orgData.data || orgData,
+                    metrics: metricsData.data || metricsData,
+                    period: period,
+                    generated_at: new Date(),
+                    generated_by: {
+                        user_id: req.user.id,
+                        user_role: req.user.role
+                    }
+                }
+            });
+
+        } catch (error) {
+            console.error("Error obteniendo dashboard completo:", error);
+            
+            // ✅ Manejo mejorado de errores
+            if (error.code) {
+                return res.status(error.code).json(error.data);
+            }
+            
+            res.status(500).json({
+                success: false,
+                message: "Error al obtener dashboard",
+                error: error.message
+            });
+        }
+    }
+);
+
 
 // Obtener usuario por ID (con verificación de jerarquía)
 userRoutes.get("/:id", authenticateToken, authorizeHierarchy, async (req,res) => {

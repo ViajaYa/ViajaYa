@@ -9,6 +9,7 @@ module.exports = {
         const users = await User.findAll()
         return users
     },
+    
     putUser: async (u) => {
         try {
             const user = await User.findOne({
@@ -19,12 +20,15 @@ module.exports = {
                 throw new Error("Usuario no encontrado");
             }
     
-            // Define los campos que pueden ser actualizados
-            const fieldsToUpdate = [
-                'name', 'lastname', 'email', 'phone', 'password', 'role', 'image', 'points', 'referredBy'
+            // ✅ Actualizar campos para incluir jerarquía
+           const fieldsToUpdate = [
+                'name', 'lastname', 'email', 'phone', 'password', 'role', 'image', 'points', 
+                'referredBy', 'lider_id', 'gerente_id', 'commission_percentage', 'is_active_seller',
+                'commission_limit', 'current_commission_used', 'banco', 'numero_cuenta', 'tipo_cuenta',
+                'fecha_ingreso', 'documento_identidad', 'tipo_documento', 'fecha_nacimiento', 
+                'direccion', 'ciudad', 'pais'
             ];
     
-            // Actualiza solo los campos que están definidos en u
             fieldsToUpdate.forEach(field => {
                 if (u[field] !== undefined) {
                     user[field] = u[field];
@@ -39,29 +43,26 @@ module.exports = {
         }
     },
     
-   postUser: async (user) => {
+   // ✅ POSTUSER ACTUALIZADO con jerarquía automática
+ postUser: async (user) => {
         try {
             // Validaciones básicas
             if (!user.email || !user.password) {
                 throw new Error("Email y contraseña son requeridos");
             }
 
-            // Validar formato de email
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailRegex.test(user.email)) {
                 throw new Error("Formato de email inválido");
             }
 
-            // Validar fortaleza de contraseña
             if (user.password.length < 6) {
                 throw new Error("La contraseña debe tener al menos 6 caracteres");
             }
 
             // Verifica si el email ya existe
             const existingUser = await User.findOne({
-                where: {
-                    email: user.email.toLowerCase()
-                }
+                where: { email: user.email.toLowerCase() }
             });
             if (existingUser) {
                 throw new Error("Email ya registrado");
@@ -71,43 +72,68 @@ module.exports = {
             const saltRounds = 12;
             const hashedPassword = await bcrypt.hash(user.password, saltRounds);
 
-            // Verifica si hay un código de referido
-            if (user.referral_code || user.referred_by) {
-                const referralCode = user.referral_code || user.referred_by;
+            // Verificar código de referido
+            if (user.referred_by) {
                 const referringUser = await User.findOne({
-                    where: {
-                        referral_code: referralCode
-                    }
+                    where: { referral_code: user.referred_by }
                 });
-        
-                if (referringUser) {
-                    user.referred_by = referringUser.referral_code;
-                } else {
+                if (!referringUser) {
                     throw new Error("Código de referido inválido");
                 }
             }
-        
-            // ✅ Preparar datos del usuario con campos consistentes
+
+            // Verificar que el referral_code no esté en uso
+            if (user.referral_code) {
+                const existingCodeUser = await User.findOne({
+                    where: { referral_code: user.referral_code }
+                });
+                if (existingCodeUser) {
+                    throw new Error("Código de referido ya está en uso");
+                }
+            }
+
+            // ✅ Asignar jerarquía automáticamente según el rol
+            const userDataWithHierarchy = await assignHierarchy(user);
+            
+            // ✅ Preparar datos del usuario - SIN asignación automática de comisión
             const userData = {
-                ...user,
+                ...userDataWithHierarchy,
                 email: user.email.toLowerCase(),
                 password: hashedPassword,
-                is_active: true,                    // ✅ Usuario activo por defecto
-                is_active_seller: user.is_active_seller || false, // ✅ Vendedor solo si se especifica
+                is_active: user.is_active !== undefined ? user.is_active : true,
+                is_active_seller: user.is_active_seller || false,
                 last_login: null,
                 failed_login_attempts: 0,
                 account_locked_until: null,
-                points: 0,                          // ✅ Puntos iniciales
+                points: 0,
+                referral_code: user.referral_code || null,
+                referred_by: user.referred_by || null,
+                // ✅ CORREGIDO: Solo asignar si viene específicamente
+                commission_percentage: user.commission_percentage || null,
+                commission_limit: user.commission_limit || 1400000.00,
+                current_commission_used: 0.00,
+                banco: user.banco || null,
+                numero_cuenta: user.numero_cuenta || null,
+                tipo_cuenta: user.tipo_cuenta || null,
+                fecha_ingreso: user.fecha_ingreso || new Date(),
+                documento_identidad: user.documento_identidad || null,
+                tipo_documento: user.tipo_documento || null,
+                fecha_nacimiento: user.fecha_nacimiento || null,
+                direccion: user.direccion || null,
+                ciudad: user.ciudad || null,
+                pais: user.pais || 'Colombia'
             };
 
-            // Crea el nuevo usuario
+            // Crear el nuevo usuario
             const newUser = await User.create(userData);
             
-            // ✅ Respuesta normalizada sin contraseña
+            // Respuesta sin datos sensibles
             const userResponse = { ...newUser.toJSON() };
             delete userResponse.password;
             delete userResponse.failed_login_attempts;
             delete userResponse.account_locked_until;
+            delete userResponse.password_reset_token;
+            delete userResponse.email_verification_token;
             
             return { 
                 success: true,
@@ -233,14 +259,19 @@ authUser: async ({email, password}) => {
                 role: user.role,
                 phone: user.phone,
                 image: user.image,
-                supervisor_id: user.supervisor_id,
-                // ✅ Incluir ambos campos para compatibilidad
-                is_active: user.is_active,           // Campo principal
-                is_active_seller: user.is_active_seller, // Campo específico
-                // ✅ Campos adicionales útiles
+                lider_id: user.lider_id,
+                gerente_id: user.gerente_id,
+                is_active: user.is_active,
+                is_active_seller: user.is_active_seller,
                 referral_code: user.referral_code,
                 points: user.points || 0,
                 last_login: user.last_login,
+                commission_percentage: user.commission_percentage,
+                commission_limit: user.commission_limit,
+                current_commission_used: user.current_commission_used,
+                banco: user.banco,
+                numero_cuenta: user.numero_cuenta,
+                tipo_cuenta: user.tipo_cuenta
             };
 
             return {
@@ -287,8 +318,9 @@ authUser: async ({email, password}) => {
                 },
                 attributes: [
                     'id', 'name', 'lastname', 'email', 'role', 'phone', 
-                    'image', 'supervisor_id', 'is_active_seller', 'is_active', // ✅ Incluir ambos
-                    'last_login', 'referral_code', 'points'
+                    'image', 'lider_id', 'gerente_id', 'is_active_seller', 'is_active', // ✅ Actualizado
+                    'last_login', 'referral_code', 'points', 'commission_percentage',
+                    'commission_limit', 'current_commission_used', 'banco', 'numero_cuenta'
                 ]
             });
 
@@ -305,12 +337,16 @@ authUser: async ({email, password}) => {
                 role: user.role,
                 phone: user.phone,
                 image: user.image,
-                supervisor_id: user.supervisor_id,
+                lider_id: user.lider_id,
+                gerente_id: user.gerente_id,
                 is_active: user.is_active,
                 is_active_seller: user.is_active_seller,
                 referral_code: user.referral_code,
                 points: user.points || 0,
                 last_login: user.last_login,
+                commission_percentage: user.commission_percentage,
+                commission_limit: user.commission_limit,
+                current_commission_used: user.current_commission_used
             };
 
             return {
@@ -410,5 +446,319 @@ authUser: async ({email, password}) => {
         } catch (error) {
             throw new Error(error.message);
         }
+    },
+
+    getOrganizationStructure: async (req, res) => {
+        try {
+            const { userId } = req.params;
+            const { includeCommissions = 'false', period = 'current_month' } = req.query;
+            
+            const user = await User.findByPk(userId, {
+                include: [
+                    {
+                        model: User,
+                        as: 'AsesoresDirectos',
+                        attributes: ['id', 'name', 'lastname', 'email', 'role', 'is_active_seller', 'commission_percentage']
+                    },
+                    {
+                        model: User,
+                        as: 'LideresDirectos',
+                        attributes: ['id', 'name', 'lastname', 'email', 'role', 'is_active_seller', 'commission_percentage'],
+                        include: [{
+                            model: User,
+                            as: 'AsesoresDirectos',
+                            attributes: ['id', 'name', 'lastname', 'email', 'role', 'is_active_seller', 'commission_percentage']
+                        }]
+                    },
+                    {
+                        model: User,
+                        as: 'AsesoresIndirectos',
+                        attributes: ['id', 'name', 'lastname', 'email', 'role', 'is_active_seller', 'commission_percentage']
+                    },
+                    {
+                        model: User,
+                        as: 'LiderDirecto',
+                        attributes: ['id', 'name', 'lastname', 'email', 'role']
+                    },
+                    {
+                        model: User,
+                        as: 'GerenteDirecto',
+                        attributes: ['id', 'name', 'lastname', 'email', 'role']
+                    }
+                ]
+            });
+
+            if (!user) {
+                return res.status(404).json({ message: "Usuario no encontrado" });
+            }
+
+            // ✅ Calcular comisiones si se solicitan usando SQL recursivo
+            let commissionSummary = null;
+            if (includeCommissions === 'true') {
+                commissionSummary = await calculateCommissionSummary(userId, period);
+            }
+
+            const organizationData = {
+                manager: {
+                    id: user.id,
+                    name: user.name,
+                    lastname: user.lastname,
+                    email: user.email,
+                    role: user.role,
+                    commission_percentage: user.commission_percentage,
+                    total_team_members: (user.LideresDirectos?.length || 0) + 
+                                      (user.AsesoresDirectos?.length || 0) + 
+                                      (user.AsesoresIndirectos?.length || 0)
+                },
+                hierarchy: {
+                    lideres_directos: user.LideresDirectos?.map(lider => ({
+                        ...lider.toJSON(),
+                        total_asesores: lider.AsesoresDirectos?.length || 0
+                    })) || [],
+                    asesores_directos: user.AsesoresDirectos || [],
+                    asesores_indirectos: user.AsesoresIndirectos || []
+                },
+                commission_summary: commissionSummary
+            };
+
+            res.json({
+                success: true,
+                data: organizationData
+            });
+
+        } catch (error) {
+            console.error("Error obteniendo estructura organizacional:", error);
+            res.status(500).json({
+                success: false,
+                message: "Error al obtener la estructura organizacional",
+                error: error.message
+            });
+        }
+    },
+
+    // ✅ NUEVO - Dashboard con métricas usando SQL recursivo
+    getTeamMetrics: async (req, res) => {
+        try {
+            const { managerId } = req.params;
+            const { period = 'current_month' } = req.query;
+
+            const dateFilter = getDateFilterForPeriod(period);
+
+            // ✅ SQL RECURSIVO para obtener métricas del equipo
+            const teamMetrics = await sequelize.query(`
+                WITH RECURSIVE team_hierarchy AS (
+                    -- Usuario base (manager)
+                    SELECT id, name, role, commission_percentage, lider_id, gerente_id, 0 as level
+                    FROM users 
+                    WHERE id = :managerId
+                    
+                    UNION ALL
+                    
+                    -- Miembros del equipo recursivamente
+                    SELECT u.id, u.name, u.role, u.commission_percentage, u.lider_id, u.gerente_id, th.level + 1
+                    FROM users u
+                    INNER JOIN team_hierarchy th ON (
+                        u.lider_id = th.id OR u.gerente_id = th.id
+                    )
+                    WHERE th.level < 5
+                )
+                SELECT 
+                    COUNT(DISTINCT th.id) - 1 as total_team_members,
+                    COUNT(DISTINCT CASE WHEN th.role = 2 THEN th.id END) as total_asesores,
+                    COUNT(DISTINCT CASE WHEN th.role = 3 THEN th.id END) as total_lideres,
+                    COUNT(DISTINCT CASE WHEN th.role = 4 THEN th.id END) as total_gerentes,
+                    COUNT(DISTINCT q.id) as total_quotes_generated,
+                    COUNT(DISTINCT CASE WHEN q.status = 'approved' THEN q.id END) as quotes_approved,
+                    COALESCE(SUM(ct.valor_total), 0) as total_contracts_value,
+                    COUNT(DISTINCT ct.id) as total_contracts,
+                    COALESCE(SUM(com.monto_comision), 0) as total_commissions_generated,
+                    COALESCE(SUM(CASE WHEN com.status = 'paid' THEN com.monto_comision ELSE 0 END), 0) as commissions_paid,
+                    COALESCE(SUM(CASE WHEN com.status = 'pending' THEN com.monto_comision ELSE 0 END), 0) as commissions_pending,
+                    AVG(th.commission_percentage) as avg_commission_percentage
+                FROM team_hierarchy th
+                LEFT JOIN quotes q ON q.asesor_id = th.id 
+                    AND q.created_at >= :startDate 
+                    AND q.created_at <= :endDate
+                LEFT JOIN contracts ct ON ct.quote_id = q.id
+                LEFT JOIN commissions com ON com.vendedor_id = th.id 
+                    AND com.created_at >= :startDate 
+                    AND com.created_at <= :endDate
+                WHERE th.level > 0
+            `, {
+                replacements: {
+                    managerId,
+                    startDate: dateFilter.start,
+                    endDate: dateFilter.end
+                },
+                type: sequelize.QueryTypes.SELECT
+            });
+
+            res.json({
+                success: true,
+                data: {
+                    metrics: teamMetrics[0] || {},
+                    period: period,
+                    date_range: {
+                        start: dateFilter.start,
+                        end: dateFilter.end
+                    },
+                    generated_at: new Date()
+                }
+            });
+
+        } catch (error) {
+            console.error("Error obteniendo métricas del equipo:", error);
+            res.status(500).json({
+                success: false,
+                message: "Error al obtener métricas",
+                error: error.message
+            });
+        }
     }
+};
+
+// ✅ FUNCIONES AUXILIARES
+
+// Asignar jerarquía automáticamente (SIN comisión automática)
+const assignHierarchy = async (userData) => {
+    const { role, lider_id, gerente_id } = userData;
+    
+    switch (role) {
+        case 2: // Asesor
+            if (!lider_id) {
+                throw new Error('Un Asesor debe tener un Líder asignado');
+            }
+            
+            const lider = await User.findOne({
+                where: { id: lider_id, role: 3 }
+            });
+            if (!lider) {
+                throw new Error('Líder no encontrado o rol inválido');
+            }
+            
+            userData.gerente_id = lider.gerente_id;
+            break;
+            
+        case 3: // Líder
+            if (!gerente_id) {
+                throw new Error('Un Líder debe tener un Gerente asignado');
+            }
+            
+            const gerente = await User.findOne({
+                where: { id: gerente_id, role: 4 }
+            });
+            if (!gerente) {
+                throw new Error('Gerente no encontrado o rol inválido');
+            }
+            
+            userData.lider_id = null;
+            break;
+            
+        case 4: // Gerente
+        case 7: // Owner
+            userData.lider_id = null;
+            userData.gerente_id = null;
+            break;
+            
+        default:
+            userData.lider_id = null;
+            userData.gerente_id = null;
+            break;
+    }
+    
+    return userData;
+};
+
+// Obtener filtro de fechas según período
+const getDateFilterForPeriod = (period) => {
+    const now = new Date();
+    
+    switch (period) {
+        case 'current_month':
+            return {
+                start: new Date(now.getFullYear(), now.getMonth(), 1),
+                end: new Date(now.getFullYear(), now.getMonth() + 1, 1)
+            };
+        case 'last_month':
+            return {
+                start: new Date(now.getFullYear(), now.getMonth() - 1, 1),
+                end: new Date(now.getFullYear(), now.getMonth(), 1)
+            };
+        case 'current_year':
+            return {
+                start: new Date(now.getFullYear(), 0, 1),
+                end: new Date(now.getFullYear() + 1, 0, 1)
+            };
+        default:
+            return {
+                start: new Date(now.getFullYear(), now.getMonth(), 1),
+                end: new Date(now.getFullYear(), now.getMonth() + 1, 1)
+            };
+    }
+};
+
+// Calcular resumen de comisiones usando SQL recursivo
+const calculateCommissionSummary = async (userId, period) => {
+    try {
+        const dateFilter = getDateFilterForPeriod(period);
+
+        const commissionData = await sequelize.query(`
+            WITH RECURSIVE team_hierarchy AS (
+                SELECT id, role, name, lastname, commission_percentage, 0 as level
+                FROM users WHERE id = :userId
+                UNION ALL
+                SELECT u.id, u.role, u.name, u.lastname, u.commission_percentage, th.level + 1
+                FROM users u
+                INNER JOIN team_hierarchy th ON (u.lider_id = th.id OR u.gerente_id = th.id)
+                WHERE th.level < 5
+            )
+            SELECT 
+                th.role,
+                th.name,
+                th.lastname,
+                th.commission_percentage,
+                COUNT(c.id) as total_commissions,
+                COALESCE(SUM(c.monto_comision), 0) as total_amount,
+                COALESCE(SUM(CASE WHEN c.status = 'paid' THEN c.monto_comision ELSE 0 END), 0) as paid_amount,
+                COALESCE(SUM(CASE WHEN c.status = 'pending' THEN c.monto_comision ELSE 0 END), 0) as pending_amount
+            FROM team_hierarchy th
+            LEFT JOIN commissions c ON c.vendedor_id = th.id 
+                AND c.created_at >= :startDate 
+                AND c.created_at < :endDate
+            WHERE th.level > 0
+            GROUP BY th.id, th.role, th.name, th.lastname, th.commission_percentage
+            ORDER BY th.role DESC, total_amount DESC
+        `, {
+            replacements: {
+                userId,
+                startDate: dateFilter.start,
+                endDate: dateFilter.end
+            },
+            type: sequelize.QueryTypes.SELECT
+        });
+
+        const totals = commissionData.reduce((acc, item) => ({
+            total_commissions: acc.total_commissions + parseInt(item.total_commissions),
+            total_amount: acc.total_amount + parseFloat(item.total_amount),
+            paid_amount: acc.paid_amount + parseFloat(item.paid_amount),
+            pending_amount: acc.pending_amount + parseFloat(item.pending_amount)
+        }), {
+            total_commissions: 0,
+            total_amount: 0,
+            paid_amount: 0,
+            pending_amount: 0
+        });
+
+        return {
+            period,
+            totals,
+            detail: commissionData,
+            generated_at: new Date()
+        };
+
+    } catch (error) {
+        console.error('Error calculando resumen de comisiones:', error);
+        return null;
+    }
+
 }

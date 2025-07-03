@@ -194,8 +194,10 @@ const UserManagment = () => {
     switch (roleValue) {
       case 1: return "Cliente";
       case 2: return "Asesor";
-      case 3: 
-      case 7: return "Admin";
+      case 3: return "Líder";
+      case 4: return "Gerente";
+      case 5: return "Admin";
+      case 6: return "Contador";
       default: return "Cliente";
     }
   };

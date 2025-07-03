@@ -54,13 +54,24 @@ module.exports = (sequelize) => {
       defaultValue: 0, // Puntos que el usuario ha acumulado
     },
     // Nuevos campos para la jerarquía de ventas
-    supervisor_id: {
+      lider_id: {
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
         model: 'users',
         key: 'id'
-      }
+      },
+      comment: 'Solo para Asesores - ID del Líder al que reportan'
+    },
+    
+    gerente_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'users',
+        key: 'id'
+      },
+      comment: 'Para Líderes y Asesores - ID del Gerente de la organización'
     },
     commission_limit: {
       type: DataTypes.DECIMAL(12, 2),

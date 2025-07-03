@@ -38,8 +38,8 @@ const AllsPacks = lazy(() => import("./AllsPacks"));
 const TabbedImages = lazy(() => import("./pages/Operador/TabbedImages"));
 const Popup = lazy(() => import("./popups/Popup"));
 const QuotesList = lazy(() => import("./Panel/Quotes/QuotesList"));
-
-
+const QuoteEdit = lazy(() => import("./Panel/Quotes/QuoteEdit"));
+const CreateStaff = lazy(() => import("./Panel/CreateStaff"));
 
 const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
   return (
@@ -273,6 +273,21 @@ const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
         <RoleRoute allowedRoles={[USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
           <Suspense fallback={<LoadingSpinner />}>
             <QuotesList />
+          </Suspense>
+        </RoleRoute>
+      } />
+      <Route path="/quotes/:id/edit" element={
+        <RoleRoute allowedRoles={[USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <QuoteEdit />
+          </Suspense>
+        </RoleRoute>
+      } />
+
+      <Route path="/createStaff" element={
+        <RoleRoute allowedRoles={[ USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <CreateStaff />
           </Suspense>
         </RoleRoute>
       } />

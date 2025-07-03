@@ -25,7 +25,7 @@ module.exports = (sequelize) => {
       }
     },
     tipo_vendedor: {
-      type: DataTypes.ENUM('asesor', 'lider', 'gerente'),
+      type: DataTypes.ENUM('asesor', 'lider', 'gerente', 'owner'),
       allowNull: false,
     },
     porcentaje: {

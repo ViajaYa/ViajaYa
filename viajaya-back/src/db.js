@@ -80,14 +80,41 @@ User.belongsTo(User, {
 });
 
 // Relación jerárquica de supervisores
+// User.hasMany(User, {
+//   as: 'TeamMembers', // Un usuario puede tener muchos miembros en su equipo
+//   foreignKey: 'supervisor_id'
+// });
+
+// User.belongsTo(User, {
+//   as: 'Supervisor', // Un usuario puede tener un supervisor
+//   foreignKey: 'supervisor_id'
+// });
+
 User.hasMany(User, {
-  as: 'TeamMembers', // Un usuario puede tener muchos miembros en su equipo
-  foreignKey: 'supervisor_id'
+  as: 'AsesoresDirectos', // Un líder tiene muchos asesores
+  foreignKey: 'lider_id'
+});
+User.belongsTo(User, {
+  as: 'LiderDirecto', // Un asesor pertenece a un líder
+  foreignKey: 'lider_id'
+});
+
+User.hasMany(User, {
+  as: 'LideresDirectos', // Un gerente tiene muchos líderes
+  foreignKey: 'gerente_id',
+  scope: { role: 3 } // Solo líderes
+});
+
+// GERENTE → ASESORES (indirectos, a través de líderes)
+User.hasMany(User, {
+  as: 'AsesoresIndirectos', // Un gerente ve todos los asesores de sus líderes
+  foreignKey: 'gerente_id',
+  scope: { role: 2 } // Solo asesores
 });
 
 User.belongsTo(User, {
-  as: 'Supervisor', // Un usuario puede tener un supervisor
-  foreignKey: 'supervisor_id'
+  as: 'GerenteDirecto', // Líder o Asesor pertenece a un gerente
+  foreignKey: 'gerente_id'
 });
 
 // Relación entre Usuario y Compra (Item)

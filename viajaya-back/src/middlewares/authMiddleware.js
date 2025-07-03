@@ -1,198 +1,339 @@
 const jwt = require('jsonwebtoken');
 const { User } = require('../db');
+require('dotenv').config();
 
-// Middleware para verificar token JWT
+// ✅ Middleware para autenticar token JWT
 const authenticateToken = async (req, res, next) => {
     try {
         const authHeader = req.headers['authorization'];
         const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
         if (!token) {
-            return res.status(401).json({ 
-                message: 'Token de acceso requerido',
-                error: 'NO_TOKEN'
+            return res.status(401).json({
+                success: false,
+                message: 'Token de acceso requerido'
             });
         }
 
-        // Verificar token
-        const decoded = jwt.verify(
-            token, 
-            process.env.JWT_SECRET || 'fallback_secret_key_change_in_production'
-        );
+        // Verificar el token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret_key_change_in_production');
 
-        // Verificar que el usuario existe y está activo
+        // Buscar el usuario actualizado en la base de datos
         const user = await User.findOne({
-            where: {
-                id: decoded.id,
-                is_active: true
+            where: { 
+                id: decoded.id, 
+                is_active: true 
             },
             attributes: [
-                'id', 'name', 'lastname', 'email', 'role', 'phone', 
-                'image', 'supervisor_id', 'is_active_seller'
+                'id', 'name', 'lastname', 'email', 'role', 'phone', 'image',
+                'lider_id', 'gerente_id', 'is_active_seller', 'is_active',
+                'commission_percentage', 'commission_limit', 'current_commission_used',
+                'referral_code', 'points', 'last_login'
             ]
         });
 
         if (!user) {
-            return res.status(401).json({ 
-                message: 'Usuario no encontrado o inactivo',
-                error: 'USER_NOT_FOUND'
+            return res.status(401).json({
+                success: false,
+                message: 'Usuario no encontrado o inactivo'
             });
         }
 
-        // Adjuntar información del usuario a la request
+        // Agregar usuario a la request
         req.user = user;
-        req.token = decoded;
         next();
 
     } catch (error) {
-        if (error.name === 'TokenExpiredError') {
-            return res.status(401).json({ 
-                message: 'Token expirado',
-                error: 'TOKEN_EXPIRED'
-            });
-        }
-        
-        if (error.name === 'JsonWebTokenError') {
-            return res.status(401).json({ 
-                message: 'Token inválido',
-                error: 'INVALID_TOKEN'
-            });
-        }
-
-        return res.status(500).json({ 
-            message: 'Error interno del servidor',
-            error: 'SERVER_ERROR'
+        console.error('Error en autenticación:', error);
+        return res.status(403).json({
+            success: false,
+            message: 'Token inválido o expirado'
         });
     }
 };
 
-// Middleware para verificar roles específicos
+// ✅ Middleware para autorizar por roles específicos
 const authorizeRoles = (...allowedRoles) => {
     return (req, res, next) => {
-        if (!req.user) {
-            return res.status(401).json({ 
-                message: 'Usuario no autenticado',
-                error: 'NOT_AUTHENTICATED'
+        try {
+            if (!req.user) {
+                return res.status(401).json({
+                    success: false,
+                    message: 'Usuario no autenticado'
+                });
+            }
+
+            const userRole = req.user.role;
+
+            if (!allowedRoles.includes(userRole)) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'No tienes permisos suficientes para esta acción',
+                    required_roles: allowedRoles,
+                    your_role: userRole
+                });
+            }
+
+            next();
+        } catch (error) {
+            console.error('Error en autorización por roles:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Error interno en verificación de permisos'
             });
         }
-
-        if (!allowedRoles.includes(req.user.role)) {
-            return res.status(403).json({ 
-                message: 'No tienes permisos para acceder a este recurso',
-                error: 'INSUFFICIENT_PERMISSIONS',
-                requiredRoles: allowedRoles,
-                userRole: req.user.role
-            });
-        }
-
-        next();
     };
 };
 
-// Middleware para verificar jerarquía (supervisor puede acceder a datos de sus subordinados)
+// ✅ Middleware ACTUALIZADO para autorizar jerarquía organizacional
 const authorizeHierarchy = async (req, res, next) => {
     try {
-        const targetUserId = req.params.userId || req.body.userId;
-        const currentUser = req.user;
-
-        // Si es el mismo usuario, permitir acceso
-        if (currentUser.id == targetUserId) {
-            return next();
-        }
-
-        // Si es Owner o Admin, permitir acceso total
-        if (currentUser.role >= 5) { // Admin, Contador, Owner
-            return next();
-        }
-
-        // Verificar si el usuario actual es supervisor del usuario objetivo
-        const targetUser = await User.findByPk(targetUserId);
-        
-        if (!targetUser) {
-            return res.status(404).json({ 
-                message: 'Usuario objetivo no encontrado',
-                error: 'TARGET_USER_NOT_FOUND'
+        if (!req.user) {
+            return res.status(401).json({
+                success: false,
+                message: 'Usuario no autenticado'
             });
         }
 
-        // Verificar jerarquía: Gerente > Líder > Asesor
-        let hasAccess = false;
+        const currentUser = req.user;
+        const targetUserId = parseInt(req.params.id || req.params.userId || req.params.managerId);
+        const currentUserId = currentUser.id;
+        const currentUserRole = currentUser.role;
 
-        if (currentUser.role === 4) { // Gerente
-            // El gerente puede acceder a líderes y asesores bajo su supervisión
-            if (targetUser.supervisor_id === currentUser.id) {
-                hasAccess = true;
-            } else {
-                // Verificar si es asesor bajo un líder del gerente
-                if (targetUser.role === 2) { // Asesor
-                    const lider = await User.findOne({
-                        where: {
-                            id: targetUser.supervisor_id,
-                            supervisor_id: currentUser.id,
-                            role: 3
-                        }
-                    });
-                    if (lider) hasAccess = true;
-                }
-            }
-        } else if (currentUser.role === 3) { // Líder
-            // El líder puede acceder solo a asesores bajo su supervisión directa
-            if (targetUser.supervisor_id === currentUser.id && targetUser.role === 2) {
-                hasAccess = true;
-            }
+        // ✅ CASOS DONDE SE PERMITE EL ACCESO:
+
+        // 1. Acceso a su propio perfil/datos
+        if (currentUserId === targetUserId) {
+            return next();
         }
 
-        if (!hasAccess) {
-            return res.status(403).json({ 
-                message: 'No tienes permisos para acceder a la información de este usuario',
-                error: 'HIERARCHY_ACCESS_DENIED'
+        // 2. Roles administrativos (Admin, Super Admin, Owner) - acceso total
+        if (currentUserRole >= 5) {
+            return next();
+        }
+
+        // 3. Verificación por jerarquía organizacional
+        const targetUser = await User.findByPk(targetUserId, {
+            attributes: ['id', 'role', 'lider_id', 'gerente_id', 'name', 'lastname']
+        });
+
+        if (!targetUser) {
+            return res.status(404).json({
+                success: false,
+                message: 'Usuario objetivo no encontrado'
+            });
+        }
+
+        const targetUserRole = targetUser.role;
+        let hasHierarchicalAccess = false;
+
+        // ✅ VERIFICACIÓN JERÁRQUICA SEGÚN ROLES:
+
+        switch (currentUserRole) {
+            case 4: // Gerente
+                // Puede acceder a sus líderes directos y asesores de esos líderes
+                if (targetUserRole === 3 && targetUser.gerente_id === currentUserId) {
+                    hasHierarchicalAccess = true; // Líder directo
+                } else if (targetUserRole === 2) {
+                    // Verificar si el asesor pertenece a un líder de este gerente
+                    const asesorLider = await User.findByPk(targetUser.lider_id);
+                    if (asesorLider && asesorLider.gerente_id === currentUserId) {
+                        hasHierarchicalAccess = true; // Asesor indirecto
+                    }
+                }
+                break;
+
+            case 3: // Líder
+                // Puede acceder solo a sus asesores directos
+                if (targetUserRole === 2 && targetUser.lider_id === currentUserId) {
+                    hasHierarchicalAccess = true; // Asesor directo
+                }
+                break;
+
+            case 2: // Asesor
+                // Los asesores solo pueden acceder a su propio perfil (ya verificado arriba)
+                hasHierarchicalAccess = false;
+                break;
+
+            default:
+                // Otros roles sin permisos jerárquicos específicos
+                hasHierarchicalAccess = false;
+                break;
+        }
+
+        if (!hasHierarchicalAccess) {
+            return res.status(403).json({
+                success: false,
+                message: 'No tienes permisos para acceder a este usuario',
+                details: {
+                    your_role: currentUserRole,
+                    target_role: targetUserRole,
+                    access_type: 'hierarchical_restriction'
+                }
+            });
+        }
+
+        // ✅ Agregar información del usuario objetivo a la request
+        req.targetUser = targetUser;
+        next();
+
+    } catch (error) {
+        console.error('Error en autorización jerárquica:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error interno en verificación de jerarquía'
+        });
+    }
+};
+
+// ✅ NUEVO Middleware específico para endpoints organizacionales
+const authorizeOrganizationalAccess = async (req, res, next) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({
+                success: false,
+                message: 'Usuario no autenticado'
+            });
+        }
+
+        const currentUser = req.user;
+        const targetUserId = parseInt(req.params.userId || req.params.managerId);
+        const currentUserId = currentUser.id;
+        const currentUserRole = currentUser.role;
+
+        // ✅ Roles administrativos tienen acceso total
+        if (currentUserRole >= 5) {
+            return next();
+        }
+
+        // ✅ Acceso a su propia organización
+        if (currentUserId === targetUserId) {
+            return next();
+        }
+
+        // ✅ Verificación jerárquica para ver equipos subordinados
+        const targetUser = await User.findByPk(targetUserId, {
+            attributes: ['id', 'role', 'lider_id', 'gerente_id', 'name', 'lastname']
+        });
+
+        if (!targetUser) {
+            return res.status(404).json({
+                success: false,
+                message: 'Usuario objetivo no encontrado'
+            });
+        }
+
+        let canAccess = false;
+
+        // ✅ Lógica específica para acceso organizacional
+        switch (currentUserRole) {
+            case 4: // Gerente
+                // Puede ver la organización de sus líderes directos
+                if (targetUser.role === 3 && targetUser.gerente_id === currentUserId) {
+                    canAccess = true;
+                }
+                break;
+
+            case 3: // Líder
+                // Solo puede ver su propia organización (ya verificado arriba)
+                canAccess = false;
+                break;
+
+            default:
+                canAccess = false;
+                break;
+        }
+
+        if (!canAccess) {
+            return res.status(403).json({
+                success: false,
+                message: 'No tienes permisos para ver la estructura organizacional de este usuario',
+                details: {
+                    your_role: currentUserRole,
+                    target_user_role: targetUser.role,
+                    required_permission: 'organizational_access'
+                }
+            });
+        }
+
+        req.targetUser = targetUser;
+        next();
+
+    } catch (error) {
+        console.error('Error en autorización organizacional:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error interno en verificación organizacional'
+        });
+    }
+};
+
+// ✅ NUEVO Middleware para validar permisos de métricas
+const authorizeMetricsAccess = async (req, res, next) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({
+                success: false,
+                message: 'Usuario no autenticado'
+            });
+        }
+
+        const currentUser = req.user;
+        const managerId = parseInt(req.params.managerId);
+        const currentUserId = currentUser.id;
+        const currentUserRole = currentUser.role;
+
+        // ✅ Solo Gerentes y superiores pueden ver métricas
+        if (currentUserRole < 4) {
+            return res.status(403).json({
+                success: false,
+                message: 'Solo Gerentes y superiores pueden acceder a métricas de equipos',
+                required_minimum_role: 4,
+                your_role: currentUserRole
+            });
+        }
+
+        // ✅ Roles administrativos tienen acceso total
+        if (currentUserRole >= 5) {
+            return next();
+        }
+
+        // ✅ Los gerentes solo pueden ver sus propias métricas
+        if (currentUserRole === 4 && currentUserId !== managerId) {
+            return res.status(403).json({
+                success: false,
+                message: 'Solo puedes ver las métricas de tu propio equipo'
             });
         }
 
         next();
 
     } catch (error) {
-        return res.status(500).json({ 
-            message: 'Error verificando jerarquía',
-            error: 'HIERARCHY_CHECK_ERROR'
+        console.error('Error en autorización de métricas:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error interno en verificación de métricas'
         });
     }
 };
 
-// Middleware para verificar si puede crear cotizaciones
-const canCreateQuotes = (req, res, next) => {
-    const userRole = req.user.role;
-    
-    // Solo Asesores (2), Líderes (3), Gerentes (4) y superiores pueden crear cotizaciones
-    if (userRole >= 2) {
-        return next();
-    }
-
-    return res.status(403).json({ 
-        message: 'No tienes permisos para crear cotizaciones',
-        error: 'CANNOT_CREATE_QUOTES'
-    });
-};
-
-// Middleware para verificar si puede aprobar documentos soporte
-const canApproveSupportDocs = (req, res, next) => {
-    const userRole = req.user.role;
-    
-    // Solo Owner (7) puede aprobar documentos soporte
-    if (userRole === 7) {
-        return next();
-    }
-
-    return res.status(403).json({ 
-        message: 'Solo el Owner puede aprobar documentos soporte',
-        error: 'CANNOT_APPROVE_SUPPORT_DOCS'
-    });
+// ✅ Middleware para logging de acciones (opcional)
+const logAction = (action) => {
+    return (req, res, next) => {
+        const user = req.user;
+        const timestamp = new Date().toISOString();
+        
+        console.log(`[${timestamp}] ${action} - Usuario: ${user?.id || 'Unknown'} (${user?.email || 'Unknown'}) - Rol: ${user?.role || 'Unknown'}`);
+        
+        next();
+    };
 };
 
 module.exports = {
     authenticateToken,
     authorizeRoles,
     authorizeHierarchy,
-    canCreateQuotes,
-    canApproveSupportDocs
+    authorizeOrganizationalAccess,
+    authorizeMetricsAccess,
+    logAction
 };

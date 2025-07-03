@@ -207,7 +207,7 @@ const QuotesList = () => {
         {/* Editar (solo si está pendiente o completada) */}
         {(quote.status === QUOTE_STATUSES.PENDING || quote.status === QUOTE_STATUSES.COMPLETED) && (
           <button
-            onClick={() => navigate(`/panel/quotes/${quote.id}/edit`)}
+            onClick={() => navigate(`/quotes/${quote.id}/edit`)}
             className="p-2 text-yellow-600 hover:bg-yellow-50 rounded transition-colors"
             title="Editar"
           >

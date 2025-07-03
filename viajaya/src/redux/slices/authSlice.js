@@ -51,25 +51,53 @@ export const loginUser = createAsyncThunk(
       // ✅ Normalizar los datos del usuario para manejar ambos campos
       const normalizedUser = {
         ...data.user,
-        // ✅ Priorizar is_active sobre is_active_seller para validación general
+        // Compatibilidad con campos antiguos
         isActive: data.user.is_active !== undefined ? data.user.is_active : data.user.is_active_seller,
         isActiveSeller: data.user.is_active_seller || false,
-        supervisorId: data.user.supervisor_id,
         referralCode: data.user.referral_code,
+        // ✅ NUEVOS campos de jerarquía
+        liderId: data.user.lider_id,
+        gerenteId: data.user.gerente_id,
+        commissionPercentage: data.user.commission_percentage,
+        commissionLimit: data.user.commission_limit,
+        currentCommissionUsed: data.user.current_commission_used,
+        banco: data.user.banco,
+        numeroCuenta: data.user.numero_cuenta,
+        tipoCuenta: data.user.tipo_cuenta,
+        fechaIngreso: data.user.fecha_ingreso,
+        documentoIdentidad: data.user.documento_identidad,
+        tipoDocumento: data.user.tipo_documento,
+        fechaNacimiento: data.user.fecha_nacimiento,
+        direccion: data.user.direccion,
+        ciudad: data.user.ciudad,
+        pais: data.user.pais,
         // Mantener campos originales
         is_active: data.user.is_active,
         is_active_seller: data.user.is_active_seller,
-        supervisor_id: data.user.supervisor_id,
         referral_code: data.user.referral_code,
+        lider_id: data.user.lider_id,
+        gerente_id: data.user.gerente_id,
+        commission_percentage: data.user.commission_percentage,
+        commission_limit: data.user.commission_limit,
+        current_commission_used: data.user.current_commission_used,
+        numero_cuenta: data.user.numero_cuenta,
+        tipo_cuenta: data.user.tipo_cuenta,
+        fecha_ingreso: data.user.fecha_ingreso,
+        documento_identidad: data.user.documento_identidad,
+        tipo_documento: data.user.tipo_documento,
+        fecha_nacimiento: data.user.fecha_nacimiento,
       };
 
       // ✅ Debug en desarrollo
       if (import.meta.env.MODE === 'development') {
-        console.log('✅ Usuario normalizado:', {
+        console.log('✅ Usuario normalizado con jerarquía:', {
           original: data.user,
           normalized: normalizedUser,
-          isActive: normalizedUser.isActive,
-          isActiveSeller: normalizedUser.isActiveSeller
+          hierarchy: {
+            liderId: normalizedUser.liderId,
+            gerenteId: normalizedUser.gerenteId,
+            role: normalizedUser.role
+          }
         });
       }
 
@@ -94,8 +122,7 @@ export const registerUser = createAsyncThunk(
   'auth/registerUser',
   async (userData, { rejectWithValue }) => {
     try {
-      // ✅ Verificar endpoint correcto (ajustar según tu backend)
-      const response = await fetch(getApiUrl('/user/register'), { // o '/user' según tu backend
+      const response = await fetch(getApiUrl('/user/register'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -141,8 +168,7 @@ export const verifyToken = createAsyncThunk(
         return rejectWithValue('No hay token disponible');
       }
 
-      // ✅ Ajustar endpoint según tu backend
-      const response = await fetch(getApiUrl('/user/verify/token'), { // Ajustar si es diferente
+      const response = await fetch(getApiUrl('/user/verify/token'), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -184,18 +210,16 @@ export const forgotPassword = createAsyncThunk(
   'auth/forgotPassword',
   async ({ email }, { rejectWithValue }) => {
     try {
-      // ✅ Ajustar endpoint según tu backend
-      const response = await fetch(getApiUrl('/user/forgot-password'), { // o '/user/recovery'
-        method: 'POST',
+      const response = await fetch(getApiUrl('/user/recovery/' + email), {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email }),
       });
 
       if (!response.ok) {
         if (response.status === 404) {
-          return rejectWithValue('Endpoint de recuperación no encontrado');
+          return rejectWithValue('Email no encontrado');
         }
         
         try {
@@ -214,6 +238,7 @@ export const forgotPassword = createAsyncThunk(
     }
   }
 );
+
 
 // ✅ RESTO DEL CÓDIGO PERMANECE IGUAL...
 export const changePassword = createAsyncThunk(
