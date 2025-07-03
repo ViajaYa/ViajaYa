@@ -26,10 +26,7 @@ const sequelize = new Sequelize(
 //   }
 // );
 
-
-
-  const basename = path.basename(__filename);
-
+const basename = path.basename(__filename);
 const modelDefiners = [];
 
 // Leemos todos los archivos de la carpeta Models, los requerimos y agregamos al arreglo modelDefiners
@@ -62,11 +59,13 @@ const {
   QuoteItem 
 } = sequelize.models;
 
-// Relaciones existentes
-Item.belongsTo(Pack)
-Pack.hasMany(Item)
+// ===== RELACIONES ORGANIZADAS POR SECCIONES =====
 
-// Relación entre usuarios para los referidos
+// ✅ 1. RELACIONES BÁSICAS - PACK & ITEM
+Item.belongsTo(Pack, { foreignKey: 'packId' });
+Pack.hasMany(Item, { foreignKey: 'packId' });
+
+// ✅ 2. RELACIONES DE REFERIDOS
 User.hasMany(User, {
   as: 'Referrals', // Un usuario puede tener muchos referidos
   foreignKey: 'referred_by', // Este es el campo en la tabla que almacena el referral_code del referidor
@@ -79,26 +78,20 @@ User.belongsTo(User, {
   targetKey: 'referral_code' // Conecta el referred_by con el referral_code
 });
 
-// Relación jerárquica de supervisores
-// User.hasMany(User, {
-//   as: 'TeamMembers', // Un usuario puede tener muchos miembros en su equipo
-//   foreignKey: 'supervisor_id'
-// });
-
-// User.belongsTo(User, {
-//   as: 'Supervisor', // Un usuario puede tener un supervisor
-//   foreignKey: 'supervisor_id'
-// });
-
+// ✅ 3. RELACIONES JERÁRQUICAS DE VENTAS
+// LÍDER → ASESORES
 User.hasMany(User, {
   as: 'AsesoresDirectos', // Un líder tiene muchos asesores
-  foreignKey: 'lider_id'
+  foreignKey: 'lider_id',
+  scope: { role: 2 } // Solo asesores
 });
+
 User.belongsTo(User, {
   as: 'LiderDirecto', // Un asesor pertenece a un líder
   foreignKey: 'lider_id'
 });
 
+// GERENTE → LÍDERES
 User.hasMany(User, {
   as: 'LideresDirectos', // Un gerente tiene muchos líderes
   foreignKey: 'gerente_id',
@@ -117,113 +110,317 @@ User.belongsTo(User, {
   foreignKey: 'gerente_id'
 });
 
-// Relación entre Usuario y Compra (Item)
+// ✅ 4. RELACIONES USER - COMPRAS/RESERVAS
 User.hasMany(Item, {
-  foreignKey: 'userId', // Añadir la clave foránea userId a la tabla de Items
-  sourceKey: 'id' // Conecta con el id del Usuario
+  as: 'PurchasedItems',
+  foreignKey: 'userId',
+  sourceKey: 'id'
 });
 
 Item.belongsTo(User, {
-  foreignKey: 'userId', // Establece que cada Item pertenece a un Usuario
-  targetKey: 'id' // Conecta con el id del Usuario
-})
+  as: 'Buyer',
+  foreignKey: 'userId',
+  targetKey: 'id'
+});
 
-User.hasMany(OrderReservation, { foreignKey: 'userId' });
-OrderReservation.belongsTo(User, { foreignKey: 'userId' });
+User.hasMany(OrderReservation, { 
+  as: 'Reservations',
+  foreignKey: 'userId' 
+});
 
-// Relación entre Pack y Reserva
-Pack.hasMany(OrderReservation, { foreignKey: 'packId' });
-OrderReservation.belongsTo(Pack, { foreignKey: 'packId' });
+OrderReservation.belongsTo(User, { 
+  as: 'Customer',
+  foreignKey: 'userId' 
+});
 
-// ===== NUEVAS RELACIONES PARA EL SISTEMA DE AGENCIA =====
+// ✅ 5. RELACIONES PACK - RESERVAS
+Pack.hasMany(OrderReservation, { 
+  as: 'Reservations',
+  foreignKey: 'packId' 
+});
 
-// Relaciones de Quote
-User.hasMany(Quote, { as: 'QuotesAsAsesor', foreignKey: 'asesor_id' });
-User.hasMany(Quote, { as: 'QuotesAsLider', foreignKey: 'lider_id' });
-User.hasMany(Quote, { as: 'QuotesAsGerente', foreignKey: 'gerente_id' });
-User.hasMany(Quote, { as: 'QuotesAsCliente', foreignKey: 'cliente_id' });
+OrderReservation.belongsTo(Pack, { 
+  as: 'Package',
+  foreignKey: 'packId' 
+});
 
-Quote.belongsTo(User, { as: 'Asesor', foreignKey: 'asesor_id' });
-Quote.belongsTo(User, { as: 'Lider', foreignKey: 'lider_id' });
-Quote.belongsTo(User, { as: 'Gerente', foreignKey: 'gerente_id' });
-Quote.belongsTo(User, { as: 'Cliente', foreignKey: 'cliente_id' });
+// ✅ 6. RELACIONES DE COTIZACIONES (QUOTE)
+// Usuario como vendedor en diferentes roles
+User.hasMany(Quote, { 
+  as: 'QuotesAsAsesor', 
+  foreignKey: 'asesor_id' 
+});
 
-// Relaciones de Contract
-Quote.hasOne(Contract, { foreignKey: 'quote_id' });
-Contract.belongsTo(Quote, { foreignKey: 'quote_id' });
+User.hasMany(Quote, { 
+  as: 'QuotesAsLider', 
+  foreignKey: 'lider_id' 
+});
 
+User.hasMany(Quote, { 
+  as: 'QuotesAsGerente', 
+  foreignKey: 'gerente_id' 
+});
+
+// ✅ NUEVA RELACIÓN PARA ADMIN
+User.hasMany(Quote, { 
+  as: 'QuotesAsAdmin', 
+  foreignKey: 'admin_id' 
+});
+
+User.hasMany(Quote, { 
+  as: 'QuotesAsCliente', 
+  foreignKey: 'cliente_id' 
+});
+
+// Quote pertenece a usuarios en diferentes roles
+Quote.belongsTo(User, { 
+  as: 'Asesor', 
+  foreignKey: 'asesor_id' 
+});
+
+Quote.belongsTo(User, { 
+  as: 'Lider', 
+  foreignKey: 'lider_id' 
+});
+
+Quote.belongsTo(User, { 
+  as: 'Gerente', 
+  foreignKey: 'gerente_id' 
+});
+
+// ✅ NUEVA RELACIÓN PARA ADMIN
+Quote.belongsTo(User, { 
+  as: 'Admin', 
+  foreignKey: 'admin_id' 
+});
+
+Quote.belongsTo(User, { 
+  as: 'Cliente', 
+  foreignKey: 'cliente_id' 
+});
+
+// ✅ 7. RELACIONES QUOTE - QUOTE ITEMS
 Quote.hasMany(QuoteItem, { 
   foreignKey: 'quote_id', 
-  as: 'items'
-  
+  as: 'Items'
 });
+
 QuoteItem.belongsTo(Quote, { 
   foreignKey: 'quote_id', 
-  as: 'quote' 
-}); 
-User.hasMany(Contract, { as: 'ContractsAsCliente', foreignKey: 'cliente_id' });
-Contract.belongsTo(User, { as: 'Cliente', foreignKey: 'cliente_id' });
+  as: 'Quote' 
+});
 
-// Relaciones de Payment
-Contract.hasMany(Payment, { foreignKey: 'contract_id' });
-Payment.belongsTo(Contract, { foreignKey: 'contract_id' });
+// ✅ 8. RELACIONES QUOTE - CONTRACT
+Quote.hasOne(Contract, { 
+  as: 'Contract',
+  foreignKey: 'quote_id' 
+});
 
-// Relaciones de PackagePurchase
-Contract.hasMany(PackagePurchase, { foreignKey: 'contract_id' });
-PackagePurchase.belongsTo(Contract, { foreignKey: 'contract_id' });
+Contract.belongsTo(Quote, { 
+  as: 'Quote',
+  foreignKey: 'quote_id' 
+});
 
-// Relaciones de Commission
-Contract.hasMany(Commission, { foreignKey: 'contract_id' });
-Commission.belongsTo(Contract, { foreignKey: 'contract_id' });
+// ✅ 9. RELACIONES CONTRACT - USER
+User.hasMany(Contract, { 
+  as: 'ContractsAsCliente', 
+  foreignKey: 'cliente_id' 
+});
 
-User.hasMany(Commission, { as: 'CommissionsAsVendedor', foreignKey: 'vendedor_id' });
-Commission.belongsTo(User, { as: 'Vendedor', foreignKey: 'vendedor_id' });
+Contract.belongsTo(User, { 
+  as: 'Cliente', 
+  foreignKey: 'cliente_id' 
+});
 
-User.hasMany(Commission, { as: 'CommissionsPagadas', foreignKey: 'pagado_por' });
-Commission.belongsTo(User, { as: 'PagadoPor', foreignKey: 'pagado_por' });
+// ✅ 10. RELACIONES CONTRACT - PAYMENTS
+Contract.hasMany(Payment, { 
+  as: 'Payments',
+  foreignKey: 'contract_id' 
+});
 
-// Relaciones de SupportDocument
-User.hasMany(SupportDocument, { as: 'DocumentsAsVendedor', foreignKey: 'vendedor_id' });
-User.hasMany(SupportDocument, { as: 'DocumentsAsVendedorReal', foreignKey: 'vendedor_real_id' });
-User.hasMany(SupportDocument, { as: 'DocumentsAprobados', foreignKey: 'aprobado_por' });
-User.hasMany(SupportDocument, { as: 'DocumentsPagados', foreignKey: 'pagado_por' });
+Payment.belongsTo(Contract, { 
+  as: 'Contract',
+  foreignKey: 'contract_id' 
+});
 
-SupportDocument.belongsTo(User, { as: 'Vendedor', foreignKey: 'vendedor_id' });
-SupportDocument.belongsTo(User, { as: 'VendedorReal', foreignKey: 'vendedor_real_id' });
-SupportDocument.belongsTo(User, { as: 'AprobadoPor', foreignKey: 'aprobado_por' });
-SupportDocument.belongsTo(User, { as: 'PagadoPor', foreignKey: 'pagado_por' });
+// ✅ 11. RELACIONES CONTRACT - PACKAGE PURCHASES
+Contract.hasMany(PackagePurchase, { 
+  as: 'PackagePurchases',
+  foreignKey: 'contract_id' 
+});
+
+PackagePurchase.belongsTo(Contract, { 
+  as: 'Contract',
+  foreignKey: 'contract_id' 
+});
+
+// ✅ 12. RELACIONES DE COMISIONES
+Contract.hasMany(Commission, { 
+  as: 'Commissions',
+  foreignKey: 'contract_id' 
+});
+
+Commission.belongsTo(Contract, { 
+  as: 'Contract',
+  foreignKey: 'contract_id' 
+});
+
+User.hasMany(Commission, { 
+  as: 'CommissionsAsVendedor', 
+  foreignKey: 'vendedor_id' 
+});
+
+Commission.belongsTo(User, { 
+  as: 'Vendedor', 
+  foreignKey: 'vendedor_id' 
+});
+
+User.hasMany(Commission, { 
+  as: 'CommissionsPagadas', 
+  foreignKey: 'pagado_por' 
+});
+
+Commission.belongsTo(User, { 
+  as: 'PagadoPor', 
+  foreignKey: 'pagado_por' 
+});
+
+// ✅ 13. RELACIONES DE DOCUMENTOS DE SOPORTE
+User.hasMany(SupportDocument, { 
+  as: 'DocumentsAsVendedor', 
+  foreignKey: 'vendedor_id' 
+});
+
+User.hasMany(SupportDocument, { 
+  as: 'DocumentsAsVendedorReal', 
+  foreignKey: 'vendedor_real_id' 
+});
+
+User.hasMany(SupportDocument, { 
+  as: 'DocumentsAprobados', 
+  foreignKey: 'aprobado_por' 
+});
+
+User.hasMany(SupportDocument, { 
+  as: 'DocumentsPagados', 
+  foreignKey: 'pagado_por' 
+});
+
+SupportDocument.belongsTo(User, { 
+  as: 'Vendedor', 
+  foreignKey: 'vendedor_id' 
+});
+
+SupportDocument.belongsTo(User, { 
+  as: 'VendedorReal', 
+  foreignKey: 'vendedor_real_id' 
+});
+
+SupportDocument.belongsTo(User, { 
+  as: 'AprobadoPor', 
+  foreignKey: 'aprobado_por' 
+});
+
+SupportDocument.belongsTo(User, { 
+  as: 'PagadoPor', 
+  foreignKey: 'pagado_por' 
+});
 
 // Relación recursiva para documentos derivados
-SupportDocument.hasMany(SupportDocument, { as: 'DocumentosDerivados', foreignKey: 'documento_padre_id' });
-SupportDocument.belongsTo(SupportDocument, { as: 'DocumentoPadre', foreignKey: 'documento_padre_id' });
+SupportDocument.hasMany(SupportDocument, { 
+  as: 'DocumentosDerivados', 
+  foreignKey: 'documento_padre_id' 
+});
 
-// Relación entre Commission y SupportDocument
-SupportDocument.hasMany(Commission, { foreignKey: 'documento_soporte_id' });
-Commission.belongsTo(SupportDocument, { as: 'DocumentoSoporte', foreignKey: 'documento_soporte_id' });
+SupportDocument.belongsTo(SupportDocument, { 
+  as: 'DocumentoPadre', 
+  foreignKey: 'documento_padre_id' 
+});
 
-// Relaciones de AutoMessage
-User.hasMany(AutoMessage, { as: 'MessagesAsCliente', foreignKey: 'cliente_id' });
-User.hasMany(AutoMessage, { as: 'MessagesCreated', foreignKey: 'creado_por' });
+// ✅ 14. RELACIONES COMMISSION - SUPPORT DOCUMENT
+SupportDocument.hasMany(Commission, { 
+  as: 'RelatedCommissions',
+  foreignKey: 'documento_soporte_id' 
+});
 
-AutoMessage.belongsTo(User, { as: 'Cliente', foreignKey: 'cliente_id' });
-AutoMessage.belongsTo(User, { as: 'CreadoPor', foreignKey: 'creado_por' });
+Commission.belongsTo(SupportDocument, { 
+  as: 'DocumentoSoporte', 
+  foreignKey: 'documento_soporte_id' 
+});
 
-Contract.hasMany(AutoMessage, { foreignKey: 'contract_id' });
-AutoMessage.belongsTo(Contract, { foreignKey: 'contract_id' });
+// ✅ 15. RELACIONES DE MENSAJES AUTOMÁTICOS
+User.hasMany(AutoMessage, { 
+  as: 'MessagesAsCliente', 
+  foreignKey: 'cliente_id' 
+});
 
-// Relaciones de Invoice
-Contract.hasMany(Invoice, { foreignKey: 'contract_id' });
-Invoice.belongsTo(Contract, { foreignKey: 'contract_id' });
+User.hasMany(AutoMessage, { 
+  as: 'MessagesCreated', 
+  foreignKey: 'creado_por' 
+});
 
-User.hasMany(Invoice, { as: 'InvoicesAsCliente', foreignKey: 'cliente_id' });
-User.hasMany(Invoice, { as: 'InvoicesGenerated', foreignKey: 'generada_por' });
-User.hasMany(Invoice, { as: 'InvoicesApproved', foreignKey: 'aprobada_por' });
+AutoMessage.belongsTo(User, { 
+  as: 'Cliente', 
+  foreignKey: 'cliente_id' 
+});
 
-Invoice.belongsTo(User, { as: 'Cliente', foreignKey: 'cliente_id' });
-Invoice.belongsTo(User, { as: 'GeneradaPor', foreignKey: 'generada_por' });
-Invoice.belongsTo(User, { as: 'AprobadaPor', foreignKey: 'aprobada_por' });
+AutoMessage.belongsTo(User, { 
+  as: 'CreadoPor', 
+  foreignKey: 'creado_por' 
+});
 
-  module.exports = {
-    ...sequelize.models, // para poder importar los modelos así: const { Product, User } = require('./db.js');
-    conn: sequelize,     // para importart la conexión { conn } = require('./db.js');
-  };
+Contract.hasMany(AutoMessage, { 
+  as: 'AutoMessages',
+  foreignKey: 'contract_id' 
+});
+
+AutoMessage.belongsTo(Contract, { 
+  as: 'Contract',
+  foreignKey: 'contract_id' 
+});
+
+// ✅ 16. RELACIONES DE FACTURAS
+Contract.hasMany(Invoice, { 
+  as: 'Invoices',
+  foreignKey: 'contract_id' 
+});
+
+Invoice.belongsTo(Contract, { 
+  as: 'Contract',
+  foreignKey: 'contract_id' 
+});
+
+User.hasMany(Invoice, { 
+  as: 'InvoicesAsCliente', 
+  foreignKey: 'cliente_id' 
+});
+
+User.hasMany(Invoice, { 
+  as: 'InvoicesGenerated', 
+  foreignKey: 'generada_por' 
+});
+
+User.hasMany(Invoice, { 
+  as: 'InvoicesApproved', 
+  foreignKey: 'aprobada_por' 
+});
+
+Invoice.belongsTo(User, { 
+  as: 'Cliente', 
+  foreignKey: 'cliente_id' 
+});
+
+Invoice.belongsTo(User, { 
+  as: 'GeneradaPor', 
+  foreignKey: 'generada_por' 
+});
+
+Invoice.belongsTo(User, { 
+  as: 'AprobadaPor', 
+  foreignKey: 'aprobada_por' 
+});
+
+module.exports = {
+  ...sequelize.models, // para poder importar los modelos así: const { Product, User } = require('./db.js');
+  conn: sequelize,     // para importart la conexión { conn } = require('./db.js');
+};

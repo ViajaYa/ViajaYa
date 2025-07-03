@@ -8,6 +8,9 @@ const {
 } = require('../middlewares/authMiddleware');
 
 // ✅ RUTAS PÚBLICAS (sin autenticación)
+// Crear cotización externa desde web pública
+router.post('/external', quoteController.createExternalQuote);
+
 // Crear nueva cotización (Visitantes y usuarios autenticados)
 router.post('/', quoteController.createQuote);
 
@@ -21,24 +24,38 @@ router.patch('/:id/reject', quoteController.rejectQuote);
 router.patch('/:id/requote', quoteController.requestRequote);
 
 // ✅ RUTAS CON AUTENTICACIÓN BÁSICA
+// Crear cotización desde usuario autenticado (con auto-asignación)
+router.post('/user/:userId', authenticateToken, quoteController.createQuoteFromUser);
+
+// Obtener cotizaciones del usuario autenticado (según su rol y jerarquía)
+router.get('/user/:userId', authenticateToken, quoteController.getQuotesByUser);
+
 // Obtener cotización por ID (Vendedores pueden ver sus propias cotizaciones, Admin y superiores todas)
 router.get('/:id', authenticateToken, quoteController.getQuoteById);
 
-// ✅ RUTAS PARA ROLES ALTOS (Owner, Admin)
-// Obtener todas las cotizaciones (Solo Owner y Admin)
-router.get('/', authenticateToken, authorizeRoles(5, 6, 7), quoteController.getAllQuotes);
+// ✅ RUTAS PARA VENDEDORES (Asesor, Líder, Gerente)
+// Actualizar cotización - Vendedores pueden actualizar sus propias cotizaciones
+router.put('/:id', authenticateToken, authorizeRoles(2, 3, 4, 5, 6, 7), quoteController.updateQuote);
 
-// Actualizar cotización - completar por Owner/Admin (Solo Owner y Admin)
-router.put('/:id', authenticateToken, authorizeRoles(5, 6, 7), quoteController.updateQuote);
+// Enviar cotización al cliente (Líder en adelante)
+router.patch('/:id/send', authenticateToken, authorizeRoles(3, 4, 5, 6, 7), quoteController.sendQuote);
 
-// Enviar cotización al cliente (Solo Owner y Admin)
-router.put('/:id/send', authenticateToken, authorizeRoles(5, 6, 7), quoteController.sendQuote);
+// ✅ RUTAS PARA ROLES MEDIOS Y ALTOS (Líder, Gerente, Admin, Owner)
+// Obtener todas las cotizaciones (Con filtros según rol)
+router.get('/', authenticateToken, authorizeRoles(3, 4, 5, 6, 7), quoteController.getAllQuotes);
 
-// Marcar cotizaciones expiradas (Proceso automatizado - Solo Admin)
+// ✅ RUTAS PARA ROLES ALTOS (Admin, Contador, Owner)
+// Obtener cotizaciones externas pendientes de asignación
+router.get('/external/list', authenticateToken, authorizeRoles(5, 6, 7), quoteController.getExternalQuotes);
+
+// Reasignar cotización externa
+router.patch('/:id/reassign', authenticateToken, authorizeRoles(5, 6, 7), quoteController.reassignExternalQuote);
+
+// Marcar cotizaciones expiradas (Proceso automatizado - Solo Owner)
 router.post('/mark-expired', authenticateToken, authorizeRoles(7), quoteController.markExpiredQuotes);
 
 // ✅ RUTAS CON JERARQUÍA
 // Obtener cotizaciones por vendedor (Con verificación de jerarquía)
-router.get('/vendedor/:tipo/:vendedor_id', authenticateToken, authorizeHierarchy, quoteController.getQuotesByVendedor);
+router.get('/vendedor/:vendedor_id/:tipo', authenticateToken, authorizeHierarchy, quoteController.getQuotesByVendedor);
 
 module.exports = router;

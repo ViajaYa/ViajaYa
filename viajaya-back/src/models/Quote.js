@@ -2,7 +2,7 @@ const { DataTypes } = require('sequelize');
 const { v4: uuidv4 } = require('uuid');
 
 module.exports = (sequelize) => {
-  sequelize.define('quote', {
+  const Quote = sequelize.define('Quote', {
     id: {
       type: DataTypes.UUID,
       defaultValue: uuidv4,
@@ -13,24 +13,25 @@ module.exports = (sequelize) => {
       unique: true,
       allowNull: false,
     },
+    // ✅ Información del cliente (para cotizaciones externas)
     nombre_cliente: {
-  type: DataTypes.STRING,
-  allowNull: true,
-},
-email_cliente: {
-  type: DataTypes.STRING,
-  allowNull: true,
-},
-telefono_cliente: {
-  type: DataTypes.STRING,
-  allowNull: true,
-},
-    // IDs de la jerarquía de ventas
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    email_cliente: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    telefono_cliente: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    // ✅ IDs de la jerarquía de ventas
     asesor_id: {
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'users',
+        model: 'Users',
         key: 'id'
       }
     },
@@ -38,7 +39,7 @@ telefono_cliente: {
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'users',
+        model: 'Users',
         key: 'id'
       }
     },
@@ -46,7 +47,15 @@ telefono_cliente: {
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'users',
+        model: 'Users',
+        key: 'id'
+      }
+    },
+    admin_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'Users',
         key: 'id'
       }
     },
@@ -54,11 +63,11 @@ telefono_cliente: {
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'users',
+        model: 'Users',
         key: 'id'
       }
     },
-    // Datos del viaje
+    // ✅ Datos del viaje
     numero_personas: {
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -67,8 +76,6 @@ telefono_cliente: {
       type: DataTypes.DATE,
       allowNull: false,
     },
-   
-   
     alimentacion: {
       type: DataTypes.TEXT,
       allowNull: true,
@@ -89,7 +96,7 @@ telefono_cliente: {
       type: DataTypes.STRING,
       allowNull: true,
     },
-     traslado: {
+    traslado: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
       allowNull: false,
@@ -110,7 +117,7 @@ telefono_cliente: {
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    // Estados y precios
+    // ✅ Estados y precios
     status: {
       type: DataTypes.ENUM('pending', 'completed', 'sent', 'approved', 'requote', 'rejected', 'expired'),
       defaultValue: 'pending',
@@ -119,7 +126,33 @@ telefono_cliente: {
       type: DataTypes.DECIMAL(12, 2),
       allowNull: true,
     },
-    // Fechas de control
+    // ✅ NUEVOS CAMPOS PARA COTIZACIONES EXTERNAS Y GESTIÓN
+    source: {
+      type: DataTypes.ENUM('internal', 'external'),
+      defaultValue: 'internal',
+     
+    },
+    is_external: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    priority: {
+      type: DataTypes.ENUM('low', 'normal', 'high'),
+      defaultValue: 'normal',
+    },
+    created_by: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    reassigned_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    reassignment_reason: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    // ✅ Fechas de control existentes
     completed_at: {
       type: DataTypes.DATE,
       allowNull: true,
@@ -127,10 +160,77 @@ telefono_cliente: {
     approved_at: {
       type: DataTypes.DATE,
       allowNull: true,
+    },
+    // ✅ Nuevas fechas de control
+    sent_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    expires_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    rejected_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    motivo_rechazo: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    requote_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    requote_reason: {
+      type: DataTypes.TEXT,
+      allowNull: true,
     }
-  }, {
+  }, 
+  {
     timestamps: true,
     createdAt: 'created_at',
-    updatedAt: 'updated_at'
+    updatedAt: 'updated_at',
+    tableName: 'Quotes', // ✅ Nombre explícito de la tabla
+    indexes: [
+      
+      {
+        fields: ['quote_number'],
+        unique: true
+      },
+      {
+        fields: ['status']
+      },
+      {
+        fields: ['is_external']
+      },
+      {
+        fields: ['priority']
+      },
+      {
+        fields: ['asesor_id']
+      },
+      {
+        fields: ['lider_id']
+      },
+      {
+        fields: ['gerente_id']
+      },
+      {
+        fields: ['admin_id']
+      },
+      {
+        fields: ['cliente_id']
+      },
+      {
+        fields: ['email_cliente']
+      },
+      {
+        fields: ['created_at']
+      },
+      {
+        fields: ['expires_at']
+      }
+    ]
   });
-};
+}

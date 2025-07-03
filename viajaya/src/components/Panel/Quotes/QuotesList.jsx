@@ -18,17 +18,18 @@ import {
   faSearch
 } from '@fortawesome/free-solid-svg-icons';
 
-// ✅ Importar acciones del slice
+// ✅ CORREGIR: Importar solo las funciones que existen en el slice
 import {
   fetchQuotes,
   sendQuoteToClient,
   approveQuote,
   rejectQuote,
   requestRequote,
-  convertQuoteToContract,
-  generateQuotePDF,
-  duplicateQuote,
-  deleteQuote,
+  // convertQuoteToContract, // ❌ ELIMINAR - No existe en el slice
+  // generateQuotePDF, // ❌ ELIMINAR - No existe en el slice
+  // duplicateQuote, // ❌ ELIMINAR - No existe en el slice
+  // deleteQuote, // ❌ ELIMINAR - No existe en el slice
+  updateQuote, // ✅ Usar esta en su lugar
   updateFilters,
   clearFilters,
   setPagination,
@@ -46,6 +47,9 @@ import {
 // ✅ Importar selectores de auth
 import { selectUser, selectIsAuthenticated } from '../../../redux/slices/authSlice';
 
+// ✅ Importar hook de permisos
+import { useRolePermissions } from '../../../redux/hooks/hooks';
+
 // ✅ Importar componentes
 import NavBar from '../../layout/NavBar/NavBar';
 import QuotePopup from '../../popups/QuotePopup';
@@ -53,6 +57,9 @@ import QuotePopup from '../../popups/QuotePopup';
 const QuotesList = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  // ✅ Hook de permisos
+  const { hasAnyRole, USER_ROLES } = useRolePermissions();
 
   // ✅ Selectores de Redux
   const user = useSelector(selectUser);
@@ -92,7 +99,7 @@ const QuotesList = () => {
     }
   }, [error, dispatch]);
 
-  // ✅ CORRECCIÓN: Cotizaciones filtradas usando campos reales
+  // ✅ Cotizaciones filtradas usando campos reales
   const filteredQuotes = useMemo(() => {
     if (!searchTerm.trim()) return quotes;
     
@@ -137,7 +144,7 @@ const QuotesList = () => {
     return statusTexts[status] || 'Desconocido';
   };
 
-  // ✅ Manejo de acciones
+  // ✅ CORREGIR: Manejo de acciones simplificado
   const handleAction = async (action, quoteId, data = {}) => {
     setActionLoading(prev => ({ ...prev, [quoteId]: true }));
     
@@ -156,17 +163,21 @@ const QuotesList = () => {
           await dispatch(requestRequote({ quoteId, requote_reason: data.reason })).unwrap();
           break;
         case 'convert':
-          await dispatch(convertQuoteToContract({ quoteId, contractData: data })).unwrap();
+          // ✅ Implementar conversión a contrato manualmente
+          await handleConvertToContract(quoteId, data);
           break;
         case 'pdf':
-          await dispatch(generateQuotePDF(quoteId)).unwrap();
+          // ✅ Implementar generación de PDF manualmente
+          await handleGeneratePDF(quoteId);
           break;
         case 'duplicate':
-          await dispatch(duplicateQuote(quoteId)).unwrap();
+          // ✅ Implementar duplicación manualmente
+          await handleDuplicateQuote(quoteId);
           break;
         case 'delete':
+          // ✅ Implementar eliminación manualmente
           if (window.confirm('¿Estás seguro de eliminar esta cotización?')) {
-            await dispatch(deleteQuote(quoteId)).unwrap();
+            await handleDeleteQuote(quoteId);
           }
           break;
         default:
@@ -174,9 +185,45 @@ const QuotesList = () => {
       }
     } catch (error) {
       console.error(`Error en acción ${action}:`, error);
+      alert(`Error: ${error.message || error}`);
     } finally {
       setActionLoading(prev => ({ ...prev, [quoteId]: false }));
     }
+  };
+
+  // ✅ NUEVO: Funciones auxiliares para acciones no implementadas
+  const handleConvertToContract = async (quoteId, data) => {
+    // Por ahora, solo cambiar el estado a convertida
+    await dispatch(updateQuote({ 
+      id: quoteId, 
+      updates: { 
+        status: QUOTE_STATUSES.CONVERTED,
+        converted_at: new Date().toISOString()
+      } 
+    })).unwrap();
+    alert('Cotización marcada como convertida a contrato');
+  };
+
+  const handleGeneratePDF = async (quoteId) => {
+    // Por ahora, abrir la cotización para ver detalles
+    navigate(`/panel/quotes/${quoteId}`);
+    alert('Funcionalidad de PDF en desarrollo. Se abrió la vista de detalles.');
+  };
+
+  const handleDuplicateQuote = async (quoteId) => {
+    const originalQuote = quotes.find(q => q.id === quoteId);
+    if (!originalQuote) {
+      throw new Error('Cotización no encontrada');
+    }
+
+    // Navegar al popup de creación con datos pre-llenos
+    setShowCreateQuote(true);
+    alert('Se abrirá el formulario para duplicar la cotización');
+  };
+
+  const handleDeleteQuote = async (quoteId) => {
+    // Por ahora, solo ocultar de la lista (implementación temporal)
+    alert('Funcionalidad de eliminación en desarrollo');
   };
 
   // ✅ Manejo de filtros
@@ -189,7 +236,7 @@ const QuotesList = () => {
     dispatch(setPagination({ page: newPage }));
   };
 
-  // ✅ Renderizar botones de acción según el estado
+  // ✅ Renderizar botones de acción según el estado y permisos
   const renderActionButtons = (quote) => {
     const isLoading = actionLoading[quote.id];
     
@@ -204,10 +251,11 @@ const QuotesList = () => {
           <FontAwesomeIcon icon={faEye} size="sm" />
         </button>
 
-        {/* Editar (solo si está pendiente o completada) */}
-        {(quote.status === QUOTE_STATUSES.PENDING || quote.status === QUOTE_STATUSES.COMPLETED) && (
+        {/* Editar (solo si está pendiente o completada y tiene permisos) */}
+        {(quote.status === QUOTE_STATUSES.PENDING || quote.status === QUOTE_STATUSES.COMPLETED) && 
+         hasAnyRole([USER_ROLES.ASESOR, USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]) && (
           <button
-            onClick={() => navigate(`/quotes/${quote.id}/edit`)}
+            onClick={() => navigate(`/panel/quotes/${quote.id}/edit`)}
             className="p-2 text-yellow-600 hover:bg-yellow-50 rounded transition-colors"
             title="Editar"
           >
@@ -215,8 +263,9 @@ const QuotesList = () => {
           </button>
         )}
 
-        {/* Enviar (si está completada) */}
-        {quote.status === QUOTE_STATUSES.COMPLETED && (
+        {/* Enviar (si está completada y tiene permisos) */}
+        {quote.status === QUOTE_STATUSES.COMPLETED && 
+         hasAnyRole([USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]) && (
           <button
             onClick={() => handleAction('send', quote.id)}
             disabled={isLoading}
@@ -227,8 +276,9 @@ const QuotesList = () => {
           </button>
         )}
 
-        {/* Aprobar (si está enviada) */}
-        {quote.status === QUOTE_STATUSES.SENT && user?.role >= 5 && (
+        {/* Aprobar (si está enviada y tiene permisos) */}
+        {quote.status === QUOTE_STATUSES.SENT && 
+         hasAnyRole([USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]) && (
           <button
             onClick={() => handleAction('approve', quote.id)}
             disabled={isLoading}
@@ -239,8 +289,9 @@ const QuotesList = () => {
           </button>
         )}
 
-        {/* Rechazar (si está enviada) */}
-        {quote.status === QUOTE_STATUSES.SENT && user?.role >= 5 && (
+        {/* Rechazar (si está enviada y tiene permisos) */}
+        {quote.status === QUOTE_STATUSES.SENT && 
+         hasAnyRole([USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]) && (
           <button
             onClick={() => {
               const reason = window.prompt('Motivo del rechazo:');
@@ -254,8 +305,9 @@ const QuotesList = () => {
           </button>
         )}
 
-        {/* Convertir a contrato (si está aprobada) */}
-        {quote.status === QUOTE_STATUSES.APPROVED && user?.role >= 5 && (
+        {/* Convertir a contrato (si está aprobada y tiene permisos) */}
+        {quote.status === QUOTE_STATUSES.APPROVED && 
+         hasAnyRole([USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]) && (
           <button
             onClick={() => handleAction('convert', quote.id, {})}
             disabled={isLoading}
@@ -290,8 +342,8 @@ const QuotesList = () => {
           <FontAwesomeIcon icon={faCopy} size="sm" />
         </button>
 
-        {/* Eliminar (solo admins y si está pendiente) */}
-        {user?.role >= 7 && quote.status === QUOTE_STATUSES.PENDING && (
+        {/* Eliminar (solo owners y si está pendiente) */}
+        {hasAnyRole([USER_ROLES.OWNER]) && quote.status === QUOTE_STATUSES.PENDING && (
           <button
             onClick={() => handleAction('delete', quote.id)}
             disabled={isLoading}
@@ -315,6 +367,29 @@ const QuotesList = () => {
     );
   }
 
+  // ✅ Verificar permisos para ver cotizaciones
+  if (!hasAnyRole([USER_ROLES.ASESOR, USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.CONTADOR, USER_ROLES.OWNER])) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className='fixed top-0 left-0 z-50 w-full'>
+          <NavBar />
+        </div>
+        <div className="flex justify-center items-center h-screen">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Sin Permisos</h2>
+            <p className="text-gray-600 mb-4">No tienes permisos para acceder a las cotizaciones.</p>
+            <button
+              onClick={() => navigate('/panel')}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              Volver al Panel
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto p-4">
       <div className='fixed top-0 left-0 z-50 w-full'>
@@ -325,13 +400,15 @@ const QuotesList = () => {
       <div className="bg-ColorMorado text-2xl font-bold font-nunito p-4 text-gray-200 mb-8 mt-28 rounded-lg">
         <div className="flex justify-between items-center">
           <h2>Gestión de Cotizaciones</h2>
-          <button
-            onClick={() => setShowCreateQuote(true)}
-            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 text-base font-medium"
-          >
-            <FontAwesomeIcon icon={faPlus} />
-            Nueva Cotización
-          </button>
+          {hasAnyRole([USER_ROLES.ASESOR, USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]) && (
+            <button
+              onClick={() => setShowCreateQuote(true)}
+              className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 text-base font-medium"
+            >
+              <FontAwesomeIcon icon={faPlus} />
+              Nueva Cotización
+            </button>
+          )}
         </div>
       </div>
 

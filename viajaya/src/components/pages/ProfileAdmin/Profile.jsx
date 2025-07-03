@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { FaRegCopy } from "react-icons/fa6";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { MdPayment, MdExitToApp } from "react-icons/md";
 import axios from "axios";
 import { findUsers, setUsers } from "../../../redux/actions/actions";
@@ -8,13 +9,23 @@ import { useDispatch, useSelector } from "react-redux";
 import { toast, Toaster } from "react-hot-toast";
 import dayjs from "dayjs";
 import "dayjs/locale/es";
+import QuotePopup from "../../popups/QuotePopup";
+import { 
+  faPlus, 
+  faFileInvoice,
+  faUsers,
+  faChartLine
+} from '@fortawesome/free-solid-svg-icons';
 
-// ✅ CORREGIR IMPORTS - cambiar selectLoading por selectAuthLoading
+// ✅ Importar hook de permisos
+import { useRolePermissions, USER_ROLES } from "../../../redux/hooks/hooks";
+
+// ✅ Imports del authSlice corregidos
 import { 
   logout, 
   selectUser, 
   selectIsAuthenticated, 
-  selectAuthLoading, // ✅ Corregido: era selectLoading
+  selectAuthLoading,
   updateProfile,
   changePassword
 } from "../../../redux/slices/authSlice";
@@ -31,16 +42,29 @@ const Profile = () => {
   const [page, setPage] = useState(0);
   const navigate = useNavigate();
   
-  // ✅ Usar selectores del authSlice con nombres correctos
+  // ✅ Redux state
   const dispatch = useDispatch();
   const user = useSelector(selectUser);
   const isAuthenticated = useSelector(selectIsAuthenticated);
-  const authLoading = useSelector(selectAuthLoading); // ✅ Nombre correcto
+  const authLoading = useSelector(selectAuthLoading);
+  const users = useSelector((s) => s.users);
   
+  // ✅ Hook de permisos - solo una llamada
+  const { 
+    hasAnyRole, 
+    canManageQuotes, 
+    canCreateQuotes, 
+    getRoleName,
+    canAccessPanel,
+    canViewOrganization
+  } = useRolePermissions();
+  
+  // ✅ Estados locales
   const [changePass, setChangePass] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showCreateQuote, setShowCreateQuote] = useState(false);
   
-  // ✅ Estados locales para el formulario
+  // ✅ Estados del formulario
   const [formData, setFormData] = useState({
     name: '',
     lastname: '',
@@ -52,18 +76,18 @@ const Profile = () => {
   });
 
   // ✅ Protección de ruta
-  if (!isAuthenticated) {
-    navigate("/login");
-    return null;
-  }
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate("/login");
+    }
+  }, [isAuthenticated, navigate]);
 
-  // ✅ Generar link de referido usando el usuario del authSlice
+  // ✅ Generar link de referido
   const referralLink = user?.referral_code 
     ? `https://viajaya.com/login/${user.referral_code}` 
     : '';
 
-  const users = useSelector((s) => s.users);
-
+  // ✅ Función para copiar al portapapeles
   const copyToClipboard = () => {
     if (referralLink) {
       navigator.clipboard
@@ -75,23 +99,22 @@ const Profile = () => {
     }
   };
 
+  // ✅ Cargar datos iniciales
   useEffect(() => {
-    // ✅ Cargar datos solo si está autenticado
     if (isAuthenticated) {
-      // Cargar usuarios (para admin)
-      axios.get("/user").then((data) => {
-        dispatch(setUsers(data.data));
-        setTimeout(() => {
+      axios.get("/user")
+        .then((data) => {
+          dispatch(setUsers(data.data));
+          setTimeout(() => setLoading(false), 500);
+        })
+        .catch((error) => {
+          console.error('Error loading users:', error);
           setLoading(false);
-        }, 500);
-      }).catch((error) => {
-        console.error('Error loading users:', error);
-        setLoading(false);
-      });
+        });
     }
   }, [dispatch, isAuthenticated]);
 
-  // ✅ Sincronizar formData con el usuario del authSlice
+  // ✅ Sincronizar formData con usuario
   useEffect(() => {
     if (user) {
       setFormData({
@@ -106,19 +129,21 @@ const Profile = () => {
     }
   }, [user]);
 
+  // ✅ Manejar cambios en inputs
   const handleUser = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       [name]: value,
-    });
+    }));
   };
 
+  // ✅ Buscar usuarios
   const findUsuarios = (e) => {
     dispatch(findUsers(e.target.value));
   };
 
-  // ✅ Función de actualización mejorada usando authSlice
+  // ✅ Actualizar usuario
   const updateUser = async () => {
     try {
       if (changePass) {
@@ -133,7 +158,6 @@ const Profile = () => {
           return toast.error("Debes ingresar tu contraseña actual");
         }
 
-        // ✅ Usar acción del authSlice para cambiar contraseña
         await dispatch(changePassword({
           currentPassword: formData.passwordLast,
           newPassword: formData.password2
@@ -141,12 +165,12 @@ const Profile = () => {
 
         toast.success("Contraseña actualizada exitosamente");
         setChangePass(false);
-        setFormData({
-          ...formData,
+        setFormData(prev => ({
+          ...prev,
           passwordLast: '',
           password2: '',
           password3: ''
-        });
+        }));
 
       } else {
         // Validaciones para datos personales
@@ -163,7 +187,6 @@ const Profile = () => {
           return toast.error("Ingresa un número válido");
         }
 
-        // ✅ Usar acción del authSlice para actualizar perfil
         await dispatch(updateProfile({
           name: formData.name,
           lastname: formData.lastname,
@@ -175,17 +198,16 @@ const Profile = () => {
       }
     } catch (error) {
       console.error('Error updating user:', error);
-      toast.error(error || 'Error al actualizar datos');
+      toast.error(error?.message || 'Error al actualizar datos');
     }
   };
 
-  // ✅ Función de subida de imagen (usando fetch directo por ahora)
+  // ✅ Subir imagen de usuario
   const uploadUserImage = async (e) => {
     try {
       const files = e.target.files;
       if (!files || files.length === 0) return;
 
-      // ✅ Subir a Cloudinary (como en el código original)
       const data = new FormData();
       data.append("file", files[0]);
       data.append("upload_preset", "viajaya");
@@ -197,7 +219,6 @@ const Profile = () => {
         data
       );
 
-      // Actualizar perfil con nueva imagen
       await dispatch(updateProfile({
         image: res.data.secure_url
       })).unwrap();
@@ -210,7 +231,7 @@ const Profile = () => {
     }
   };
 
-  // ✅ Función de logout mejorada
+  // ✅ Cerrar sesión
   const handleLogout = async () => {
     try {
       dispatch(logout());
@@ -221,7 +242,7 @@ const Profile = () => {
     }
   };
 
-  // ✅ Mostrar loading mientras se cargan los datos
+  // ✅ Estados de carga
   if (authLoading || loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -230,21 +251,33 @@ const Profile = () => {
     );
   }
 
+  // ✅ Redirección si no está autenticado
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
     <>
       <div className="fixed top-0 left-0 z-50 w-full">
         <NavBar />
       </div>
+      
       <div className="flex flex-col md:flex-row min-h-screen">
-        {/* Contenedor principal */}
-        <div className="flex flex-grow mt-8 ">
-          <div className="w-full lg:w-1/2 p-12 flex flex-col justify-center items-center  ">
+        {/* ✅ Contenedor principal */}
+        <div className="flex flex-grow mt-8">
+          
+          {/* ✅ Columna izquierda - Perfil y formulario */}
+          <div className="w-full lg:w-1/2 p-12 flex flex-col justify-center items-center">
             <Toaster />
-            <div className=" opacity-70 text-white p-4 rounded-lg shadow-md mb-4 w-full">
-              <nav className="flex items-center">
-                <div className="relative">
+            
+            {/* ✅ Header del perfil */}
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 text-gray-800 p-6 rounded-lg shadow-md mb-6 w-full">
+              <div className="flex flex-col md:flex-row items-start md:items-center">
+                
+                {/* ✅ Imagen de perfil */}
+                <div className="relative mb-4 md:mb-0 md:mr-6">
                   <img
-                    className="w-24 h-24 rounded-full border-2 border-gray-300 cursor-pointer mb-4 mr-4 object-cover hidden sm:block"
+                    className="w-24 h-24 rounded-full border-4 border-blue-200 cursor-pointer object-cover shadow-lg hover:border-blue-300 transition-colors"
                     src={
                       user?.image
                         ? user.image
@@ -256,196 +289,283 @@ const Profile = () => {
                   <input
                     id="fileInput"
                     type="file"
+                    accept="image/*"
                     className="absolute inset-0 opacity-0 cursor-pointer"
-                    onChange={uploadUserImage} // ✅ Usar función mejorada
+                    onChange={uploadUserImage}
                   />
+                  <div className="absolute bottom-0 right-0 bg-blue-500 text-white rounded-full p-1 cursor-pointer">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"></path>
+                    </svg>
+                  </div>
                 </div>
 
-                <div className="flex flex-col">
-                  <ul className="flex-col space-y-2 mt-2">
-                    {/* ✅ Mostrar botón solo si hay código de referido */}
+                {/* ✅ Información del usuario */}
+                <div className="flex-1">
+                  <div className="mb-4">
+                    <h2 className="text-xl font-bold text-gray-800">
+                      {user?.name} {user?.lastname}
+                    </h2>
+                    <p className="text-sm text-gray-600">
+                      {getRoleName(user?.role)} • {user?.email}
+                    </p>
+                    {user?.phone && (
+                      <p className="text-sm text-gray-500">
+                        📱 {user.phone}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* ✅ Botones de acción */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    
+                    {/* ✅ Referidos */}
                     {user?.referral_code && (
-                      <>
-                        <button 
-                          onClick={copyToClipboard} 
-                          className="p-1 text-gray-800 font-nunito font-semibold rounded bg-ColorAzul hover:bg-blue-300 flex items-center"
-                        >
-                          Refiere y Gana YA 
-                          <FaRegCopy className="ml-2" />
-                        </button>
-                        <p className="text-gray-800 font-nunito text-xs">{referralLink}</p>
-                      </>
-                    )}
-                    
-                    <li>
-                      <button
-                        onClick={() => navigate("/userReservas")}
-                        className={`p-1 rounded text-gray-600 font-nunito ${
-                          page === 1
-                            ? "bg-ColorMorado text-gray-900"
-                            : "hover:bg-pink-600"
-                        }`}
+                      <button 
+                        onClick={copyToClipboard} 
+                        className="px-4 py-2 text-white font-nunito font-semibold rounded-lg bg-blue-500 hover:bg-blue-600 transition-colors flex items-center justify-center text-sm"
                       >
-                        Mis Reservas
-                        <MdPayment className="inline-block ml-1" />
+                        Refiere y Gana YA 
+                        <FaRegCopy className="ml-2" />
                       </button>
-                    </li>
-                    
-                    {/* ✅ Verificar roles con el usuario del authSlice */}
-                    {user?.role >= 7 && (
-                      <li>
-                        <Link
-                          to="/panel"
-                          className="px-6 py-2 rounded font-nunito bg-ColorMorado hover:bg-pink-600"
-                        >
-                          Panel
-                        </Link>
-                      </li>
                     )}
                     
+                    {/* ✅ Mis Reservas */}
+                    <button
+                      onClick={() => navigate("/userReservas")}
+                      className="px-4 py-2 text-white font-nunito font-semibold rounded-lg bg-purple-500 hover:bg-purple-600 transition-colors flex items-center justify-center text-sm"
+                    >
+                      Mis Reservas
+                      <MdPayment className="ml-2" />
+                    </button>
+
+                    {/* ✅ Nueva Cotización */}
+                    {canCreateQuotes() && (
+                      <button
+                        onClick={() => setShowCreateQuote(true)}
+                        className="px-4 py-2 text-white font-nunito font-semibold rounded-lg bg-green-500 hover:bg-green-600 transition-colors flex items-center justify-center text-sm"
+                      >
+                        <FontAwesomeIcon icon={faPlus} className="mr-2" />
+                        Nueva Cotización
+                      </button>
+                    )}
+
+                    {/* ✅ Panel Admin */}
+                    {canAccessPanel() && user?.role >= 5 && (
+                      <Link
+                        to="/panel"
+                        className="px-4 py-2 text-white font-nunito font-semibold rounded-lg bg-red-500 hover:bg-red-600 transition-colors flex items-center justify-center text-sm"
+                      >
+                        <FontAwesomeIcon icon={faUsers} className="mr-2" />
+                        Panel Admin
+                      </Link>
+                    )}
+
+                    {/* ✅ Gestión de Cotizaciones */}
+                    {canManageQuotes() && (
+                      <Link
+                        to="/quotesList"
+                        className="px-4 py-2 text-white font-nunito font-semibold rounded-lg bg-orange-500 hover:bg-orange-600 transition-colors flex items-center justify-center text-sm"
+                      >
+                        <FontAwesomeIcon icon={faFileInvoice} className="mr-2" />
+                        Gestionar Cotizaciones
+                      </Link>
+                    )}
+
+                    {/* ✅ Mi Equipo */}
+                    {canViewOrganization() && (
+                      <Link
+                        to="/panel/organization"
+                        className="px-4 py-2 text-white font-nunito font-semibold rounded-lg bg-indigo-500 hover:bg-indigo-600 transition-colors flex items-center justify-center text-sm"
+                      >
+                        <FontAwesomeIcon icon={faChartLine} className="mr-2" />
+                        Mi Equipo
+                      </Link>
+                    )}
+
+                    {/* ✅ Capacitaciones */}
                     {user?.role >= 2 && (
-                      <li>
-                        <Link
-                          to="/capacitacion"
-                          className="px-6 py-2 rounded font-nunito bg-ColorMorado hover:bg-pink-600"
-                        >
-                          Capacitaciones
-                        </Link>
-                      </li>
-                    )}
-                    
-                    <li>
-                      <button
-                        onClick={handleLogout} // ✅ Usar función mejorada
-                        className="p-1 text-gray-600 font-nunito rounded hover:bg-pink-600"
+                      <Link
+                        to="/capacitacion"
+                        className="px-4 py-2 text-white font-nunito font-semibold rounded-lg bg-yellow-500 hover:bg-yellow-600 transition-colors flex items-center justify-center text-sm"
                       >
-                        Cerrar sesión{" "}
-                        <MdExitToApp className="inline-block ml-1" />
-                      </button>
-                    </li>
-                  </ul>
+                        📚 Capacitaciones
+                      </Link>
+                    )}
+
+                    {/* ✅ Cerrar Sesión */}
+                    <button
+                      onClick={handleLogout}
+                      className="px-4 py-2 text-white font-nunito font-semibold rounded-lg bg-gray-500 hover:bg-gray-600 transition-colors flex items-center justify-center text-sm"
+                    >
+                      Cerrar sesión
+                      <MdExitToApp className="ml-2" />
+                    </button>
+                  </div>
+
+                  {/* ✅ Link de referido */}
+                  {user?.referral_code && (
+                    <div className="mt-4 p-3 bg-white rounded-lg border border-gray-200">
+                      <p className="text-xs text-gray-500 mb-1">Tu enlace de referido:</p>
+                      <p className="text-gray-700 font-mono text-xs break-all">
+                        {referralLink}
+                      </p>
+                    </div>
+                  )}
                 </div>
-              </nav>
+              </div>
             </div>
             
+            {/* ✅ Formulario de datos */}
             {page === 0 && (
-              <div className="w-full max-w-md mx-auto bg-white p-2 rounded-lg shadow-lg">
+              <div className="w-full max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg">
                 <form onSubmit={(e) => e.preventDefault()}>
                   {!changePass ? (
                     <>
-                      <span className="text-lg font-bold font-nunito text-center text-gray-700">
-                        Mis Datos
-                      </span>
-                      <div className="flex space-x-4 mb-4 mt-6">
-                        <div className="flex-1">
+                      <h3 className="text-lg font-bold font-nunito text-center text-gray-700 mb-6">
+                        Mis Datos Personales
+                      </h3>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <input
-                            className="w-full p-2 border font-nunito border-gray-300 rounded"
+                            className="w-full p-3 border font-nunito border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             onChange={handleUser}
                             name="name"
                             value={formData.name}
                             placeholder="Nombre"
+                            required
                           />
                           <input
-                            className="w-full p-2 border font-nunito border-gray-300 rounded mt-2"
+                            className="w-full p-3 border font-nunito border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             onChange={handleUser}
                             name="lastname"
                             value={formData.lastname}
                             placeholder="Apellido"
+                            required
                           />
                         </div>
-                        <div className="flex-1">
-                          <input
-                            className="w-full p-2 border font-nunito border-gray-300 rounded"
-                            onChange={handleUser}
-                            name="email"
-                            value={formData.email}
-                            placeholder="Email"
-                          />
-                          <input
-                            className="w-full p-2 border font-nunito border-gray-300 rounded mt-2"
-                            onChange={handleUser}
-                            name="phone"
-                            value={formData.phone}
-                            placeholder="Teléfono"
-                          />
-                        </div>
+                        <input
+                          className="w-full p-3 border font-nunito border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          onChange={handleUser}
+                          name="email"
+                          type="email"
+                          value={formData.email}
+                          placeholder="Email"
+                          required
+                        />
+                        <input
+                          className="w-full p-3 border font-nunito border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          onChange={handleUser}
+                          name="phone"
+                          type="tel"
+                          value={formData.phone}
+                          placeholder="Teléfono (10 dígitos)"
+                          required
+                        />
                       </div>
                     </>
                   ) : (
                     <>
-                      <span className="text-lg font-bold font-nunito text-center text-gray-700">
+                      <h3 className="text-lg font-bold font-nunito text-center text-gray-700 mb-6">
                         Cambiar Contraseña
-                      </span>
-                      <div className="mb-4 mt-6">
+                      </h3>
+                      <div className="space-y-4">
                         <input
-                          className="w-full p-2 border font-nunito border-gray-300 rounded"
+                          className="w-full p-3 border font-nunito border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           onChange={handleUser}
                           name="passwordLast"
                           type="password"
                           value={formData.passwordLast}
                           placeholder="Contraseña actual"
+                          required
                         />
                         <input
-                          className="w-full p-2 border font-nunito border-gray-300 rounded mt-2"
+                          className="w-full p-3 border font-nunito border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           onChange={handleUser}
                           name="password2"
                           type="password"
                           value={formData.password2}
-                          placeholder="Nueva contraseña"
+                          placeholder="Nueva contraseña (mín. 8 caracteres)"
+                          required
                         />
                         <input
-                          className="w-full p-2 border font-nunito border-gray-300 rounded mt-2"
+                          className="w-full p-3 border font-nunito border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           onChange={handleUser}
                           name="password3"
                           type="password"
                           value={formData.password3}
                           placeholder="Confirmar nueva contraseña"
+                          required
                         />
                       </div>
                     </>
                   )}
-                  <button
-                    onClick={updateUser}
-                    disabled={authLoading}
-                    className="w-full bg-ColorMorado font-nunito text-white p-2 rounded hover:bg-pink-600 disabled:opacity-50"
-                  >
-                    {authLoading 
-                      ? "Actualizando..." 
-                      : changePass 
-                        ? "Actualizar contraseña" 
-                        : "Actualizar datos"
-                    }
-                  </button>
-                  <button
-                    onClick={() => setChangePass(!changePass)}
-                    className="w-full mt-2 font-nunito text-slate-700 hover:underline"
-                  >
-                    {changePass
-                      ? "Cancelar cambio de contraseña"
-                      : "Cambiar contraseña"}
-                  </button>
+                  
+                  <div className="mt-6 space-y-3">
+                    <button
+                      onClick={updateUser}
+                      disabled={authLoading}
+                      className="w-full bg-blue-500 font-nunito text-white p-3 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {authLoading 
+                        ? "Actualizando..." 
+                        : changePass 
+                          ? "Actualizar contraseña" 
+                          : "Actualizar datos"
+                      }
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setChangePass(!changePass)}
+                      className="w-full font-nunito text-gray-600 hover:text-gray-800 hover:underline transition-colors"
+                    >
+                      {changePass
+                        ? "Cancelar cambio de contraseña"
+                        : "Cambiar contraseña"}
+                    </button>
+                  </div>
                 </form>
-              </div>
-            )}
-            
-            {page === 1 && (
-              <div className="w-full max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg">
-                {/* Aquí puedes agregar el contenido de las compras */}
               </div>
             )}
           </div>
 
-          {/* Imagen en la mitad izquierda */}
-          <div className="w-full lg:w-1/2 items-center justify-center mt-40 lg:mt-32 hidden sm:block">
-            <Link to="/productos">
-              <img
-                src="/tarjeta.png"
-                alt="Tarjeta"
-                className="w-1/2 h-auto max-w-md ml-32 cursor-pointer border-4 border-ColorAzul"
-              />
-            </Link>
+          {/* ✅ Columna derecha - Imagen promocional */}
+          <div className="w-full lg:w-1/2 flex items-center justify-center mt-40 lg:mt-32 hidden lg:block">
+            <div className="flex flex-col items-center space-y-6">
+              <Link to="/productos" className="group">
+                <img
+                  src="/tarjeta.png"
+                  alt="Tarjeta ViajaYa"
+                  className="w-80 h-auto max-w-md cursor-pointer border-4 border-blue-400 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 group-hover:scale-105"
+                />
+              </Link>
+              
+              {/* ✅ Información adicional para el usuario */}
+              <div className="text-center max-w-md">
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                  ¡Descubre nuestros destinos!
+                </h3>
+                <p className="text-gray-600 text-sm">
+                  Explora los mejores paquetes turísticos y vive experiencias inolvidables
+                </p>
+              </div>
+            </div>
           </div>
         </div>
+
+        {/* ✅ Popup de cotización */}
+        {showCreateQuote && (
+          <QuotePopup
+            isOpen={showCreateQuote}
+            onClose={() => setShowCreateQuote(false)}
+            prefilledData={{
+              created_by_name: `${user?.name || ''} ${user?.lastname || ''}`,
+              created_by_role: user?.role,
+              created_by_id: user?.id,
+              created_by_email: user?.email
+            }}
+          />
+        )}
       </div>
     </>
   );

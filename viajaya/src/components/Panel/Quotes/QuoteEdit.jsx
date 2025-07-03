@@ -17,7 +17,8 @@ import {
   faDollarSign,
   faStickyNote,
   faSpinner,
-  faExclamationTriangle
+  faExclamationTriangle,
+  faShieldAlt
 } from '@fortawesome/free-solid-svg-icons';
 
 // ✅ Importar acciones del slice
@@ -32,8 +33,9 @@ import {
   selectQuoteError
 } from '../../../redux/slices/quoteSlice';
 
-// ✅ Importar selectores de auth
+// ✅ Importar selectores de auth y permisos
 import { selectUser } from '../../../redux/slices/authSlice';
+import { useRolePermissions } from '../../../redux/hooks/useRolePermissions';
 
 // ✅ Importar componentes
 import NavBar from '../../layout/NavBar/NavBar';
@@ -48,6 +50,9 @@ const QuoteEdit = () => {
   const loading = useSelector(selectQuoteLoading);
   const error = useSelector(selectQuoteError);
   const user = useSelector(selectUser);
+  
+  // ✅ Hook de permisos
+  const { hasRole, USER_ROLES, canManageQuotes } = useRolePermissions();
 
   // ✅ Estados del formulario
   const [formData, setFormData] = useState({
@@ -73,6 +78,36 @@ const QuoteEdit = () => {
   // ✅ Opciones para selects
   const acomodacionOptions = ['Simple', 'Doble', 'Triple', 'Cuádruple', 'Familiar'];
   const tipoHotelOptions = ['1 Estrella', '2 Estrellas', '3 Estrellas', '4 Estrellas', '5 Estrellas', 'Boutique', 'Resort'];
+
+  // ✅ Validar permisos de edición
+  const canEditQuote = () => {
+    if (!user || !currentQuote) return false;
+    
+    // Owner puede editar todas
+    if (hasRole([USER_ROLES.OWNER])) return true;
+    
+    // Admin/Contador pueden editar todas
+    if (hasRole([USER_ROLES.ADMIN, USER_ROLES.CONTADOR])) return true;
+    
+    // Gerente puede editar las suyas y de su equipo
+    if (hasRole([USER_ROLES.GERENTE]) && currentQuote.gerente_id === user.id) return true;
+    
+    // Líder puede editar las suyas y de su equipo
+    if (hasRole([USER_ROLES.LIDER]) && currentQuote.lider_id === user.id) return true;
+    
+    // Asesor puede editar solo las suyas
+    if (hasRole([USER_ROLES.ASESOR]) && currentQuote.asesor_id === user.id) return true;
+    
+    return false;
+  };
+
+  // ✅ Validar permisos de envío
+  const canSendQuote = () => {
+    if (!user || !currentQuote) return false;
+    
+    // Solo Líder y superiores pueden enviar
+    return hasRole([USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.CONTADOR, USER_ROLES.OWNER]);
+  };
 
   // ✅ Cargar cotización al montar
   useEffect(() => {
@@ -111,6 +146,32 @@ const QuoteEdit = () => {
       return () => clearTimeout(timer);
     }
   }, [error, dispatch]);
+
+  // ✅ Validar permisos de acceso
+  if (!loading && currentQuote && !canEditQuote()) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className='fixed top-0 left-0 z-50 w-full'>
+          <NavBar />
+        </div>
+        <div className="flex justify-center items-center h-screen">
+          <div className="text-center max-w-md">
+            <FontAwesomeIcon icon={faShieldAlt} className="text-red-500 text-6xl mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Sin Permisos</h2>
+            <p className="text-gray-600 mb-4">
+              No tienes permisos para editar esta cotización.
+            </p>
+            <button
+              onClick={() => navigate('/panel/quotes')}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              Volver a cotizaciones
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ✅ Manejo de cambios en el formulario
   const handleInputChange = (e) => {
@@ -176,7 +237,7 @@ const QuoteEdit = () => {
     if (formData.numero_personas < 1) {
       newErrors.numero_personas = 'Debe ser al menos 1 persona';
     }
-    if (!formData.precio_total || formData.precio_total <= 0) {
+    if (canSendQuote() && (!formData.precio_total || formData.precio_total <= 0)) {
       newErrors.precio_total = 'El precio total es requerido y debe ser mayor a 0';
     }
 
@@ -194,15 +255,14 @@ const QuoteEdit = () => {
     try {
       const updateData = {
         ...formData,
-        precio_total: parseFloat(formData.precio_total),
+        precio_total: formData.precio_total ? parseFloat(formData.precio_total) : null,
         numero_personas: parseInt(formData.numero_personas),
         ninos: parseInt(formData.ninos),
-        status: 'completed' // Marcar como completada al guardar
+        status: formData.precio_total && formData.precio_total > 0 ? 'completed' : 'pending'
       };
 
       await dispatch(updateQuote({ id, updates: updateData })).unwrap();
       
-      // Mostrar mensaje de éxito
       alert('Cotización guardada exitosamente');
     } catch (error) {
       console.error('Error guardando cotización:', error);
@@ -214,6 +274,11 @@ const QuoteEdit = () => {
 
   // ✅ Enviar cotización al cliente
   const handleSendToClient = async () => {
+    if (!canSendQuote()) {
+      alert('No tienes permisos para enviar cotizaciones');
+      return;
+    }
+
     if (!validateForm()) {
       alert('Por favor, completa todos los campos requeridos antes de enviar');
       return;
@@ -293,6 +358,12 @@ const QuoteEdit = () => {
     );
   }
 
+  // ✅ Verificar si la cotización puede ser editada por estado
+  const isReadOnly = currentQuote?.status === QUOTE_STATUSES.SENT || 
+                    currentQuote?.status === QUOTE_STATUSES.APPROVED ||
+                    currentQuote?.status === QUOTE_STATUSES.REJECTED ||
+                    currentQuote?.status === QUOTE_STATUSES.EXPIRED;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className='fixed top-0 left-0 z-50 w-full'>
@@ -312,38 +383,50 @@ const QuoteEdit = () => {
               </button>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
-                  Editar Cotización
+                  {isReadOnly ? 'Ver Cotización' : 'Editar Cotización'}
                 </h1>
                 <p className="text-gray-600">
                   {currentQuote?.quote_number} - {currentQuote?.nombre_cliente || 'Cliente sin nombre'}
                 </p>
+                {isReadOnly && (
+                  <p className="text-sm text-orange-600 font-medium">
+                    Esta cotización no puede ser editada debido a su estado actual
+                  </p>
+                )}
               </div>
             </div>
+            
+            {/* Botones de acción */}
             <div className="flex gap-3">
-              <button
-                onClick={handleSave}
-                disabled={saveLoading}
-                className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
-              >
-                {saveLoading ? (
-                  <FontAwesomeIcon icon={faSpinner} spin />
-                ) : (
-                  <FontAwesomeIcon icon={faSave} />
-                )}
-                Guardar
-              </button>
-              <button
-                onClick={handleSendToClient}
-                disabled={sendLoading || currentQuote?.status === QUOTE_STATUSES.SENT}
-                className="bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
-              >
-                {sendLoading ? (
-                  <FontAwesomeIcon icon={faSpinner} spin />
-                ) : (
-                  <FontAwesomeIcon icon={faPaperPlane} />
-                )}
-                Enviar al Cliente
-              </button>
+              {!isReadOnly && (
+                <button
+                  onClick={handleSave}
+                  disabled={saveLoading}
+                  className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                >
+                  {saveLoading ? (
+                    <FontAwesomeIcon icon={faSpinner} spin />
+                  ) : (
+                    <FontAwesomeIcon icon={faSave} />
+                  )}
+                  Guardar
+                </button>
+              )}
+              
+              {canSendQuote() && !isReadOnly && currentQuote?.status !== QUOTE_STATUSES.SENT && (
+                <button
+                  onClick={handleSendToClient}
+                  disabled={sendLoading}
+                  className="bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                >
+                  {sendLoading ? (
+                    <FontAwesomeIcon icon={faSpinner} spin />
+                  ) : (
+                    <FontAwesomeIcon icon={faPaperPlane} />
+                  )}
+                  Enviar al Cliente
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -374,9 +457,10 @@ const QuoteEdit = () => {
                     name="destino"
                     value={formData.destino}
                     onChange={handleInputChange}
+                    disabled={isReadOnly}
                     className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                       errors.destino ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    } ${isReadOnly ? 'bg-gray-100' : ''}`}
                     placeholder="Ej: París, Francia"
                   />
                   {errors.destino && <p className="text-red-500 text-sm mt-1">{errors.destino}</p>}
@@ -391,9 +475,10 @@ const QuoteEdit = () => {
                     name="origen"
                     value={formData.origen}
                     onChange={handleInputChange}
+                    disabled={isReadOnly}
                     className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                       errors.origen ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    } ${isReadOnly ? 'bg-gray-100' : ''}`}
                     placeholder="Ej: Buenos Aires, Argentina"
                   />
                   {errors.origen && <p className="text-red-500 text-sm mt-1">{errors.origen}</p>}
@@ -417,9 +502,10 @@ const QuoteEdit = () => {
                     name="fecha_ida"
                     value={formData.fecha_ida}
                     onChange={handleInputChange}
+                    disabled={isReadOnly}
                     className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                       errors.fecha_ida ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    } ${isReadOnly ? 'bg-gray-100' : ''}`}
                   />
                   {errors.fecha_ida && <p className="text-red-500 text-sm mt-1">{errors.fecha_ida}</p>}
                 </div>
@@ -433,9 +519,10 @@ const QuoteEdit = () => {
                     name="fecha_regreso"
                     value={formData.fecha_regreso}
                     onChange={handleInputChange}
+                    disabled={isReadOnly}
                     className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                       errors.fecha_regreso ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    } ${isReadOnly ? 'bg-gray-100' : ''}`}
                   />
                   {errors.fecha_regreso && <p className="text-red-500 text-sm mt-1">{errors.fecha_regreso}</p>}
                 </div>
@@ -458,10 +545,11 @@ const QuoteEdit = () => {
                     name="numero_personas"
                     value={formData.numero_personas}
                     onChange={handleInputChange}
+                    disabled={isReadOnly}
                     min="1"
                     className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                       errors.numero_personas ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    } ${isReadOnly ? 'bg-gray-100' : ''}`}
                   />
                   {errors.numero_personas && <p className="text-red-500 text-sm mt-1">{errors.numero_personas}</p>}
                 </div>
@@ -474,7 +562,10 @@ const QuoteEdit = () => {
                     name="acomodacion"
                     value={formData.acomodacion}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled={isReadOnly}
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      isReadOnly ? 'bg-gray-100' : ''
+                    }`}
                   >
                     {acomodacionOptions.map(option => (
                       <option key={option} value={option}>{option}</option>
@@ -490,13 +581,15 @@ const QuoteEdit = () => {
                     <FontAwesomeIcon icon={faChild} className="mr-2 text-yellow-500" />
                     Edades de Niños ({formData.edades_ninos.length})
                   </label>
-                  <button
-                    type="button"
-                    onClick={addEdadNino}
-                    className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm transition-colors"
-                  >
-                    Agregar Niño
-                  </button>
+                  {!isReadOnly && (
+                    <button
+                      type="button"
+                      onClick={addEdadNino}
+                      className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm transition-colors"
+                    >
+                      Agregar Niño
+                    </button>
+                  )}
                 </div>
                 {formData.edades_ninos.length > 0 && (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -506,18 +599,23 @@ const QuoteEdit = () => {
                           type="number"
                           value={edad}
                           onChange={(e) => handleEdadNinoChange(index, e.target.value)}
+                          disabled={isReadOnly}
                           min="0"
                           max="17"
-                          className="w-full px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className={`w-full px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                            isReadOnly ? 'bg-gray-100' : ''
+                          }`}
                           placeholder="Edad"
                         />
-                        <button
-                          type="button"
-                          onClick={() => removeEdadNino(index)}
-                          className="text-red-500 hover:text-red-700 transition-colors"
-                        >
-                          ×
-                        </button>
+                        {!isReadOnly && (
+                          <button
+                            type="button"
+                            onClick={() => removeEdadNino(index)}
+                            className="text-red-500 hover:text-red-700 transition-colors"
+                          >
+                            ×
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -540,7 +638,10 @@ const QuoteEdit = () => {
                     name="tipo_hotel"
                     value={formData.tipo_hotel}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled={isReadOnly}
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      isReadOnly ? 'bg-gray-100' : ''
+                    }`}
                   >
                     {tipoHotelOptions.map(option => (
                       <option key={option} value={option}>{option}</option>
@@ -557,7 +658,10 @@ const QuoteEdit = () => {
                     name="alimentacion"
                     value={formData.alimentacion}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled={isReadOnly}
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      isReadOnly ? 'bg-gray-100' : ''
+                    }`}
                     placeholder="Ej: Desayuno incluido, Media pensión, etc."
                   />
                 </div>
@@ -571,6 +675,7 @@ const QuoteEdit = () => {
                     name="traslado"
                     checked={formData.traslado}
                     onChange={handleInputChange}
+                    disabled={isReadOnly}
                     className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
                   />
                   <span className="ml-2 text-sm font-medium text-gray-700">
@@ -581,33 +686,36 @@ const QuoteEdit = () => {
               </div>
             </div>
 
-            {/* Precio */}
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <FontAwesomeIcon icon={faDollarSign} className="mr-2 text-green-500" />
-                Información de Precio
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Precio Total * (USD)
-                  </label>
-                  <input
-                    type="number"
-                    name="precio_total"
-                    value={formData.precio_total}
-                    onChange={handleInputChange}
-                    min="0"
-                    step="0.01"
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.precio_total ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    placeholder="0.00"
-                  />
-                  {errors.precio_total && <p className="text-red-500 text-sm mt-1">{errors.precio_total}</p>}
+            {/* Precio - Solo visible para Líder y superiores */}
+            {hasRole([USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.CONTADOR, USER_ROLES.OWNER]) && (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <FontAwesomeIcon icon={faDollarSign} className="mr-2 text-green-500" />
+                  Información de Precio
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Precio Total * (USD)
+                    </label>
+                    <input
+                      type="number"
+                      name="precio_total"
+                      value={formData.precio_total}
+                      onChange={handleInputChange}
+                      disabled={isReadOnly}
+                      min="0"
+                      step="0.01"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        errors.precio_total ? 'border-red-500' : 'border-gray-300'
+                      } ${isReadOnly ? 'bg-gray-100' : ''}`}
+                      placeholder="0.00"
+                    />
+                    {errors.precio_total && <p className="text-red-500 text-sm mt-1">{errors.precio_total}</p>}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Observaciones */}
             <div>
@@ -619,8 +727,11 @@ const QuoteEdit = () => {
                 name="observaciones"
                 value={formData.observaciones}
                 onChange={handleInputChange}
+                disabled={isReadOnly}
                 rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  isReadOnly ? 'bg-gray-100' : ''
+                }`}
                 placeholder="Comentarios adicionales, solicitudes especiales, etc."
               />
             </div>
@@ -634,32 +745,38 @@ const QuoteEdit = () => {
               onClick={() => navigate('/panel/quotes')}
               className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors"
             >
-              Cancelar
+              {isReadOnly ? 'Volver' : 'Cancelar'}
             </button>
-            <button
-              onClick={handleSave}
-              disabled={saveLoading}
-              className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2"
-            >
-              {saveLoading ? (
-                <FontAwesomeIcon icon={faSpinner} spin />
-              ) : (
-                <FontAwesomeIcon icon={faSave} />
-              )}
-              Guardar
-            </button>
-            <button
-              onClick={handleSendToClient}
-              disabled={sendLoading || currentQuote?.status === QUOTE_STATUSES.SENT}
-              className="bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2"
-            >
-              {sendLoading ? (
-                <FontAwesomeIcon icon={faSpinner} spin />
-              ) : (
-                <FontAwesomeIcon icon={faPaperPlane} />
-              )}
-              Enviar al Cliente
-            </button>
+            
+            {!isReadOnly && (
+              <button
+                onClick={handleSave}
+                disabled={saveLoading}
+                className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2"
+              >
+                {saveLoading ? (
+                  <FontAwesomeIcon icon={faSpinner} spin />
+                ) : (
+                  <FontAwesomeIcon icon={faSave} />
+                )}
+                Guardar
+              </button>
+            )}
+            
+            {canSendQuote() && !isReadOnly && currentQuote?.status !== QUOTE_STATUSES.SENT && (
+              <button
+                onClick={handleSendToClient}
+                disabled={sendLoading}
+                className="bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2"
+              >
+                {sendLoading ? (
+                  <FontAwesomeIcon icon={faSpinner} spin />
+                ) : (
+                  <FontAwesomeIcon icon={faPaperPlane} />
+                )}
+                Enviar al Cliente
+              </button>
+            )}
           </div>
         </div>
 

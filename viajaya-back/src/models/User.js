@@ -2,7 +2,7 @@ const { DataTypes } = require('sequelize');
 const { v4: uuidv4 } = require('uuid');
 
 module.exports = (sequelize) => {
-  sequelize.define('user', {
+  sequelize.define('User', {
     id:{
       type: DataTypes.INTEGER,
       primaryKey:true,
@@ -113,7 +113,7 @@ module.exports = (sequelize) => {
       allowNull: true,
     },
     tipo_documento: {
-      type: DataTypes.ENUM('cedula', 'passport', 'cedula_extranjeria'),
+      type: DataTypes.ENUM('cc', 'ce', 'ti', 'rc', 'passport', 'pep', 'ppt', 'nit', 'nuip', 'dni', 'salvoconducto', 'cedula_diplomatica'),
       allowNull: true,
     },
     fecha_nacimiento: {
