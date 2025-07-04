@@ -409,54 +409,59 @@ const quoteController = {
   },
 
   // ✅ ACTUALIZAR: getQuoteById con nuevos includes
-  getQuoteById: async (req, res) => {
-    try {
-      const { id } = req.params;
+ getQuoteById: async (req, res) => {
+  try {
+    const { id } = req.params;
 
-      const quote = await Quote.findByPk(id, {
-        include: [
-          {
-            model: User,
-            as: "Asesor",
-            attributes: ["id", "name", "lastname", "email", "role"],
-          },
-          {
-            model: User,
-            as: "Lider",
-            attributes: ["id", "name", "lastname", "email", "role"],
-          },
-          {
-            model: User,
-            as: "Gerente",
-            attributes: ["id", "name", "lastname", "email", "role"],
-          },
-          {
-            model: User,
-            as: "Admin", // ✅ Nueva relación
-            attributes: ["id", "name", "lastname", "email", "role"],
-          },
-          {
-            model: User,
-            as: "Cliente",
-            attributes: ["id", "name", "lastname", "email", "phone"],
-          },
-          { model: Contract },
-        ],
-      });
+    const quote = await Quote.findByPk(id, {
+      include: [
+        {
+          model: User,
+          as: "Asesor",
+          attributes: ["id", "name", "lastname", "email", "role"],
+        },
+        {
+          model: User,
+          as: "Lider",
+          attributes: ["id", "name", "lastname", "email", "role"],
+        },
+        {
+          model: User,
+          as: "Gerente",
+          attributes: ["id", "name", "lastname", "email", "role"],
+        },
+        {
+          model: User,
+          as: "Admin",
+          attributes: ["id", "name", "lastname", "email", "role"],
+        },
+        {
+          model: User,
+          as: "Cliente",
+          attributes: ["id", "name", "lastname", "email", "phone"],
+        },
+        // ✅ CORREGIR: Especificar el alias para Contract
+        {
+          model: Contract,
+          as: "Contract", // o el alias que hayas definido en las asociaciones
+          required: false // hacer que sea opcional
+        },
+      ],
+    });
 
-      if (!quote) {
-        return res.status(404).json({ message: "Cotización no encontrada" });
-      }
-
-      res.json(quote);
-    } catch (error) {
-      console.error("Error fetching quote:", error);
-      res.status(500).json({
-        message: "Error al obtener la cotización",
-        error: error.message,
-      });
+    if (!quote) {
+      return res.status(404).json({ message: "Cotización no encontrada" });
     }
-  },
+
+    res.json(quote);
+  } catch (error) {
+    console.error("Error fetching quote:", error);
+    res.status(500).json({
+      message: "Error al obtener la cotización",
+      error: error.message,
+    });
+  }
+},
 
    getExternalQuotes: async (req, res) => {
     try {

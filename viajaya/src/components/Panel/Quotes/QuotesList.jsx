@@ -206,7 +206,7 @@ const QuotesList = () => {
 
   const handleGeneratePDF = async (quoteId) => {
     // Por ahora, abrir la cotización para ver detalles
-    navigate(`/panel/quotes/${quoteId}`);
+    navigate(`/quotes/${quoteId}`);
     alert('Funcionalidad de PDF en desarrollo. Se abrió la vista de detalles.');
   };
 
@@ -244,7 +244,7 @@ const QuotesList = () => {
       <div className="flex items-center gap-1">
         {/* Ver detalles */}
         <button
-          onClick={() => navigate(`/panel/quotes/${quote.id}`)}
+          onClick={() => navigate(`/quotes/${quote.id}`)}
           className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
           title="Ver detalles"
         >
@@ -255,7 +255,7 @@ const QuotesList = () => {
         {(quote.status === QUOTE_STATUSES.PENDING || quote.status === QUOTE_STATUSES.COMPLETED) && 
          hasAnyRole([USER_ROLES.ASESOR, USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]) && (
           <button
-            onClick={() => navigate(`/panel/quotes/${quote.id}/edit`)}
+            onClick={() => navigate(`/quotes/${quote.id}/edit`)}
             className="p-2 text-yellow-600 hover:bg-yellow-50 rounded transition-colors"
             title="Editar"
           >

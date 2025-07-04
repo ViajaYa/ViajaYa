@@ -2,7 +2,7 @@ const { DataTypes } = require('sequelize');
 const { v4: uuidv4 } = require('uuid');
 
 module.exports = (sequelize) => {
-  sequelize.define('User', {
+  sequelize.define('user', {
     id:{
       type: DataTypes.INTEGER,
       primaryKey:true,
@@ -169,5 +169,8 @@ module.exports = (sequelize) => {
       type: DataTypes.DATE,
       allowNull: true,
     }
-  },{timestamps:false});
+  },{timestamps:false,
+    tableName: 'users',
+
+  });
 };

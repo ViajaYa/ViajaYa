@@ -35,7 +35,7 @@ import {
 
 // ✅ Importar selectores de auth y permisos
 import { selectUser } from '../../../redux/slices/authSlice';
-import { useRolePermissions } from '../../../redux/hooks/useRolePermissions';
+import { useRolePermissions } from '../../../redux/hooks/hooks';
 
 // ✅ Importar componentes
 import NavBar from '../../layout/NavBar/NavBar';
@@ -45,14 +45,14 @@ const QuoteEdit = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  // ✅ Selectores de Redux
+  // ✅ TODOS LOS HOOKS PRIMERO - Sin condiciones
   const currentQuote = useSelector(selectCurrentQuote);
   const loading = useSelector(selectQuoteLoading);
   const error = useSelector(selectQuoteError);
   const user = useSelector(selectUser);
   
-  // ✅ Hook de permisos
-  const { hasRole, USER_ROLES, canManageQuotes } = useRolePermissions();
+  // ✅ Hook de permisos - CORREGIDO
+  const { hasAnyRole = () => false, USER_ROLES = {}, canManageQuotes = false } = useRolePermissions() || {};
 
   // ✅ Estados del formulario
   const [formData, setFormData] = useState({
@@ -79,44 +79,42 @@ const QuoteEdit = () => {
   const acomodacionOptions = ['Simple', 'Doble', 'Triple', 'Cuádruple', 'Familiar'];
   const tipoHotelOptions = ['1 Estrella', '2 Estrellas', '3 Estrellas', '4 Estrellas', '5 Estrellas', 'Boutique', 'Resort'];
 
-  // ✅ Validar permisos de edición
+  // ✅ TODAS LAS FUNCIONES DESPUÉS DE LOS HOOKS
   const canEditQuote = () => {
-    if (!user || !currentQuote) return false;
+    if (!user || !currentQuote || typeof hasAnyRole !== 'function') return false;
     
     // Owner puede editar todas
-    if (hasRole([USER_ROLES.OWNER])) return true;
+    if (hasAnyRole([USER_ROLES.OWNER])) return true;
     
     // Admin/Contador pueden editar todas
-    if (hasRole([USER_ROLES.ADMIN, USER_ROLES.CONTADOR])) return true;
+    if (hasAnyRole([USER_ROLES.ADMIN, USER_ROLES.CONTADOR])) return true;
     
     // Gerente puede editar las suyas y de su equipo
-    if (hasRole([USER_ROLES.GERENTE]) && currentQuote.gerente_id === user.id) return true;
+    if (hasAnyRole([USER_ROLES.GERENTE]) && currentQuote.gerente_id === user.id) return true;
     
     // Líder puede editar las suyas y de su equipo
-    if (hasRole([USER_ROLES.LIDER]) && currentQuote.lider_id === user.id) return true;
+    if (hasAnyRole([USER_ROLES.LIDER]) && currentQuote.lider_id === user.id) return true;
     
     // Asesor puede editar solo las suyas
-    if (hasRole([USER_ROLES.ASESOR]) && currentQuote.asesor_id === user.id) return true;
+    if (hasAnyRole([USER_ROLES.ASESOR]) && currentQuote.asesor_id === user.id) return true;
     
     return false;
   };
 
-  // ✅ Validar permisos de envío
   const canSendQuote = () => {
-    if (!user || !currentQuote) return false;
+    if (!user || !currentQuote || typeof hasAnyRole !== 'function') return false;
     
     // Solo Líder y superiores pueden enviar
-    return hasRole([USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.CONTADOR, USER_ROLES.OWNER]);
+    return hasAnyRole([USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.CONTADOR, USER_ROLES.OWNER]);
   };
 
-  // ✅ Cargar cotización al montar
+  // ✅ TODOS LOS useEffect DESPUÉS DE LAS FUNCIONES
   useEffect(() => {
     if (id) {
       dispatch(fetchQuoteById(id));
     }
   }, [dispatch, id]);
 
-  // ✅ Poblar formulario cuando se carga la cotización
   useEffect(() => {
     if (currentQuote) {
       setFormData({
@@ -137,7 +135,6 @@ const QuoteEdit = () => {
     }
   }, [currentQuote]);
 
-  // ✅ Limpiar errores
   useEffect(() => {
     if (error) {
       const timer = setTimeout(() => {
@@ -147,33 +144,14 @@ const QuoteEdit = () => {
     }
   }, [error, dispatch]);
 
-  // ✅ Validar permisos de acceso
-  if (!loading && currentQuote && !canEditQuote()) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <div className='fixed top-0 left-0 z-50 w-full'>
-          <NavBar />
-        </div>
-        <div className="flex justify-center items-center h-screen">
-          <div className="text-center max-w-md">
-            <FontAwesomeIcon icon={faShieldAlt} className="text-red-500 text-6xl mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Sin Permisos</h2>
-            <p className="text-gray-600 mb-4">
-              No tienes permisos para editar esta cotización.
-            </p>
-            <button
-              onClick={() => navigate('/panel/quotes')}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
-            >
-              Volver a cotizaciones
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    const numNinos = formData.edades_ninos.length;
+    if (numNinos !== formData.ninos) {
+      setFormData(prev => ({ ...prev, ninos: numNinos }));
+    }
+  }, [formData.edades_ninos, formData.ninos]);
 
-  // ✅ Manejo de cambios en el formulario
+  // ✅ FUNCIONES DE MANEJO DESPUÉS DE TODOS LOS HOOKS
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     
@@ -182,13 +160,11 @@ const QuoteEdit = () => {
       [name]: type === 'checkbox' ? checked : value
     }));
 
-    // Limpiar error específico
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: null }));
     }
   };
 
-  // ✅ Manejo de edades de niños
   const handleEdadNinoChange = (index, edad) => {
     const newEdades = [...formData.edades_ninos];
     newEdades[index] = parseInt(edad);
@@ -207,15 +183,6 @@ const QuoteEdit = () => {
     setFormData(prev => ({ ...prev, edades_ninos: newEdades }));
   };
 
-  // ✅ Actualizar número de niños automáticamente
-  useEffect(() => {
-    const numNinos = formData.edades_ninos.length;
-    if (numNinos !== formData.ninos) {
-      setFormData(prev => ({ ...prev, ninos: numNinos }));
-    }
-  }, [formData.edades_ninos]);
-
-  // ✅ Validación del formulario
   const validateForm = () => {
     const newErrors = {};
 
@@ -245,7 +212,6 @@ const QuoteEdit = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // ✅ Guardar cotización
   const handleSave = async () => {
     if (!validateForm()) {
       return;
@@ -272,7 +238,6 @@ const QuoteEdit = () => {
     }
   };
 
-  // ✅ Enviar cotización al cliente
   const handleSendToClient = async () => {
     if (!canSendQuote()) {
       alert('No tienes permisos para enviar cotizaciones');
@@ -292,7 +257,6 @@ const QuoteEdit = () => {
     if (window.confirm('¿Estás seguro de enviar esta cotización al cliente? Una vez enviada no podrás editarla.')) {
       setSendLoading(true);
       try {
-        // Primero guardar los cambios
         const updateData = {
           ...formData,
           precio_total: parseFloat(formData.precio_total),
@@ -303,7 +267,6 @@ const QuoteEdit = () => {
 
         await dispatch(updateQuote({ id, updates: updateData })).unwrap();
         
-        // Luego enviar al cliente
         await dispatch(sendQuoteToClient(id)).unwrap();
         
         alert('Cotización enviada exitosamente al cliente');
@@ -317,7 +280,9 @@ const QuoteEdit = () => {
     }
   };
 
-  // ✅ Loading state
+  // ✅ RENDERS CONDICIONALES AL FINAL - Después de todos los hooks
+  
+  // Loading state
   if (loading && !currentQuote) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -334,7 +299,7 @@ const QuoteEdit = () => {
     );
   }
 
-  // ✅ Error state
+  // Error state
   if (error && !currentQuote) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -358,12 +323,39 @@ const QuoteEdit = () => {
     );
   }
 
-  // ✅ Verificar si la cotización puede ser editada por estado
+  // Validar permisos de acceso
+  if (!loading && currentQuote && !canEditQuote()) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className='fixed top-0 left-0 z-50 w-full'>
+          <NavBar />
+        </div>
+        <div className="flex justify-center items-center h-screen">
+          <div className="text-center max-w-md">
+            <FontAwesomeIcon icon={faShieldAlt} className="text-red-500 text-6xl mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Sin Permisos</h2>
+            <p className="text-gray-600 mb-4">
+              No tienes permisos para editar esta cotización.
+            </p>
+            <button
+              onClick={() => navigate('/panel/quotes')}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              Volver a cotizaciones
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Verificar si la cotización puede ser editada por estado
   const isReadOnly = currentQuote?.status === QUOTE_STATUSES.SENT || 
                     currentQuote?.status === QUOTE_STATUSES.APPROVED ||
                     currentQuote?.status === QUOTE_STATUSES.REJECTED ||
                     currentQuote?.status === QUOTE_STATUSES.EXPIRED;
 
+  // ✅ RENDER PRINCIPAL
   return (
     <div className="min-h-screen bg-gray-50">
       <div className='fixed top-0 left-0 z-50 w-full'>
@@ -687,7 +679,7 @@ const QuoteEdit = () => {
             </div>
 
             {/* Precio - Solo visible para Líder y superiores */}
-            {hasRole([USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.CONTADOR, USER_ROLES.OWNER]) && (
+            {hasAnyRole([USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.CONTADOR, USER_ROLES.OWNER]) && (
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                   <FontAwesomeIcon icon={faDollarSign} className="mr-2 text-green-500" />
