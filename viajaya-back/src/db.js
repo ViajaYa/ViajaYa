@@ -198,6 +198,7 @@ Quote.belongsTo(User, {
   as: 'Cliente', 
   foreignKey: 'cliente_id' 
 });
+Quote.belongsTo(User, { foreignKey: 'owner_id', as: 'Owner' });
 
 // ✅ 7. RELACIONES QUOTE - QUOTE ITEMS
 Quote.hasMany(QuoteItem, { 

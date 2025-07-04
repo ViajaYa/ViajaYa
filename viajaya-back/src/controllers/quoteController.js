@@ -1,5 +1,9 @@
 const { Quote, User, Contract } = require("../db");
 const { Op } = require("sequelize");
+const { sendEmail } = require('../utils/emailService');
+const { generateQuotePDF } = require('../utils/generateQuotePDF');
+const path = require('path');
+
 
 const quoteController = {
   // Crear nueva cotización
@@ -732,50 +736,332 @@ const quoteController = {
     }
   },
 
-  // ... resto de métodos existentes (updateQuote, approveQuote, etc.)
+
+
+
+  // ✅ REEMPLAZAR sendQuote con esta versión mejorada
   sendQuote: async (req, res) => {
     try {
       const { id } = req.params;
+      const userId = req.user?.id;
 
-      const quote = await Quote.findByPk(id);
+      console.log('🚀 Iniciando envío de cotización al cliente:', { quoteId: id, userId });
+
+      // ✅ Buscar la cotización con todas las relaciones
+      const quote = await Quote.findByPk(id, {
+        include: [
+          { model: User, as: 'Asesor', attributes: ['id', 'name', 'lastname', 'email'] },
+          { model: User, as: 'Lider', attributes: ['id', 'name', 'lastname', 'email'] },
+          { model: User, as: 'Gerente', attributes: ['id', 'name', 'lastname', 'email'] },
+          { model: User, as: 'Admin', attributes: ['id', 'name', 'lastname', 'email'] }
+        ]
+      });
 
       if (!quote) {
-        return res.status(404).json({ message: "Cotización no encontrada" });
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Cotización no encontrada' 
+        });
       }
 
+      // ✅ Validaciones mejoradas
       if (quote.status !== "completed") {
         return res.status(400).json({
+          success: false,
           message: "La cotización debe estar completada antes de ser enviada",
+        });
+      }
+
+      if (!quote.precio_total || quote.precio_total <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'La cotización debe tener un precio total antes de enviarla'
+        });
+      }
+
+      if (!quote.email_cliente || !quote.email_cliente.includes('@')) {
+        return res.status(400).json({
+          success: false,
+          message: 'La cotización debe tener un email de cliente válido'
+        });
+      }
+
+      // ✅ Validar que no se haya enviado ya
+      if (quote.status === 'sent') {
+        return res.status(400).json({
+          success: false,
+          message: 'Esta cotización ya fue enviada al cliente'
+        });
+      }
+
+      // ✅ PASO 1: Generar PDF
+      console.log('📄 Generando PDF de la cotización...');
+      const pdfInfo = await generateQuotePDF(quote);
+
+      // ✅ PASO 2: Preparar fechas
+      const sentAt = new Date();
+      const expiresAt = new Date(sentAt.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 días
+
+      // ✅ PASO 3: Actualizar la cotización con PDF y estado
+      await quote.update({
+        status: "sent",
+        sent_at: sentAt,
+        expires_at: expiresAt,
+        pdf_path: pdfInfo.filepath,
+        pdf_filename: pdfInfo.filename,
+        pdf_generated_at: new Date(),
+        email_sent_to: quote.email_cliente
+      });
+
+      // ✅ PASO 4: Preparar el email
+      const emailSubject = `Cotización de Viaje - ${quote.destino} | ${quote.quote_number || quote.id}`;
+      
+      const emailHTML = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .header { background-color: #2563eb; color: white; padding: 20px; text-align: center; }
+            .content { padding: 20px; }
+            .quote-details { background-color: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0; }
+            .price { background-color: #059669; color: white; padding: 15px; text-align: center; border-radius: 8px; margin: 20px 0; }
+            .footer { background-color: #f1f5f9; padding: 15px; text-align: center; font-size: 12px; color: #64748b; }
+            .highlight { background-color: #fef3c7; padding: 10px; border-radius: 5px; margin: 15px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>¡Tu cotización está lista! ✈️</h1>
+            <p>Viaja Ya - Hacemos realidad tus sueños de viaje</p>
+          </div>
+          
+          <div class="content">
+            <h2>Estimado/a ${quote.nombre_cliente || 'Cliente'},</h2>
+            
+            <p>Nos complace presentarle la cotización solicitada para su viaje a <strong>${quote.destino}</strong>.</p>
+            
+            <div class="quote-details">
+              <h3>📋 Detalles del Viaje:</h3>
+              <ul>
+                <li><strong>🏖️ Destino:</strong> ${quote.destino}</li>
+                <li><strong>📍 Origen:</strong> ${quote.origen}</li>
+                <li><strong>📅 Fecha de ida:</strong> ${new Date(quote.fecha_ida).toLocaleDateString('es-ES')}</li>
+                <li><strong>📅 Fecha de regreso:</strong> ${new Date(quote.fecha_regreso).toLocaleDateString('es-ES')}</li>
+                <li><strong>👥 Número de personas:</strong> ${quote.numero_personas}</li>
+                ${quote.ninos > 0 ? `<li><strong>👶 Niños:</strong> ${quote.ninos} (Edades: ${quote.edades_ninos.join(', ')})</li>` : ''}
+                <li><strong>🏨 Tipo de acomodación:</strong> ${quote.acomodacion}</li>
+                <li><strong>⭐ Tipo de hotel:</strong> ${quote.tipo_hotel}</li>
+                ${quote.traslado ? '<li><strong>🚗 Traslados:</strong> Incluidos</li>' : ''}
+                ${quote.alimentacion ? `<li><strong>🍽️ Alimentación:</strong> ${quote.alimentacion}</li>` : ''}
+              </ul>
+            </div>
+            
+            <div class="price">
+              <h2>💰 Precio Total: USD $${quote.precio_total.toLocaleString()}</h2>
+            </div>
+
+            ${quote.observaciones ? `
+              <div class="quote-details">
+                <h3>📝 Observaciones importantes:</h3>
+                <p>${quote.observaciones}</p>
+              </div>
+            ` : ''}
+            
+            <div class="highlight">
+              <p><strong>⏰ Esta cotización es válida por 30 días</strong> a partir de la fecha de emisión.</p>
+            </div>
+            
+            <p>📎 En el archivo PDF adjunto encontrará todos los detalles completos de su cotización.</p>
+            
+            <p>Para confirmar su reserva o si tiene alguna consulta, no dude en contactarnos:</p>
+            
+            <div class="quote-details">
+              <h3>👨‍💼 Su asesor de confianza:</h3>
+              <ul>
+                <li><strong>Nombre:</strong> ${quote.Asesor?.name || quote.Lider?.name || quote.Gerente?.name || quote.Admin?.name} ${quote.Asesor?.lastname || quote.Lider?.lastname || quote.Gerente?.lastname || quote.Admin?.lastname}</li>
+                <li><strong>📧 Email:</strong> ${quote.Asesor?.email || quote.Lider?.email || quote.Gerente?.email || quote.Admin?.email}</li>
+                <li><strong>📞 Teléfono general:</strong> +54 123 456 7890</li>
+              </ul>
+            </div>
+            
+            <p>¡Esperamos poder hacer realidad su viaje soñado! 🌟</p>
+            
+            <p>Saludos cordiales,<br>
+            <strong>Equipo Viaja Ya</strong></p>
+          </div>
+          
+          <div class="footer">
+            <p>Viaja Ya | 📧 info@viajaya.com | 📞 +54 123 456 7890</p>
+            <p>Este email fue enviado automáticamente, por favor responda al email de su asesor.</p>
+          </div>
+        </body>
+        </html>
+      `;
+
+      // ✅ PASO 5: Enviar email con PDF adjunto
+      console.log('📧 Enviando email al cliente...');
+      
+      const mailOptions = {
+        to: quote.email_cliente,
+        subject: emailSubject,
+        html: emailHTML,
+        attachments: [
+          {
+            filename: pdfInfo.filename,
+            path: pdfInfo.filepath,
+            contentType: 'application/pdf'
+          }
+        ]
+      };
+
+      const emailResult = await sendEmail(mailOptions);
+      console.log('✅ Email enviado exitosamente:', emailResult.messageId);
+
+      // ✅ PASO 6: Actualizar fecha de envío del email
+      await quote.update({
+        sent_at: new Date()
+      });
+
+      // ✅ Obtener cotización actualizada con relaciones
+      const updatedQuote = await Quote.findByPk(id, {
+        include: [
+          { model: User, as: 'Asesor', attributes: ['id', 'name', 'lastname', 'email'] },
+          { model: User, as: 'Lider', attributes: ['id', 'name', 'lastname', 'email'] },
+          { model: User, as: 'Gerente', attributes: ['id', 'name', 'lastname', 'email'] },
+          { model: User, as: 'Admin', attributes: ['id', 'name', 'lastname', 'email'] }
+        ]
+      });
+
+      // ✅ Respuesta exitosa
+      res.json({
+        success: true,
+        message: "Cotización enviada exitosamente al cliente",
+        quote: updatedQuote,
+        email_info: {
+          email_sent_to: quote.email_cliente,
+          pdf_generated: true,
+          pdf_filename: pdfInfo.filename,
+          sent_at: sentAt.toISOString(),
+          expires_at: expiresAt.toISOString()
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ Error enviando cotización al cliente:', error);
+      
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor al enviar la cotización',
+        error: process.env.NODE_ENV === 'development' ? error.message : 'Error interno'
+      });
+    }
+  },
+
+  // ✅ NUEVO MÉTODO: Descargar PDF de cotización
+  downloadQuotePDF: async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const quote = await Quote.findByPk(id);
+      
+      if (!quote) {
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Cotización no encontrada' 
+        });
+      }
+
+      if (!quote.pdf_path || !quote.pdf_filename) {
+        return res.status(404).json({
+          success: false,
+          message: 'PDF no disponible para esta cotización'
+        });
+      }
+
+      // Verificar que el archivo existe
+      const fs = require('fs');
+      if (!fs.existsSync(quote.pdf_path)) {
+        return res.status(404).json({
+          success: false,
+          message: 'Archivo PDF no encontrado en el servidor'
+        });
+      }
+
+      // Configurar headers para descarga
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${quote.pdf_filename}"`);
+      
+      // Enviar archivo
+      res.sendFile(path.resolve(quote.pdf_path));
+      
+    } catch (error) {
+      console.error('❌ Error descargando PDF:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
+      });
+    }
+  },
+
+  // ✅ NUEVO MÉTODO: Regenerar PDF de cotización
+  regenerateQuotePDF: async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const quote = await Quote.findByPk(id, {
+        include: [
+          { model: User, as: 'Asesor', attributes: ['id', 'name', 'lastname', 'email'] },
+          { model: User, as: 'Lider', attributes: ['id', 'name', 'lastname', 'email'] },
+          { model: User, as: 'Gerente', attributes: ['id', 'name', 'lastname', 'email'] },
+          { model: User, as: 'Admin', attributes: ['id', 'name', 'lastname', 'email'] }
+        ]
+      });
+      
+      if (!quote) {
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Cotización no encontrada' 
         });
       }
 
       if (!quote.precio_total) {
         return res.status(400).json({
-          message: "La cotización debe tener un precio total antes de ser enviada",
+          success: false,
+          message: 'La cotización debe tener un precio total para generar el PDF'
         });
       }
 
-      const sentAt = new Date();
-      const expiresAt = new Date(sentAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+      // Regenerar PDF
+      const pdfInfo = await generateQuotePDF(quote);
 
+      // Actualizar información del PDF en la base de datos
       await quote.update({
-        status: "sent",
-        sent_at: sentAt,
-        expires_at: expiresAt,
+        pdf_path: pdfInfo.filepath,
+        pdf_filename: pdfInfo.filename,
+        pdf_generated_at: new Date()
       });
 
       res.json({
-        message: "Cotización enviada exitosamente",
-        quote,
+        success: true,
+        message: 'PDF regenerado exitosamente',
+        pdf_info: {
+          filename: pdfInfo.filename,
+          generated_at: new Date().toISOString()
+        }
       });
+      
     } catch (error) {
-      console.error("Error sending quote:", error);
+      console.error('❌ Error regenerando PDF:', error);
       res.status(500).json({
-        message: "Error al enviar la cotización",
-        error: error.message,
+        success: false,
+        message: 'Error interno del servidor'
       });
     }
   },
+
+
 
   updateQuote: async (req, res) => {
     try {
@@ -989,6 +1275,107 @@ const quoteController = {
       });
     }
   },
+
+  previewQuotePDF: async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    console.log('🔍 Generando vista previa de PDF para cotización:', id);
+
+    // ✅ CORREGIR: Buscar la cotización con todas las relaciones usando alias específicos
+    const quote = await Quote.findByPk(id, {
+      include: [
+        { 
+          model: User, 
+          as: 'Asesor', 
+          attributes: ['id', 'name', 'lastname', 'email'],
+          required: false 
+        },
+        { 
+          model: User, 
+          as: 'Lider', 
+          attributes: ['id', 'name', 'lastname', 'email'],
+          required: false 
+        },
+        { 
+          model: User, 
+          as: 'Gerente', 
+          attributes: ['id', 'name', 'lastname', 'email'],
+          required: false 
+        },
+        { 
+          model: User, 
+          as: 'Admin', 
+          attributes: ['id', 'name', 'lastname', 'email'],
+          required: false 
+        },
+        { 
+          model: User, 
+          as: 'Owner', 
+          attributes: ['id', 'name', 'lastname', 'email'],
+          required: false 
+        }
+      ]
+    });
+
+    if (!quote) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Cotización no encontrada' 
+      });
+    }
+
+    // Validar que tenga precio para generar PDF
+    if (!quote.precio_total || quote.precio_total <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'La cotización debe tener un precio total para generar el PDF'
+      });
+    }
+
+    console.log('📄 Generando PDF para vista previa...');
+    console.log('📋 Datos de la cotización:', {
+      id: quote.id,
+      quote_number: quote.quote_number,
+      asesor: quote.Asesor?.name,
+      lider: quote.Lider?.name,
+      gerente: quote.Gerente?.name,
+      admin: quote.Admin?.name,
+      owner: quote.Owner?.name
+    });
+    
+    // ✅ Generar PDF en memoria (sin guardar archivo)
+    const pdfResult = await generateQuotePDF(quote, false);
+    
+    if (!pdfResult || !pdfResult.buffer) {
+      throw new Error('Error generando buffer de PDF');
+    }
+
+    console.log('✅ PDF generado exitosamente para vista previa');
+
+    // ✅ Configurar headers para PDF
+    const filename = pdfResult.filename || `cotizacion-${quote.quote_number || quote.id}.pdf`;
+    
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `inline; filename="${filename}"`,
+      'Content-Length': pdfResult.buffer.length,
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+
+    // ✅ Enviar el buffer directamente
+    res.send(pdfResult.buffer);
+    
+  } catch (error) {
+    console.error('❌ Error generando vista previa PDF:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error generando vista previa del PDF: ' + error.message
+    });
+  }
+},
 
   getQuotesByVendedor: async (req, res) => {
     try {

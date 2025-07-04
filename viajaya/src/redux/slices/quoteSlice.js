@@ -55,6 +55,13 @@ const initialState = {
     totalValue: 0,
     averageValue: 0,
   },
+  pdfOperations: {
+    loading: false,
+    error: null,
+    lastPreviewUrl: null,
+    lastDownload: null,
+    regenerating: false,
+  },
   quoteTemplates: [],
   searchHistory: [],
   assignmentHistory: [], // ✅ NUEVO: Historial de asignaciones
@@ -505,6 +512,171 @@ export const updateQuote = createAsyncThunk(
 );
 
 // ✅ ACTUALIZAR: sendQuoteToClient con nueva ruta
+// ✅ ACTUALIZAR: Vista previa del PDF
+export const previewQuotePDF = createAsyncThunk(
+  'quote/previewQuotePDF',
+  async (quoteId, { rejectWithValue, getState }) => {
+    try {
+      const { auth } = getState();
+      
+      console.log('🔍 previewQuotePDF - ID:', quoteId);
+
+      const response = await fetch(getApiUrl(`/quotes/${quoteId}/preview-pdf`), {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${auth.token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        
+        // Si es JSON, parsear el error
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          return rejectWithValue(errorData.message || 'Error generando vista previa del PDF');
+        } else {
+          return rejectWithValue(`Error HTTP ${response.status}: ${response.statusText}`);
+        }
+      }
+
+      // ✅ Obtener el blob del PDF
+      const blob = await response.blob();
+      
+      if (!blob || blob.size === 0) {
+        return rejectWithValue('El PDF generado está vacío');
+      }
+
+      // ✅ Crear URL del blob
+      const url = window.URL.createObjectURL(blob);
+      
+      // ✅ Obtener filename del header o generar uno
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = `cotizacion-${quoteId}.pdf`;
+      
+      if (contentDisposition) {
+        const matches = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (matches && matches[1]) {
+          filename = matches[1].replace(/['"]/g, '');
+        }
+      }
+      
+      console.log('✅ previewQuotePDF - PDF blob URL creada:', url);
+      console.log('✅ previewQuotePDF - Filename:', filename);
+      console.log('✅ previewQuotePDF - Blob size:', blob.size, 'bytes');
+      
+      return {
+        quoteId,
+        pdfUrl: url,
+        filename: filename,
+        blobSize: blob.size
+      };
+      
+    } catch (error) {
+      console.error('❌ previewQuotePDF error:', error);
+      return rejectWithValue(error.message || 'Error de conexión');
+    }
+  }
+);
+
+// ✅ NUEVO: Descargar PDF de cotización
+export const downloadQuotePDF = createAsyncThunk(
+  'quote/downloadQuotePDF',
+  async (quoteId, { rejectWithValue, getState }) => {
+    try {
+      const { auth } = getState();
+      
+      console.log('🔍 downloadQuotePDF - ID:', quoteId);
+
+      const response = await fetch(getApiUrl(`/quotes/${quoteId}/download-pdf`), {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${auth.token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return rejectWithValue(errorData.message || 'Error descargando PDF');
+      }
+
+      // Obtener el nombre del archivo del header
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = `cotizacion-${quoteId}.pdf`;
+      
+      if (contentDisposition) {
+        const matches = contentDisposition.match(/filename="(.+)"/);
+        if (matches) {
+          filename = matches[1];
+        }
+      }
+
+      // Crear blob y descargar
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      
+      // Crear elemento temporal para descarga
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      
+      // Limpiar
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      console.log('✅ downloadQuotePDF - Descarga iniciada:', filename);
+      
+      return {
+        quoteId,
+        filename,
+        message: 'PDF descargado exitosamente'
+      };
+    } catch (error) {
+      console.error('❌ downloadQuotePDF error:', error);
+      return rejectWithValue(error.message || 'Error de conexión');
+    }
+  }
+);
+
+// ✅ NUEVO: Regenerar PDF de cotización
+export const regenerateQuotePDF = createAsyncThunk(
+  'quote/regenerateQuotePDF',
+  async (quoteId, { rejectWithValue, getState }) => {
+    try {
+      const { auth } = getState();
+      
+      console.log('🔍 regenerateQuotePDF - ID:', quoteId);
+
+      const response = await fetch(getApiUrl(`/quotes/${quoteId}/regenerate-pdf`), {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${auth.token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      console.log('🔍 regenerateQuotePDF - Response:', data);
+
+      if (!response.ok) {
+        return rejectWithValue(data.message || 'Error regenerando PDF');
+      }
+
+      return {
+        quoteId,
+        pdf_info: data.pdf_info,
+        message: data.message
+      };
+    } catch (error) {
+      console.error('❌ regenerateQuotePDF error:', error);
+      return rejectWithValue(error.message || 'Error de conexión');
+    }
+  }
+);
+
+// ✅ ACTUALIZAR: sendQuoteToClient para usar la nueva ruta
 export const sendQuoteToClient = createAsyncThunk(
   'quote/sendQuoteToClient',
   async (quoteId, { rejectWithValue, getState }) => {
@@ -514,7 +686,7 @@ export const sendQuoteToClient = createAsyncThunk(
       console.log('🔍 sendQuoteToClient - ID:', quoteId);
 
       const response = await fetch(getApiUrl(`/quotes/${quoteId}/send`), {
-        method: 'PATCH', // ✅ Cambiar a PATCH según las rutas
+        method: 'POST', // ✅ Actualizado a POST según tu controller
         headers: {
           'Authorization': `Bearer ${auth.token}`,
           'Content-Type': 'application/json',
@@ -528,7 +700,12 @@ export const sendQuoteToClient = createAsyncThunk(
         return rejectWithValue(data.message || 'Error enviando cotización al cliente');
       }
 
-      return data.quote || data;
+      return {
+        quote: data.quote,
+        email_info: data.email_info,
+        message: data.message,
+        success: data.success
+      };
     } catch (error) {
       console.error('❌ sendQuoteToClient error:', error);
       return rejectWithValue(error.message || 'Error de conexión');
@@ -759,6 +936,19 @@ const quoteSlice = createSlice({
       });
       if (state.assignmentHistory.length > 50) {
         state.assignmentHistory = state.assignmentHistory.slice(0, 50);
+      }
+    },
+
+    clearPDFError: (state) => {
+      state.pdfOperations.error = null;
+    },
+    setPDFLoading: (state, action) => {
+      state.pdfOperations.loading = action.payload;
+    },
+    clearLastPreviewUrl: (state) => {
+      if (state.pdfOperations.lastPreviewUrl) {
+        window.URL.revokeObjectURL(state.pdfOperations.lastPreviewUrl);
+        state.pdfOperations.lastPreviewUrl = null;
       }
     },
   },
@@ -1011,13 +1201,25 @@ const quoteSlice = createSlice({
       })
       .addCase(sendQuoteToClient.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.quotes.findIndex(q => q.id === action.payload.id);
+        
+        // Actualizar la cotización con la nueva información
+        const updatedQuote = action.payload.quote;
+        const index = state.quotes.findIndex(q => q.id === updatedQuote.id);
         if (index !== -1) {
-          state.quotes[index] = action.payload;
+          state.quotes[index] = updatedQuote;
         }
-        if (state.currentQuote?.id === action.payload.id) {
-          state.currentQuote = action.payload;
+        
+        if (state.currentQuote?.id === updatedQuote.id) {
+          state.currentQuote = updatedQuote;
         }
+        
+        // También actualizar en externalQuotes si existe
+        const externalIndex = state.externalQuotes.findIndex(q => q.id === updatedQuote.id);
+        if (externalIndex !== -1) {
+          state.externalQuotes[externalIndex] = updatedQuote;
+        }
+        
+        console.log('✅ Quote sent successfully with PDF and email');
       })
       .addCase(sendQuoteToClient.rejected, (state, action) => {
         state.loading = false;
@@ -1082,7 +1284,73 @@ const quoteSlice = createSlice({
       .addCase(requestRequote.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
-      });
+      })
+.addCase(previewQuotePDF.pending, (state) => {
+        state.pdfOperations.loading = true;
+        state.pdfOperations.error = null;
+      })
+      .addCase(previewQuotePDF.fulfilled, (state, action) => {
+        state.pdfOperations.loading = false;
+        
+        // Limpiar URL anterior si existe
+        if (state.pdfOperations.lastPreviewUrl) {
+          window.URL.revokeObjectURL(state.pdfOperations.lastPreviewUrl);
+        }
+        
+        state.pdfOperations.lastPreviewUrl = action.payload.pdfUrl;
+        console.log('✅ PDF preview URL stored in state');
+      })
+      .addCase(previewQuotePDF.rejected, (state, action) => {
+        state.pdfOperations.loading = false;
+        state.pdfOperations.error = action.payload;
+      })
+
+      // Download PDF
+      .addCase(downloadQuotePDF.pending, (state) => {
+        state.pdfOperations.loading = true;
+        state.pdfOperations.error = null;
+      })
+      .addCase(downloadQuotePDF.fulfilled, (state, action) => {
+        state.pdfOperations.loading = false;
+        state.pdfOperations.lastDownload = {
+          quoteId: action.payload.quoteId,
+          filename: action.payload.filename,
+          timestamp: new Date().toISOString(),
+        };
+        console.log('✅ PDF download completed');
+      })
+      .addCase(downloadQuotePDF.rejected, (state, action) => {
+        state.pdfOperations.loading = false;
+        state.pdfOperations.error = action.payload;
+      })
+
+      // Regenerate PDF
+      .addCase(regenerateQuotePDF.pending, (state) => {
+        state.pdfOperations.regenerating = true;
+        state.pdfOperations.error = null;
+      })
+      .addCase(regenerateQuotePDF.fulfilled, (state, action) => {
+        state.pdfOperations.regenerating = false;
+        
+        // Actualizar la cotización con nueva info de PDF
+        const quoteId = action.payload.quoteId;
+        const quote = state.quotes.find(q => q.id === quoteId);
+        if (quote && action.payload.pdf_info) {
+          quote.pdf_filename = action.payload.pdf_info.filename;
+          quote.pdf_generated_at = action.payload.pdf_info.generated_at;
+        }
+        
+        if (state.currentQuote?.id === quoteId && action.payload.pdf_info) {
+          state.currentQuote.pdf_filename = action.payload.pdf_info.filename;
+          state.currentQuote.pdf_generated_at = action.payload.pdf_info.generated_at;
+        }
+        
+        console.log('✅ PDF regenerated successfully');
+      })
+      .addCase(regenerateQuotePDF.rejected, (state, action) => {
+        state.pdfOperations.regenerating = false;
+        state.pdfOperations.error = action.payload;
+      })
   },
 });
 
@@ -1101,7 +1369,10 @@ export const {
   clearSearchHistory,
   resetQuotes,
   optimisticUpdateQuote,
-  addToAssignmentHistory, // ✅ NUEVO
+  addToAssignmentHistory,
+  clearPDFError,
+  setPDFLoading,
+  clearLastPreviewUrl, // ✅ NUEVO
 } = quoteSlice.actions;
 
 // ===== SELECTORES ACTUALIZADOS =====
@@ -1178,5 +1449,12 @@ export const selectQuotesByCliente = (clienteId) => (state) =>
 
 export const selectQuotesTotalValue = (state) =>
   state.quote.quotes.reduce((total, quote) => total + (quote.precio_total || 0), 0);
+
+export const selectPDFOperations = (state) => state.quote.pdfOperations;
+export const selectPDFLoading = (state) => state.quote.pdfOperations.loading;
+export const selectPDFError = (state) => state.quote.pdfOperations.error;
+export const selectLastPreviewUrl = (state) => state.quote.pdfOperations.lastPreviewUrl;
+export const selectLastDownload = (state) => state.quote.pdfOperations.lastDownload;
+export const selectPDFRegenerating = (state) => state.quote.pdfOperations.regenerating;
 
 export default quoteSlice.reducer;

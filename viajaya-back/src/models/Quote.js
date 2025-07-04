@@ -117,6 +117,21 @@ module.exports = (sequelize) => {
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    pdf_path: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      
+    },
+    pdf_filename: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      
+    },
+    pdf_generated_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      
+    },
     // ✅ Estados y precios
     status: {
       type: DataTypes.ENUM('pending', 'completed', 'sent', 'approved', 'requote', 'rejected', 'expired'),
@@ -165,6 +180,11 @@ module.exports = (sequelize) => {
     sent_at: {
       type: DataTypes.DATE,
       allowNull: true,
+    },
+    email_sent_to: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      
     },
     expires_at: {
       type: DataTypes.DATE,

@@ -34,7 +34,7 @@ const sendEmail = async (mailOptions) => {
 
     // Asegúrate de que el 'from' esté configurado, ya sea aquí o en las opciones por defecto del transporter
     const optionsToSend = {
-      from: `"ZURCHER CONSTRUCTION" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`, // Dirección 'from'
+      from: `"Viaja Ya" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`, // Dirección 'from'
       ...mailOptions, // Incluye 'to', 'subject', 'text', 'attachments', etc.
     };
 

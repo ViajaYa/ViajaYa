@@ -15,25 +15,30 @@ import {
   faEye,
   faEdit,
   faFilter,
-  faSearch
+  faSearch,
+  faDownload,
+  faExternalLinkAlt,
+  faSpinner // ✅ NUEVO
 } from '@fortawesome/free-solid-svg-icons';
 
-// ✅ CORREGIR: Importar solo las funciones que existen en el slice
+// ✅ Importar funciones del slice ACTUALIZADAS
 import {
   fetchQuotes,
   sendQuoteToClient,
   approveQuote,
   rejectQuote,
   requestRequote,
-  // convertQuoteToContract, // ❌ ELIMINAR - No existe en el slice
-  // generateQuotePDF, // ❌ ELIMINAR - No existe en el slice
-  // duplicateQuote, // ❌ ELIMINAR - No existe en el slice
-  // deleteQuote, // ❌ ELIMINAR - No existe en el slice
-  updateQuote, // ✅ Usar esta en su lugar
+  updateQuote,
   updateFilters,
   clearFilters,
   setPagination,
   clearQuoteError,
+  // ✅ NUEVAS FUNCIONES PDF
+  previewQuotePDF,
+  downloadQuotePDF,
+  regenerateQuotePDF,
+  clearPDFError,
+  clearLastPreviewUrl,
   QUOTE_STATUSES,
   // Selectores
   selectQuotes,
@@ -41,7 +46,12 @@ import {
   selectQuoteError,
   selectQuoteFilters,
   selectQuotePagination,
-  selectQuoteStats
+  selectQuoteStats,
+  // ✅ NUEVOS SELECTORES PDF
+  selectPDFOperations,
+  selectPDFLoading,
+  selectPDFError,
+  selectLastPreviewUrl
 } from '../../../redux/slices/quoteSlice';
 
 // ✅ Importar selectores de auth
@@ -49,6 +59,13 @@ import { selectUser, selectIsAuthenticated } from '../../../redux/slices/authSli
 
 // ✅ Importar hook de permisos
 import { useRolePermissions } from '../../../redux/hooks/hooks';
+
+// ✅ Importar helpers PDF
+import { 
+  cleanupBlobUrl, 
+  hasGeneratedPDF, 
+  canGeneratePDF 
+} from '../../../utils/pdfPreview';
 
 // ✅ Importar componentes
 import NavBar from '../../layout/NavBar/NavBar';
@@ -71,6 +88,12 @@ const QuotesList = () => {
   const pagination = useSelector(selectQuotePagination);
   const stats = useSelector(selectQuoteStats);
 
+  // ✅ NUEVOS SELECTORES PDF
+  const pdfOperations = useSelector(selectPDFOperations);
+  const pdfLoading = useSelector(selectPDFLoading);
+  const pdfError = useSelector(selectPDFError);
+  const lastPreviewUrl = useSelector(selectLastPreviewUrl);
+
   // ✅ Estados locales
   const [showCreateQuote, setShowCreateQuote] = useState(false);
   const [selectedQuotes, setSelectedQuotes] = useState([]);
@@ -78,13 +101,166 @@ const QuotesList = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [actionLoading, setActionLoading] = useState({});
 
+  // ✅ NUEVO: Estado para modal de vista previa PDF
+  const [pdfPreviewModal, setPdfPreviewModal] = useState({
+    isOpen: false,
+    pdfUrl: null,
+    filename: null
+  });
+
+  // ✅ NUEVA FUNCIÓN: Filtrar cotizaciones según jerarquía
+  const getFilteredQuotesByHierarchy = useMemo(() => {
+    if (!user || !quotes.length) return [];
+
+    const userRole = user.role;
+    const userId = user.id;
+
+    console.log('🔍 Filtrando cotizaciones para usuario:', {
+      id: userId,
+      role: userRole,
+      name: `${user.name} ${user.lastname}`,
+      liderId: user.lider_id,
+      gerenteId: user.gerente_id
+    });
+
+    switch (userRole) {
+      case 7: // Owner
+      case 5: // Admin
+      case 6: // Contador
+        console.log('👑 Usuario con permisos totales - mostrando todas las cotizaciones');
+        return quotes;
+
+      case 4: { // Gerente
+        const gerenteQuotes = quotes.filter(quote => {
+          if (quote.gerente_id === userId) return true;
+          if (quote.admin_id === userId) return true;
+          return false;
+        });
+        
+        console.log('👨‍💼 Gerente - cotizaciones filtradas:', {
+          total: quotes.length,
+          filtered: gerenteQuotes.length,
+          criteria: `gerente_id === ${userId} OR admin_id === ${userId}`
+        });
+        
+        return gerenteQuotes;
+      }
+      case 3: { // Líder
+        const liderQuotes = quotes.filter(quote => {
+          if (quote.lider_id === userId) return true;
+          if (quote.admin_id === userId) return true;
+          return false;
+        });
+        
+        console.log('👨‍🏫 Líder - cotizaciones filtradas:', {
+          total: quotes.length,
+          filtered: liderQuotes.length,
+          criteria: `lider_id === ${userId} OR admin_id === ${userId}`
+        });
+        
+        return liderQuotes;
+      }
+      case 2: { // Asesor
+        const asesorQuotes = quotes.filter(quote => {
+          if (quote.asesor_id === userId) return true;
+          if (quote.admin_id === userId) return true;
+          return false;
+        });
+        
+        console.log('👨‍💼 Asesor - cotizaciones filtradas:', {
+          total: quotes.length,
+          filtered: asesorQuotes.length,
+          criteria: `asesor_id === ${userId} OR admin_id === ${userId}`
+        });
+        
+        return asesorQuotes;
+      }
+        
+      case 1: // Cliente
+        console.log('🚫 Cliente - sin acceso a cotizaciones');
+        return [];
+
+      default:
+        console.log('❓ Rol desconocido - sin acceso');
+        return [];
+    }
+  }, [quotes, user]);
+
+  // ✅ NUEVA FUNCIÓN: Verificar permisos de edición
+  const canEditQuote = (quote) => {
+    if (!user) return false;
+
+    // Solo Owner y Admin pueden editar TODAS las cotizaciones
+    if (hasAnyRole([USER_ROLES.OWNER, USER_ROLES.ADMIN])) {
+      return true;
+    }
+
+    // Los demás roles NO pueden editar (según tu requerimiento)
+    return false;
+  };
+
+  // ✅ NUEVA FUNCIÓN: Verificar permisos para acciones específicas
+  const canPerformAction = (action, quote) => {
+    if (!user) return false;
+
+    switch (action) {
+      case 'edit':
+        return canEditQuote(quote);
+        
+      case 'send':
+        // Líderes y superiores pueden enviar
+        return hasAnyRole([USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]) &&
+               quote.status === QUOTE_STATUSES.COMPLETED;
+        
+      case 'approve':
+      case 'reject':
+        // Gerentes y superiores pueden aprobar/rechazar
+        return hasAnyRole([USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]) &&
+               quote.status === QUOTE_STATUSES.SENT;
+        
+      case 'convert':
+        // Gerentes y superiores pueden convertir a contrato
+        return hasAnyRole([USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]) &&
+               quote.status === QUOTE_STATUSES.APPROVED;
+        
+      case 'delete':
+        // Solo Owner puede eliminar
+        return hasAnyRole([USER_ROLES.OWNER]) &&
+               quote.status === QUOTE_STATUSES.PENDING;
+        
+      case 'view':
+      case 'duplicate':
+        // Todos los roles pueden ver y duplicar sus cotizaciones asignadas
+        return true;
+
+      // ✅ NUEVOS CASOS PARA PDF
+      case 'pdf_preview':
+        // Todos pueden ver vista previa si la cotización tiene precio
+        return canGeneratePDF(quote);
+        
+      case 'pdf_download':
+        // Todos pueden descargar si ya se generó PDF
+        return hasGeneratedPDF(quote);
+        
+      case 'pdf_regenerate':
+        // Líderes y superiores pueden regenerar PDF
+        return hasAnyRole([USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]) &&
+               canGeneratePDF(quote);
+        
+      default:
+        return false;
+    }
+  };
+
   // ✅ Cargar cotizaciones al montar
   useEffect(() => {
     if (isAuthenticated && user) {
       dispatch(fetchQuotes({ 
         page: pagination.page, 
         limit: pagination.limit, 
-        filters 
+        filters: {
+          ...filters,
+        }
       }));
     }
   }, [dispatch, isAuthenticated, user, pagination.page, pagination.limit, filters]);
@@ -99,11 +275,36 @@ const QuotesList = () => {
     }
   }, [error, dispatch]);
 
-  // ✅ Cotizaciones filtradas usando campos reales
+  // ✅ NUEVO: Limpiar errores PDF
+  useEffect(() => {
+    if (pdfError) {
+      const timer = setTimeout(() => {
+        dispatch(clearPDFError());
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [pdfError, dispatch]);
+
+  // ✅ NUEVO: Limpiar URL de vista previa al desmontar
+  useEffect(() => {
+    return () => {
+      if (lastPreviewUrl) {
+        dispatch(clearLastPreviewUrl());
+      }
+      // Limpiar URL del modal si existe
+      if (pdfPreviewModal.pdfUrl) {
+        cleanupBlobUrl(pdfPreviewModal.pdfUrl);
+      }
+    };
+  }, [lastPreviewUrl, pdfPreviewModal.pdfUrl, dispatch]);
+
+  // ✅ Cotizaciones filtradas por jerarquía Y búsqueda
   const filteredQuotes = useMemo(() => {
-    if (!searchTerm.trim()) return quotes;
+    const hierarchyFilteredQuotes = getFilteredQuotesByHierarchy;
     
-    return quotes.filter(quote => 
+    if (!searchTerm.trim()) return hierarchyFilteredQuotes;
+    
+    return hierarchyFilteredQuotes.filter(quote => 
       quote.nombre_cliente?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       quote.email_cliente?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       quote.destino?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -112,7 +313,7 @@ const QuotesList = () => {
       quote.Asesor?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       quote.Asesor?.email?.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [quotes, searchTerm]);
+  }, [getFilteredQuotesByHierarchy, searchTerm]);
 
   // ✅ Función para obtener el color del estado
   const getStatusColor = (status) => {
@@ -144,14 +345,141 @@ const QuotesList = () => {
     return statusTexts[status] || 'Desconocido';
   };
 
-  // ✅ CORREGIR: Manejo de acciones simplificado
+  // ✅ ACTUALIZAR: Función de vista previa PDF con modal
+  const handlePDFPreview = async (quoteId) => {
+    try {
+      setActionLoading(prev => ({ ...prev, [`pdf_preview_${quoteId}`]: true }));
+      
+      console.log('🔍 Iniciando vista previa PDF para cotización:', quoteId);
+
+      const result = await dispatch(previewQuotePDF(quoteId)).unwrap();
+      
+      console.log('✅ Vista previa PDF - Resultado:', {
+        quoteId: result.quoteId,
+        filename: result.filename,
+        blobSize: result.blobSize,
+        hasUrl: !!result.pdfUrl
+      });
+      
+      if (!result.pdfUrl) {
+        throw new Error('No se pudo generar la URL del PDF');
+      }
+
+      // ✅ Abrir en modal en lugar de nueva ventana
+      setPdfPreviewModal({
+        isOpen: true,
+        pdfUrl: result.pdfUrl,
+        filename: result.filename
+      });
+      
+      console.log('✅ Vista previa PDF abierta en modal');
+      
+    } catch (error) {
+      console.error('❌ Error en vista previa PDF:', error);
+      
+      // ✅ Mensaje de error más descriptivo
+      let errorMessage = 'Error al generar vista previa del PDF';
+      
+      if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      alert(`${errorMessage}\n\nDetalles: ${error}`);
+      
+    } finally {
+      setActionLoading(prev => ({ ...prev, [`pdf_preview_${quoteId}`]: false }));
+    }
+  };
+
+  // ✅ Función para cerrar modal de PDF
+  const closePDFModal = () => {
+    // Limpiar URL del blob si existe
+    if (pdfPreviewModal.pdfUrl) {
+      cleanupBlobUrl(pdfPreviewModal.pdfUrl);
+    }
+    
+    setPdfPreviewModal({
+      isOpen: false,
+      pdfUrl: null,
+      filename: null
+    });
+  };
+
+  const handlePDFDownload = async (quoteId) => {
+    try {
+      setActionLoading(prev => ({ ...prev, [`pdf_download_${quoteId}`]: true }));
+      
+      console.log('🔍 Iniciando descarga PDF para cotización:', quoteId);
+      
+      await dispatch(downloadQuotePDF(quoteId)).unwrap();
+      
+      console.log('✅ Descarga PDF completada exitosamente');
+      
+    } catch (error) {
+      console.error('❌ Error en descarga PDF:', error);
+      alert(`Error al descargar PDF: ${error.message || error}`);
+    } finally {
+      setActionLoading(prev => ({ ...prev, [`pdf_download_${quoteId}`]: false }));
+    }
+  };
+
+  const handlePDFRegenerate = async (quoteId) => {
+    try {
+      if (!window.confirm('¿Estás seguro de regenerar el PDF? Esto sobrescribirá el archivo actual.')) {
+        return;
+      }
+
+      setActionLoading(prev => ({ ...prev, [`pdf_regenerate_${quoteId}`]: true }));
+      
+      console.log('🔍 Regenerando PDF para cotización:', quoteId);
+      
+      await dispatch(regenerateQuotePDF(quoteId)).unwrap();
+      
+      alert('PDF regenerado exitosamente');
+      console.log('✅ PDF regenerado exitosamente');
+      
+    } catch (error) {
+      console.error('❌ Error regenerando PDF:', error);
+      alert(`Error al regenerar PDF: ${error.message || error}`);
+    } finally {
+      setActionLoading(prev => ({ ...prev, [`pdf_regenerate_${quoteId}`]: false }));
+    }
+  };
+
+  // ✅ ACTUALIZAR: Manejo de acciones con validación de permisos
   const handleAction = async (action, quoteId, data = {}) => {
+    const quote = quotes.find(q => q.id === quoteId);
+    
+    if (!quote) {
+      alert('Cotización no encontrada');
+      return;
+    }
+
+    if (!canPerformAction(action, quote)) {
+      alert('No tienes permisos para realizar esta acción');
+      return;
+    }
+
+    // ✅ MANEJAR ACCIONES PDF DIRECTAMENTE
+    if (action === 'pdf_preview') {
+      return handlePDFPreview(quoteId);
+    }
+    if (action === 'pdf_download') {
+      return handlePDFDownload(quoteId);
+    }
+    if (action === 'pdf_regenerate') {
+      return handlePDFRegenerate(quoteId);
+    }
+
     setActionLoading(prev => ({ ...prev, [quoteId]: true }));
     
     try {
       switch (action) {
         case 'send':
           await dispatch(sendQuoteToClient(quoteId)).unwrap();
+          alert('✅ Cotización enviada exitosamente al cliente con PDF adjunto!');
           break;
         case 'approve':
           await dispatch(approveQuote({ quoteId, approvalData: data })).unwrap();
@@ -163,19 +491,12 @@ const QuotesList = () => {
           await dispatch(requestRequote({ quoteId, requote_reason: data.reason })).unwrap();
           break;
         case 'convert':
-          // ✅ Implementar conversión a contrato manualmente
           await handleConvertToContract(quoteId, data);
           break;
-        case 'pdf':
-          // ✅ Implementar generación de PDF manualmente
-          await handleGeneratePDF(quoteId);
-          break;
         case 'duplicate':
-          // ✅ Implementar duplicación manualmente
           await handleDuplicateQuote(quoteId);
           break;
         case 'delete':
-          // ✅ Implementar eliminación manualmente
           if (window.confirm('¿Estás seguro de eliminar esta cotización?')) {
             await handleDeleteQuote(quoteId);
           }
@@ -191,9 +512,8 @@ const QuotesList = () => {
     }
   };
 
-  // ✅ NUEVO: Funciones auxiliares para acciones no implementadas
+  // ✅ Funciones auxiliares para acciones no implementadas
   const handleConvertToContract = async (quoteId, data) => {
-    // Por ahora, solo cambiar el estado a convertida
     await dispatch(updateQuote({ 
       id: quoteId, 
       updates: { 
@@ -204,25 +524,16 @@ const QuotesList = () => {
     alert('Cotización marcada como convertida a contrato');
   };
 
-  const handleGeneratePDF = async (quoteId) => {
-    // Por ahora, abrir la cotización para ver detalles
-    navigate(`/quotes/${quoteId}`);
-    alert('Funcionalidad de PDF en desarrollo. Se abrió la vista de detalles.');
-  };
-
   const handleDuplicateQuote = async (quoteId) => {
     const originalQuote = quotes.find(q => q.id === quoteId);
     if (!originalQuote) {
       throw new Error('Cotización no encontrada');
     }
-
-    // Navegar al popup de creación con datos pre-llenos
     setShowCreateQuote(true);
     alert('Se abrirá el formulario para duplicar la cotización');
   };
 
   const handleDeleteQuote = async (quoteId) => {
-    // Por ahora, solo ocultar de la lista (implementación temporal)
     alert('Funcionalidad de eliminación en desarrollo');
   };
 
@@ -236,24 +547,29 @@ const QuotesList = () => {
     dispatch(setPagination({ page: newPage }));
   };
 
-  // ✅ Renderizar botones de acción según el estado y permisos
+  // ✅ ACTUALIZAR: Renderizar botones de acción con funcionalidades PDF
   const renderActionButtons = (quote) => {
     const isLoading = actionLoading[quote.id];
+    const isPDFPreviewLoading = actionLoading[`pdf_preview_${quote.id}`];
+    const isPDFDownloadLoading = actionLoading[`pdf_download_${quote.id}`];
+    const isPDFRegenerateLoading = actionLoading[`pdf_regenerate_${quote.id}`];
     
     return (
       <div className="flex items-center gap-1">
-        {/* Ver detalles */}
-        <button
-          onClick={() => navigate(`/quotes/${quote.id}`)}
-          className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-          title="Ver detalles"
-        >
-          <FontAwesomeIcon icon={faEye} size="sm" />
-        </button>
+        {/* Ver detalles - Todos pueden ver */}
+        {canPerformAction('view', quote) && (
+          <button
+            onClick={() => navigate(`/quotes/${quote.id}/edit`)}
+            className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+            title="Ver detalles"
+          >
+            <FontAwesomeIcon icon={faEye} size="sm" />
+          </button>
+        )}
 
-        {/* Editar (solo si está pendiente o completada y tiene permisos) */}
-        {(quote.status === QUOTE_STATUSES.PENDING || quote.status === QUOTE_STATUSES.COMPLETED) && 
-         hasAnyRole([USER_ROLES.ASESOR, USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]) && (
+        {/* Editar - Solo Owner y Admin */}
+        {canPerformAction('edit', quote) && 
+         (quote.status === QUOTE_STATUSES.PENDING || quote.status === QUOTE_STATUSES.COMPLETED) && (
           <button
             onClick={() => navigate(`/quotes/${quote.id}/edit`)}
             className="p-2 text-yellow-600 hover:bg-yellow-50 rounded transition-colors"
@@ -263,22 +579,72 @@ const QuotesList = () => {
           </button>
         )}
 
-        {/* Enviar (si está completada y tiene permisos) */}
-        {quote.status === QUOTE_STATUSES.COMPLETED && 
-         hasAnyRole([USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]) && (
+        {/* ✅ Vista previa PDF - Todos pueden ver si tiene precio */}
+        {canPerformAction('pdf_preview', quote) && (
+          <button
+            onClick={() => handleAction('pdf_preview', quote.id)}
+            disabled={isPDFPreviewLoading || pdfLoading}
+            className="p-2 text-purple-600 hover:bg-purple-50 rounded transition-colors disabled:opacity-50"
+            title="Vista previa PDF"
+          >
+            {isPDFPreviewLoading ? (
+              <FontAwesomeIcon icon={faSpinner} spin size="sm" />
+            ) : (
+              <FontAwesomeIcon icon={faExternalLinkAlt} size="sm" />
+            )}
+          </button>
+        )}
+
+        {/* ✅ Descargar PDF - Si ya tiene PDF generado */}
+        {canPerformAction('pdf_download', quote) && (
+          <button
+            onClick={() => handleAction('pdf_download', quote.id)}
+            disabled={isPDFDownloadLoading || pdfLoading}
+            className="p-2 text-green-600 hover:bg-green-50 rounded transition-colors disabled:opacity-50"
+            title="Descargar PDF"
+          >
+            {isPDFDownloadLoading ? (
+              <FontAwesomeIcon icon={faSpinner} spin size="sm" />
+            ) : (
+              <FontAwesomeIcon icon={faDownload} size="sm" />
+            )}
+          </button>
+        )}
+
+        {/* ✅ Regenerar PDF - Líderes y superiores */}
+        {canPerformAction('pdf_regenerate', quote) && hasGeneratedPDF(quote) && (
+          <button
+            onClick={() => handleAction('pdf_regenerate', quote.id)}
+            disabled={isPDFRegenerateLoading || pdfLoading}
+            className="p-2 text-orange-600 hover:bg-orange-50 rounded transition-colors disabled:opacity-50"
+            title="Regenerar PDF"
+          >
+            {isPDFRegenerateLoading ? (
+              <FontAwesomeIcon icon={faSpinner} spin size="sm" />
+            ) : (
+              <FontAwesomeIcon icon={faRedo} size="sm" />
+            )}
+          </button>
+        )}
+
+        {/* ✅ Enviar - Ahora envía con PDF y email automáticamente */}
+        {canPerformAction('send', quote) && (
           <button
             onClick={() => handleAction('send', quote.id)}
             disabled={isLoading}
             className="p-2 text-indigo-600 hover:bg-indigo-50 rounded transition-colors disabled:opacity-50"
-            title="Enviar al cliente"
+            title="Enviar al cliente (con PDF)"
           >
-            <FontAwesomeIcon icon={faPaperPlane} size="sm" />
+            {isLoading ? (
+              <FontAwesomeIcon icon={faSpinner} spin size="sm" />
+            ) : (
+              <FontAwesomeIcon icon={faPaperPlane} size="sm" />
+            )}
           </button>
         )}
 
-        {/* Aprobar (si está enviada y tiene permisos) */}
-        {quote.status === QUOTE_STATUSES.SENT && 
-         hasAnyRole([USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]) && (
+        {/* Aprobar - Gerentes y superiores */}
+        {canPerformAction('approve', quote) && (
           <button
             onClick={() => handleAction('approve', quote.id)}
             disabled={isLoading}
@@ -289,9 +655,8 @@ const QuotesList = () => {
           </button>
         )}
 
-        {/* Rechazar (si está enviada y tiene permisos) */}
-        {quote.status === QUOTE_STATUSES.SENT && 
-         hasAnyRole([USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]) && (
+        {/* Rechazar - Gerentes y superiores */}
+        {canPerformAction('reject', quote) && (
           <button
             onClick={() => {
               const reason = window.prompt('Motivo del rechazo:');
@@ -305,9 +670,8 @@ const QuotesList = () => {
           </button>
         )}
 
-        {/* Convertir a contrato (si está aprobada y tiene permisos) */}
-        {quote.status === QUOTE_STATUSES.APPROVED && 
-         hasAnyRole([USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]) && (
+        {/* Convertir a contrato - Gerentes y superiores */}
+        {canPerformAction('convert', quote) && (
           <button
             onClick={() => handleAction('convert', quote.id, {})}
             disabled={isLoading}
@@ -318,32 +682,20 @@ const QuotesList = () => {
           </button>
         )}
 
-        {/* Generar PDF */}
-        {(quote.status === QUOTE_STATUSES.COMPLETED || 
-          quote.status === QUOTE_STATUSES.SENT || 
-          quote.status === QUOTE_STATUSES.APPROVED) && (
+        {/* Duplicar - Todos pueden duplicar */}
+        {canPerformAction('duplicate', quote) && (
           <button
-            onClick={() => handleAction('pdf', quote.id)}
+            onClick={() => handleAction('duplicate', quote.id)}
             disabled={isLoading}
-            className="p-2 text-gray-600 hover:bg-gray-50 rounded transition-colors disabled:opacity-50"
-            title="Generar PDF"
+            className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors disabled:opacity-50"
+            title="Duplicar"
           >
-            <FontAwesomeIcon icon={faFilePdf} size="sm" />
+            <FontAwesomeIcon icon={faCopy} size="sm" />
           </button>
         )}
 
-        {/* Duplicar */}
-        <button
-          onClick={() => handleAction('duplicate', quote.id)}
-          disabled={isLoading}
-          className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors disabled:opacity-50"
-          title="Duplicar"
-        >
-          <FontAwesomeIcon icon={faCopy} size="sm" />
-        </button>
-
-        {/* Eliminar (solo owners y si está pendiente) */}
-        {hasAnyRole([USER_ROLES.OWNER]) && quote.status === QUOTE_STATUSES.PENDING && (
+        {/* Eliminar - Solo Owner */}
+        {canPerformAction('delete', quote) && (
           <button
             onClick={() => handleAction('delete', quote.id)}
             disabled={isLoading}
@@ -396,10 +748,20 @@ const QuotesList = () => {
         <NavBar />
       </div>
 
-      {/* Header */}
+      {/* Header con información de jerarquía */}
       <div className="bg-ColorMorado text-2xl font-bold font-nunito p-4 text-gray-200 mb-8 mt-28 rounded-lg">
         <div className="flex justify-between items-center">
-          <h2>Gestión de Cotizaciones</h2>
+          <div>
+            <h2>Gestión de Cotizaciones</h2>
+            <p className="text-sm font-normal text-gray-300 mt-1">
+              {user.role === 7 && 'Vista completa - Owner'}
+              {user.role === 5 && 'Vista completa - Admin'}
+              {user.role === 6 && 'Vista completa - Contador'}
+              {user.role === 4 && 'Vista de Gerente - Tu equipo y subordinados'}
+              {user.role === 3 && 'Vista de Líder - Tu equipo de asesores'}
+              {user.role === 2 && 'Vista de Asesor - Tus cotizaciones'}
+            </p>
+          </div>
           {hasAnyRole([USER_ROLES.ASESOR, USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]) && (
             <button
               onClick={() => setShowCreateQuote(true)}
@@ -412,23 +774,40 @@ const QuotesList = () => {
         </div>
       </div>
 
-      {/* Estadísticas */}
+      {/* ✅ Mensaje de error PDF */}
+      {pdfError && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <div className="flex items-center">
+            <FontAwesomeIcon icon={faFilePdf} className="mr-2" />
+            <span>Error PDF: {pdfError}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Estadísticas con información de filtrado */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-blue-500 text-white p-4 rounded-lg">
-          <h3 className="text-lg font-semibold">Total</h3>
-          <p className="text-2xl font-bold">{stats.totalQuotes || quotes.length}</p>
+          <h3 className="text-lg font-semibold">Visible para ti</h3>
+          <p className="text-2xl font-bold">{getFilteredQuotesByHierarchy.length}</p>
+          <p className="text-sm opacity-80">de {quotes.length} totales</p>
         </div>
         <div className="bg-yellow-500 text-white p-4 rounded-lg">
           <h3 className="text-lg font-semibold">Pendientes</h3>
-          <p className="text-2xl font-bold">{stats.pendingQuotes || 0}</p>
+          <p className="text-2xl font-bold">
+            {getFilteredQuotesByHierarchy.filter(q => q.status === QUOTE_STATUSES.PENDING).length}
+          </p>
         </div>
         <div className="bg-green-500 text-white p-4 rounded-lg">
           <h3 className="text-lg font-semibold">Aprobadas</h3>
-          <p className="text-2xl font-bold">{stats.approvedQuotes || 0}</p>
+          <p className="text-2xl font-bold">
+            {getFilteredQuotesByHierarchy.filter(q => q.status === QUOTE_STATUSES.APPROVED).length}
+          </p>
         </div>
         <div className="bg-red-500 text-white p-4 rounded-lg">
           <h3 className="text-lg font-semibold">Rechazadas</h3>
-          <p className="text-2xl font-bold">{stats.rejectedQuotes || 0}</p>
+          <p className="text-2xl font-bold">
+            {getFilteredQuotesByHierarchy.filter(q => q.status === QUOTE_STATUSES.REJECTED).length}
+          </p>
         </div>
       </div>
 
@@ -452,8 +831,8 @@ const QuotesList = () => {
 
           {/* Filtro por estado */}
           <select
-            value={filters.status}
-            onChange={(e) => handleFilterChange('status', e.target.value)}
+            value={filters.status || 'all'}
+            onChange={(e) => handleFilterChange('status', e.target.value === 'all' ? '' : e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="all">Todos los estados</option>
@@ -535,14 +914,14 @@ const QuotesList = () => {
         )}
       </div>
 
-      {/* Mensaje de error */}
+      {/* Mensaje de error general */}
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
           {error}
         </div>
       )}
 
-      {/* Tabla de cotizaciones */}
+      {/* ✅ Tabla de cotizaciones con columna de PDF */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -563,6 +942,10 @@ const QuotesList = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Valor
                 </th>
+                {/* ✅ Columna para PDF */}
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  PDF
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Estado
                 </th>
@@ -577,7 +960,7 @@ const QuotesList = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan="8" className="px-6 py-12 text-center">
+                  <td colSpan="9" className="px-6 py-12 text-center">
                     <div className="flex justify-center items-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                       <span className="ml-2">Cargando cotizaciones...</span>
@@ -586,8 +969,8 @@ const QuotesList = () => {
                 </tr>
               ) : filteredQuotes.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="px-6 py-12 text-center text-gray-500">
-                    {searchTerm ? 'No se encontraron cotizaciones que coincidan con la búsqueda' : 'No hay cotizaciones disponibles'}
+                  <td colSpan="9" className="px-6 py-12 text-center text-gray-500">
+                    {searchTerm ? 'No se encontraron cotizaciones que coincidan con la búsqueda' : 'No hay cotizaciones disponibles para tu rol'}
                   </td>
                 </tr>
               ) : (
@@ -623,6 +1006,19 @@ const QuotesList = () => {
                         </span>
                       ) : (
                         <span className="text-gray-400">Pendiente</span>
+                      )}
+                    </td>
+                    {/* ✅ Columna PDF */}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {hasGeneratedPDF(quote) ? (
+                        <div className="flex items-center">
+                          <FontAwesomeIcon icon={faFilePdf} className="text-red-500 mr-1" />
+                          <span className="text-xs text-green-600 font-medium">Generado</span>
+                        </div>
+                      ) : canGeneratePDF(quote) ? (
+                        <span className="text-xs text-blue-600 font-medium">Disponible</span>
+                      ) : (
+                        <span className="text-xs text-gray-400">Sin precio</span>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -667,9 +1063,9 @@ const QuotesList = () => {
                 <p className="text-sm text-gray-700">
                   Mostrando <span className="font-medium">{((pagination.page - 1) * pagination.limit) + 1}</span> a{' '}
                   <span className="font-medium">
-                    {Math.min(pagination.page * pagination.limit, pagination.total)}
+                    {Math.min(pagination.page * pagination.limit, filteredQuotes.length)}
                   </span> de{' '}
-                  <span className="font-medium">{pagination.total}</span> resultados
+                  <span className="font-medium">{filteredQuotes.length}</span> resultados
                 </p>
               </div>
               <div>
@@ -714,6 +1110,46 @@ const QuotesList = () => {
         )}
       </div>
 
+      {/* ✅ NUEVO: Modal de vista previa PDF */}
+      {pdfPreviewModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-4 max-w-4xl max-h-[90vh] w-full mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Vista Previa PDF - {pdfPreviewModal.filename}</h3>
+              <button
+                onClick={closePDFModal}
+                className="text-gray-500 hover:text-gray-700 text-xl font-bold"
+                title="Cerrar"
+              >
+                <FontAwesomeIcon icon={faTimes} />
+              </button>
+            </div>
+            <div className="h-[70vh]">
+              <iframe
+                src={pdfPreviewModal.pdfUrl}
+                className="w-full h-full border rounded"
+                title="Vista previa PDF"
+              />
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={closePDFModal}
+                className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
+              >
+                Cerrar
+              </button>
+              <a
+                href={pdfPreviewModal.pdfUrl}
+                download={pdfPreviewModal.filename}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+              >
+                Descargar
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal para crear nueva cotización */}
       {showCreateQuote && (
         <QuotePopup
@@ -721,7 +1157,6 @@ const QuotesList = () => {
           onClose={() => setShowCreateQuote(false)}
           onSuccess={() => {
             setShowCreateQuote(false);
-            // Recargar cotizaciones
             dispatch(fetchQuotes({ 
               page: pagination.page, 
               limit: pagination.limit, 

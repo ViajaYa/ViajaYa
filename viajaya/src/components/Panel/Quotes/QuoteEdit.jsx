@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import  { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -18,7 +18,11 @@ import {
   faStickyNote,
   faSpinner,
   faExclamationTriangle,
-  faShieldAlt
+  faShieldAlt,
+  faEye,
+  faDownload,
+  faSync,
+  faFilePdf
 } from '@fortawesome/free-solid-svg-icons';
 
 // ✅ Importar acciones del slice
@@ -26,11 +30,21 @@ import {
   fetchQuoteById,
   updateQuote,
   sendQuoteToClient,
+  previewQuotePDF,
+  downloadQuotePDF,
+  regenerateQuotePDF,
   clearQuoteError,
+  clearPDFError,
+  clearLastPreviewUrl,
   QUOTE_STATUSES,
   selectCurrentQuote,
   selectQuoteLoading,
-  selectQuoteError
+  selectQuoteError,
+  selectPDFOperations,
+  selectPDFLoading,
+  selectPDFError,
+  selectLastPreviewUrl,
+  selectPDFRegenerating
 } from '../../../redux/slices/quoteSlice';
 
 // ✅ Importar selectores de auth y permisos
@@ -39,6 +53,7 @@ import { useRolePermissions } from '../../../redux/hooks/hooks';
 
 // ✅ Importar componentes
 import NavBar from '../../layout/NavBar/NavBar';
+import { openPDFPreview, canGeneratePDF, hasGeneratedPDF } from '../../../utils/pdfPreview';
 
 const QuoteEdit = () => {
   const { id } = useParams();
@@ -50,6 +65,14 @@ const QuoteEdit = () => {
   const loading = useSelector(selectQuoteLoading);
   const error = useSelector(selectQuoteError);
   const user = useSelector(selectUser);
+
+  // ✅ Nuevos selectores para PDF
+  const pdfOperations = useSelector(selectPDFOperations);
+  const pdfLoading = useSelector(selectPDFLoading);
+  const pdfError = useSelector(selectPDFError);
+  const lastPreviewUrl = useSelector(selectLastPreviewUrl);
+  const pdfRegenerating = useSelector(selectPDFRegenerating);
+
   
   // ✅ Hook de permisos - CORREGIDO
   const { hasAnyRole = () => false, USER_ROLES = {}, canManageQuotes = false } = useRolePermissions() || {};
@@ -108,6 +131,52 @@ const QuoteEdit = () => {
     return hasAnyRole([USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.CONTADOR, USER_ROLES.OWNER]);
   };
 
+  const handlePreviewPDF = async () => {
+    if (!canGeneratePDF(currentQuote)) {
+      alert('La cotización debe tener un precio total para generar el PDF');
+      return;
+    }
+
+    try {
+      const result = await dispatch(previewQuotePDF(id)).unwrap();
+      openPDFPreview(result.pdfUrl, result.filename);
+    } catch (error) {
+      console.error('Error generando vista previa:', error);
+      alert('Error al generar vista previa del PDF: ' + error);
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!hasGeneratedPDF(currentQuote)) {
+      alert('No hay PDF generado para esta cotización');
+      return;
+    }
+
+    try {
+      await dispatch(downloadQuotePDF(id)).unwrap();
+    } catch (error) {
+      console.error('Error descargando PDF:', error);
+      alert('Error al descargar el PDF: ' + error);
+    }
+  };
+
+  const handleRegeneratePDF = async () => {
+    if (!canGeneratePDF(currentQuote)) {
+      alert('La cotización debe tener un precio total para regenerar el PDF');
+      return;
+    }
+
+    if (window.confirm('¿Estás seguro de regenerar el PDF? Esto sobrescribirá el archivo actual.')) {
+      try {
+        await dispatch(regenerateQuotePDF(id)).unwrap();
+        alert('PDF regenerado exitosamente');
+      } catch (error) {
+        console.error('Error regenerando PDF:', error);
+        alert('Error al regenerar el PDF: ' + error);
+      }
+    }
+  };
+
   // ✅ TODOS LOS useEffect DESPUÉS DE LAS FUNCIONES
   useEffect(() => {
     if (id) {
@@ -144,12 +213,29 @@ const QuoteEdit = () => {
     }
   }, [error, dispatch]);
 
+   useEffect(() => {
+    if (pdfError) {
+      const timer = setTimeout(() => {
+        dispatch(clearPDFError());
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [pdfError, dispatch]);
+
   useEffect(() => {
     const numNinos = formData.edades_ninos.length;
     if (numNinos !== formData.ninos) {
       setFormData(prev => ({ ...prev, ninos: numNinos }));
     }
   }, [formData.edades_ninos, formData.ninos]);
+
+  useEffect(() => {
+    return () => {
+      if (lastPreviewUrl) {
+        dispatch(clearLastPreviewUrl());
+      }
+    };
+  }, [dispatch, lastPreviewUrl]);
 
   // ✅ FUNCIONES DE MANEJO DESPUÉS DE TODOS LOS HOOKS
   const handleInputChange = (e) => {
@@ -254,6 +340,12 @@ const QuoteEdit = () => {
       return;
     }
 
+    if (!currentQuote.email_cliente) {
+      alert('La cotización debe tener un email de cliente válido');
+      return;
+    }
+
+
     if (window.confirm('¿Estás seguro de enviar esta cotización al cliente? Una vez enviada no podrás editarla.')) {
       setSendLoading(true);
       try {
@@ -270,7 +362,7 @@ const QuoteEdit = () => {
         await dispatch(sendQuoteToClient(id)).unwrap();
         
         alert('Cotización enviada exitosamente al cliente');
-        navigate('/panel/quotes');
+        navigate('/panel');
       } catch (error) {
         console.error('Error enviando cotización:', error);
         alert('Error al enviar la cotización: ' + error);
@@ -356,7 +448,7 @@ const QuoteEdit = () => {
                     currentQuote?.status === QUOTE_STATUSES.EXPIRED;
 
   // ✅ RENDER PRINCIPAL
-  return (
+   return (
     <div className="min-h-screen bg-gray-50">
       <div className='fixed top-0 left-0 z-50 w-full'>
         <NavBar />
@@ -388,8 +480,57 @@ const QuoteEdit = () => {
               </div>
             </div>
             
-            {/* Botones de acción */}
+            {/* ✅ BOTONES DE ACCIÓN ACTUALIZADOS */}
             <div className="flex gap-3">
+              {/* Botones de PDF */}
+              {canGeneratePDF(currentQuote) && (
+                <button
+                  onClick={handlePreviewPDF}
+                  disabled={pdfLoading}
+                  className="bg-purple-500 hover:bg-purple-600 disabled:opacity-50 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                  title="Vista previa PDF"
+                >
+                  {pdfLoading ? (
+                    <FontAwesomeIcon icon={faSpinner} spin />
+                  ) : (
+                    <FontAwesomeIcon icon={faEye} />
+                  )}
+                  Vista previa
+                </button>
+              )}
+
+              {hasGeneratedPDF(currentQuote) && (
+                <button
+                  onClick={handleDownloadPDF}
+                  disabled={pdfLoading}
+                  className="bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                  title="Descargar PDF"
+                >
+                  {pdfLoading ? (
+                    <FontAwesomeIcon icon={faSpinner} spin />
+                  ) : (
+                    <FontAwesomeIcon icon={faDownload} />
+                  )}
+                  Descargar PDF
+                </button>
+              )}
+
+              {hasGeneratedPDF(currentQuote) && canSendQuote() && !isReadOnly && (
+                <button
+                  onClick={handleRegeneratePDF}
+                  disabled={pdfRegenerating}
+                  className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                  title="Regenerar PDF"
+                >
+                  {pdfRegenerating ? (
+                    <FontAwesomeIcon icon={faSpinner} spin />
+                  ) : (
+                    <FontAwesomeIcon icon={faSync} />
+                  )}
+                  Regenerar PDF
+                </button>
+              )}
+
               {!isReadOnly && (
                 <button
                   onClick={handleSave}
@@ -421,12 +562,31 @@ const QuoteEdit = () => {
               )}
             </div>
           </div>
+
+          {/* ✅ INFORMACIÓN DE PDF */}
+          {hasGeneratedPDF(currentQuote) && (
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center gap-2 text-sm text-blue-700">
+                <FontAwesomeIcon icon={faFilePdf} />
+                <span>PDF generado: {currentQuote.pdf_filename}</span>
+                <span className="text-blue-500">
+                  ({new Date(currentQuote.pdf_generated_at).toLocaleString('es-ES')})
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Mensaje de error */}
+        {/* Mensajes de error */}
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
             {error}
+          </div>
+        )}
+
+        {pdfError && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+            Error PDF: {pdfError}
           </div>
         )}
 

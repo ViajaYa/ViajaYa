@@ -7,6 +7,9 @@ const {
     authorizeHierarchy
 } = require('../middlewares/authMiddleware');
 
+
+
+
 // ✅ RUTAS PÚBLICAS (sin autenticación)
 // Crear cotización externa desde web pública
 router.post('/external', quoteController.createExternalQuote);
@@ -38,8 +41,11 @@ router.get('/:id', authenticateToken, quoteController.getQuoteById);
 router.put('/:id', authenticateToken, authorizeRoles(2, 3, 4, 5, 6, 7), quoteController.updateQuote);
 
 // Enviar cotización al cliente (Líder en adelante)
-router.patch('/:id/send', authenticateToken, authorizeRoles(3, 4, 5, 6, 7), quoteController.sendQuote);
+router.post('/:id/send', authenticateToken, authorizeRoles(3, 4, 5, 6, 7), quoteController.sendQuote);
+router.get('/:id/preview-pdf', authenticateToken, quoteController.previewQuotePDF);
 
+router.get('/:id/download-pdf', authenticateToken, quoteController.downloadQuotePDF);
+router.post('/:id/regenerate-pdf', authenticateToken, quoteController.regenerateQuotePDF);
 // ✅ RUTAS PARA ROLES MEDIOS Y ALTOS (Líder, Gerente, Admin, Owner)
 // Obtener todas las cotizaciones (Con filtros según rol)
 router.get('/', authenticateToken, authorizeRoles(3, 4, 5, 6, 7), quoteController.getAllQuotes);

@@ -270,7 +270,7 @@ const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
       } />
 
       <Route path="/quotesList" element={
-        <RoleRoute allowedRoles={[USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+        <RoleRoute allowedRoles={[USER_ROLES.LIDER, USER_ROLES.ADMIN, USER_ROLES.GERENTE, USER_ROLES.ASESOR, USER_ROLES.OWNER]}>
           <Suspense fallback={<LoadingSpinner />}>
             <QuotesList />
           </Suspense>
