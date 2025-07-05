@@ -5,6 +5,54 @@ const { generateQuotePDF } = require('../utils/generateQuotePDF');
 const path = require('path');
 
 
+const createClientUser = async (quoteData) => {
+  try {
+    const { nombre_cliente, email_cliente, telefono_cliente } = quoteData;
+    
+    // Verificar si ya existe un usuario con ese email
+    let existingUser = await User.findOne({ 
+      where: { email: email_cliente } 
+    });
+    
+    if (existingUser) {
+      console.log('✅ Usuario cliente ya existe:', existingUser.id);
+      return existingUser;
+    }
+    
+    // Generar password temporal
+    const tempPassword = Math.random().toString(36).slice(-8) + 'Temp123!';
+    const bcrypt = require('bcrypt');
+    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+    
+    // Crear nuevo usuario cliente
+    const newUser = await User.create({
+      name: nombre_cliente.split(' ')[0] || nombre_cliente,
+      lastname: nombre_cliente.split(' ').slice(1).join(' ') || '',
+      email: email_cliente,
+      phone: telefono_cliente,
+      password: hashedPassword,
+      role: 1, // Cliente
+      is_active: true,
+      email_verified: false, // Requerirá verificación
+      password_changed_at: null // Indicará que debe cambiar password
+    });
+    
+    console.log('✅ Usuario cliente creado:', {
+      id: newUser.id,
+      email: newUser.email,
+      tempPassword // ⚠️ SOLO PARA LOG - enviarlo por email después
+    });
+    
+    // TODO: Enviar email con credenciales temporales
+    
+    return newUser;
+    
+  } catch (error) {
+    console.error('❌ Error creando usuario cliente:', error);
+    throw error;
+  }
+};
+
 const quoteController = {
   // Crear nueva cotización
   createQuote: async (req, res) => {
@@ -1151,39 +1199,112 @@ const quoteController = {
     }
   },
 
-  approveQuote: async (req, res) => {
-    try {
-      const { id } = req.params;
 
-      const quote = await Quote.findByPk(id);
 
-      if (!quote) {
-        return res.status(404).json({ message: "Cotización no encontrada" });
-      }
+approveQuote: async (req, res) => {
+  try {
+    const { id } = req.params;
 
-      if (quote.status !== "completed") {
-        return res.status(400).json({
-          message: "La cotización debe estar completada antes de ser aprobada",
-        });
-      }
+    const quote = await Quote.findByPk(id);
 
-      await quote.update({
-        status: "approved",
-        approved_at: new Date(),
-      });
+    if (!quote) {
+      return res.status(404).json({ message: "Cotización no encontrada" });
+    }
 
-      res.json({
-        message: "Cotización aprobada exitosamente",
-        quote,
-      });
-    } catch (error) {
-      console.error("Error approving quote:", error);
-      res.status(500).json({
-        message: "Error al aprobar la cotización",
-        error: error.message,
+    if (quote.status !== "completed" && quote.status !== "sent") {
+      return res.status(400).json({
+        message: "La cotización debe estar completada o enviada antes de ser aprobada",
+        current_status: quote.status,
+        required_status: "completed o sent"
       });
     }
-  },
+
+    console.log('✅ Aprobando cotización:', {
+      id: quote.id,
+      current_status: quote.status,
+      quote_number: quote.quote_number
+    });
+
+    // ✅ NUEVO: Crear usuario cliente automáticamente
+    let clientUser = null;
+    if (quote.email_cliente) {
+      try {
+        clientUser = await createClientUser({
+          nombre_cliente: quote.nombre_cliente,
+          email_cliente: quote.email_cliente,
+          telefono_cliente: quote.telefono_cliente
+        });
+        
+        console.log('✅ Usuario cliente procesado:', clientUser.id);
+      } catch (userError) {
+        console.error('⚠️ Error creando usuario cliente, continuando con aprobación:', userError);
+        // No fallar la aprobación si hay error creando usuario
+      }
+    }
+
+    await quote.update({
+      status: "approved",
+      approved_at: new Date(),
+      // ✅ NUEVO: Vincular cliente si se creó exitosamente
+      ...(clientUser && { cliente_id: clientUser.id })
+    });
+
+    // ✅ Obtener la cotización actualizada con relaciones
+    const updatedQuote = await Quote.findByPk(id, {
+      include: [
+        {
+          model: User,
+          as: "Asesor",
+          attributes: ["id", "name", "lastname", "email", "role"],
+        },
+        {
+          model: User,
+          as: "Lider", 
+          attributes: ["id", "name", "lastname", "email", "role"],
+        },
+        {
+          model: User,
+          as: "Gerente",
+          attributes: ["id", "name", "lastname", "email", "role"],
+        },
+        {
+          model: User,
+          as: "Admin",
+          attributes: ["id", "name", "lastname", "email", "role"],
+        },
+        // ✅ NUEVO: Incluir cliente si existe
+        {
+          model: User,
+          as: "Cliente",
+          attributes: ["id", "name", "lastname", "email", "phone"],
+          required: false
+        }
+      ],
+    });
+
+    res.json({
+      success: true,
+      message: "Cotización aprobada exitosamente",
+      quote: updatedQuote,
+      // ✅ NUEVO: Información del cliente creado
+      clientUser: clientUser ? {
+        id: clientUser.id,
+        email: clientUser.email,
+        created: !clientUser.password_changed_at // true si es nuevo usuario
+      } : null
+    });
+
+  } catch (error) {
+    console.error("Error approving quote:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error al aprobar la cotización",
+      error: error.message,
+    });
+  }
+},
+
+
 
   rejectQuote: async (req, res) => {
     try {
@@ -1453,6 +1574,8 @@ const quoteController = {
     }
   },
 };
+
+
 
 // ✅ Funciones helper para obtener usuarios por jerarquía
 const getUsersByLider = async (liderId) => {

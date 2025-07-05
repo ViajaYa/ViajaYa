@@ -569,7 +569,7 @@ const QuotesList = () => {
 
         {/* Editar - Solo Owner y Admin */}
         {canPerformAction('edit', quote) && 
-         (quote.status === QUOTE_STATUSES.PENDING || quote.status === QUOTE_STATUSES.COMPLETED) && (
+         (quote.status === QUOTE_STATUSES.PENDING  || quote.status === QUOTE_STATUSES.APPROVED) && (
           <button
             onClick={() => navigate(`/quotes/${quote.id}/edit`)}
             className="p-2 text-yellow-600 hover:bg-yellow-50 rounded transition-colors"

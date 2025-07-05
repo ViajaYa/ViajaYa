@@ -75,8 +75,8 @@ export const QUOTE_STATUSES = {
   APPROVED: 'approved',
   REJECTED: 'rejected',
   REQUOTE: 'requote',
-  EXPIRED: 'expired',
-  CONVERTED: 'converted',
+  EXPIRED: 'expired'
+  
 };
 
 // ✅ NUEVO: Tipos de origen de cotización

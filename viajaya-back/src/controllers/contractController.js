@@ -83,18 +83,52 @@ const contractController = {
       });
 
       const contractWithDetails = await Contract.findByPk(newContract.id, {
-        include: [
-          { 
-            model: Quote, 
-            include: [
-              { model: User, as: 'Cliente', attributes: ['id', 'name', 'lastname', 'email', 'phone'] },
-              { model: User, as: 'Asesor', attributes: ['id', 'name', 'lastname', 'email'] },
-              { model: User, as: 'Lider', attributes: ['id', 'name', 'lastname', 'email'] },
-              { model: User, as: 'Gerente', attributes: ['id', 'name', 'lastname', 'email'] }
-            ]
-          }
-        ]
-      });
+  include: [
+    {
+      model: Quote,
+      as: 'Quote', // ✅ AGREGAR EL ALIAS REQUERIDO
+      attributes: [
+        'id', 'quote_number', 'nombre_cliente', 'email_cliente',
+        'destino', 'origen', 'precio_total', 'numero_personas',
+        'fecha_ida', 'fecha_regreso'
+      ],
+      include: [
+        // ✅ MANTENER: Jerarquía de ventas de la cotización
+        { 
+          model: User, 
+          as: 'Asesor', 
+          attributes: ['id', 'name', 'lastname', 'email', 'role'],
+          required: false 
+        },
+        { 
+          model: User, 
+          as: 'Lider', 
+          attributes: ['id', 'name', 'lastname', 'email', 'role'],
+          required: false 
+        },
+        { 
+          model: User, 
+          as: 'Gerente', 
+          attributes: ['id', 'name', 'lastname', 'email', 'role'],
+          required: false 
+        },
+        { 
+          model: User, 
+          as: 'Admin', 
+          attributes: ['id', 'name', 'lastname', 'email', 'role'],
+          required: false 
+        }
+      ]
+    },
+    // ✅ AGREGAR: Relación directa con el cliente del contrato
+    {
+      model: User,
+      as: 'Cliente', // ✅ Cliente directo del contrato
+      attributes: ['id', 'name', 'lastname', 'email', 'phone'],
+      required: false
+    }
+  ]
+});
 
       res.status(201).json({
         message: 'Contrato creado exitosamente',

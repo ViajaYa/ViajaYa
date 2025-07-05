@@ -93,7 +93,7 @@ export const createContract = createAsyncThunk(
   async (contractData, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl('/api/contracts'), {
+      const response = await fetch(getApiUrl('/contracts'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${auth.token}`,
