@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAppDispatch } from '../../../redux/hooks/hooks';
 import { usePopups } from '../../../redux/hooks/hooks';
 // ✅ Usar tu acción actual (fetchPopup en lugar de fetchPopups)
@@ -18,17 +18,32 @@ import PackCard from '../../../components/PackCard'
 import Convenios from '../Clients/Convenios';
 import VideoCarousel from '../VideoCarousel';
 import QuotePopup from '../../popups/QuotePopup';
+import FloatingQuoteButton from '../../FloatingQuoteButton';
+import QuoteCallToAction from '../../QuoteCallToAction';
 
 // eslint-disable-next-line react/prop-types
 const Landing = ({ ruta }) => {
   const dispatch = useAppDispatch();
   // ✅ Usar la estructura de tu popupSlice actual
   const { currentPopup, loading, error } = usePopups();
+  
+  // ✅ Estado para controlar el QuotePopup
+  const [isQuotePopupOpen, setIsQuotePopupOpen] = useState(false);
 
   useEffect(() => {
     // ✅ Usar tu acción actual (fetchPopup)
     dispatch(fetchPopup());
   }, [dispatch]);
+
+  // ✅ Función para abrir el popup de cotización
+  const handleOpenQuotePopup = () => {
+    setIsQuotePopupOpen(true);
+  };
+
+  // ✅ Función para cerrar el popup de cotización
+  const handleCloseQuotePopup = () => {
+    setIsQuotePopupOpen(false);
+  };
 
   // ✅ Mejor manejo de loading con fallback
   if (loading) {
@@ -59,15 +74,31 @@ const Landing = ({ ruta }) => {
     <>
       <NavBar ruta={ruta} />
       <Home />
+      
+    
+      
       <YapayaCard /> 
       <PackCard />
+        {/* ✅ Call-to-action para cotización después del Home
+      <div className="container mx-auto px-4 py-8">
+        <QuoteCallToAction onOpenQuote={handleOpenQuotePopup} />
+      </div> */}
       <Destinos />
       <VideoCarousel />
       <Clients />
       <Contact />
       <Convenios />
       <Footer />
-      <QuotePopup />
+      
+      {/* ✅ Botón flotante para cotización */}
+      <FloatingQuoteButton onOpenQuote={handleOpenQuotePopup} />
+      
+      {/* ✅ QuotePopup controlado */}
+      <QuotePopup 
+        isOpen={isQuotePopupOpen} 
+        onClose={handleCloseQuotePopup} 
+      />
+      
       <WhatssapButton />
       
       {/* ✅ Popup con mejor validación */}
