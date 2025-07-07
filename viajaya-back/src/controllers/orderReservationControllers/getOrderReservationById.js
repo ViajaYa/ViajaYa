@@ -4,7 +4,10 @@ const getOrderReservationById = async (req, res) => {
     try {
       const { id } = req.params;
       const order = await OrderReservation.findByPk(id, {
-        include: [User, Pack]  // Incluir los datos del usuario y del pack
+       include: [
+        { model: Pack, as: 'Package' },
+        { model: User, as: 'Customer' }
+      ]
       });
   
       if (!order) {
