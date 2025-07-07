@@ -56,6 +56,8 @@ const PaymentMethods = ({ onSelect }) => {
 };
 
 const UserReservations = () => {
+  console.log('🔄 UserReservations render ejecutado');
+  
   // Usa el hook global
   const {
     reservations,
@@ -68,8 +70,17 @@ const UserReservations = () => {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   const [isQrPopupOpen, setIsQrPopupOpen] = useState(false);
 
+  // ✅ Protección: Solo cargar reservaciones si estamos en la ruta correcta
   useEffect(() => {
-    fetchReservations();
+    console.log('UserReservations - Componente montado en:', window.location.pathname);
+    
+    // Solo cargar si estamos en la ruta correcta
+    if (window.location.pathname === '/userReservas') {
+      console.log('UserReservations - Cargando reservaciones del usuario...');
+      fetchReservations();
+    } else {
+      console.log('UserReservations - NO cargando (ruta incorrecta)');
+    }
     // eslint-disable-next-line
   }, []);
 
@@ -78,7 +89,10 @@ const UserReservations = () => {
       .unwrap()
       .then(() => {
         toast.success("Reserva anulada correctamente");
-        fetchReservations();
+        // ✅ Solo recargar si estamos en la ruta correcta
+        if (window.location.pathname === '/userReservas') {
+          fetchReservations();
+        }
       })
       .catch((error) => {
         toast.error(error || "Error al anular la reserva");

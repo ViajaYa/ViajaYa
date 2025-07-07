@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { 
   fetchReservations, 
@@ -14,25 +14,60 @@ import NavBar from "../layout/NavBar/NavBar";
 const OrderManagement = () => {
   const dispatch = useDispatch();
   
+  // ✅ Debugging temporal para encontrar el loop
+  const timestamp = new Date().toISOString();
+  console.log(`🔄 OrderManagement render ejecutado en ${timestamp}`);
+  console.log(`🛤️ OrderManagement - Ruta actual: ${window.location.pathname}`);
+  console.trace('OrderManagement render stack trace:');
+  
   // ✅ Usar selectores del reservationSlice
   const reservations = useSelector(selectReservations);
   const loading = useSelector(selectLoadingReservations);
   const error = useSelector(selectErrorReservations);
-  const users = useSelector((state) => state.users);
+  
+  // ✅ Simplificar selector de usuarios para evitar re-renders (CORREGIDO)
+  const usersState = useSelector((state) => state.user); // ✅ 'user' no 'users'
+  const users = usersState?.users || usersState?.allUsers || [];
+  const usersLoading = usersState?.loading || false;
   
   // ✅ Estados locales
   const [filterPaid, setFilterPaid] = useState(false);
   const [editingOrder, setEditingOrder] = useState(null);
   const [editedOrders, setEditedOrders] = useState({});
+  
+  // ✅ Debounce para evitar llamadas múltiples
+  const lastFetchRef = useRef(0);
+  const DEBOUNCE_DELAY = 1000; // ✅ Reducido a 1 segundo para uso normal
 
-  // ✅ Debug
-  console.log('Reservations:', reservations);
-  console.log('Users:', users);
-
-  // ✅ Cargar reservaciones al montar el componente
-  useEffect(() => {
-    dispatch(fetchReservations());
+  // ✅ Función de carga con debounce
+  const loadReservations = useCallback(() => {
+    const now = Date.now();
+    const timeSinceLastCall = now - lastFetchRef.current;
+    
+    console.log(`🎯 GestionOrdenes loadReservations - Tiempo desde última llamada: ${timeSinceLastCall}ms`);
+    console.log(`📍 GestionOrdenes loadReservations - Ruta: ${window.location.pathname}`);
+    console.trace('GestionOrdenes loadReservations stack trace:');
+    
+    if (timeSinceLastCall < DEBOUNCE_DELAY) {
+      console.log(`⏰ GestionOrdenes - Carga ignorada por debounce (necesita ${DEBOUNCE_DELAY - timeSinceLastCall}ms más)`);
+      return;
+    }
+    
+    lastFetchRef.current = now;
+    
+    if (window.location.pathname === '/panel/reservas') {
+      console.log('GestionOrdenes - Cargando reservaciones...');
+      dispatch(fetchReservations());
+    } else {
+      console.log('GestionOrdenes - NO cargando (ruta incorrecta)');
+    }
   }, [dispatch]);
+
+  // ✅ Cargar reservaciones al montar el componente CON PROTECCIÓN Y DEBOUNCE
+  useEffect(() => {
+    console.log('GestionOrdenes - Componente montado en:', window.location.pathname);
+    loadReservations();
+  }, []); // SIN dependencias para evitar loops
 
   // ✅ Manejar errores
   useEffect(() => {
@@ -42,29 +77,63 @@ const OrderManagement = () => {
     }
   }, [error, dispatch]);
 
-  // ✅ Filtrar órdenes por estado de pago
-  const filteredOrders = filterPaid
-    ? reservations.filter((order) => order.isPaid)
-    : reservations;
+  // ✅ Memoizar filtros para evitar recálculos innecesarios
+  const uniqueOrders = useMemo(() => {
+    console.log('Recalculando uniqueOrders...', reservations?.length || 0);
+    
+    if (!Array.isArray(reservations)) {
+      return [];
+    }
 
-  // ✅ Eliminar duplicados por idOrder
-  const uniqueOrders = filteredOrders.filter(
-    (order, index, self) =>
-      index === self.findIndex((o) => o.idOrder === order.idOrder)
-  );
+    // Filtrar por estado de pago
+    const filtered = filterPaid
+      ? reservations.filter((order) => order.isPaid)
+      : reservations;
 
-  // ✅ Obtener email por ID de usuario
-  const getEmailByUserId = (userId) => {
-    const user = users.find((user) => user.id === userId);
-    return user ? user.email : "Email no encontrado";
-  };
+    // Eliminar duplicados por idOrder
+    return filtered.filter(
+      (order, index, self) =>
+        index === self.findIndex((o) => o.idOrder === order.idOrder)
+    );
+  }, [reservations, filterPaid]);
 
-  // ✅ Formatear fecha
-  const formatDate = (dateString) => {
-    const options = { day: "2-digit", month: "2-digit", year: "2-digit" };
-    const date = new Date(dateString);
-    return date.toLocaleDateString("es-ES", options);
-  };
+  // ✅ Obtener email por ID de usuario con validación robusta (MEMOIZADO)
+  const getEmailByUserId = useCallback((userId) => {
+    // Validar que users sea un array válido
+    if (!Array.isArray(users)) {
+      return `Usuario ID: ${userId}`;
+    }
+    
+    if (!userId) {
+      return "ID de usuario no válido";
+    }
+    
+    try {
+      const user = users.find((user) => user && user.id === userId);
+      if (user && user.email) {
+        return user.email;
+      } else if (user && user.name) {
+        return user.name; // Fallback al nombre si no hay email
+      } else {
+        return `Usuario ID: ${userId}`;
+      }
+    } catch (error) {
+      console.error('Error al buscar usuario:', error);
+      return `Usuario ID: ${userId}`;
+    }
+  }, [users]);
+
+  // ✅ Formatear fecha (MEMOIZADO)
+  const formatDate = useCallback((dateString) => {
+    if (!dateString) return 'Sin fecha';
+    try {
+      const options = { day: "2-digit", month: "2-digit", year: "2-digit" };
+      const date = new Date(dateString);
+      return date.toLocaleDateString("es-ES", options);
+    } catch (error) {
+      return 'Fecha inválida';
+    }
+  }, []);
 
   // ✅ Manejar cambios en los inputs de edición
   const handleChange = (idOrder, e) => {
@@ -117,8 +186,8 @@ const OrderManagement = () => {
         return updatedOrders;
       });
       
-      // Recargar las reservaciones
-      dispatch(fetchReservations());
+      // ✅ No recargar automáticamente - el slice debería actualizar el estado
+      // dispatch(fetchReservations());
     } catch (error) {
       toast.error("Error al actualizar la orden: " + error);
     }
@@ -141,7 +210,7 @@ const OrderManagement = () => {
           <h3 className="text-lg font-semibold mb-2">Error al cargar órdenes</h3>
           <p>{error}</p>
           <button 
-            onClick={() => dispatch(fetchReservations())}
+            onClick={loadReservations}
             className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
             Reintentar
@@ -162,7 +231,7 @@ const OrderManagement = () => {
             Gestión de Órdenes
           </h2>
 
-          {/* ✅ Filtros mejorados */}
+          {/* ✅ Filtros e información de estado mejorados */}
           <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <label className="flex items-center font-nunito">
@@ -178,13 +247,25 @@ const OrderManagement = () => {
               <div className="text-sm text-gray-600 font-nunito">
                 Total: {uniqueOrders.length} órdenes
               </div>
+              
+              {/* Estado de usuarios */}
+              <div className="text-xs text-gray-500 font-nunito">
+                {usersLoading ? (
+                  <span className="text-blue-600">⏳ Cargando usuarios...</span>
+                ) : !Array.isArray(users) || users.length === 0 ? (
+                  <span className="text-red-600">⚠️ Usuarios no disponibles</span>
+                ) : (
+                  <span className="text-green-600">✅ {users.length} usuarios cargados</span>
+                )}
+              </div>
             </div>
 
             <button
-              onClick={() => dispatch(fetchReservations())}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition font-nunito"
+              onClick={loadReservations}
+              disabled={loading}
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition font-nunito disabled:opacity-50"
             >
-              🔄 Actualizar
+              🔄 {loading ? "Actualizando..." : "Actualizar"}
             </button>
           </div>
 
@@ -253,9 +334,17 @@ const OrderManagement = () => {
                             }
                             onChange={(e) => handleChange(order.idOrder, e)}
                             className="border rounded px-2 py-1 w-full"
+                            placeholder="email@ejemplo.com"
                           />
                         ) : (
-                          getEmailByUserId(order.userId)
+                          <div className="flex flex-col">
+                            <span>{getEmailByUserId(order.userId)}</span>
+                            {!Array.isArray(users) && (
+                              <span className="text-xs text-red-500">
+                                (Usuarios no cargados)
+                              </span>
+                            )}
+                          </div>
                         )}
                       </td>
 

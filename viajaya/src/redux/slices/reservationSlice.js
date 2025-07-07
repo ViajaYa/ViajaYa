@@ -1,17 +1,59 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
+import { DEBUG_MODE, callCounter, reportDebugState } from '../../utils/debugMode';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+// ✅ Circuit breaker global para evitar loops infinitos
+let isRequestInProgress = false;
+let lastRequestTime = 0;
+const MIN_REQUEST_INTERVAL = 1000; // 1 segundo mínimo entre peticiones (reducido después de resolver el loop)
 
 // Async thunks
 export const fetchReservations = createAsyncThunk(
   'reservation/fetchReservations',
   async (_, { rejectWithValue }) => {
+    // ✅ Incrementar contador y reportar
+    callCounter.fetchReservations++;
+    
+    if (DEBUG_MODE.LOG_ALL_CALLS) {
+      console.log(`🔢 fetchReservations llamada #${callCounter.fetchReservations}`);
+      reportDebugState();
+    }
+    
+    // ✅ Kill switch - bloquear completamente si está habilitado
+    if (DEBUG_MODE.BLOCK_RESERVATIONS) {
+      console.log('🚫 fetchReservations - BLOQUEADO POR DEBUG MODE');
+      return rejectWithValue('Blocked by debug mode');
+    }
+    
+    const now = Date.now();
+    
+    // ✅ Circuit breaker: Bloquear si ya hay una petición en progreso
+    if (isRequestInProgress) {
+      console.log('🚫 fetchReservations - BLOQUEADO: Petición ya en progreso');
+      return rejectWithValue('Request already in progress');
+    }
+    
+    // ✅ Circuit breaker: Bloquear si es muy pronto desde la última petición
+    if (now - lastRequestTime < MIN_REQUEST_INTERVAL) {
+      console.log('🚫 fetchReservations - BLOQUEADO: Muy pronto desde la última petición');
+      return rejectWithValue('Request blocked by rate limiter');
+    }
+    
+    isRequestInProgress = true;
+    lastRequestTime = now;
+    
     try {
+      console.log('🚀 fetchReservations - Iniciando petición a /order...');
       const { data } = await axios.get(`${BASE_URL}/order`);
+      console.log('✅ fetchReservations - Petición exitosa, recibidos:', data?.length || 0, 'registros');
       return data;
     } catch (error) {
+      console.error('❌ fetchReservations - Error en petición:', error.message);
       return rejectWithValue(error.response?.data?.message || error.message);
+    } finally {
+      isRequestInProgress = false;
     }
   }
 );
