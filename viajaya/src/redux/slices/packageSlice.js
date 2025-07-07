@@ -65,6 +65,52 @@ export const fetchPackageById = createAsyncThunk(
   }
 );
 
+export const createPackage = createAsyncThunk(
+  'package/createPackage',
+  async (packageData, { rejectWithValue }) => {
+    try {
+      const response = await axios.post(`${BASE_URL}/pack`, packageData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Error al crear paquete'
+      );
+    }
+  }
+);
+
+export const updatePackage = createAsyncThunk(
+  'package/updatePackage',
+  async (packageData, { rejectWithValue }) => {
+    try {
+      const response = await axios.put(`${BASE_URL}/pack/${packageData.id}`, packageData);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Error al actualizar paquete'
+      );
+    }
+  }
+);
+
+export const deletePackage = createAsyncThunk(
+  'package/deletePackage',
+  async (id, { rejectWithValue }) => {
+    try {
+      await axios.delete(`${BASE_URL}/pack/${id}`);
+      return id;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Error al eliminar paquete'
+      );
+    }
+  }
+);
+
 // Slice
 const packageSlice = createSlice({
   name: 'package',
@@ -194,6 +240,60 @@ const packageSlice = createSlice({
       .addCase(fetchPackageById.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+      // Create Package
+      .addCase(createPackage.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(createPackage.fulfilled, (state, action) => {
+        state.loading = false;
+        const newPackage = action.payload;
+        state.packages.push(newPackage);
+        state.allPackages.push(newPackage);
+        state.filteredPackages.push(newPackage);
+      })
+      .addCase(createPackage.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Update Package
+      .addCase(updatePackage.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updatePackage.fulfilled, (state, action) => {
+        state.loading = false;
+        const updatedPackage = action.payload;
+        const index = state.packages.findIndex(pkg => pkg.id === updatedPackage.id);
+        if (index !== -1) {
+          state.packages[index] = updatedPackage;
+          state.allPackages[index] = updatedPackage;
+          const filteredIndex = state.filteredPackages.findIndex(pkg => pkg.id === updatedPackage.id);
+          if (filteredIndex !== -1) {
+            state.filteredPackages[filteredIndex] = updatedPackage;
+          }
+        }
+      })
+      .addCase(updatePackage.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Delete Package
+      .addCase(deletePackage.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deletePackage.fulfilled, (state, action) => {
+        state.loading = false;
+        const deletedId = action.payload;
+        state.packages = state.packages.filter(pkg => pkg.id !== deletedId);
+        state.allPackages = state.allPackages.filter(pkg => pkg.id !== deletedId);
+        state.filteredPackages = state.filteredPackages.filter(pkg => pkg.id !== deletedId);
+      })
+      .addCase(deletePackage.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       });
   },
 });
@@ -208,5 +308,13 @@ export const {
   clearFilters, 
   clearPackageError 
 } = packageSlice.actions;
+
+// Selectores
+export const selectPackages = (state) => state.package.packages;
+export const selectAllPackages = (state) => state.package.allPackages;
+export const selectFilteredPackages = (state) => state.package.filteredPackages;
+export const selectCurrentPackage = (state) => state.package.currentPackage;
+export const selectPackageLoading = (state) => state.package.loading;
+export const selectPackageError = (state) => state.package.error;
 
 export default packageSlice.reducer;

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { createPack } from '../../redux/NewActions/newActions'; 
+import { createPackage } from '../../redux/slices/packageSlice';
+import { toast } from 'react-toastify';
 import "leaflet/dist/leaflet.css";
 import { openCloudinaryWidget } from '../../cloudinaryConfig';
 import NavBar from '../layout/NavBar/NavBar';
@@ -41,7 +42,8 @@ const NewPack = () => {
     setFechas([...fechas, { salida: '', vuelta: '' }]);
   };
 
-  const handleSubmit = (e) => {
+  // ✅ Manejar envío del formulario usando el slice moderno
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     const formData = new FormData();
@@ -56,7 +58,7 @@ const NewPack = () => {
     formData.append('detail', detail);
     formData.append('price', price);
     formData.append('fechas', JSON.stringify(fechas));
-    formData.append('cupos', cupos)
+    formData.append('cupos', cupos);
 
     images.forEach((url, index) => {
       formData.append(`images[${index}]`, url);
@@ -66,32 +68,36 @@ const NewPack = () => {
       formData.append(`chars[${index}]`, char);
     });
 
-    dispatch(createPack(formData))
-      .then(() => {
-        // Mostrar mensaje de éxito
-        setSuccessMessage(true);
+    try {
+      await dispatch(createPackage(formData)).unwrap();
+      
+      // Mostrar mensaje de éxito
+      toast.success("Paquete creado con éxito");
+      setSuccessMessage(true);
 
-        // Limpiar formulario
-        setTitle('');
-        setDays('');
-        setCity('');
-        setDestino('Internacionales'); 
-        setLocation('');
-        setDetail('');
-        setPrice('');
-        setLat('');
-        setLng('');
-        setFechas([{ salida: '', vuelta: '' }]);
-        setImages([]);
-        setSelectedChars([]);
-        setChars([])
-        setCupos('')
+      // Limpiar formulario
+      setTitle('');
+      setDays('');
+      setCity('');
+      setDestino('Internacionales'); 
+      setLocation('');
+      setDetail('');
+      setPrice('');
+      setLat('');
+      setLng('');
+      setFechas([{ salida: '', vuelta: '' }]);
+      setImages([]);
+      setSelectedChars([]);
+      setChars([]);
+      setCupos('');
 
-        // Ocultar mensaje después de 3 segundos
-        setTimeout(() => {
-          setSuccessMessage(false);
-        }, 3000);
-      });
+      // Ocultar mensaje después de 3 segundos
+      setTimeout(() => {
+        setSuccessMessage(false);
+      }, 3000);
+    } catch (error) {
+      toast.error("Error al crear el paquete: " + error);
+    }
   };
 
   return (
