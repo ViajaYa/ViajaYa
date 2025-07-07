@@ -1,36 +1,32 @@
 import { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, Link as RouterLink } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { 
-  verifyToken, 
-  logout, 
-  selectUser, 
-  selectIsAuthenticated, 
-  selectAuthLoading 
+import {
+  verifyToken,
+  logout,
+  selectUser,
+  selectIsAuthenticated,
+  selectAuthLoading
 } from '../../../redux/slices/authSlice';
 
-import style from './NavBar.module.css';
 import logo from "../../../assets/logo2.png";
-import { Link as RouterLink } from 'react-router-dom';
-
-// Importa los íconos de redes sociales
-import { FaFacebookF, FaInstagram, FaTiktok, FaTelegramPlane, FaWhatsapp, FaBars, FaTimes } from 'react-icons/fa';
+import {
+  FaFacebookF, FaInstagram, FaTiktok, FaTelegramPlane, FaWhatsapp, FaBars, FaTimes, FaChevronDown
+} from 'react-icons/fa';
 
 const NavBar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
-  
-  // ✅ Usar selectores del authSlice
+
   const user = useSelector(selectUser);
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const loading = useSelector(selectAuthLoading);
-  
-  // Estados locales para la UI
+
   const [showSocialMenu, setShowSocialMenu] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [userDropdown, setUserDropdown] = useState(false);
 
-  // ✅ Verificar token al cargar el componente
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token && !user) {
@@ -38,39 +34,32 @@ const NavBar = () => {
     }
   }, [dispatch, user]);
 
-  // ✅ Función para manejar logout mejorada
   const handleLogout = () => {
     dispatch(logout());
     navigate('/');
     setMenuOpen(false);
+    setUserDropdown(false);
   };
 
-  // ✅ Función para manejar login
   const handleLogin = () => {
     navigate("/login");
     setMenuOpen(false);
   };
 
-  // ✅ Función para manejar navegación al perfil
   const handleProfileNavigation = () => {
     navigate('/profile');
     setMenuOpen(false);
+    setUserDropdown(false);
   };
 
-  const toggleMenu = () => {
-    setMenuOpen(!menuOpen);
-  };
-
-  // ✅ Cerrar menú al cambiar de ruta
   useEffect(() => {
     setMenuOpen(false);
     setShowSocialMenu(false);
+    setUserDropdown(false);
   }, [location.pathname]);
 
-  // ✅ Usar useLocation en lugar de window.location.pathname
   const currentPath = location.pathname;
 
-  // Verifica las condiciones para mostrar elementos específicos
   const isLoginPage = currentPath === '/login';
   const isProductsPage = currentPath === '/productos';
   const isAboutPage = currentPath === '/about';
@@ -81,308 +70,214 @@ const NavBar = () => {
   const isPanelNewPage = currentPath === '/panel/newPack';
   const isBeneficiosNewPage = currentPath === "/puntos";
 
-  // ✅ Función para verificar roles de admin
   const isAdmin = () => {
     return user && (user.role >= 7 || user.role === 'ADMIN' || user.role === 'OWNER');
   };
 
-  // ✅ Función para verificar si puede acceder a capacitaciones
   const canAccessTraining = () => {
     return user && (user.role >= 2);
   };
 
-  // ✅ Mostrar indicador de carga si está verificando el token
   if (loading && !user) {
     return (
-      <nav className={style.nav}>
-        <RouterLink to="/" className={style.noLink}>
-          <img className={style.logo} src={logo} alt="Logo ViajaYa" />
+      <nav className="bg-white shadow px-4 py-2 flex items-center justify-between">
+        <RouterLink to="/">
+          <img className="h-12" src={logo} alt="Logo ViajaYa" />
         </RouterLink>
-        <div className={style.loading}>
-          <span>Cargando...</span>
-        </div>
+        <span className="text-gray-500">Cargando...</span>
       </nav>
     );
   }
 
   return (
-    <nav className={style.nav}>
-      <RouterLink to="/" className={style.noLink}>
-        <img className={style.logo} src={logo} alt="Logo ViajaYa" />
-      </RouterLink>
-      
-      {/* Botón de menú hamburguesa */}
-      <button 
-        className={style.hamburger} 
-        onClick={toggleMenu}
-        aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
-      >
-        {menuOpen ? <FaTimes /> : <FaBars />}
-      </button>
+    <nav className="bg-white shadow sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 flex items-center justify-between h-16">
+        <RouterLink to="/" className="flex items-center">
+          <img className="h-12 w-auto" src={logo} alt="Logo ViajaYa" />
+        </RouterLink>
 
-      <ul className={`${style.ul} ${menuOpen ? style.menuOpen : ''}`}>
-        {/* ✅ Mostrar "Inicio" en la página de login */}
-        {isLoginPage && (
-          <li>
-            <RouterLink to="/" className={style.noLink} onClick={() => setMenuOpen(false)}>
-              <span className={style.li}>Inicio</span>
-            </RouterLink>
-          </li>
-        )}
-
-        {/* ✅ Mostrar navegación en página de productos */}
-        {isProductsPage && (
-          <>
-            <li>
-              <RouterLink to="/" className={style.noLink} onClick={() => setMenuOpen(false)}>
-                <span className={style.li}>Inicio</span>
-              </RouterLink>
-            </li>
-            {!isAuthenticated && (
-              <li className={style.libutton} onClick={handleLogin}>
-                Ingresar
-              </li>
-            )}
-          </>
-        )}
-
-        {/* ✅ Navegación en páginas del panel */}
-        {isPanelPage && (
-          <>
-            <li>
-              <RouterLink to="/" className={style.noLink} onClick={() => setMenuOpen(false)}>
-                <span className={style.li}>Inicio</span>
-              </RouterLink>
-            </li>
-            {!isAuthenticated && (
-              <li className={style.libutton} onClick={handleLogin}>
-                Ingresar
-              </li>
-            )}
-          </>
-        )}
-
-        {isProfilePage && (
-          <>
-            <li>
-              <RouterLink to="/" className={style.noLink} onClick={() => setMenuOpen(false)}>
-                <span className={style.li}>Inicio</span>
-              </RouterLink>
-            </li>
-            {!isAuthenticated && (
-              <li className={style.libutton} onClick={handleLogin}>
-                Ingresar
-              </li>
-            )}
-          </>
-        )}
-
-        {isPanelUserPage && (
-          <>
-            <li>
-              <RouterLink to="/panel" className={style.noLink} onClick={() => setMenuOpen(false)}>
-                <span className={style.li}>Panel</span>
-              </RouterLink>
-            </li>
-            {!isAuthenticated && (
-              <li className={style.libutton} onClick={handleLogin}>
-                Ingresar
-              </li>
-            )}
-          </>
-        )}
-
-        {isPanelPackPage && (
-          <>
-            <li>
-              <RouterLink to="/panel" className={style.noLink} onClick={() => setMenuOpen(false)}>
-                <span className={style.li}>Panel</span>
-              </RouterLink>
-            </li>
-            {!isAuthenticated && (
-              <li className={style.libutton} onClick={handleLogin}>
-                Ingresar
-              </li>
-            )}
-          </>
-        )}
-
-        {isPanelNewPage && (
-          <>
-            <li>
-              <RouterLink to="/panel" className={style.noLink} onClick={() => setMenuOpen(false)}>
-                <span className={style.li}>Panel</span>
-              </RouterLink>
-            </li>
-            {!isAuthenticated && (
-              <li className={style.libutton} onClick={handleLogin}>
-                Ingresar
-              </li>
-            )}
-          </>
-        )}
-
-        {/* ✅ Navegación principal - mostrar cuando no estamos en páginas específicas */}
-        {!isLoginPage && !isProductsPage && !isPanelPage && !isProfilePage && 
-         !isPanelUserPage && !isPanelPackPage && !isPanelNewPage && !isBeneficiosNewPage && (
-          <>
-            {isAboutPage ? (
+        {/* Desktop menu */}
+        <ul className="hidden md:flex items-center gap-2 lg:gap-6 font-nunito font-medium text-gray-700">
+          {!isLoginPage && !isProductsPage && !isPanelPage && !isProfilePage &&
+            !isPanelUserPage && !isPanelPackPage && !isPanelNewPage && !isBeneficiosNewPage && (
               <>
                 <li>
-                  <RouterLink to="/" className={style.noLink} onClick={() => setMenuOpen(false)}>
-                    <span className={style.li}>Inicio</span>
-                  </RouterLink>
+                  <RouterLink to="/about" className="hover:text-ColorAzul transition">Nosotros</RouterLink>
                 </li>
-                {!isAuthenticated && (
-                  <li className={style.libutton} onClick={handleLogin}>
-                    Ingresar
-                  </li>
-                )}
+                <li>
+                  <RouterLink to="/allpacks" className="hover:text-ColorAzul transition">Paquetes</RouterLink>
+                </li>
+                <li>
+                  <RouterLink to="/productos" className="hover:text-ColorAzul transition">Productos</RouterLink>
+                </li>
+                <li>
+                  <RouterLink to="/puntos" className="hover:text-ColorAzul transition">Obtén Descuentos</RouterLink>
+                </li>
               </>
-            ) : (
-              <>
-                <li>
-                  <RouterLink to="/about" className={style.noLink} onClick={() => setMenuOpen(false)}>
-                    <span className={style.li}>Nosotros</span>
-                  </RouterLink>
-                </li>
-                <li>
-                  <RouterLink to="/allpacks" className={style.noLink} onClick={() => setMenuOpen(false)}>
-                    <span className={style.li}>Paquetes</span>
-                  </RouterLink>
-                </li>
-                <li>
-                  <RouterLink to="/productos" className={style.noLink} onClick={() => setMenuOpen(false)}>
-                    <span className={style.li}>Productos</span>
-                  </RouterLink>
-                </li>
-                <li>
-                  <RouterLink to="/puntos" className={style.noLink} onClick={() => setMenuOpen(false)}>
-                    <span className={style.li}>Obtén Descuentos</span>
-                  </RouterLink>
-                </li>
-                {!isAuthenticated && (
-                  <li className={style.libutton} onClick={handleLogin}>
-                    Ingresar
-                  </li>
-                )}
-              </>
-            )}
-          </>
-        )}
-
-        {/* ✅ Menú de usuario autenticado mejorado */}
-        {isAuthenticated && user && (
-          <li className={style.userMenu}>
-            <div className={style.userDropdown}>
-              <button 
-                className={style.userButton}
-                onClick={() => setShowSocialMenu(false)} // Cerrar menú social si está abierto
+            )
+          }
+          {!isAuthenticated && (
+            <li>
+              <button onClick={handleLogin} className="bg-ColorMorado text-white px-4 py-2 rounded hover:bg-ColorAzul transition">Ingresar</button>
+            </li>
+          )}
+          {isAuthenticated && user && (
+            <li className="relative">
+              <button
+                onClick={() => setUserDropdown(v => !v)}
+                className="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 transition"
               >
-                👤 {user.name || 'Usuario'}
+                <span>👤 {user.name || 'Usuario'}</span>
+                <FaChevronDown className={`transition-transform ${userDropdown ? "rotate-180" : ""}`} />
               </button>
-              <div className={style.userDropdownContent}>
-                <button onClick={handleProfileNavigation} className={style.dropdownItem}>
-                  Ver Perfil
-                </button>
-                <button onClick={() => {navigate('/userReservas'); setMenuOpen(false);}} className={style.dropdownItem}>
-                  Mis Reservas
-                </button>
-                
-                {/* ✅ Verificar acceso a capacitaciones */}
-                {canAccessTraining() && (
-                  <button onClick={() => {navigate('/capacitacion'); setMenuOpen(false);}} className={style.dropdownItem}>
-                    Capacitaciones
-                  </button>
-                )}
-                
-                {/* ✅ Verificar acceso a panel de admin con nueva lógica de roles */}
-                {isAdmin() && (
-                  <button onClick={() => {navigate('/panel'); setMenuOpen(false);}} className={style.dropdownItem}>
-                    Panel Admin
-                  </button>
-                )}
-                
-                <hr className={style.dropdownDivider} />
-                <button onClick={handleLogout} className={`${style.dropdownItem} ${style.logoutButton}`}>
-                  Cerrar Sesión
-                </button>
-              </div>
-            </div>
-          </li>
-        )}
-
-        {/* ✅ Redes sociales (no mostrar en login y productos) */}
-        {!isLoginPage && !isProductsPage && (
-          <li className={style.socialMenu}>
-            <button 
-              onClick={() => setShowSocialMenu(!showSocialMenu)} 
-              className={style.socialButton}
-              aria-label="Mostrar redes sociales"
+              {/* Dropdown */}
+              {userDropdown && (
+                <div className="absolute right-0 mt-2 w-48 bg-white border rounded shadow-lg py-2 z-50 animate-fade-in">
+                  <button onClick={handleProfileNavigation} className="block w-full text-left px-4 py-2 hover:bg-gray-100">Ver Perfil</button>
+                  <button onClick={() => { navigate('/userReservas'); setUserDropdown(false); }} className="block w-full text-left px-4 py-2 hover:bg-gray-100">Mis Reservas</button>
+                  {canAccessTraining() && (
+                    <button onClick={() => { navigate('/capacitacion'); setUserDropdown(false); }} className="block w-full text-left px-4 py-2 hover:bg-gray-100">Capacitaciones</button>
+                  )}
+                  {isAdmin() && (
+                    <button onClick={() => { navigate('/panel'); setUserDropdown(false); }} className="block w-full text-left px-4 py-2 hover:bg-gray-100">Panel Admin</button>
+                  )}
+                  <hr className="my-1" />
+                  <button onClick={handleLogout} className="block w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100">Cerrar Sesión</button>
+                </div>
+              )}
+            </li>
+          )}
+          {/* Social menu */}
+          <li className="relative">
+            <button
+              onClick={() => setShowSocialMenu(v => !v)}
+              className="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 transition"
             >
               Redes
+              <FaChevronDown className={`transition-transform ${showSocialMenu ? "rotate-180" : ""}`} />
             </button>
             {showSocialMenu && (
-              <div className={style.socialIcons}>
-                <a 
-                  href="https://wa.link/28unmk" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className={style.icon}
-                  aria-label="WhatsApp"
-                >
-                  <FaWhatsapp />
+              <div className="absolute right-0 mt-2 w-56 bg-white border rounded shadow-lg py-3 z-50 flex flex-col gap-2 animate-fade-in">
+                <a href="https://wa.link/28unmk" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 hover:bg-green-50 text-green-600">
+                  <FaWhatsapp /> WhatsApp
                 </a>
-                <a 
-                  href="https://www.facebook.com/share/w65jnMDrZaqF3ucy/?mibextid=qi2Omg" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className={style.icon}
-                  aria-label="Facebook"
-                >
-                  <FaFacebookF />
+                <a href="https://www.facebook.com/share/w65jnMDrZaqF3ucy/?mibextid=qi2Omg" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 hover:bg-blue-50 text-blue-600">
+                  <FaFacebookF /> Facebook
                 </a>
-                <a 
-                  href="https://www.instagram.com/viajaya_pagina_oficial/" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className={style.icon}
-                  aria-label="Instagram"
-                >
-                  <FaInstagram />
+                <a href="https://www.instagram.com/viajaya_pagina_oficial/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 hover:bg-pink-50 text-pink-600">
+                  <FaInstagram /> Instagram
                 </a>
-                <a 
-                  href="https://www.tiktok.com/@agenciadeviajesviajaya" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className={style.icon}
-                  aria-label="TikTok"
-                >
-                  <FaTiktok />
+                <a href="https://www.tiktok.com/@agenciadeviajesviajaya" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 text-gray-700">
+                  <FaTiktok /> TikTok
                 </a>
-                <a 
-                  href="https://www.t.me/+jVPYyJBifRJiMjdh" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className={style.icon}
-                  aria-label="Telegram"
-                >
-                  <FaTelegramPlane />
+                <a href="https://www.t.me/+jVPYyJBifRJiMjdh" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 hover:bg-blue-50 text-blue-500">
+                  <FaTelegramPlane /> Telegram
                 </a>
               </div>
             )}
           </li>
-        )}
-      </ul>
+        </ul>
 
-      {/* ✅ Debug info solo en desarrollo */}
+        {/* Mobile menu button */}
+        <button
+          className="md:hidden text-3xl text-ColorAzul focus:outline-none"
+          onClick={() => setMenuOpen(v => !v)}
+          aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
+        >
+          {menuOpen ? <FaTimes /> : <FaBars />}
+        </button>
+      </div>
+
+      {/* Mobile menu */}
+      {menuOpen && (
+        <div className="md:hidden bg-white border-t shadow-lg animate-fade-in">
+          <ul className="flex flex-col gap-2 py-4 px-6 font-nunito font-semibold text-gray-700">
+            {!isLoginPage && !isProductsPage && !isPanelPage && !isProfilePage &&
+              !isPanelUserPage && !isPanelPackPage && !isPanelNewPage && !isBeneficiosNewPage && (
+                <>
+                  <li>
+                    <RouterLink to="/about" onClick={() => setMenuOpen(false)} className="block py-2 hover:text-ColorAzul">Nosotros</RouterLink>
+                  </li>
+                  <li>
+                    <RouterLink to="/allpacks" onClick={() => setMenuOpen(false)} className="block py-2 hover:text-ColorAzul">Paquetes</RouterLink>
+                  </li>
+                  <li>
+                    <RouterLink to="/productos" onClick={() => setMenuOpen(false)} className="block py-2 hover:text-ColorAzul">Productos</RouterLink>
+                  </li>
+                  <li>
+                    <RouterLink to="/puntos" onClick={() => setMenuOpen(false)} className="block py-2 hover:text-ColorAzul">Obtén Descuentos</RouterLink>
+                  </li>
+                </>
+              )
+            }
+            {!isAuthenticated && (
+              <li>
+                <button onClick={handleLogin} className="w-full bg-ColorMorado text-white px-4 py-2 rounded hover:bg-ColorAzul transition">Ingresar</button>
+              </li>
+            )}
+            {isAuthenticated && user && (
+              <li>
+                <button
+                  onClick={() => setUserDropdown(v => !v)}
+                  className="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 transition w-full"
+                >
+                  <span>👤 {user.name || 'Usuario'}</span>
+                  <FaChevronDown className={`transition-transform ${userDropdown ? "rotate-180" : ""}`} />
+                </button>
+                {userDropdown && (
+                  <div className="mt-2 w-full bg-white border rounded shadow-lg py-2 z-50 animate-fade-in">
+                    <button onClick={handleProfileNavigation} className="block w-full text-left px-4 py-2 hover:bg-gray-100">Ver Perfil</button>
+                    <button onClick={() => { navigate('/userReservas'); setUserDropdown(false); setMenuOpen(false); }} className="block w-full text-left px-4 py-2 hover:bg-gray-100">Mis Reservas</button>
+                    {canAccessTraining() && (
+                      <button onClick={() => { navigate('/capacitacion'); setUserDropdown(false); setMenuOpen(false); }} className="block w-full text-left px-4 py-2 hover:bg-gray-100">Capacitaciones</button>
+                    )}
+                    {isAdmin() && (
+                      <button onClick={() => { navigate('/panel'); setUserDropdown(false); setMenuOpen(false); }} className="block w-full text-left px-4 py-2 hover:bg-gray-100">Panel Admin</button>
+                    )}
+                    <hr className="my-1" />
+                    <button onClick={handleLogout} className="block w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100">Cerrar Sesión</button>
+                  </div>
+                )}
+              </li>
+            )}
+            {/* Social menu mobile */}
+            <li>
+              <button
+                onClick={() => setShowSocialMenu(v => !v)}
+                className="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 transition w-full"
+              >
+                Redes
+                <FaChevronDown className={`transition-transform ${showSocialMenu ? "rotate-180" : ""}`} />
+              </button>
+              {showSocialMenu && (
+                <div className="mt-2 w-full bg-white border rounded shadow-lg py-3 z-50 flex flex-col gap-2 animate-fade-in">
+                  <a href="https://wa.link/28unmk" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 hover:bg-green-50 text-green-600">
+                    <FaWhatsapp /> WhatsApp
+                  </a>
+                  <a href="https://www.facebook.com/share/w65jnMDrZaqF3ucy/?mibextid=qi2Omg" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 hover:bg-blue-50 text-blue-600">
+                    <FaFacebookF /> Facebook
+                  </a>
+                  <a href="https://www.instagram.com/viajaya_pagina_oficial/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 hover:bg-pink-50 text-pink-600">
+                    <FaInstagram /> Instagram
+                  </a>
+                  <a href="https://www.tiktok.com/@agenciadeviajesviajaya" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 text-gray-700">
+                    <FaTiktok /> TikTok
+                  </a>
+                  <a href="https://www.t.me/+jVPYyJBifRJiMjdh" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 hover:bg-blue-50 text-blue-500">
+                    <FaTelegramPlane /> Telegram
+                  </a>
+                </div>
+              )}
+            </li>
+          </ul>
+        </div>
+      )}
+
+      {/* Debug info solo en desarrollo */}
       {import.meta.env.MODE === 'development' && (
-        <div className={style.debugInfo}>
-          <small>
-            Usuario: {isAuthenticated ? user?.name : 'No autenticado'} | 
-            Rol: {user?.role || 'N/A'} |
-            Ruta: {currentPath}
-          </small>
+        <div className="absolute right-2 top-16 bg-gray-100 rounded px-2 py-1 text-xs text-gray-600 shadow">
+          Usuario: {isAuthenticated ? user?.name : 'No autenticado'} | 
+          Rol: {user?.role || 'N/A'} | Ruta: {currentPath}
         </div>
       )}
     </nav>
