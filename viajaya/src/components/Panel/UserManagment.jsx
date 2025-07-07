@@ -15,14 +15,17 @@ import {
 import { 
   selectUser, 
   selectIsAuthenticated, 
-  selectAuthLoading, 
-  verifyToken 
+  selectAuthLoading
 } from '../../redux/slices/authSlice';
+import useAuthGuard from '../hooks/useAuthGuard'; // ✅ Usar el hook mejorado
 import NavBar from '../layout/NavBar/NavBar';
 
 const UserManagment = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  
+  // ✅ Usar el hook de autenticación mejorado
+  useAuthGuard();
   
   // ✅ Selectores simplificados
   const user = useSelector(selectUser);
@@ -40,22 +43,9 @@ const UserManagment = () => {
   const [filteredUser, setFilteredUser] = useState(null);
   const [hasLoadedUsers, setHasLoadedUsers] = useState(false);
 
-  // ✅ Verificar autenticación
+  // ✅ Verificar autorización y cargar usuarios
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      navigate("/login");
-      return;
-    }
-
-    if (!user && token) {
-      dispatch(verifyToken());
-    }
-  }, [dispatch, navigate, user]);
-
-  // ✅ Cargar usuarios - simplificado
-  useEffect(() => {
-    if (user && isAuthenticated) {
+    if (isAuthenticated && user) {
       if (user.role < 7) {
         navigate("/");
         return;
@@ -68,7 +58,7 @@ const UserManagment = () => {
         dispatch(fetchAllUsers());
       }
     }
-  }, [user, isAuthenticated, dispatch, navigate, hasLoadedUsers, loading]);
+  }, [dispatch, navigate, user, isAuthenticated, hasLoadedUsers, loading]);
 
   // ✅ Protecciones básicas
   if (authLoading || !user) {

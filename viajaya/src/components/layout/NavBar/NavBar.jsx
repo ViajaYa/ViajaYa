@@ -8,6 +8,7 @@ import {
   selectIsAuthenticated,
   selectAuthLoading
 } from '../../../redux/slices/authSlice';
+import useAuthGuard from '../../hooks/useAuthGuard'; // ✅ Usar el hook mejorado
 
 import logo from "../../../assets/logo2.png";
 import {
@@ -19,20 +20,33 @@ const NavBar = () => {
   const location = useLocation();
   const dispatch = useDispatch();
 
+  // ✅ Temporalmente comentar useAuthGuard para debug
+  // useAuthGuard();
+  
   const user = useSelector(selectUser);
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const loading = useSelector(selectAuthLoading);
+
+  // ✅ Debug temporal
+  console.log('NavBar Debug:', { 
+    isAuthenticated, 
+    user: user?.name, 
+    loading,
+    hasToken: !!localStorage.getItem('token')
+  });
 
   const [showSocialMenu, setShowSocialMenu] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [userDropdown, setUserDropdown] = useState(false);
 
+  // ✅ Verificar token al montar el componente (versión simple)
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token && !user) {
+    const token = localStorage.getItem('token');
+    if (token && !user && !loading) {
+      console.log('Verificando token en NavBar...');
       dispatch(verifyToken());
     }
-  }, [dispatch, user]);
+  }, []); // Solo al montar
 
   const handleLogout = () => {
     dispatch(logout());
@@ -118,7 +132,9 @@ const NavBar = () => {
           }
           {!isAuthenticated && (
             <li>
-              <button onClick={handleLogin} className="bg-ColorMorado text-white px-4 py-2 rounded hover:bg-ColorAzul transition">Ingresar</button>
+              <button onClick={handleLogin} className="bg-ColorMorado text-white px-4 py-2 rounded hover:bg-ColorAzul transition">
+                Ingresar
+              </button>
             </li>
           )}
           {isAuthenticated && user && (
@@ -147,6 +163,7 @@ const NavBar = () => {
               )}
             </li>
           )}
+        
           {/* Social menu */}
           <li className="relative">
             <button
@@ -212,7 +229,9 @@ const NavBar = () => {
             }
             {!isAuthenticated && (
               <li>
-                <button onClick={handleLogin} className="w-full bg-ColorMorado text-white px-4 py-2 rounded hover:bg-ColorAzul transition">Ingresar</button>
+                <button onClick={handleLogin} className="w-full bg-ColorMorado text-white px-4 py-2 rounded hover:bg-ColorAzul transition">
+                  Ingresar
+                </button>
               </li>
             )}
             {isAuthenticated && user && (
@@ -238,6 +257,14 @@ const NavBar = () => {
                     <button onClick={handleLogout} className="block w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100">Cerrar Sesión</button>
                   </div>
                 )}
+              </li>
+            )}
+            {/* ✅ Debug temporal - mostrar siempre un botón */}
+            {!isAuthenticated && !user && (
+              <li>
+                <button onClick={handleLogin} className="w-full bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition">
+                  DEBUG: Ingresar Mobile
+                </button>
               </li>
             )}
             {/* Social menu mobile */}

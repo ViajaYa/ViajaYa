@@ -10,6 +10,7 @@ import commissionReducer from '../slices/commissionSlice';
 import dashboardReducer from '../slices/dashboardSlice';
 import notificationReducer from '../slices/notificationSlice';
 import toastMiddleware from '../../utils/toastMiddleware';
+import reservationReducer from '../slices/reservationSlice'; 
 
 export const store = configureStore({
   reducer: {
@@ -23,6 +24,7 @@ export const store = configureStore({
     commission: commissionReducer,
     dashboard: dashboardReducer,
     notification: notificationReducer,
+    reservation: reservationReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

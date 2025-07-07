@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useAuth } from '../../redux/hooks/hooks';
 import { useAppDispatch } from '../../redux/hooks/hooks';
 import { verifyToken, logout } from '../../redux/slices/authSlice';
@@ -6,18 +6,26 @@ import { verifyToken, logout } from '../../redux/slices/authSlice';
 const useAuthGuard = () => {
   const dispatch = useAppDispatch();
   const { isAuthenticated, user, loading, error } = useAuth();
+  const hasInitialized = useRef(false);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
     
-    // Si hay token pero no está autenticado, verificar token
-    if (token && !isAuthenticated && !loading) {
+    // ✅ Solo verificar token una vez para evitar bucles infinitos
+    if (token && !isAuthenticated && !loading && !hasInitialized.current) {
+      hasInitialized.current = true;
       dispatch(verifyToken());
     }
     
     // Si no hay token pero Redux dice que está autenticado, limpiar estado
     if (!token && isAuthenticated) {
+      hasInitialized.current = false; // Permitir re-inicialización
       dispatch(logout());
+    }
+    
+    // Resetear flag si el estado cambia (por logout manual, etc.)
+    if (!token && !isAuthenticated) {
+      hasInitialized.current = false;
     }
   }, [dispatch, isAuthenticated, loading]);
 

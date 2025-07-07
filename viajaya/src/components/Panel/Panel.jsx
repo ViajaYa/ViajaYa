@@ -24,8 +24,8 @@ import {
   selectUser, 
   selectIsAuthenticated, 
   selectAuthLoading, // ✅ Nombre correcto
-  verifyToken // ✅ Usar verifyToken en lugar de fetchUserProfile
 } from "../../redux/slices/authSlice";
+import useAuthGuard from "../hooks/useAuthGuard"; // ✅ Usar el hook mejorado
 import { useDispatch, useSelector } from "react-redux";
 import Map from "../layout/Map/Map";
 import { toast, Toaster } from "react-hot-toast";
@@ -43,6 +43,9 @@ dayjs.locale("es");
 const Panel = () => {
   const [page, setPage] = useState(0);
   const navigate = useNavigate();
+  
+  // ✅ Usar el hook de autenticación mejorado
+  useAuthGuard();
   
   // ✅ Usar selectores del authSlice
   const dispatch = useDispatch();
@@ -85,15 +88,10 @@ const Panel = () => {
   }
 
   useEffect(() => {
-    // ✅ Cargar datos usando el authSlice y otros slices
+    // ✅ Cargar datos una vez que tenemos usuario autenticado
     const loadData = async () => {
       try {
         setComponentLoading(true);
-
-        // ✅ Si no hay usuario o necesita actualización, verificar token
-        if (!user) {
-          await dispatch(verifyToken()).unwrap(); // ✅ Cambiar fetchUserProfile por verifyToken
-        }
 
         // Cargar datos que no dependen del usuario específico
         const [usersResponse, classResponse, packResponse, charsResponse, promoResponse] = await Promise.all([
@@ -127,10 +125,11 @@ const Panel = () => {
       }
     };
 
-    if (isAuthenticated) {
+    // Solo cargar una vez cuando tenemos usuario y está autenticado
+    if (isAuthenticated && user) {
       loadData();
     }
-  }, [isAuthenticated, user?.id, dispatch]);
+  }, [isAuthenticated, user, dispatch]); // ✅ Dependencias controladas
 
   // ✅ Función de logout mejorada usando authSlice
   const handleLogout = () => {
