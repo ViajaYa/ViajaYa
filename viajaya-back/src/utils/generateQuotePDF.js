@@ -2,6 +2,21 @@ const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
 
+// 🎨 Colores de la marca ViajaYa
+const COLORS = {
+  MoradoSuave: "#dc86c7",
+  moradito: "#cdb2d5", 
+  botonPopup: "#573b58",
+  fondoPopup: "#421261",
+  ColorMorado: "#b85aa1",
+  ColorAzul: "#2be0e9",
+  textoSecundario: "#666666",
+  textoOscuro: "#1f2937",
+  textoGris: "#374151",
+  separador: "#e5e7eb",
+  textoClaro: "#9ca3af"
+};
+
 // ✅ Asegurar que el directorio de PDFs existe
 const ensurePDFDirectory = () => {
   const pdfDir = path.join(__dirname, '../../uploads/pdfs');
@@ -11,7 +26,7 @@ const ensurePDFDirectory = () => {
   return pdfDir;
 };
 
-// ✅ Función auxiliar para calcular noches - MOVER ANTES DE generateQuotePDF
+// ✅ Función auxiliar para calcular noches
 function calcularNoches(fechaIda, fechaRegreso) {
   const ida = new Date(fechaIda);
   const regreso = new Date(fechaRegreso);
@@ -19,6 +34,12 @@ function calcularNoches(fechaIda, fechaRegreso) {
   const noches = Math.ceil(diferencia / (1000 * 3600 * 24));
   return noches;
 }
+
+// ✅ Función para NO crear páginas adicionales (todo en una página)
+const checkNewPage = (doc, yPosition, requiredHeight, pageHeight, margin) => {
+  // NO crear páginas adicionales - mantener todo en una página
+  return yPosition;
+};
 
 // ✅ Generar PDF de cotización con el formato de Viaja Ya
 const generateQuotePDF = async (quote, saveToFile = true) => {
@@ -31,9 +52,11 @@ const generateQuotePDF = async (quote, saveToFile = true) => {
       size: 'A4'
     });
 
-    let yPosition = 30;
+    let yPosition = 20;
     const pageWidth = doc.page.width;
+    const pageHeight = doc.page.height;
     const margin = 30;
+    const contentWidth = pageWidth - 2 * margin;
 
     // Si se debe guardar como archivo
     let stream;
@@ -45,84 +68,139 @@ const generateQuotePDF = async (quote, saveToFile = true) => {
       doc.pipe(stream);
     }
 
-    // ✅ HEADER - Información de contacto y redes sociales
+    // ✅ HEADER CON LOGO Y FONDO (equilibrado)
+    doc.rect(0, 0, pageWidth, 75)
+       .fillColor(COLORS.fondoPopup)
+       .fill();
+
+    // Intentar cargar el logo
+    try {
+      const logoPath = path.join(__dirname, '../assets/logo2.png');
+      if (fs.existsSync(logoPath)) {
+        doc.image(logoPath, margin, 10, { width: 45, height: 45 });
+      }
+    } catch (error) {
+      console.log('⚠️ No se pudo cargar el logo:', error.message);
+    }
+
+    // Información de contacto del header
+    doc.fontSize(11)
+       .fillColor('white')
+       .font('Helvetica-Bold')
+       .text('VIAJA YA', margin + 60, 15)
+       .fontSize(8)
+       .font('Helvetica')
+       .text('Hacemos realidad tus sueños de viaje', margin + 60, 30)
+       .text('info@viajaya.com | +57 300 123 4567', margin + 60, 42)
+       .text('Bogotá, Colombia', margin + 60, 54);
+
+    // Instagram en el lado derecho
+    doc.fontSize(8)
+       .fillColor(COLORS.ColorAzul)
+       .text('Síguenos en Instagram:', pageWidth - 130, 15, { width: 100, align: 'right' })
+       .text('@viajaya_pagina_oficial', pageWidth - 130, 27, { width: 100, align: 'right' });
+
+    yPosition = 85;
+
+    // ✅ DESTINO PRINCIPAL (más compacto)
+    doc.rect(margin, yPosition, contentWidth, 35)
+       .fillColor(COLORS.MoradoSuave)
+       .fill();
+    
+    doc.fontSize(20)
+       .fillColor('white')
+       .font('Helvetica-Bold')
+       .text(`${quote.destino.toUpperCase()}`, margin + 10, yPosition + 8, { 
+         align: 'center',
+         width: contentWidth - 20
+       });
+    
+    yPosition += 45;
+
+    // ✅ MENSAJE DE BIENVENIDA (más compacto)
     doc.fontSize(10)
-       .fillColor('#666666')
-       .text('Visítanos en https://www.instagram.com/viajaya_pagina_oficial', margin, yPosition, { align: 'center' });
+       .fillColor(COLORS.textoOscuro)
+       .font('Helvetica')
+       .text(`¡Disfruta de un viaje inolvidable a ${quote.destino} con Viaja Ya!`, margin, yPosition, { 
+         align: 'center',
+         width: contentWidth
+       });
+    
+    yPosition += 18;
+
+    // ✅ SECCIÓN INCLUYE (más compacta)
+    doc.rect(margin, yPosition, contentWidth, 18)
+       .fillColor(COLORS.botonPopup)
+       .fill();
+    
+    doc.fontSize(12)
+       .fillColor('white')
+       .font('Helvetica-Bold')
+       .text('INCLUYE:', margin + 10, yPosition + 4);
     
     yPosition += 25;
 
-    // ✅ DESTINO PRINCIPAL
-    doc.fontSize(28)
-       .fillColor('#2563eb')
-       .font('Helvetica-Bold')
-       .text(`${quote.destino.toUpperCase()} 🛫`, margin, yPosition, { align: 'center' });
-    
-    yPosition += 40;
-
-    // ✅ MENSAJE DE BIENVENIDA
-    doc.fontSize(14)
-       .fillColor('#1f2937')
-       .font('Helvetica')
-       .text(`¡Disfruta de un viaje inolvidable a ${quote.destino} con Viaja Ya! 🏖️`, margin, yPosition, { 
-         align: 'center',
-         width: pageWidth - 2 * margin
-       });
-    
-    yPosition += 40;
-
-    // ✅ SECCIÓN INCLUYE
-    doc.fontSize(16)
-       .fillColor('#2563eb')
-       .font('Helvetica-Bold')
-       .text('INCLUYE:', margin, yPosition);
-    
-    yPosition += 20;
-
-    // ✅ CORREGIR AQUÍ: Cambiar this.calcularNoches por calcularNoches
     const noches = calcularNoches(quote.fecha_ida, quote.fecha_regreso);
     
-    // Lista de inclusiones
+    // Lista de inclusiones SIN EMOJIS
     const inclusiones = [
-      '* Tiquetes Aéreos ida y regreso equipaje de tipo morral (40_35_25 cm) 🛫',
-      '* Traslados Aeropuerto - Hotel - Aeropuerto',
-      `* Alojamiento por ${noches} noches en ${quote.tipo_hotel} 🏨`,
-      '* Desayuno, almuerzo y cena 🍽️',
-      '* Bebidas incluidas',
-      '* Asistencia médica ⚕️'
+      `• Tiquetes Aéreos ida y regreso equipaje de tipo morral (40×35×25 cm)`,
+      `• Traslados Aeropuerto - Hotel - Aeropuerto`,
+      `• Alojamiento por ${noches} noches en ${quote.tipo_hotel}`,
+      `• Desayuno, almuerzo y cena`,
+      `• Bebidas incluidas`,
+      `• Asistencia médica`
     ];
 
     // Si tiene alimentación específica, la usamos
     if (quote.alimentacion && quote.alimentacion !== 'No especificada') {
-      inclusiones[3] = `* ${quote.alimentacion} 🍽️`;
+      inclusiones[3] = `• ${quote.alimentacion}`;
     }
 
-    doc.fontSize(12)
-       .fillColor('#374151')
+    doc.fontSize(9)
+       .fillColor(COLORS.textoGris)
        .font('Helvetica');
 
     inclusiones.forEach(item => {
-      doc.text(item, margin + 10, yPosition, { 
-        width: pageWidth - 2 * margin - 20,
-        lineGap: 3
+      doc.text(item, margin + 6, yPosition, { 
+        width: contentWidth - 12,
+        lineGap: 0
       });
-      yPosition += 18;
+      yPosition += 10; // Reducido de 12 a 10
     });
 
-    yPosition += 20;
+    yPosition += 8; // Reducido de 10 a 8
 
-    // ✅ DETALLES DEL VIAJE
-    doc.fontSize(16)
-       .fillColor('#2563eb')
-       .font('Helvetica-Bold')
-       .text('DETALLES DEL VIAJE:', margin, yPosition);
+    // ✅ DETALLES DEL VIAJE (más compacto)
+    doc.rect(margin, yPosition, contentWidth, 18)
+       .fillColor(COLORS.moradito)
+       .fill();
     
-    yPosition += 20;
+    doc.fontSize(12)
+       .fillColor(COLORS.fondoPopup)
+       .font('Helvetica-Bold')
+       .text('DETALLES DEL VIAJE:', margin + 10, yPosition + 4);
+    
+    yPosition += 25;
+
+    // Precio destacado (más compacto)
+    doc.rect(margin, yPosition, contentWidth, 30)
+       .fillColor(COLORS.ColorAzul)
+       .fill();
+    
+    doc.fontSize(16)
+       .fillColor('white')
+       .font('Helvetica-Bold')
+       .text(`$${quote.precio_total ? quote.precio_total.toLocaleString('es-CO') : 'Por confirmar'}`, margin + 10, yPosition + 6, { align: 'center', width: contentWidth - 20 })
+       .fontSize(8)
+       .font('Helvetica')
+       .text('Valor por persona', margin + 10, yPosition + 20, { align: 'center', width: contentWidth - 20 });
+    
+    yPosition += 38;
 
     // Detalles principales
-    const detalles = [
-      `💰 Valor por persona $${quote.precio_total ? quote.precio_total.toLocaleString('es-CO') : 'Por confirmar'}`,
-      `📆 Fecha de viaje: ${new Date(quote.fecha_ida).toLocaleDateString('es-ES', { 
+    const detallesData = [
+      { label: 'Fecha de viaje', value: `${new Date(quote.fecha_ida).toLocaleDateString('es-ES', { 
         day: '2-digit', 
         month: 'long', 
         year: 'numeric' 
@@ -130,66 +208,74 @@ const generateQuotePDF = async (quote, saveToFile = true) => {
         day: '2-digit', 
         month: 'long', 
         year: 'numeric' 
-      })}`,
-      `🏨 Hotel: ${quote.tipo_hotel || 'Por confirmar'}`,
-      `🛏️ Acomodación: ${quote.acomodacion}`
+      })}` },
+      { label: 'Hotel', value: quote.tipo_hotel || 'Por confirmar' },
+      { label: 'Acomodación', value: quote.acomodacion }
     ];
 
     // Si hay niños, agregar información
     if (quote.ninos > 0) {
-      detalles.push(`👶 Niños: ${quote.ninos} (Edades: ${quote.edades_ninos.join(', ')})`);
+      detallesData.push({ label: 'Niños', value: `${quote.ninos} (Edades: ${quote.edades_ninos.join(', ')})` });
     }
 
     // Si hay más de una persona
     if (quote.numero_personas > 1) {
-      detalles.push(`👥 Número de personas: ${quote.numero_personas}`);
+      detallesData.push({ label: 'Número de personas', value: quote.numero_personas.toString() });
     }
 
-    doc.fontSize(12)
-       .fillColor('#374151')
+    doc.fontSize(9)
+       .fillColor(COLORS.textoGris)
        .font('Helvetica');
 
-    detalles.forEach(detalle => {
-      doc.text(detalle, margin + 10, yPosition, { 
-        width: pageWidth - 2 * margin - 20,
-        lineGap: 3
-      });
-      yPosition += 18;
+    detallesData.forEach(detalle => {
+      doc.fillColor(COLORS.textoOscuro)
+         .font('Helvetica-Bold')
+         .text(`${detalle.label}:`, margin + 6, yPosition, { width: 80 })
+         .fillColor(COLORS.textoGris)
+         .font('Helvetica')
+         .text(detalle.value, margin + 90, yPosition, { 
+           width: contentWidth - 96
+         });
+      yPosition += 10; // Reducido de 12 a 10
     });
 
-    yPosition += 20;
+    yPosition += 6; // Reducido de 8 a 6
 
-    // ✅ ADICIONALES
-    doc.fontSize(16)
-       .fillColor('#2563eb')
-       .font('Helvetica-Bold')
-       .text('ADICIONALES (con costo extra): 💰', margin, yPosition);
+    // ✅ ADICIONALES (más compacto)
+    doc.rect(margin, yPosition, contentWidth, 18)
+       .fillColor(COLORS.ColorMorado)
+       .fill();
     
-    yPosition += 20;
+    doc.fontSize(12)
+       .fillColor('white')
+       .font('Helvetica-Bold')
+       .text('ADICIONALES (con costo extra):', margin + 10, yPosition + 4);
+    
+    yPosition += 25;
 
     const adicionales = [
       '• Equipaje en bodega',
-      '• Selección de asiento aéreo', 
+      '• Selección de asiento aéreo',
       '• Paseos en destino (solicita nuestro brochure de servicios)'
     ];
 
-    doc.fontSize(12)
-       .fillColor('#374151')
+    doc.fontSize(9)
+       .fillColor(COLORS.textoGris)
        .font('Helvetica');
 
-    adicionales.forEach(adicional => {
-      doc.text(adicional, margin + 10, yPosition, { 
-        width: pageWidth - 2 * margin - 20,
-        lineGap: 3
+    adicionales.forEach(item => {
+      doc.text(item, margin + 6, yPosition, { 
+        width: contentWidth - 12,
+        lineGap: 0
       });
-      yPosition += 16;
+      yPosition += 10; // Reducido de 12 a 10
     });
 
-    yPosition += 20;
+    yPosition += 6; // Reducido de 8 a 6
 
-    // ✅ OBSERVACIONES
-    doc.fontSize(14)
-       .fillColor('#2563eb')
+    // ✅ OBSERVACIONES (más compacto)
+    doc.fontSize(10)
+       .fillColor(COLORS.botonPopup)
        .font('Helvetica-Bold')
        .text('Observaciones:', margin, yPosition);
     
@@ -199,46 +285,64 @@ const generateQuotePDF = async (quote, saveToFile = true) => {
       ? quote.observaciones 
       : 'Infórmanos si algún viajero presenta alguna condición especial';
 
-    doc.fontSize(12)
-       .fillColor('#374151')
+    doc.rect(margin, yPosition, contentWidth, 20)
+       .fillColor('#f8f9fa')
+       .stroke(COLORS.separador)
+       .fill();
+
+    doc.fontSize(8)
+       .fillColor(COLORS.textoGris)
        .font('Helvetica')
-       .text(observacionesTexto, margin + 10, yPosition, { 
-         width: pageWidth - 2 * margin - 20,
+       .text(observacionesTexto, margin + 8, yPosition + 6, { 
+         width: contentWidth - 16,
          align: 'justify',
-         lineGap: 3
+         lineGap: 1
        });
 
-    yPosition += 40;
+    yPosition += 25;
 
-    // ✅ ATENCIÓN PERSONALIZADA
-    doc.fontSize(16)
-       .fillColor('#2563eb')
-       .font('Helvetica-Bold')
-       .text('ATENCIÓN PERSONALIZADA:', margin, yPosition);
+    // ✅ ATENCIÓN PERSONALIZADA (más compacto)
+    doc.rect(margin, yPosition, contentWidth, 18)
+       .fillColor(COLORS.ColorAzul)
+       .fill();
     
-    yPosition += 20;
+    doc.fontSize(10)
+       .fillColor('white')
+       .font('Helvetica-Bold')
+       .text('ATENCIÓN PERSONALIZADA:', margin + 10, yPosition + 4);
+    
+    yPosition += 20; // Reducido de 25 a 20
 
-    const atencionTexto = `En Viaja Ya, contamos con un canal de atención a los viajeros donde estarás acompañado desde un día antes del viaje hasta que finaliza. ¡Realizamos check-in, brindamos recomendaciones y aseguramos que tu experiencia de viaje sea la mejor! 💜`;
+    const atencionTexto = `En Viaja Ya, contamos con un canal de atención a los viajeros donde estarás acompañado desde un día antes del viaje hasta que finaliza. ¡Realizamos check-in, brindamos recomendaciones y aseguramos que tu experiencia de viaje sea la mejor!`;
 
-    doc.fontSize(12)
-       .fillColor('#374151')
+    doc.fontSize(8)
+       .fillColor(COLORS.textoGris)
        .font('Helvetica')
-       .text(atencionTexto, margin + 10, yPosition, { 
-         width: pageWidth - 2 * margin - 20,
+       .text(atencionTexto, margin + 6, yPosition, { 
+         width: contentWidth - 12,
          align: 'justify',
-         lineGap: 4
+         lineGap: 1
        });
 
-    yPosition += 60;
+    yPosition += 25; // Reducido de 30 a 25
 
-    // ✅ INFORMACIÓN DEL RESPONSABLE (actualizado para incluir Owner)
+    // ✅ INFORMACIÓN DEL RESPONSABLE (más compacto y sin checkNewPage)
     const responsable = quote.Asesor || quote.Lider || quote.Gerente || quote.Admin || quote.Owner;
 
     if (responsable) {
-      doc.fontSize(14)
-         .fillColor('#2563eb')
+      // Verificar si hay espacio suficiente, si no, reducir aún más
+      if (yPosition + 35 > pageHeight - 80) {
+        yPosition = pageHeight - 120; // Posicionar cerca del footer
+      }
+      
+      doc.rect(margin, yPosition, contentWidth, 30)
+         .fillColor(COLORS.fondoPopup)
+         .fill();
+      
+      doc.fontSize(9)
+         .fillColor('white')
          .font('Helvetica-Bold')
-         .text('TU ASESOR DE CONFIANZA:', margin, yPosition);
+         .text('TU ASESOR DE CONFIANZA:', margin + 8, yPosition + 3);
       
       yPosition += 15;
       
@@ -249,35 +353,50 @@ const generateQuotePDF = async (quote, saveToFile = true) => {
       if (quote.Admin && !quote.Asesor && !quote.Lider && !quote.Gerente) tipoResponsable = 'Administrador';
       if (quote.Owner && !quote.Asesor && !quote.Lider && !quote.Gerente && !quote.Admin) tipoResponsable = 'Director';
       
-      doc.fontSize(12)
-         .fillColor('#374151')
+      doc.fontSize(8)
+         .fillColor(COLORS.ColorAzul)
+         .font('Helvetica-Bold')
+         .text(`${responsable.name} ${responsable.lastname} - ${tipoResponsable}`, margin + 8, yPosition)
+         .fontSize(7)
+         .fillColor('white')
          .font('Helvetica')
-         .text(`👨‍💼 ${responsable.name} ${responsable.lastname} (${tipoResponsable})`, margin + 10, yPosition)
-         .text(`📧 ${responsable.email}`, margin + 10, yPosition + 15)
-         .text(`📞 Línea de atención: +57 300 123 4567`, margin + 10, yPosition + 30);
+         .text(`${responsable.email}`, margin + 8, yPosition + 10);
 
-      yPosition += 60;
+      yPosition += 25;
     }
 
-    // ✅ FOOTER
-    const pageHeight = doc.page.height;
-    const footerY = pageHeight - 60;
+    // ✅ FOOTER (más compacto)
+    const footerY = pageHeight - 40;
 
-    // Separador
-    doc.moveTo(margin, footerY - 20)
-       .lineTo(pageWidth - margin, footerY - 20)
-       .strokeColor('#e5e7eb')
+    doc.rect(0, footerY - 3, pageWidth, 43)
+       .fillColor(COLORS.fondoPopup)
+       .fill();
+
+    doc.moveTo(margin, footerY)
+       .lineTo(pageWidth - margin, footerY)
+       .strokeColor(COLORS.ColorAzul)
+       .lineWidth(1)
        .stroke();
 
-    doc.fontSize(10)
-       .fillColor('#9ca3af')
+    doc.fontSize(8)
+       .fillColor('white')
+       .font('Helvetica-Bold')
+       .text('VIAJA YA - Hacemos realidad tus sueños de viaje', 
+             margin, footerY + 4, { align: 'center', width: contentWidth });
+
+    doc.fontSize(7)
+       .fillColor(COLORS.ColorAzul)
        .font('Helvetica')
-       .text('📋 Esta cotización es válida por 30 días a partir de la fecha de emisión.', 
-             margin, footerY - 10, { align: 'center', width: pageWidth - 2 * margin })
-       .text('💜 Viaja Ya - Hacemos realidad tus sueños de viaje', 
-             margin, footerY + 5, { align: 'center', width: pageWidth - 2 * margin })
-       .text('📧 info@viajaya.com | 📞 +57 300 123 4567 | 📍 Bogotá, Colombia', 
-             margin, footerY + 20, { align: 'center', width: pageWidth - 2 * margin });
+       .text('info@viajaya.com | +57 300 123 4567 | Bogotá, Colombia', 
+             margin, footerY + 15, { align: 'center', width: contentWidth });
+
+    doc.fontSize(6)
+       .fillColor(COLORS.textoClaro)
+       .font('Helvetica')
+       .text('Esta cotización es válida por 48 horas a partir de la fecha de emisión.', 
+             margin, footerY + 25, { align: 'center', width: contentWidth })
+       .text('Síguenos en Instagram: @viajaya_pagina_oficial', 
+             margin, footerY + 35, { align: 'center', width: contentWidth });
 
     // Finalizar el documento
     doc.end();
@@ -326,5 +445,5 @@ const generateQuotePDF = async (quote, saveToFile = true) => {
 module.exports = {
   generateQuotePDF,
   ensurePDFDirectory,
-  calcularNoches // ✅ Exportar la función también
+  calcularNoches
 };
