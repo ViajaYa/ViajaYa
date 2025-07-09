@@ -41,7 +41,7 @@ export const fetchContracts = createAsyncThunk(
         ...filters,
       });
 
-      const response = await fetch(getApiUrl(`/api/contracts?${queryParams}`), {
+      const response = await fetch(getApiUrl(`/contracts?${queryParams}`), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${auth.token}`,
@@ -67,7 +67,7 @@ export const fetchContractById = createAsyncThunk(
   async (contractId, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl(`/api/contracts/${contractId}`), {
+      const response = await fetch(getApiUrl(`/contracts/${contractId}`), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${auth.token}`,
@@ -120,7 +120,7 @@ export const updateContract = createAsyncThunk(
   async ({ id, updates }, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl(`/api/contracts/${id}`), {
+      const response = await fetch(getApiUrl(`/contracts/${id}`), {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${auth.token}`,
@@ -147,7 +147,7 @@ export const deleteContract = createAsyncThunk(
   async (contractId, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl(`/api/contracts/${contractId}`), {
+      const response = await fetch(getApiUrl(`/contracts/${contractId}`), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${auth.token}`,
@@ -172,7 +172,7 @@ export const signContract = createAsyncThunk(
   async ({ contractId, signatureData }, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl(`/api/contracts/${contractId}/sign`), {
+      const response = await fetch(getApiUrl(`/contracts/${contractId}/sign`), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${auth.token}`,
@@ -199,7 +199,7 @@ export const generateContractPDF = createAsyncThunk(
   async (contractId, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl(`/api/contracts/${contractId}/pdf`), {
+      const response = await fetch(getApiUrl(`/contracts/${contractId}/pdf`), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${auth.token}`,
@@ -234,7 +234,7 @@ export const sendContractForSignature = createAsyncThunk(
   async ({ contractId, emailData }, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl(`/api/contracts/${contractId}/send-signature`), {
+      const response = await fetch(getApiUrl(`/contracts/${contractId}/send-signature`), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${auth.token}`,
@@ -261,7 +261,7 @@ export const fetchContractTemplates = createAsyncThunk(
   async (_, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl('/api/contracts/templates'), {
+      const response = await fetch(getApiUrl('/contracts/templates'), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${auth.token}`,
@@ -287,7 +287,7 @@ export const createContractFromTemplate = createAsyncThunk(
   async ({ templateId, contractData }, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl(`/api/contracts/from-template/${templateId}`), {
+      const response = await fetch(getApiUrl(`/contracts/from-template/${templateId}`), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${auth.token}`,
@@ -314,7 +314,7 @@ export const fetchContractStats = createAsyncThunk(
   async (_, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl('/api/contracts/stats'), {
+      const response = await fetch(getApiUrl('/contracts/stats'), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${auth.token}`,
@@ -399,7 +399,7 @@ const contractSlice = createSlice({
           ...state.pagination,
           page: action.payload.page || 1,
           total: action.payload.total || 0,
-          totalPages: action.payload.totalPages || 0,
+          totalPages: Math.ceil((action.payload.total || 0) / state.pagination.limit),
         };
       })
       .addCase(fetchContracts.rejected, (state, action) => {
@@ -425,10 +425,18 @@ const contractSlice = createSlice({
         state.error = null;
       })
       .addCase(createContract.fulfilled, (state, action) => {
-        state.loading = false;
-        state.contracts.unshift(action.payload);
-        state.currentContract = action.payload;
-      })
+  state.loading = false;
+  // ✅ AJUSTAR: Verificar que action.payload tenga la estructura correcta
+  const newContract = action.payload.contract || action.payload;
+  state.contracts.unshift(newContract);
+  state.currentContract = newContract;
+  
+  // ✅ ACTUALIZAR: Estadísticas
+  state.stats.totalContracts += 1;
+  if (newContract.status === 'draft') {
+    state.stats.pendingContracts += 1;
+  }
+})
       .addCase(createContract.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
@@ -582,6 +590,49 @@ export const selectContractError = (state) => state.contract.error;
 export const selectContractFilters = (state) => state.contract.filters;
 export const selectContractPagination = (state) => state.contract.pagination;
 export const selectContractStats = (state) => state.contract.stats;
+export const selectContractsWithDetails = (state) => {
+  return state.contract.contracts.map(contract => ({
+    ...contract,
+    // ✅ Datos del cliente (desde relación directa)
+    clienteName: contract.Cliente ? `${contract.Cliente.name} ${contract.Cliente.lastname}` : contract.Quote?.nombre_cliente,
+    clienteEmail: contract.Cliente?.email || contract.Quote?.email_cliente,
+    clientePhone: contract.Cliente?.phone,
+    
+    // ✅ Datos del viaje (desde Quote)
+    destino: contract.Quote?.destino,
+    origen: contract.Quote?.origen,
+    quoteNumber: contract.Quote?.quote_number,
+    
+    // ✅ Jerarquía de ventas
+    asesor: contract.Quote?.Asesor,
+    lider: contract.Quote?.Lider,
+    gerente: contract.Quote?.Gerente,
+    admin: contract.Quote?.Admin,
+    
+    // ✅ Estado calculado
+    isActive: contract.status === 'active',
+    isPending: contract.status === 'draft',
+    isCompleted: contract.status === 'completed',
+    
+    // ✅ Información de pagos
+    hasPendingPayments: parseFloat(contract.saldo_pendiente) > 0,
+    paymentProgress: ((parseFloat(contract.total_pagado) / parseFloat(contract.precio_total)) * 100).toFixed(1),
+  }));
+};
+
+export const selectContractSummary = (state) => {
+  const contracts = state.contract.contracts;
+  
+  return {
+    total: contracts.length,
+    active: contracts.filter(c => c.status === 'active').length,
+    pending: contracts.filter(c => c.status === 'draft').length,
+    completed: contracts.filter(c => c.status === 'completed').length,
+    totalValue: contracts.reduce((sum, c) => sum + parseFloat(c.precio_total || 0), 0),
+    totalPaid: contracts.reduce((sum, c) => sum + parseFloat(c.total_pagado || 0), 0),
+    totalPending: contracts.reduce((sum, c) => sum + parseFloat(c.saldo_pendiente || 0), 0),
+  };
+};
 
 // Exportar el reducer
 export default contractSlice.reducer;

@@ -145,86 +145,143 @@ const contractController = {
   },
 
   // Obtener todos los contratos
-  getAllContracts: async (req, res) => {
-    try {
-      const { status, cliente_id, page = 1, limit = 10 } = req.query;
-      
-      const offset = (page - 1) * limit;
-      const where = {};
+getAllContracts : async (req, res) => {
+  try {
+    const contracts = await Contract.findAndCountAll({
+      include: [
+        {
+          model: Quote,
+          as: 'Quote', // ✅ AGREGAR ESTE ALIAS
+          attributes: [
+            'id', 'quote_number', 'nombre_cliente', 'email_cliente',
+            'destino', 'origen', 'precio_total', 'numero_personas'
+          ],
+          include: [
+            // ✅ Jerarquía de ventas desde la cotización
+            { 
+              model: User, 
+              as: 'Asesor', 
+              attributes: ['id', 'name', 'lastname', 'email'],
+              required: false 
+            },
+            { 
+              model: User, 
+              as: 'Lider', 
+              attributes: ['id', 'name', 'lastname', 'email'],
+              required: false 
+            },
+            { 
+              model: User, 
+              as: 'Gerente', 
+              attributes: ['id', 'name', 'lastname', 'email'],
+              required: false 
+            },
+            { 
+              model: User, 
+              as: 'Admin', 
+              attributes: ['id', 'name', 'lastname', 'email'],
+              required: false 
+            }
+          ]
+        },
+        {
+          model: User,
+          as: 'Cliente', // ✅ Cliente directo del contrato
+          attributes: ['id', 'name', 'lastname', 'email', 'phone'],
+          required: false
+        }
+      ],
+      order: [['created_at', 'DESC']]
+    });
 
-      if (status) where.status = status;
-      if (cliente_id) where.cliente_id = cliente_id;
+    res.json({
+      success: true,
+      contracts: contracts.rows,
+      total: contracts.count
+    });
 
-      const contracts = await Contract.findAndCountAll({
-        where,
-        include: [
-          { 
-            model: Quote, 
-            include: [
-              { model: User, as: 'Cliente', attributes: ['id', 'name', 'lastname', 'email', 'phone'] },
-              { model: User, as: 'Asesor', attributes: ['id', 'name', 'lastname', 'email'] },
-              { model: User, as: 'Lider', attributes: ['id', 'name', 'lastname', 'email'] },
-              { model: User, as: 'Gerente', attributes: ['id', 'name', 'lastname', 'email'] }
-            ]
-          }
-        ],
-        order: [['created_at', 'DESC']],
-        limit: parseInt(limit),
-        offset: parseInt(offset)
-      });
-
-      res.json({
-        contracts: contracts.rows,
-        total: contracts.count,
-        totalPages: Math.ceil(contracts.count / limit),
-        currentPage: parseInt(page)
-      });
-
-    } catch (error) {
-      console.error('Error fetching contracts:', error);
-      res.status(500).json({ 
-        message: 'Error al obtener los contratos', 
-        error: error.message 
-      });
-    }
-  },
+  } catch (error) {
+    console.error("Error getting contracts:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error al obtener los contratos",
+      error: error.message
+    });
+  }
+},
 
   // Obtener contrato por ID
   getContractById: async (req, res) => {
     try {
-      const { id } = req.params;
+    const { id } = req.params;
 
-      const contract = await Contract.findByPk(id, {
-        include: [
-          { 
-            model: Quote, 
-            include: [
-              { model: User, as: 'Cliente', attributes: ['id', 'name', 'lastname', 'email', 'phone'] },
-              { model: User, as: 'Asesor', attributes: ['id', 'name', 'lastname', 'email'] },
-              { model: User, as: 'Lider', attributes: ['id', 'name', 'lastname', 'email'] },
-              { model: User, as: 'Gerente', attributes: ['id', 'name', 'lastname', 'email'] }
-            ]
-          },
-          { model: Payment },
-          { model: PackagePurchase },
-          { model: Commission }
-        ]
-      });
+    const contract = await Contract.findByPk(id, {
+      include: [
+        {
+          model: Quote,
+          as: 'Quote', // ✅ AGREGAR ESTE ALIAS
+          attributes: [
+            'id', 'quote_number', 'nombre_cliente', 'email_cliente',
+            'destino', 'origen', 'precio_total', 'numero_personas',
+            'fecha_ida', 'fecha_regreso'
+          ],
+          include: [
+            { 
+              model: User, 
+              as: 'Asesor', 
+              attributes: ['id', 'name', 'lastname', 'email'],
+              required: false 
+            },
+            { 
+              model: User, 
+              as: 'Lider', 
+              attributes: ['id', 'name', 'lastname', 'email'],
+              required: false 
+            },
+            { 
+              model: User, 
+              as: 'Gerente', 
+              attributes: ['id', 'name', 'lastname', 'email'],
+              required: false 
+            },
+            { 
+              model: User, 
+              as: 'Admin', 
+              attributes: ['id', 'name', 'lastname', 'email'],
+              required: false 
+            }
+          ]
+        },
+        {
+          model: User,
+          as: 'Cliente', // ✅ Cliente directo del contrato
+          attributes: ['id', 'name', 'lastname', 'email', 'phone'],
+          required: false
+        }
+      ]
+    });
 
-      if (!contract) {
-        return res.status(404).json({ message: 'Contrato no encontrado' });
-      }
-
-      res.json(contract);
-
-    } catch (error) {
-      console.error('Error fetching contract:', error);
-      res.status(500).json({ 
-        message: 'Error al obtener el contrato', 
-        error: error.message 
+    if (!contract) {
+      return res.status(404).json({
+        success: false,
+        message: "Contrato no encontrado"
       });
     }
-  },
+
+    res.json({
+      success: true,
+      contract
+    });
+
+  } catch (error) {
+    console.error("Error getting contract:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error al obtener el contrato",
+      error: error.message
+    });
+  }
+},
 
   // Actualizar contrato
   updateContract: async (req, res) => {
@@ -243,7 +300,8 @@ const contractController = {
       const updatedContract = await Contract.findByPk(id, {
         include: [
           { 
-            model: Quote, 
+           model: Quote,
+          as: 'Quote',
             include: [
               { model: User, as: 'Cliente', attributes: ['id', 'name', 'lastname', 'email', 'phone'] }
             ]
@@ -392,45 +450,37 @@ const contractController = {
   // Obtener contratos por cliente
   getContractsByCliente: async (req, res) => {
     try {
-      const { cliente_id } = req.params;
-      const { status, page = 1, limit = 10 } = req.query;
+    const { clienteId } = req.params;
 
-      const offset = (page - 1) * limit;
-      const where = { cliente_id };
+    const contracts = await Contract.findAll({
+      where: { cliente_id: clienteId },
+      include: [
+        {
+          model: Quote,
+          as: 'Quote', // ✅ AGREGAR ESTE ALIAS
+          attributes: [
+            'id', 'quote_number', 'destino', 'origen', 
+            'fecha_ida', 'fecha_regreso', 'numero_personas'
+          ]
+        }
+      ],
+      order: [['created_at', 'DESC']]
+    });
 
-      if (status) where.status = status;
+    res.json({
+      success: true,
+      contracts
+    });
 
-      const contracts = await Contract.findAndCountAll({
-        where,
-        include: [
-          { 
-            model: Quote, 
-            include: [
-              { model: User, as: 'Asesor', attributes: ['id', 'name', 'lastname', 'email'] }
-            ]
-          },
-          { model: Payment }
-        ],
-        order: [['created_at', 'DESC']],
-        limit: parseInt(limit),
-        offset: parseInt(offset)
-      });
-
-      res.json({
-        contracts: contracts.rows,
-        total: contracts.count,
-        totalPages: Math.ceil(contracts.count / limit),
-        currentPage: parseInt(page)
-      });
-
-    } catch (error) {
-      console.error('Error fetching contracts by cliente:', error);
-      res.status(500).json({ 
-        message: 'Error al obtener los contratos del cliente', 
-        error: error.message 
-      });
-    }
+  } catch (error) {
+    console.error("Error getting contracts by cliente:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error al obtener los contratos del cliente",
+      error: error.message
+    });
   }
+},
 };
 
 module.exports = contractController;
