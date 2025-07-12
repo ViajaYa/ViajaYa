@@ -56,7 +56,8 @@ const {
   SupportDocument, 
   AutoMessage, 
   Invoice,
-  QuoteItem 
+  ContractItem,
+  Purchase
 } = sequelize.models;
 
 // ===== RELACIONES ORGANIZADAS POR SECCIONES =====
@@ -201,15 +202,12 @@ Quote.belongsTo(User, {
 Quote.belongsTo(User, { foreignKey: 'owner_id', as: 'Owner' });
 
 // ✅ 7. RELACIONES QUOTE - QUOTE ITEMS
-Quote.hasMany(QuoteItem, { 
-  foreignKey: 'quote_id', 
-  as: 'Items'
-});
+Contract.hasMany(ContractItem, { foreignKey: 'contract_id', as: 'Items' });
+ContractItem.belongsTo(Contract, { foreignKey: 'contract_id', as: 'Contract' });
 
-QuoteItem.belongsTo(Quote, { 
-  foreignKey: 'quote_id', 
-  as: 'Quote' 
-});
+// Quote <-> ContractItem (opcional, si necesitas acceder desde la cotización)
+Quote.hasMany(ContractItem, { foreignKey: 'quote_id', as: 'QuoteItems' });
+ContractItem.belongsTo(Quote, { foreignKey: 'quote_id', as: 'Quote' });
 
 // ✅ 8. RELACIONES QUOTE - CONTRACT
 Quote.hasOne(Contract, { 
@@ -416,10 +414,22 @@ Invoice.belongsTo(User, {
   foreignKey: 'generada_por' 
 });
 
+ContractItem.hasMany(Purchase, 
+  { foreignKey: 'contract_item_id', 
+    as: 'Purchases' 
+  });
+
+Purchase.belongsTo(ContractItem, 
+  { foreignKey: 'contract_item_id', 
+    as: 'ContractItem' 
+  });
+
 Invoice.belongsTo(User, { 
   as: 'AprobadaPor', 
   foreignKey: 'aprobada_por' 
 });
+
+
 
 module.exports = {
   ...sequelize.models, // para poder importar los modelos así: const { Product, User } = require('./db.js');

@@ -558,9 +558,11 @@ const ContractSet = () => {
                 </div>
                 {formData.tiene_cuota_inicial && (
                   <div className="flex justify-between text-blue-700">
-                    <span>Seña ({formData.cuota_inicial_porcentaje?.toFixed(1)}%):</span>
+                    <span>
+  Cuota Inicial ({Number(formData.cuota_inicial_porcentaje || 0).toFixed(1)}%):
+</span>
                     <span className="font-semibold">
-                      ${parseFloat(formData.cuota_inicial_monto || 0).toLocaleString()}
+                      ${Number(formData.cuota_inicial_monto || 0).toLocaleString()}
                     </span>
                   </div>
                 )}

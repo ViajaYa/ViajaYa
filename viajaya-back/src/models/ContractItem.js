@@ -2,11 +2,19 @@ const { DataTypes } = require('sequelize');
 const { v4: uuidv4 } = require('uuid');
 
 module.exports = (sequelize) => {
-  sequelize.define('quoteItem', {
+   sequelize.define('contractItem', {
     id: {
       type: DataTypes.UUID,
       defaultValue: uuidv4,
       primaryKey: true,
+    },
+    contract_id: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: 'contracts',
+        key: 'id'
+      }
     },
     quote_id: {
       type: DataTypes.UUID,
@@ -16,6 +24,7 @@ module.exports = (sequelize) => {
         key: 'id'
       }
     },
+    
     tipo: {
       type: DataTypes.ENUM(
         'tickets',
@@ -26,6 +35,7 @@ module.exports = (sequelize) => {
         'traslados',
         'excursiones',
         'seguro',
+        'contacto de urgencia',
         'otros'
       ),
       allowNull: false,
@@ -38,7 +48,6 @@ module.exports = (sequelize) => {
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    // Precios y costos
     precio_unitario: {
       type: DataTypes.DECIMAL(12, 2),
       allowNull: false,
@@ -53,20 +62,19 @@ module.exports = (sequelize) => {
     },
     costo_proveedor: {
       type: DataTypes.DECIMAL(12, 2),
-      allowNull: true, // Costo real del proveedor
+      allowNull: true,
     },
     ganancia: {
       type: DataTypes.DECIMAL(12, 2),
-      allowNull: true, // Calculado: precio_total - costo_proveedor
+      allowNull: true,
     },
     porcentaje_ganancia: {
       type: DataTypes.DECIMAL(5, 2),
-      allowNull: true, // % de ganancia sobre el costo
+      allowNull: true,
     },
-    // Fechas importantes
     fecha_inicio: {
       type: DataTypes.DATE,
-      allowNull: true, // Para servicios con fecha específica
+      allowNull: true,
     },
     fecha_fin: {
       type: DataTypes.DATE,
@@ -74,9 +82,8 @@ module.exports = (sequelize) => {
     },
     fecha_vencimiento_pago: {
       type: DataTypes.DATE,
-      allowNull: true, // Cuándo hay que pagar al proveedor
+      allowNull: true,
     },
-    // Proveedor
     proveedor: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -85,7 +92,6 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: true,
     },
-    // Estado del item
     status: {
       type: DataTypes.ENUM(
         'pendiente',
@@ -100,8 +106,11 @@ module.exports = (sequelize) => {
       allowNull: true,
     }
   }, {
+    tableName: 'contract_items',
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at'
   });
+
+
 };

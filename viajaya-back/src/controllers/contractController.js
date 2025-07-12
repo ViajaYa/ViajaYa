@@ -1,4 +1,6 @@
-const { Contract, Quote, User, Payment, PackagePurchase, Commission } = require('../db');
+const { Contract, Quote, User, Payment, PackagePurchase, Commission, ContractItems } = require('../db');
+const { generateContractPDF } = require('../utils/generateContractPDF');
+
 
 const contractController = {
   // Crear nuevo contrato basado en cotización aprobada
@@ -370,10 +372,16 @@ getAllContracts : async (req, res) => {
       const contract = await Contract.findByPk(id, {
         include: [
           { 
-            model: Quote, 
+            model: Quote,
+            as: 'Quote',
             include: [
               { model: User, as: 'Cliente', attributes: ['id', 'name', 'lastname', 'email', 'phone'] }
             ]
+          },
+          {
+            model: User,
+            as: 'Cliente',
+            attributes: ['id', 'name', 'lastname', 'email', 'phone', 'documento_identidad', 'tipo_documento']
           }
         ]
       });
@@ -382,22 +390,129 @@ getAllContracts : async (req, res) => {
         return res.status(404).json({ message: 'Contrato no encontrado' });
       }
 
+      // ✅ GENERAR PDF DEL CONTRATO
+      console.log('🔄 Generando PDF del contrato...');
+      const pdfResult = await generateContractPDF(contract, true);
+
+      // ✅ GUARDAR LA URL DEL PDF EN EL CONTRATO
       await contract.update({
-        status: 'sent'
+        status: 'sent',
+        contrato_pdf_url: pdfResult.relativePath
       });
 
+      console.log('✅ PDF generado y guardado:', pdfResult.filename);
+
       // Aquí se enviaría el email con el contrato al cliente
-      // También se puede generar el PDF del contrato
+      // TODO: Implementar envío de email con PDF adjunto
 
       res.json({
         message: 'Contrato enviado para firma',
-        contract
+        contract,
+        pdf: {
+          filename: pdfResult.filename,
+          url: pdfResult.relativePath
+        }
       });
 
     } catch (error) {
       console.error('Error sending contract:', error);
       res.status(500).json({ 
         message: 'Error al enviar el contrato', 
+        error: error.message 
+      });
+    }
+  },
+
+   generateContractPDF: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { preview = false } = req.query; // ?preview=true para vista previa
+
+      const contract = await Contract.findByPk(id, {
+        include: [
+          { 
+            model: Quote,
+            as: 'Quote',
+            include: [
+              { model: User, as: 'Cliente', attributes: ['id', 'name', 'lastname', 'email', 'phone'] }
+            ]
+          },
+          {
+            model: User,
+            as: 'Cliente',
+            attributes: ['id', 'name', 'lastname', 'email', 'phone', 'documento_identidad', 'tipo_documento']
+          }
+        ]
+      });
+
+      if (!contract) {
+        return res.status(404).json({ message: 'Contrato no encontrado' });
+      }
+
+      const saveToFile = preview !== 'true';
+      const pdfResult = await generateContractPDF(contract, saveToFile);
+
+      if (preview === 'true') {
+        // Para vista previa, devolver el PDF directamente
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="${pdfResult.filename}"`);
+        res.send(pdfResult.buffer);
+      } else {
+        // Guardar la URL del PDF en el contrato
+        await contract.update({
+          contrato_pdf_url: pdfResult.relativePath
+        });
+
+        res.json({
+          message: 'PDF del contrato generado exitosamente',
+          pdf: {
+            filename: pdfResult.filename,
+            url: pdfResult.relativePath,
+            filepath: pdfResult.filepath
+          }
+        });
+      }
+
+    } catch (error) {
+      console.error('Error generating contract PDF:', error);
+      res.status(500).json({ 
+        message: 'Error al generar el PDF del contrato', 
+        error: error.message 
+      });
+    }
+  },
+
+  // ✅ NUEVO: Descargar PDF del contrato
+  downloadContractPDF: async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const contract = await Contract.findByPk(id);
+
+      if (!contract) {
+        return res.status(404).json({ message: 'Contrato no encontrado' });
+      }
+
+      if (!contract.contrato_pdf_url) {
+        return res.status(404).json({ message: 'PDF del contrato no encontrado' });
+      }
+
+      const filePath = path.join(__dirname, '../../', contract.contrato_pdf_url);
+
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ message: 'Archivo PDF no existe' });
+      }
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="contrato-${contract.contract_number}.pdf"`);
+      
+      const fileStream = fs.createReadStream(filePath);
+      fileStream.pipe(res);
+
+    } catch (error) {
+      console.error('Error downloading contract PDF:', error);
+      res.status(500).json({ 
+        message: 'Error al descargar el PDF del contrato', 
         error: error.message 
       });
     }
@@ -481,6 +596,100 @@ getAllContracts : async (req, res) => {
     });
   }
 },
+createContractItem : async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      tipo,
+      descripcion,
+      detalle,
+      precio_unitario,
+      cantidad,
+      precio_total,
+      costo_proveedor,
+      proveedor,
+      proveedor_contacto,
+      fecha_inicio,
+      fecha_fin,
+      fecha_vencimiento_pago,
+      observaciones
+    } = req.body;
+
+    // Verifica que el contrato existe
+    const contract = await Contract.findByPk(id);
+    if (!contract) {
+      return res.status(404).json({ message: 'Contrato no encontrado' });
+    }
+
+    // Crea el item
+    const item = await ContractItems.create({
+      contract_id: id,
+      tipo,
+      descripcion,
+      detalle,
+      precio_unitario,
+      cantidad,
+      precio_total,
+      costo_proveedor,
+      proveedor,
+      proveedor_contacto,
+      fecha_inicio,
+      fecha_fin,
+      fecha_vencimiento_pago,
+      observaciones
+    });
+
+    res.status(201).json({ message: 'Item creado', item });
+  } catch (error) {
+    console.error('Error creando item:', error);
+    res.status(500).json({ message: 'Error creando item', error: error.message });
+  }
+},
+
+// Listar items de un contrato
+ getContractItems : async (req, res) => {
+  try {
+    const { id } = req.params;
+    const items = await ContractItems.findAll({
+      where: { contract_id: id }
+    });
+    res.json({ items });
+  } catch (error) {
+    res.status(500).json({ message: 'Error obteniendo items', error: error.message });
+  }
+},
+
+// Actualizar un item
+ updateContractItem : async (req, res) => {
+  try {
+    const { itemId } = req.params;
+    const updateData = req.body;
+    const item = await ContractItems.findByPk(itemId);
+    if (!item) {
+      return res.status(404).json({ message: 'Item no encontrado' });
+    }
+    await item.update(updateData);
+    res.json({ message: 'Item actualizado', item });
+  } catch (error) {
+    res.status(500).json({ message: 'Error actualizando item', error: error.message });
+  }
+},
+
+// Eliminar un item
+ deleteContractItem : async (req, res) => {
+  try {
+    const { itemId } = req.params;
+    const item = await ContractItems.findByPk(itemId);
+    if (!item) {
+      return res.status(404).json({ message: 'Item no encontrado' });
+    }
+    await item.destroy();
+    res.json({ message: 'Item eliminado' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error eliminando item', error: error.message });
+  }
+}
+
 };
 
 module.exports = contractController;
