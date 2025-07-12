@@ -280,7 +280,7 @@ const QuotePopup = ({ isOpen, onClose, prefilledData = {} }) => {
               <input
                 type="text"
                 name="origen"
-                placeholder="Origen"
+                placeholder="Colombia *"
                 value={form.origen}
                 onChange={handleChange}
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -306,6 +306,7 @@ const QuotePopup = ({ isOpen, onClose, prefilledData = {} }) => {
                   name="fecha_regreso"
                   value={form.fecha_regreso}
                   onChange={handleChange}
+                  min={form.fecha_ida || undefined}
                   className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                     errors.fecha_regreso ? 'border-red-500' : 'border-gray-300'
                   }`}
@@ -326,20 +327,25 @@ const QuotePopup = ({ isOpen, onClose, prefilledData = {} }) => {
                     errors.numero_personas ? 'border-red-500' : 'border-gray-300'
                   }`}
                 />
+                 <label className="text-xs text-gray-500">Nº Personas *</label>
                 {errors.numero_personas && <p className="text-red-500 text-xs mt-1">{errors.numero_personas}</p>}
               </div>
-              
-              <input
-                type="number"
-                name="ninos"
-                placeholder="Número de niños"
-                value={form.ninos}
+              <div>
+                <input
+                  type="number"
+                  name="ninos"
+                  placeholder="Número de niños"
+                  value={form.ninos}
                 onChange={handleChange}
                 min={0}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
+                className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    errors.ninos ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                />
+                <label className="text-xs text-gray-500">Nº Niños</label>
+              </div>
             </div>
-          </div>
+         </div>
 
           {/* ✅ Preferencias de alojamiento */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

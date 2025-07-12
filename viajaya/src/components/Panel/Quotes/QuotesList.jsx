@@ -24,6 +24,7 @@ import {
 // ✅ Importar funciones del slice ACTUALIZADAS
 import {
   fetchQuotes,
+  markExpiredQuotes,
   sendQuoteToClient,
   approveQuote,
   rejectQuote,
@@ -345,6 +346,12 @@ const QuotesList = () => {
     return statusTexts[status] || 'Desconocido';
   };
 
+  const handleMarkExpiredQuotes = async () => {
+    await dispatch(markExpiredQuotes());
+    // Opcional: recargar la lista de cotizaciones
+    dispatch(fetchQuotes({ page: 1, limit: 10 }));
+  };
+
   // ✅ ACTUALIZAR: Función de vista previa PDF con modal
   const handlePDFPreview = async (quoteId) => {
     try {
@@ -553,7 +560,7 @@ const QuotesList = () => {
     const isPDFPreviewLoading = actionLoading[`pdf_preview_${quote.id}`];
     const isPDFDownloadLoading = actionLoading[`pdf_download_${quote.id}`];
     const isPDFRegenerateLoading = actionLoading[`pdf_regenerate_${quote.id}`];
-    
+    console.log('stats:', stats);
     return (
       <div className="flex items-center gap-1">
         {/* Ver detalles - Todos pueden ver */}
@@ -569,7 +576,7 @@ const QuotesList = () => {
 
         {/* Editar - Solo Owner y Admin */}
         {canPerformAction('edit', quote) && 
-         (quote.status === QUOTE_STATUSES.PENDING  || quote.status === QUOTE_STATUSES.APPROVED) && (
+         (quote.status === QUOTE_STATUSES.PENDING  || quote.status === QUOTE_STATUSES.APPROVED || quote.status === QUOTE_STATUSES.EXPIRED) && (
           <button
             onClick={() => navigate(`/quotes/${quote.id}/edit`)}
             className="p-2 text-yellow-600 hover:bg-yellow-50 rounded transition-colors"
@@ -811,6 +818,8 @@ const QuotesList = () => {
         </div>
       </div>
 
+ 
+
       {/* Filtros y búsqueda */}
       <div className="bg-white p-4 rounded-lg shadow-md mb-6">
         <div className="flex flex-col md:flex-row gap-4 items-center">
@@ -921,6 +930,22 @@ const QuotesList = () => {
         </div>
       )}
 
+           {stats && stats.expiredCount > 0 && (
+  <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 flex items-center justify-between">
+    <div>
+      <strong>¡Atención!</strong> Hay <b>{stats.expiredCount}</b> cotizaciones enviadas que superaron las 48hs y deben ser marcadas como <b>expiradas</b>.
+    </div>
+    {/* Botón para refrescar o marcar como expiradas si tienes esa función */}
+    <button
+      onClick={handleMarkExpiredQuotes}
+      className="ml-4 px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition-colors"
+    >
+      Marcar como expiradas
+    </button>
+  </div>
+)}
+
+
       {/* ✅ Tabla de cotizaciones con columna de PDF */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="overflow-x-auto">
@@ -958,6 +983,7 @@ const QuotesList = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
+
               {loading ? (
                 <tr>
                   <td colSpan="9" className="px-6 py-12 text-center">
@@ -974,11 +1000,15 @@ const QuotesList = () => {
                   </td>
                 </tr>
               ) : (
-                filteredQuotes.map((quote) => (
-                  <tr key={quote.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {quote.quote_number || quote.id}
-                    </td>
+                filteredQuotes.map((quote) => {
+
+                  const isExpiredButSent = Array.isArray(stats?.expiredQuotes) && stats.expiredQuotes.some(q => q.id === quote.id);
+                  return (
+                  <tr key={quote.id} className={`hover:bg-gray-50 ${isExpiredButSent ? 'bg-yellow-50 border-l-4 border-yellow-500' : ''}`}
+                  >
+                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+            {quote.quote_number || quote.id}
+          </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
                         {quote.nombre_cliente || 'Sin nombre'}
@@ -1025,6 +1055,11 @@ const QuotesList = () => {
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(quote.status)}`}>
                         {getStatusText(quote.status)}
                       </span>
+                       {isExpiredButSent && (
+              <span className="ml-2 px-2 py-1 bg-yellow-200 text-yellow-800 rounded text-xs font-semibold">
+                Expirada (48hs)
+              </span>
+            )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(quote.created_at || quote.fecha_creacion).toLocaleDateString()}
@@ -1033,7 +1068,8 @@ const QuotesList = () => {
                       {renderActionButtons(quote)}
                     </td>
                   </tr>
-                ))
+                   );
+              })
               )}
             </tbody>
           </table>

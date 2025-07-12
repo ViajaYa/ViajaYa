@@ -137,11 +137,13 @@ export const fetchQuotes = createAsyncThunk(
       }
 
       return {
-        quotes: data.quotes || [],
-        total: data.total || 0,
-        totalPages: data.totalPages || 0,
-        currentPage: data.currentPage || page,
-      };
+  quotes: data.quotes || [],
+  total: data.total || 0,
+  totalPages: data.totalPages || 0,
+  currentPage: data.currentPage || page,
+  expiredQuotes: data.expiredQuotes || [],
+  expiredCount: data.expiredCount || 0,
+};
     } catch (error) {
       console.error('❌ fetchQuotes error:', error);
       return rejectWithValue(error.message || 'Error de conexión');
@@ -979,7 +981,8 @@ const quoteSlice = createSlice({
         state.stats.approvedQuotes = state.quotes.filter(q => q.status === QUOTE_STATUSES.APPROVED).length;
         state.stats.rejectedQuotes = state.quotes.filter(q => q.status === QUOTE_STATUSES.REJECTED).length;
         state.stats.requoteQuotes = state.quotes.filter(q => q.status === QUOTE_STATUSES.REQUOTE).length;
-        state.stats.expiredQuotes = state.quotes.filter(q => q.status === QUOTE_STATUSES.EXPIRED).length;
+        state.stats.expiredQuotes = action.payload.expiredQuotes || []; // <-- Guarda el array
+        state.stats.expiredCount = action.payload.expiredCount || 0; 
         state.stats.convertedQuotes = state.quotes.filter(q => q.status === QUOTE_STATUSES.CONVERTED).length;
         state.stats.externalQuotes = state.quotes.filter(q => q.is_external === true).length;
       })

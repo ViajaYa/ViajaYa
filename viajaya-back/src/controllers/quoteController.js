@@ -445,20 +445,27 @@ const quoteController = {
         offset: parseInt(offset),
       });
 
+       const now = new Date();
+    const expiredQuotes = quotes.rows.filter(
+      q => q.status === "sent" && q.expires_at && new Date(q.expires_at) < now
+    );
+
       res.json({
-        quotes: quotes.rows,
-        total: quotes.count,
-        totalPages: Math.ceil(quotes.count / limit),
-        currentPage: parseInt(page),
-      });
-    } catch (error) {
-      console.error("Error fetching quotes:", error);
-      res.status(500).json({
-        message: "Error al obtener las cotizaciones",
-        error: error.message,
-      });
-    }
-  },
+      quotes: quotes.rows,
+      total: quotes.count,
+      totalPages: Math.ceil(quotes.count / limit),
+      currentPage: parseInt(page),
+      expiredQuotes, // <-- Aquí tienes las expiradas
+      expiredCount: expiredQuotes.length
+    });
+  } catch (error) {
+    console.error("Error fetching quotes:", error);
+    res.status(500).json({
+      message: "Error al obtener las cotizaciones",
+      error: error.message,
+    });
+  }
+},
 
   // ✅ ACTUALIZAR: getQuoteById con nuevos includes
  getQuoteById: async (req, res) => {
@@ -848,7 +855,7 @@ const quoteController = {
 
       // ✅ PASO 2: Preparar fechas
       const sentAt = new Date();
-      const expiresAt = new Date(sentAt.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 días
+      const expiresAt = new Date(sentAt.getTime() + 48 * 60 * 60 * 1000);
 
       // ✅ PASO 3: Actualizar la cotización con PDF y estado
       await quote.update({
@@ -918,7 +925,7 @@ const quoteController = {
             ` : ''}
             
             <div class="highlight">
-              <p><strong>⏰ Esta cotización es válida por 30 días</strong> a partir de la fecha de emisión.</p>
+              <p><strong>⏰ Esta cotización es válida por 48 Hs </strong> a partir de la fecha de emisión.</p>
             </div>
             
             <p>📎 En el archivo PDF adjunto encontrará todos los detalles completos de su cotización.</p>
@@ -1347,11 +1354,11 @@ approveQuote: async (req, res) => {
         return res.status(404).json({ message: "Cotización no encontrada" });
       }
 
-      if (quote.status !== "sent") {
-        return res.status(400).json({
-          message: "Solo se pueden solicitar recotizaciones en cotizaciones enviadas",
-        });
-      }
+       if (quote.status !== "sent" && quote.status !== "expired") {
+      return res.status(400).json({
+        message: "Solo se pueden solicitar recotizaciones en cotizaciones enviadas o expiradas",
+      });
+    }
 
       await quote.update({
         status: "requote",

@@ -717,8 +717,8 @@ const QuoteEdit = () => {
   const isReadOnly =
     currentQuote?.status === QUOTE_STATUSES.SENT ||
     currentQuote?.status === QUOTE_STATUSES.APPROVED ||
-    currentQuote?.status === QUOTE_STATUSES.REJECTED ||
-    currentQuote?.status === QUOTE_STATUSES.EXPIRED;
+    currentQuote?.status === QUOTE_STATUSES.REJECTED
+
 
   // ✅ RENDER PRINCIPAL
   // ✅ RENDER PRINCIPAL COMPLETO
@@ -1204,7 +1204,7 @@ return (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Precio Total * (USD)
+                    Precio Total * 
                   </label>
                   <input
                     type="number"
