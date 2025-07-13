@@ -5,6 +5,7 @@ const { generateQuotePDF } = require('../utils/generateQuotePDF');
 const path = require('path');
 
 
+
 const createClientUser = async (quoteData) => {
   try {
     const { nombre_cliente, email_cliente, telefono_cliente } = quoteData;
@@ -1232,7 +1233,7 @@ approveQuote: async (req, res) => {
       quote_number: quote.quote_number
     });
 
-    // ✅ NUEVO: Crear usuario cliente automáticamente
+    // Crear usuario cliente automáticamente si corresponde
     let clientUser = null;
     if (quote.email_cliente) {
       try {
@@ -1241,22 +1242,44 @@ approveQuote: async (req, res) => {
           email_cliente: quote.email_cliente,
           telefono_cliente: quote.telefono_cliente
         });
-        
         console.log('✅ Usuario cliente procesado:', clientUser.id);
       } catch (userError) {
         console.error('⚠️ Error creando usuario cliente, continuando con aprobación:', userError);
-        // No fallar la aprobación si hay error creando usuario
       }
     }
 
     await quote.update({
       status: "approved",
       approved_at: new Date(),
-      // ✅ NUEVO: Vincular cliente si se creó exitosamente
       ...(clientUser && { cliente_id: clientUser.id })
     });
 
-    // ✅ Obtener la cotización actualizada con relaciones
+    // Crear contrato automáticamente si no existe
+    const existingContract = await Contract.findOne({ where: { quote_id: quote.id } });
+    let newContract = null;
+    if (!existingContract) {
+      // Generar número de contrato único
+      const contractNumber = `CON-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      newContract = await Contract.create({
+        contract_number: contractNumber,
+        quote_id: quote.id,
+        cliente_id: clientUser ? clientUser.id : quote.cliente_id,
+        asesor_id: quote.asesor_id,
+        lider_id: quote.lider_id,
+        gerente_id: quote.gerente_id,
+        precio_total: quote.precio_total,
+        destino: quote.destino,
+        origen: quote.origen,
+        // Campos obligatorios típicos:
+        forma_pago: 'contado', // o 'cuotas', según tu lógica
+        fecha_inicio_viaje: quote.fecha_ida,
+        fecha_fin_viaje: quote.fecha_regreso,
+        saldo_pendiente: quote.precio_total || 0
+      });
+      console.log('✅ Contrato creado automáticamente al aprobar cotización:', newContract.id);
+    }
+
+    // Obtener la cotización actualizada con relaciones
     const updatedQuote = await Quote.findByPk(id, {
       include: [
         {
@@ -1279,7 +1302,6 @@ approveQuote: async (req, res) => {
           as: "Admin",
           attributes: ["id", "name", "lastname", "email", "role"],
         },
-        // ✅ NUEVO: Incluir cliente si existe
         {
           model: User,
           as: "Cliente",
@@ -1293,11 +1315,11 @@ approveQuote: async (req, res) => {
       success: true,
       message: "Cotización aprobada exitosamente",
       quote: updatedQuote,
-      // ✅ NUEVO: Información del cliente creado
+      contract: newContract,
       clientUser: clientUser ? {
         id: clientUser.id,
         email: clientUser.email,
-        created: !clientUser.password_changed_at // true si es nuevo usuario
+        created: !clientUser.password_changed_at
       } : null
     });
 

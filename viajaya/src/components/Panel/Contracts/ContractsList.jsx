@@ -256,7 +256,7 @@ const ContractsList = () => {
             <h3 className="text-lg font-medium text-gray-900 mb-2">No hay contratos</h3>
             <p className="text-gray-600 mb-4">No se encontraron contratos con los filtros aplicados.</p>
             <button
-              onClick={() => navigate('/panel/quotes')}
+              onClick={() => navigate('/quotesList')}
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
             >
               Crear desde cotización

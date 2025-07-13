@@ -11,7 +11,6 @@ import {
   faFileContract,
   faFilePdf,
   faCopy,
-  faTrash,
   faEye,
   faEdit,
   faFilter,
@@ -503,11 +502,7 @@ const QuotesList = () => {
         case 'duplicate':
           await handleDuplicateQuote(quoteId);
           break;
-        case 'delete':
-          if (window.confirm('¿Estás seguro de eliminar esta cotización?')) {
-            await handleDeleteQuote(quoteId);
-          }
-          break;
+        
         default:
           break;
       }
@@ -540,9 +535,9 @@ const QuotesList = () => {
     alert('Se abrirá el formulario para duplicar la cotización');
   };
 
-  const handleDeleteQuote = async (quoteId) => {
-    alert('Funcionalidad de eliminación en desarrollo');
-  };
+  // const handleDeleteQuote = async (quoteId) => {
+  //   alert('Funcionalidad de eliminación en desarrollo');
+  // };
 
   // ✅ Manejo de filtros
   const handleFilterChange = (filterType, value) => {
@@ -701,17 +696,7 @@ const QuotesList = () => {
           </button>
         )}
 
-        {/* Eliminar - Solo Owner */}
-        {canPerformAction('delete', quote) && (
-          <button
-            onClick={() => handleAction('delete', quote.id)}
-            disabled={isLoading}
-            className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
-            title="Eliminar"
-          >
-            <FontAwesomeIcon icon={faTrash} size="sm" />
-          </button>
-        )}
+        
       </div>
     );
   };

@@ -5,6 +5,7 @@ const { generateContractPDF } = require('../utils/generateContractPDF');
 const contractController = {
   // Crear nuevo contrato basado en cotización aprobada
   createContract: async (req, res) => {
+    console.log('Llamada a createContract', req.body);
     try {
       const {
         quote_id,
@@ -19,6 +20,7 @@ const contractController = {
       const quote = await Quote.findByPk(quote_id, {
         include: [{ model: User, as: 'Cliente' }]
       });
+      console.log('Cotización encontrada:', quote?.status, quote?.id);
 
       if (!quote) {
         return res.status(404).json({ message: 'Cotización no encontrada' });
