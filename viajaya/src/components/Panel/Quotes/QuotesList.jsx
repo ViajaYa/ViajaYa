@@ -515,7 +515,7 @@ const QuotesList = () => {
   };
 
   // ✅ Funciones auxiliares para acciones no implementadas
-  const handleConvertToContract = async (quoteId, data) => {
+  const handleConvertToContract = async (quoteId, ) => {
     await dispatch(updateQuote({ 
       id: quoteId, 
       updates: { 

@@ -334,7 +334,11 @@ const UserManagment = () => {
                       >
                         <option value={1}>Cliente</option>
                         <option value={2}>Asesor</option>
-                        <option value={7}>Admin</option>
+                        <option value={3}>Líder</option>
+                        <option value={4}>Gerente</option>
+                        <option value={5}>Admin</option>
+                        <option value={6}>Contador</option>
+                        <option value={7}>Owner</option>
                       </select>
                     ) : (
                       <span className={`px-2 py-1 rounded-full text-sm ${

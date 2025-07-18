@@ -1376,7 +1376,7 @@ approveQuote: async (req, res) => {
         return res.status(404).json({ message: "Cotización no encontrada" });
       }
 
-       if (quote.status !== "sent" && quote.status !== "expired") {
+       if (quote.status !== "sent" && quote.status !== "expired" && quote.status !== "rejected") {
       return res.status(400).json({
         message: "Solo se pueden solicitar recotizaciones en cotizaciones enviadas o expiradas",
       });

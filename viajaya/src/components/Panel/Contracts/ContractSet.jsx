@@ -7,15 +7,11 @@ import {
   faArrowLeft,
   faUser,
   faCreditCard,
-  faCalendarAlt,
   faMapMarkerAlt,
   faDollarSign,
   faFileContract,
   faSpinner,
-  faPlus,
-  faTrash,
   faExclamationTriangle,
-  faCheck,
 } from "@fortawesome/free-solid-svg-icons";
 
 import {
@@ -34,6 +30,19 @@ const ContractSet = () => {
   const loading = useSelector(selectContractLoading);
   console.log("🔍 Contract data:", contract);
 
+  const CONTRACT_ITEM_TYPES = [
+    { value: "tickets", label: "Tickets" },
+    { value: "asistencia_medica", label: "Asistencia Médica" },
+    { value: "equipaje", label: "Equipaje" },
+    { value: "alimentacion", label: "Alimentación" },
+    { value: "alojamiento", label: "Alojamiento" },
+    { value: "traslados", label: "Traslados" },
+    { value: "excursiones", label: "Excursiones" },
+    { value: "seguro", label: "Seguro" },
+    { value: "contacto de urgencia", label: "Contacto de Urgencia" },
+    { value: "otros", label: "Otros" },
+  ];
+
   // Estados del formulario
   const [formData, setFormData] = useState({
     // Datos del cliente
@@ -43,19 +52,20 @@ const ContractSet = () => {
     cliente_direccion: "",
     cliente_ciudad: "",
     cliente_pais: "Colombia",
-    cliente_telefono_emergencia: "",
-    cliente_contacto_emergencia: "",
     cliente_nacionalidad: "Colombiana",
-    cliente_profesion: "",
     cliente_codigo_postal: "",
 
     // Datos del contrato
     fecha_firma: "",
     observaciones: "",
     condiciones_especiales: "",
-    politica_cancelacion: "standard",
-    seguro_viaje: false,
-    seguro_cancelacion: false,
+    contractItem: [
+      {
+        tipo: "",
+        descripcion: "",
+        detalle: "",
+      },
+    ],
 
     // Forma de pago
     forma_pago: "contado",
@@ -67,19 +77,21 @@ const ContractSet = () => {
     monto_restante: 0,
     valor_cuota_restante: 0,
     fechas_vencimiento_cuotas: [],
-
-    // Datos bancarios para transferencias
-    datos_bancarios: {
-      banco: "",
-      tipo_cuenta: "corriente",
-      numero_cuenta: "",
-      cbu_alias: "",
-      titular: "",
-    },
   });
 
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+
+  const cleanDate = (date) => {
+  if (!date) return null;
+  const d = new Date(date);
+  return isNaN(d.getTime()) ? null : d.toISOString();
+};
+
+const getDateInputValue = (date) => {
+  const cleaned = cleanDate(date);
+  return cleaned ? cleaned.split("T")[0] : "";
+};
 
   useEffect(() => {
     if (id) {
@@ -91,66 +103,45 @@ const ContractSet = () => {
   useEffect(() => {
     if (contract && contract.contract) {
       const contractData = contract.contract;
-      console.log("🔍 Inicializando formulario con contractData:", contractData);
+      console.log(
+        "🔍 Inicializando formulario con contractData:",
+        contractData
+      );
 
       setFormData((prev) => ({
         ...prev,
         // ✅ DATOS DEL CLIENTE
-        cliente_fecha_nacimiento: contractData.Cliente?.fecha_nacimiento
-          ? contractData.Cliente.fecha_nacimiento.split("T")[0]
-          : "",
-        cliente_documento_identidad: contractData.Cliente?.documento_identidad || "",
+         cliente_fecha_nacimiento: getDateInputValue(contractData.Cliente?.fecha_nacimiento),
+         cliente_documento_identidad: contractData.Cliente?.documento_identidad || "",
         cliente_tipo_documento: contractData.Cliente?.tipo_documento || "cc",
         cliente_direccion: contractData.Cliente?.direccion || "",
         cliente_ciudad: contractData.Cliente?.ciudad || "",
         cliente_pais: contractData.Cliente?.pais || "Colombia",
-        cliente_telefono_emergencia:
-          contractData.cliente_telefono_emergencia ||
-          contractData.Cliente?.phone ||
-          "",
-        cliente_contacto_emergencia: contractData.cliente_contacto_emergencia || "",
         cliente_nacionalidad: contractData.cliente_nacionalidad || "Colombiana",
-        cliente_profesion: contractData.cliente_profesion || "",
+
         cliente_codigo_postal: contractData.cliente_codigo_postal || "",
 
         // ✅ DATOS DEL CONTRATO
-        fecha_firma: contractData.fecha_firma
-          ? contractData.fecha_firma.split("T")[0]
-          : "",
+        fecha_firma: getDateInputValue(contractData.fecha_firma),
         observaciones: contractData.observaciones || "",
         condiciones_especiales: contractData.condiciones_especiales || "",
-        politica_cancelacion: contractData.politica_cancelacion || "standard",
-        seguro_viaje: contractData.seguro_viaje || false,
-        seguro_cancelacion: contractData.seguro_cancelacion || false,
 
         // ✅ FORMA DE PAGO
         forma_pago: contractData.forma_pago,
         tiene_cuota_inicial: contractData.tiene_cuota_inicial,
         cuota_inicial_porcentaje: contractData.cuota_inicial_porcentaje || 0,
         cuota_inicial_monto: contractData.cuota_inicial_monto || 0,
-        fecha_vencimiento_inicial: contractData.fecha_vencimiento_inicial
-          ? contractData.fecha_vencimiento_inicial.split("T")[0]
-          : "",
+        fecha_vencimiento_inicial: getDateInputValue(contractData.fecha_vencimiento_inicial),
         numero_cuotas_restantes: contractData.numero_cuotas_restantes || 3,
-        monto_restante: contractData.monto_restante || parseFloat(contractData.precio_total),
+        monto_restante:
+          contractData.monto_restante || parseFloat(contractData.precio_total),
         valor_cuota_restante:
           contractData.valor_cuota_restante ||
           parseFloat(contractData.precio_total) / 3,
         fechas_vencimiento_cuotas: Array.isArray(contractData.fechas_vencimiento_cuotas)
-          ? contractData.fechas_vencimiento_cuotas
-          : [],
-
-        // ✅ DATOS BANCARIOS
-        datos_bancarios: contractData.datos_bancarios || {
-          banco: "",
-          tipo_cuenta: "corriente",
-          numero_cuenta: "",
-          cbu_alias: "",
-          titular: contractData.Cliente
-            ? `${contractData.Cliente.name} ${contractData.Cliente.lastname}`
-            : "",
-        },
-      }));
+    ? contractData.fechas_vencimiento_cuotas.map(getDateInputValue)
+    : [],
+}));
 
       console.log("✅ FormData inicializado con datos reales");
     }
@@ -160,13 +151,13 @@ const ContractSet = () => {
   const generatePaymentDates = (numCuotas) => {
     const fechas = [];
     const fechaBase = new Date();
-    
+
     for (let i = 1; i <= numCuotas; i++) {
       const fecha = new Date(fechaBase);
       fecha.setMonth(fecha.getMonth() + i);
       fechas.push(fecha.toISOString().split("T")[0]);
     }
-    
+
     setFormData((prev) => ({
       ...prev,
       fechas_vencimiento_cuotas: fechas,
@@ -177,21 +168,10 @@ const ContractSet = () => {
   const updatePaymentDate = (index, newDate) => {
     const newDates = [...formData.fechas_vencimiento_cuotas];
     newDates[index] = newDate;
-    
+
     setFormData((prev) => ({
       ...prev,
       fechas_vencimiento_cuotas: newDates,
-    }));
-  };
-
-  // ✅ FUNCIÓN: Manejar cambios en datos bancarios
-  const handleBankingChange = (field, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      datos_bancarios: {
-        ...prev.datos_bancarios,
-        [field]: value,
-      },
     }));
   };
 
@@ -222,7 +202,7 @@ const ContractSet = () => {
           numero_cuotas_restantes: 0,
           fechas_vencimiento_cuotas: [],
           monto_restante: precioTotal,
-          valor_cuota_restante: 0
+          valor_cuota_restante: 0,
         }));
       } else if (value === "cuotas") {
         // ✅ CONFIGURAR: Valores por defecto para cuotas
@@ -230,9 +210,9 @@ const ContractSet = () => {
           ...prev,
           numero_cuotas_restantes: 3,
           monto_restante: precioTotal,
-          valor_cuota_restante: precioTotal / 3
+          valor_cuota_restante: precioTotal / 3,
         }));
-        
+
         // ✅ GENERAR: Fechas automáticamente
         generatePaymentDates(3);
       }
@@ -247,20 +227,26 @@ const ContractSet = () => {
           cuota_inicial_monto: 0,
           fecha_vencimiento_inicial: "",
           monto_restante: precioTotal,
-          valor_cuota_restante: prev.numero_cuotas_restantes > 0 ? precioTotal / prev.numero_cuotas_restantes : 0
+          valor_cuota_restante:
+            prev.numero_cuotas_restantes > 0
+              ? precioTotal / prev.numero_cuotas_restantes
+              : 0,
         }));
       } else {
         // ✅ Si tiene cuota inicial, configurar 30% por defecto
         const porcentajeDefault = 30;
         const montoInicial = (precioTotal * porcentajeDefault) / 100;
         const montoRestante = precioTotal - montoInicial;
-        
+
         setFormData((prev) => ({
           ...prev,
           cuota_inicial_porcentaje: porcentajeDefault,
           cuota_inicial_monto: montoInicial,
           monto_restante: montoRestante,
-          valor_cuota_restante: prev.numero_cuotas_restantes > 0 ? montoRestante / prev.numero_cuotas_restantes : 0
+          valor_cuota_restante:
+            prev.numero_cuotas_restantes > 0
+              ? montoRestante / prev.numero_cuotas_restantes
+              : 0,
         }));
       }
     }
@@ -270,26 +256,33 @@ const ContractSet = () => {
       const porcentaje = parseFloat(value || 0);
       const montoInicial = (precioTotal * porcentaje) / 100;
       const montoRestante = precioTotal - montoInicial;
-      
+
       setFormData((prev) => ({
         ...prev,
         cuota_inicial_monto: montoInicial,
         monto_restante: montoRestante,
-        valor_cuota_restante: prev.numero_cuotas_restantes > 0 ? montoRestante / prev.numero_cuotas_restantes : 0
+        valor_cuota_restante:
+          prev.numero_cuotas_restantes > 0
+            ? montoRestante / prev.numero_cuotas_restantes
+            : 0,
       }));
     }
 
     // ✅ NUEVO: Cálculo cuando cambia el monto de cuota inicial directamente
     if (field === "cuota_inicial_monto") {
       const montoInicial = parseFloat(value || 0);
-      const porcentaje = precioTotal > 0 ? (montoInicial / precioTotal) * 100 : 0;
+      const porcentaje =
+        precioTotal > 0 ? (montoInicial / precioTotal) * 100 : 0;
       const montoRestante = precioTotal - montoInicial;
-      
+
       setFormData((prev) => ({
         ...prev,
         cuota_inicial_porcentaje: porcentaje,
         monto_restante: montoRestante,
-        valor_cuota_restante: prev.numero_cuotas_restantes > 0 ? montoRestante / prev.numero_cuotas_restantes : 0
+        valor_cuota_restante:
+          prev.numero_cuotas_restantes > 0
+            ? montoRestante / prev.numero_cuotas_restantes
+            : 0,
       }));
     }
 
@@ -298,19 +291,19 @@ const ContractSet = () => {
       const numCuotas = parseInt(value) || 0;
       const montoRestante = formData.monto_restante || precioTotal;
       const valorCuota = numCuotas > 0 ? montoRestante / numCuotas : 0;
-      
+
       setFormData((prev) => ({
         ...prev,
-        valor_cuota_restante: valorCuota
+        valor_cuota_restante: valorCuota,
       }));
-      
+
       // ✅ GENERAR: Fechas de vencimiento automáticamente
       if (numCuotas > 0) {
         generatePaymentDates(numCuotas);
       } else {
         setFormData((prev) => ({
           ...prev,
-          fechas_vencimiento_cuotas: []
+          fechas_vencimiento_cuotas: [],
         }));
       }
     }
@@ -321,13 +314,14 @@ const ContractSet = () => {
       const numCuotas = formData.numero_cuotas_restantes || 0;
       const nuevoMontoRestante = valorCuota * numCuotas;
       const nuevaSeña = precioTotal - nuevoMontoRestante;
-      const nuevoPorcentaje = precioTotal > 0 ? (nuevaSeña / precioTotal) * 100 : 0;
-      
+      const nuevoPorcentaje =
+        precioTotal > 0 ? (nuevaSeña / precioTotal) * 100 : 0;
+
       setFormData((prev) => ({
         ...prev,
         monto_restante: nuevoMontoRestante,
         cuota_inicial_monto: nuevaSeña >= 0 ? nuevaSeña : 0,
-        cuota_inicial_porcentaje: nuevoPorcentaje >= 0 ? nuevoPorcentaje : 0
+        cuota_inicial_porcentaje: nuevoPorcentaje >= 0 ? nuevoPorcentaje : 0,
       }));
     }
   };
@@ -338,37 +332,45 @@ const ContractSet = () => {
 
     // ✅ Validaciones de identificación
     if (!formData.cliente_fecha_nacimiento) {
-      newErrors.cliente_fecha_nacimiento = 'La fecha de nacimiento es requerida';
+      newErrors.cliente_fecha_nacimiento =
+        "La fecha de nacimiento es requerida";
     }
 
     if (!formData.cliente_tipo_documento) {
-      newErrors.cliente_tipo_documento = 'El tipo de documento es requerido';
+      newErrors.cliente_tipo_documento = "El tipo de documento es requerido";
     }
 
     if (!formData.cliente_documento_identidad) {
-      newErrors.cliente_documento_identidad = 'El número de documento es requerido';
+      newErrors.cliente_documento_identidad =
+        "El número de documento es requerido";
     }
 
     if (!formData.cliente_direccion) {
-      newErrors.cliente_direccion = 'La dirección es requerida';
+      newErrors.cliente_direccion = "La dirección es requerida";
     }
 
     if (!formData.cliente_ciudad) {
-      newErrors.cliente_ciudad = 'La ciudad es requerida';
+      newErrors.cliente_ciudad = "La ciudad es requerida";
     }
 
     // ✅ Validaciones de forma de pago
-    if (formData.forma_pago === 'cuotas') {
+    if (formData.forma_pago === "cuotas") {
       if (formData.tiene_cuota_inicial && !formData.fecha_vencimiento_inicial) {
-        newErrors.fecha_vencimiento_inicial = 'La fecha de vencimiento de la cuota inicial es requerida';
+        newErrors.fecha_vencimiento_inicial =
+          "La fecha de vencimiento de la cuota inicial es requerida";
       }
 
       if (formData.numero_cuotas_restantes <= 0) {
-        newErrors.numero_cuotas_restantes = 'Debe especificar el número de cuotas';
+        newErrors.numero_cuotas_restantes =
+          "Debe especificar el número de cuotas";
       }
 
-      if (formData.fechas_vencimiento_cuotas.length !== formData.numero_cuotas_restantes) {
-        newErrors.fechas_vencimiento_cuotas = 'Debe especificar todas las fechas de vencimiento';
+      if (
+        formData.fechas_vencimiento_cuotas.length !==
+        formData.numero_cuotas_restantes
+      ) {
+        newErrors.fechas_vencimiento_cuotas =
+          "Debe especificar todas las fechas de vencimiento";
       }
     }
 
@@ -392,7 +394,7 @@ const ContractSet = () => {
       ).unwrap();
 
       alert("✅ Contrato actualizado exitosamente");
-      navigate(`/panel/contracts/${contract.contract.id}`); // ✅ CORREGIR
+      navigate(`/contractsList`); // ✅ CORREGIR
     } catch (error) {
       console.error("Error saving contract:", error);
       alert(`❌ Error al guardar: ${error.message || error}`);
@@ -426,7 +428,7 @@ const ContractSet = () => {
           Contrato no encontrado
         </h2>
         <button
-          onClick={() => navigate("/panel/contracts")}
+          onClick={() => navigate("/contractsList")}
           className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
         >
           Volver a la lista
@@ -441,7 +443,7 @@ const ContractSet = () => {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate("/panel/contracts")}
+            onClick={() => navigate("/contractsList")}
             className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <FontAwesomeIcon icon={faArrowLeft} />
@@ -450,7 +452,9 @@ const ContractSet = () => {
             <h1 className="text-3xl font-bold text-gray-900">
               Editar Contrato
             </h1>
-            <p className="text-gray-600">{contract.contract?.contract_number}</p>
+            <p className="text-gray-600">
+              {contract.contract?.contract_number}
+            </p>
           </div>
         </div>
 
@@ -546,23 +550,36 @@ const ContractSet = () => {
           {formData.forma_pago === "cuotas" && (
             <div className="bg-blue-50 rounded-lg shadow-md p-6">
               <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
-                <FontAwesomeIcon icon={faDollarSign} className="text-blue-600" />
+                <FontAwesomeIcon
+                  icon={faDollarSign}
+                  className="text-blue-600"
+                />
                 📊 Resumen de Pagos
               </h4>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span>Total del viaje:</span>
                   <span className="font-semibold">
-                    ${parseFloat(contract.contract?.precio_total || 0).toLocaleString()}
+                    $
+                    {parseFloat(
+                      contract.contract?.precio_total || 0
+                    ).toLocaleString()}
                   </span>
                 </div>
                 {formData.tiene_cuota_inicial && (
                   <div className="flex justify-between text-blue-700">
                     <span>
-  Cuota Inicial ({Number(formData.cuota_inicial_porcentaje || 0).toFixed(1)}%):
-</span>
+                      Cuota Inicial (
+                      {Number(formData.cuota_inicial_porcentaje || 0).toFixed(
+                        1
+                      )}
+                      %):
+                    </span>
                     <span className="font-semibold">
-                      ${Number(formData.cuota_inicial_monto || 0).toLocaleString()}
+                      $
+                      {Number(
+                        formData.cuota_inicial_monto || 0
+                      ).toLocaleString()}
                     </span>
                   </div>
                 )}
@@ -575,7 +592,10 @@ const ContractSet = () => {
                 <div className="flex justify-between border-t pt-2">
                   <span>Valor por cuota:</span>
                   <span className="font-bold text-blue-700">
-                    ${parseFloat(formData.valor_cuota_restante || 0).toLocaleString()}
+                    $
+                    {parseFloat(
+                      formData.valor_cuota_restante || 0
+                    ).toLocaleString()}
                   </span>
                 </div>
               </div>
@@ -758,24 +778,8 @@ const ContractSet = () => {
                   </select>
                 </div>
 
-                {/* ✅ ACTUALIZAR: Profesión */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Profesión u Ocupación
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.cliente_profesion}
-                    onChange={(e) =>
-                      handleInputChange("cliente_profesion", e.target.value)
-                    }
-                    placeholder="Ej: Ingeniero, Médico, Estudiante, Comerciante"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
                 {/* ✅ NUEVO: Teléfono de emergencia */}
-                <div>
+                {/* <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Teléfono de Emergencia
                   </label>
@@ -791,10 +795,10 @@ const ContractSet = () => {
                     placeholder="+57 300 123 4567"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
-                </div>
+                </div> */}
 
                 {/* ✅ NUEVO: Contacto de emergencia */}
-                <div>
+                {/* <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Contacto de Emergencia
                   </label>
@@ -810,12 +814,12 @@ const ContractSet = () => {
                     placeholder="Nombre del contacto de emergencia"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
-                </div>
+                </div> */}
 
                 {/* ✅ NUEVO: Dirección completa */}
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Dirección Completa *
+                    Dirección *
                   </label>
                   <textarea
                     value={formData.cliente_direccion}
@@ -892,6 +896,101 @@ const ContractSet = () => {
                 </div>
               </div>
             </div>
+
+            {formData.contractItem.map((item, idx) => (
+              <div key={idx} className="mb-6 border-b pb-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Tipo *
+                    </label>
+                    <select
+                      value={item.tipo}
+                      onChange={(e) => {
+                        const newItems = [...formData.contractItem];
+                        newItems[idx].tipo = e.target.value;
+                        setFormData({ ...formData, contractItem: newItems });
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    >
+                      <option value="">Seleccione tipo</option>
+                      {CONTRACT_ITEM_TYPES.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Descripción *
+                    </label>
+                    <input
+                      type="text"
+                      value={item.descripcion}
+                      onChange={(e) => {
+                        const newItems = [...formData.contractItem];
+                        newItems[idx].descripcion = e.target.value;
+                        setFormData({ ...formData, contractItem: newItems });
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Detalle
+                    </label>
+                    <input
+                      type="text"
+                      value={item.detalle}
+                      onChange={(e) => {
+                        const newItems = [...formData.contractItem];
+                        newItems[idx].detalle = e.target.value;
+                        setFormData({ ...formData, contractItem: newItems });
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    />
+                  </div>
+                 
+                </div>
+                {/* Botón para eliminar el item si hay más de uno */}
+                {formData.contractItem.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newItems = formData.contractItem.filter(
+                        (_, i) => i !== idx
+                      );
+                      setFormData({ ...formData, contractItem: newItems });
+                    }}
+                    className="mt-2 text-red-500 text-sm"
+                  >
+                    Eliminar ítem
+                  </button>
+                )}
+              </div>
+            ))}
+
+            {/* Botón para agregar un nuevo item */}
+            <button
+              type="button"
+              onClick={() =>
+                setFormData({
+                  ...formData,
+                  contractItem: [
+                    ...formData.contractItem,
+                    {
+                      tipo: "",
+                      descripcion: "",
+                      detalle: "",
+                    },
+                  ],
+                })
+              }
+              className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg"
+            >
+              Agregar ítem
+            </button>
 
             {/* Forma de pago */}
             <div className="bg-white rounded-lg shadow-md p-6">
@@ -1004,7 +1103,10 @@ const ContractSet = () => {
                             step="0.01"
                             value={formData.cuota_inicial_monto}
                             onChange={(e) =>
-                              handleInputChange("cuota_inicial_monto", e.target.value)
+                              handleInputChange(
+                                "cuota_inicial_monto",
+                                e.target.value
+                              )
                             }
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           />
@@ -1039,9 +1141,24 @@ const ContractSet = () => {
                         {/* ✅ RESUMEN */}
                         <div className="bg-gray-50 p-3 rounded-lg">
                           <div className="text-xs text-gray-600">
-                            <div>Total: ${parseFloat(contract.contract?.precio_total || 0).toLocaleString()}</div>
-                            <div>Seña: ${parseFloat(formData.cuota_inicial_monto || 0).toLocaleString()}</div>
-                            <div>Restante: ${parseFloat(formData.monto_restante || 0).toLocaleString()}</div>
+                            <div>
+                              Total: $
+                              {parseFloat(
+                                contract.contract?.precio_total || 0
+                              ).toLocaleString()}
+                            </div>
+                            <div>
+                              Seña: $
+                              {parseFloat(
+                                formData.cuota_inicial_monto || 0
+                              ).toLocaleString()}
+                            </div>
+                            <div>
+                              Restante: $
+                              {parseFloat(
+                                formData.monto_restante || 0
+                              ).toLocaleString()}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1082,7 +1199,9 @@ const ContractSet = () => {
                         </label>
                         <input
                           type="number"
-                          value={parseFloat(formData.monto_restante || 0).toFixed(2)}
+                          value={parseFloat(
+                            formData.monto_restante || 0
+                          ).toFixed(2)}
                           readOnly
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
                         />
@@ -1097,9 +1216,14 @@ const ContractSet = () => {
                           type="number"
                           min="0"
                           step="0.01"
-                          value={parseFloat(formData.valor_cuota_restante || 0).toFixed(2)}
+                          value={parseFloat(
+                            formData.valor_cuota_restante || 0
+                          ).toFixed(2)}
                           onChange={(e) =>
-                            handleInputChange("valor_cuota_restante", e.target.value)
+                            handleInputChange(
+                              "valor_cuota_restante",
+                              e.target.value
+                            )
                           }
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
@@ -1112,7 +1236,11 @@ const ContractSet = () => {
                         </label>
                         <button
                           type="button"
-                          onClick={() => generatePaymentDates(formData.numero_cuotas_restantes)}
+                          onClick={() =>
+                            generatePaymentDates(
+                              formData.numero_cuotas_restantes
+                            )
+                          }
                           className="w-full px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm"
                         >
                           Regenerar Fechas
@@ -1160,95 +1288,6 @@ const ContractSet = () => {
               </div>
             </div>
 
-            {/* Datos bancarios */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <FontAwesomeIcon
-                  icon={faCreditCard}
-                  className="text-blue-500"
-                />
-                Datos Bancarios para Transferencias
-              </h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Banco
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.datos_bancarios.banco}
-                    onChange={(e) =>
-                      handleBankingChange("banco", e.target.value)
-                    }
-                    placeholder="Nombre del banco"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tipo de cuenta
-                  </label>
-                  <select
-                    value={formData.datos_bancarios.tipo_cuenta}
-                    onChange={(e) =>
-                      handleBankingChange("tipo_cuenta", e.target.value)
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="corriente">Cuenta Corriente</option>
-                    <option value="ahorros">Cuenta de Ahorros</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Número de cuenta
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.datos_bancarios.numero_cuenta}
-                    onChange={(e) =>
-                      handleBankingChange("numero_cuenta", e.target.value)
-                    }
-                    placeholder="123456789"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    CBU/Alias
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.datos_bancarios.cbu_alias}
-                    onChange={(e) =>
-                      handleBankingChange("cbu_alias", e.target.value)
-                    }
-                    placeholder="1234567890123456789012 o alias.banco"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Titular de la cuenta
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.datos_bancarios.titular}
-                    onChange={(e) =>
-                      handleBankingChange("titular", e.target.value)
-                    }
-                    placeholder="Nombre completo del titular"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-            </div>
-
             {/* Información adicional */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -1272,57 +1311,6 @@ const ContractSet = () => {
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Política de cancelación
-                  </label>
-                  <select
-                    value={formData.politica_cancelacion}
-                    onChange={(e) =>
-                      handleInputChange("politica_cancelacion", e.target.value)
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="standard">Estándar (según términos)</option>
-                    <option value="flexible">Flexible</option>
-                    <option value="no_reembolsable">No reembolsable</option>
-                    <option value="personalizada">Personalizada</option>
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={formData.seguro_viaje}
-                      onChange={(e) =>
-                        handleInputChange("seguro_viaje", e.target.checked)
-                      }
-                      className="mr-2"
-                    />
-                    <span className="text-sm font-medium text-gray-700">
-                      Incluye seguro de viaje
-                    </span>
-                  </label>
-
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={formData.seguro_cancelacion}
-                      onChange={(e) =>
-                        handleInputChange(
-                          "seguro_cancelacion",
-                          e.target.checked
-                        )
-                      }
-                      className="mr-2"
-                    />
-                    <span className="text-sm font-medium text-gray-700">
-                      Incluye seguro de cancelación
-                    </span>
-                  </label>
                 </div>
 
                 <div>
@@ -1367,7 +1355,7 @@ const ContractSet = () => {
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-10">
         <div className="container mx-auto max-w-6xl flex justify-end gap-4">
           <button
-            onClick={() => navigate("/panel/contracts")}
+            onClick={() => navigate("/contractsList")}
             className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
           >
             Cancelar

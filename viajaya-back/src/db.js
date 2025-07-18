@@ -57,7 +57,8 @@ const {
   AutoMessage, 
   Invoice,
   ContractItem,
-  Purchase
+  Purchase,
+  UserDocument
 } = sequelize.models;
 
 // ===== RELACIONES ORGANIZADAS POR SECCIONES =====
@@ -429,7 +430,29 @@ Invoice.belongsTo(User, {
   foreignKey: 'aprobada_por' 
 });
 
+// ✅ 17. RELACIONES DE DOCUMENTOS DE USUARIO
+// Un usuario puede tener muchos documentos
+User.hasMany(UserDocument, { 
+  as: 'DocumentsAsOwner', 
+  foreignKey: 'user_id' 
+});
 
+// Un documento pertenece a un usuario propietario
+UserDocument.belongsTo(User, { 
+  as: 'Owner', 
+  foreignKey: 'user_id' 
+});
+
+// Relación para el verificador (admin/supervisor que aprueba/rechaza)
+User.hasMany(UserDocument, { 
+  as: 'DocumentsAsVerifier', 
+  foreignKey: 'verified_by' 
+});
+
+UserDocument.belongsTo(User, { 
+  as: 'VerifiedBy', 
+  foreignKey: 'verified_by' 
+});
 
 module.exports = {
   ...sequelize.models, // para poder importar los modelos así: const { Product, User } = require('./db.js');

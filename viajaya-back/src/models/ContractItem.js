@@ -50,7 +50,7 @@ module.exports = (sequelize) => {
     },
     precio_unitario: {
       type: DataTypes.DECIMAL(12, 2),
-      allowNull: false,
+      allowNull: true,
     },
     cantidad: {
       type: DataTypes.INTEGER,
@@ -58,7 +58,7 @@ module.exports = (sequelize) => {
     },
     precio_total: {
       type: DataTypes.DECIMAL(12, 2),
-      allowNull: false,
+      allowNull: true,
     },
     costo_proveedor: {
       type: DataTypes.DECIMAL(12, 2),

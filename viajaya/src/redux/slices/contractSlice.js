@@ -27,6 +27,9 @@ const initialState = {
     expiredContracts: 0,
     pendingContracts: 0,
   },
+  contractItems: [],
+  contractItemsLoading: false,
+  contractItemsError: null,
 };
 
 // Thunks asíncronos
@@ -114,6 +117,30 @@ export const createContract = createAsyncThunk(
     }
   }
 );
+
+export const fetchContractItems = createAsyncThunk(
+  'contractItems/fetchContractItems',
+  async (contractId, { rejectWithValue, getState }) => {
+    try {
+      const { auth } = getState();
+      const response = await fetch(getApiUrl(`/contracts/${contractId}/items`), {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${auth.token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        return rejectWithValue(data.message || 'Error obteniendo items del contrato');
+      }
+      return data.items;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Error de conexión');
+    }
+  }
+);
+
 
 export const updateContract = createAsyncThunk(
   'contract/updateContract',
@@ -384,6 +411,16 @@ const contractSlice = createSlice({
         state.currentContract.status = status;
       }
     },
+
+    clearContractItemsError: (state) => {
+      state.contractItemsError = null;
+    },
+    resetContractItems: (state) => {
+      state.contractItems = [];
+      state.contractItemsLoading = false;
+      state.contractItemsError = null;
+    }
+  
   },
   extraReducers: (builder) => {
     builder
@@ -425,6 +462,7 @@ const contractSlice = createSlice({
         state.error = null;
       })
       .addCase(createContract.fulfilled, (state, action) => {
+
   state.loading = false;
   // ✅ AJUSTAR: Verificar que action.payload tenga la estructura correcta
   const newContract = action.payload.contract || action.payload;
@@ -565,6 +603,19 @@ const contractSlice = createSlice({
       .addCase(fetchContractStats.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+
+      .addCase(fetchContractItems.pending, (state) => {
+        state.contractItemsLoading = true;
+        state.contractItemsError = null;
+      })
+      .addCase(fetchContractItems.fulfilled, (state, action) => {
+        state.contractItemsLoading = false;
+        state.contractItems = action.payload;
+      })
+      .addCase(fetchContractItems.rejected, (state, action) => {
+        state.contractItemsLoading = false;
+        state.contractItemsError = action.payload;
       });
   },
 });
@@ -579,6 +630,8 @@ export const {
   setPagination,
   resetContracts,
   updateContractStatus,
+  clearContractItemsError,
+  resetContractItems,
 } = contractSlice.actions;
 
 // Selectores
@@ -590,6 +643,9 @@ export const selectContractError = (state) => state.contract.error;
 export const selectContractFilters = (state) => state.contract.filters;
 export const selectContractPagination = (state) => state.contract.pagination;
 export const selectContractStats = (state) => state.contract.stats;
+export const selectContractItems = (state) => state.contract.contractItems;
+export const selectContractItemsLoading = (state) => state.contract.contractItemsLoading;
+export const selectContractItemsError = (state) => state.contract.contractItemsError;
 export const selectContractsWithDetails = (state) => {
   return state.contract.contracts.map(contract => ({
     ...contract,
