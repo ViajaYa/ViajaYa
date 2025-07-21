@@ -6,14 +6,17 @@ const initialState = {
   userDocuments: [],
   documentationStatus: null,
   pendingDocuments: [],
+  allDocuments: [], // Nueva propiedad para todos los documentos
   documentStats: null,
   loading: false,
   uploadLoading: false,
   statusLoading: false,
   reviewLoading: false,
   statsLoading: false,
+  allDocumentsLoading: false, // Loading específico para todos los documentos
   error: null,
-  uploadProgress: 0
+  uploadProgress: 0,
+  pagination: null // Para paginación
 };
 
 // ✅ Thunk para subir documento
@@ -134,6 +137,25 @@ export const rejectDocument = createAsyncThunk(
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Error al rechazar documento');
+    }
+  }
+);
+
+// ✅ Thunk para obtener todos los documentos con filtros
+export const getAllDocuments = createAsyncThunk(
+  'document/getAllDocuments',
+  async (filters = {}, { rejectWithValue }) => {
+    try {
+      const queryParams = new URLSearchParams();
+      if (filters.status) queryParams.append('status', filters.status);
+      if (filters.role) queryParams.append('role', filters.role);
+      if (filters.page) queryParams.append('page', filters.page);
+      if (filters.limit) queryParams.append('limit', filters.limit);
+
+      const response = await api.get(`/document-users/all?${queryParams.toString()}`);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Error al obtener documentos');
     }
   }
 );
@@ -309,10 +331,33 @@ const documentSlice = createSlice({
           if (userDocIndex >= 0) {
             state.userDocuments[userDocIndex] = action.payload.document;
           }
+          const allDocIndex = state.allDocuments.findIndex(
+            doc => doc.id === action.payload.document.id
+          );
+          if (allDocIndex >= 0) {
+            state.allDocuments[allDocIndex] = action.payload.document;
+          }
         }
       })
       .addCase(rejectDocument.rejected, (state, action) => {
         state.reviewLoading = false;
+        state.error = action.payload;
+      })
+
+      // Get all documents
+      .addCase(getAllDocuments.pending, (state) => {
+        state.allDocumentsLoading = true;
+        state.error = null;
+      })
+      .addCase(getAllDocuments.fulfilled, (state, action) => {
+        state.allDocumentsLoading = false;
+        if (action.payload.success) {
+          state.allDocuments = action.payload.data.documents || [];
+          state.pagination = action.payload.data.pagination;
+        }
+      })
+      .addCase(getAllDocuments.rejected, (state, action) => {
+        state.allDocumentsLoading = false;
         state.error = action.payload;
       });
   }
@@ -326,10 +371,13 @@ export const selectUploadLoading = (state) => state.document.uploadLoading;
 export const selectStatusLoading = (state) => state.document.statusLoading;
 export const selectReviewLoading = (state) => state.document.reviewLoading;
 export const selectStatsLoading = (state) => state.document.statsLoading;
+export const selectAllDocumentsLoading = (state) => state.document.allDocumentsLoading;
 export const selectDocumentError = (state) => state.document.error;
 export const selectUploadProgress = (state) => state.document.uploadProgress;
 export const selectPendingDocuments = (state) => state.document.pendingDocuments;
+export const selectAllDocuments = (state) => state.document.allDocuments;
 export const selectDocumentStats = (state) => state.document.documentStats;
+export const selectDocumentPagination = (state) => state.document.pagination;
 
 // ✅ Documentos requeridos por rol
 export const REQUIRED_DOCUMENTS_BY_ROLE = {

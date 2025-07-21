@@ -4,18 +4,23 @@ import { Link } from 'react-router-dom';
 import { 
   getPendingDocuments, 
   getDocumentStats,
+  getAllDocuments,
   approveDocument,
   rejectDocument,
   selectPendingDocuments,
+  selectAllDocuments,
   selectDocumentStats,
   selectDocumentLoading,
+  selectAllDocumentsLoading,
   selectStatsLoading,
   selectReviewLoading,
   selectDocumentError,
+  selectDocumentPagination,
   clearError
 } from '../../redux/slices/documentSlice';
 import NavBar from '../layout/NavBar/NavBar';
 import LoadingSpinner from '../LoadingSpinner';
+import DocumentPreview from './DocumentPreview';
 import toast from 'react-hot-toast';
 
 const ROLE_NAMES = {
@@ -31,15 +36,26 @@ const ROLE_NAMES = {
 const DocumentsReview = () => {
   const dispatch = useDispatch();
   const pendingDocuments = useSelector(selectPendingDocuments);
+  const allDocuments = useSelector(selectAllDocuments);
   const documentStats = useSelector(selectDocumentStats);
   const loading = useSelector(selectDocumentLoading);
+  const allDocumentsLoading = useSelector(selectAllDocumentsLoading);
   const statsLoading = useSelector(selectStatsLoading);
   const reviewLoading = useSelector(selectReviewLoading);
   const error = useSelector(selectDocumentError);
+  const pagination = useSelector(selectDocumentPagination);
 
   const [selectedDocument, setSelectedDocument] = useState(null);
   const [reviewModal, setReviewModal] = useState({ open: false, type: null });
   const [reviewData, setReviewData] = useState({ comments: '', reason: '' });
+  const [previewDocument, setPreviewDocument] = useState(null);
+  const [activeTab, setActiveTab] = useState('pending'); // 'pending' or 'all'
+  const [filters, setFilters] = useState({
+    status: 'all',
+    role: 'all',
+    page: 1,
+    limit: 10
+  });
 
   // Obtener ID del usuario actual (Owner)
   const currentUser = JSON.parse(localStorage.getItem('userData') || '{}');
@@ -47,7 +63,16 @@ const DocumentsReview = () => {
   useEffect(() => {
     dispatch(getPendingDocuments());
     dispatch(getDocumentStats());
-  }, [dispatch]);
+    if (activeTab === 'all') {
+      dispatch(getAllDocuments(filters));
+    }
+  }, [dispatch, activeTab]);
+
+  useEffect(() => {
+    if (activeTab === 'all') {
+      dispatch(getAllDocuments(filters));
+    }
+  }, [dispatch, filters, activeTab]);
 
   useEffect(() => {
     if (error) {
@@ -66,6 +91,26 @@ const DocumentsReview = () => {
     setReviewModal({ open: false, type: null });
     setSelectedDocument(null);
     setReviewData({ comments: '', reason: '' });
+  };
+
+  const openPreview = (document) => {
+    setPreviewDocument(document);
+  };
+
+  const closePreview = () => {
+    setPreviewDocument(null);
+  };
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+  };
+
+  const handleFilterChange = (newFilters) => {
+    setFilters(prev => ({ ...prev, ...newFilters, page: 1 }));
+  };
+
+  const handlePageChange = (newPage) => {
+    setFilters(prev => ({ ...prev, page: newPage }));
   };
 
   const handleApprove = async () => {
@@ -227,20 +272,122 @@ const DocumentsReview = () => {
           </div>
         )}
 
+        {/* Pestañas de navegación */}
+        <div className="mb-8">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8">
+              <button
+                onClick={() => handleTabChange('pending')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'pending'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <i className="fas fa-clock mr-2"></i>
+                Documentos Pendientes ({documentStats?.pending || 0})
+              </button>
+              <button
+                onClick={() => handleTabChange('all')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'all'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <i className="fas fa-file-alt mr-2"></i>
+                Todos los Documentos ({documentStats?.totalDocuments || 0})
+              </button>
+            </nav>
+          </div>
+        </div>
+
+        {/* Filtros para la pestaña "Todos" */}
+        {activeTab === 'all' && (
+          <div className="mb-6 bg-white p-4 rounded-lg shadow-md border">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Estado
+                </label>
+                <select
+                  value={filters.status}
+                  onChange={(e) => handleFilterChange({ status: e.target.value })}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="all">Todos los estados</option>
+                  <option value="pending">Pendientes</option>
+                  <option value="approved">Aprobados</option>
+                  <option value="rejected">Rechazados</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Rol de Usuario
+                </label>
+                <select
+                  value={filters.role}
+                  onChange={(e) => handleFilterChange({ role: e.target.value })}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="all">Todos los roles</option>
+                  <option value="2">Asesores</option>
+                  <option value="3">Líderes</option>
+                  <option value="4">Gerentes</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Documentos por página
+                </label>
+                <select
+                  value={filters.limit}
+                  onChange={(e) => handleFilterChange({ limit: parseInt(e.target.value) })}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Documents Table */}
         <div className="bg-white rounded-lg shadow-md border">
           <div className="p-6 border-b">
             <h2 className="text-xl font-semibold text-gray-900">
-              Documentos Pendientes de Revisión
+              {activeTab === 'pending' ? 'Documentos Pendientes de Revisión' : 'Todos los Documentos'}
             </h2>
           </div>
 
-          {pendingDocuments && pendingDocuments.length === 0 ? (
-            <div className="p-8 text-center">
-              <i className="fas fa-inbox text-4xl text-gray-400 mb-4"></i>
-              <p className="text-gray-500 text-lg">No hay documentos pendientes de revisión</p>
-            </div>
-          ) : (
+          {(() => {
+            const currentDocuments = activeTab === 'pending' ? pendingDocuments : allDocuments;
+            const currentLoading = activeTab === 'pending' ? loading : allDocumentsLoading;
+            
+            if (currentLoading) {
+              return (
+                <div className="p-8 text-center">
+                  <LoadingSpinner />
+                  <p className="text-gray-500 mt-4">Cargando documentos...</p>
+                </div>
+              );
+            }
+
+            if (!currentDocuments || currentDocuments.length === 0) {
+              return (
+                <div className="p-8 text-center">
+                  <i className="fas fa-inbox text-4xl text-gray-400 mb-4"></i>
+                  <p className="text-gray-500 text-lg">
+                    {activeTab === 'pending' ? 'No hay documentos pendientes de revisión' : 'No hay documentos que mostrar'}
+                  </p>
+                </div>
+              );
+            }
+
+            return (
             <div className="overflow-x-auto">
               <table className="min-w-full">
                 <thead className="bg-gray-50">
@@ -266,8 +413,8 @@ const DocumentsReview = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {Array.isArray(pendingDocuments) && pendingDocuments.length > 0 ? (
-                    pendingDocuments.map((document) => (
+                  {Array.isArray(currentDocuments) && currentDocuments.length > 0 ? (
+                    currentDocuments.map((document) => (
                     <tr key={document.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
@@ -300,28 +447,41 @@ const DocumentsReview = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
-                          <a
-                            href={document.file_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button
+                            onClick={() => openPreview(document)}
                             className="text-blue-600 hover:text-blue-900"
+                            title="Vista previa"
                           >
                             <i className="fas fa-eye"></i>
+                          </button>
+                          <a
+                            href={document.file_url}
+                            download={document.document_name}
+                            className="text-gray-600 hover:text-gray-900"
+                            title="Descargar"
+                          >
+                            <i className="fas fa-download"></i>
                           </a>
-                          <button
-                            onClick={() => openReviewModal(document, 'approve')}
-                            className="text-green-600 hover:text-green-900"
-                            disabled={reviewLoading}
-                          >
-                            <i className="fas fa-check"></i>
-                          </button>
-                          <button
-                            onClick={() => openReviewModal(document, 'reject')}
-                            className="text-red-600 hover:text-red-900"
-                            disabled={reviewLoading}
-                          >
-                            <i className="fas fa-times"></i>
-                          </button>
+                          {document.status === 'pending' && (
+                            <>
+                              <button
+                                onClick={() => openReviewModal(document, 'approve')}
+                                className="text-green-600 hover:text-green-900"
+                                disabled={reviewLoading}
+                                title="Aprobar"
+                              >
+                                <i className="fas fa-check"></i>
+                              </button>
+                              <button
+                                onClick={() => openReviewModal(document, 'reject')}
+                                className="text-red-600 hover:text-red-900"
+                                disabled={reviewLoading}
+                                title="Rechazar"
+                              >
+                                <i className="fas fa-times"></i>
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -329,16 +489,66 @@ const DocumentsReview = () => {
                   ) : (
                     <tr>
                       <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
-                        {loading ? 'Cargando documentos...' : 'No hay documentos pendientes'}
+                        {currentLoading ? 'Cargando documentos...' : 'No hay documentos'}
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
-          )}
+            );
+          })()}
         </div>
+
+        {/* Paginación para la pestaña "Todos" */}
+        {activeTab === 'all' && pagination && pagination.pages > 1 && (
+          <div className="mt-6 flex justify-center">
+            <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+              <button
+                onClick={() => handlePageChange(pagination.page - 1)}
+                disabled={pagination.page <= 1}
+                className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <i className="fas fa-chevron-left"></i>
+              </button>
+              
+              {[...Array(pagination.pages)].map((_, index) => {
+                const pageNumber = index + 1;
+                const isActive = pageNumber === pagination.page;
+                
+                return (
+                  <button
+                    key={pageNumber}
+                    onClick={() => handlePageChange(pageNumber)}
+                    className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                      isActive
+                        ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                        : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                    }`}
+                  >
+                    {pageNumber}
+                  </button>
+                );
+              })}
+              
+              <button
+                onClick={() => handlePageChange(pagination.page + 1)}
+                disabled={pagination.page >= pagination.pages}
+                className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <i className="fas fa-chevron-right"></i>
+              </button>
+            </nav>
+          </div>
+        )}
       </div>
+
+      {/* Document Preview Modal */}
+      <DocumentPreview
+        document={previewDocument}
+        isOpen={!!previewDocument}
+        onClose={closePreview}
+      />
 
       {/* Review Modal */}
       {reviewModal.open && (

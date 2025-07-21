@@ -518,6 +518,62 @@ const documentUsersController = {
         message: 'Error interno del servidor' 
       });
     }
+  },
+
+  // ✅ Obtener todos los documentos con filtros (Solo Owner)
+  getAllDocuments: async (req, res) => {
+    try {
+      const { status, role, page = 1, limit = 10 } = req.query;
+      
+      // Construir condiciones de filtro
+      const whereConditions = {};
+      if (status && status !== 'all') {
+        whereConditions.status = status;
+      }
+
+      // Construir condiciones para el usuario
+      const userWhereConditions = {};
+      if (role && role !== 'all') {
+        userWhereConditions.role = parseInt(role);
+      } else {
+        userWhereConditions.role = [2, 3, 4]; // Solo usuarios que requieren documentos
+      }
+
+      const offset = (parseInt(page) - 1) * parseInt(limit);
+
+      const documents = await UserDocument.findAndCountAll({
+        where: whereConditions,
+        include: [{
+          model: User,
+          as: 'Owner',
+          where: userWhereConditions,
+          attributes: ['id', 'name', 'lastname', 'email', 'role']
+        }],
+        order: [['createdAt', 'DESC']],
+        limit: parseInt(limit),
+        offset: offset
+      });
+
+      res.json({
+        success: true,
+        data: {
+          documents: documents.rows,
+          pagination: {
+            total: documents.count,
+            page: parseInt(page),
+            pages: Math.ceil(documents.count / parseInt(limit)),
+            limit: parseInt(limit)
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('Error al obtener todos los documentos:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error interno del servidor' 
+      });
+    }
   }
 };
 

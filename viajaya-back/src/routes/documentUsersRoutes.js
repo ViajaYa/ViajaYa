@@ -20,6 +20,7 @@ router.delete('/:documentId', documentUsersController.deleteDocument);
 
 // ✅ Rutas para revisión de documentos (Solo Owner - rol 7)
 router.get('/pending', documentUsersController.getPendingDocuments);
+router.get('/all', documentUsersController.getAllDocuments); // Nueva ruta para todos los documentos
 router.patch('/:documentId/approve', documentUsersController.approveDocument);
 router.patch('/:documentId/reject', documentUsersController.rejectDocument);
 router.get('/stats', documentUsersController.getDocumentStats);
