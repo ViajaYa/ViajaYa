@@ -4,24 +4,9 @@ const upload = require('../config/multerConfig'); // Importar configuración de 
 const documentUsersController = require('../controllers/documentUsersController');
 
 // ✅ Subir archivo directamente con Multer + Cloudinary
-const debugMiddleware = (req, res, next) => {
-  console.log('🔍 DEBUG MIDDLEWARE:');
-  console.log('Body antes de Multer:', req.body);
-  console.log('File antes de Multer:', req.file);
-  next();
-};
-
-// ✅ Subir archivo con debug
 router.post('/upload-file', 
-  debugMiddleware,                                    // 1. Debug
-  upload.single('document'),                          // 2. Multer procesa archivo
-  (req, res, next) => {                              // 3. Verificar resultado de Multer
-    console.log('🔍 DESPUÉS DE MULTER:');
-    console.log('Body después de Multer:', req.body);
-    console.log('File después de Multer:', req.file);
-    next();
-  },
-  documentUsersController.uploadDocumentFile          // 4. Controller
+  upload.single('document'),                          // Multer procesa archivo
+  documentUsersController.uploadDocumentFile          // Controller
 );
 
 // ✅ Obtener documentos de un usuario específico
@@ -32,5 +17,11 @@ router.get('/status/:userId', documentUsersController.checkDocumentationStatus);
 
 // ✅ Eliminar documento
 router.delete('/:documentId', documentUsersController.deleteDocument);
+
+// ✅ Rutas para revisión de documentos (Solo Owner - rol 7)
+router.get('/pending', documentUsersController.getPendingDocuments);
+router.patch('/:documentId/approve', documentUsersController.approveDocument);
+router.patch('/:documentId/reject', documentUsersController.rejectDocument);
+router.get('/stats', documentUsersController.getDocumentStats);
 
 module.exports = router;

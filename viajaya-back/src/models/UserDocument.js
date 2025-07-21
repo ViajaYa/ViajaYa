@@ -58,6 +58,14 @@ module.exports = (sequelize) => {
       type: DataTypes.DATE,
       allowNull: true,
     },
+    reviewed_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    review_comments: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
     rejection_reason: {
       type: DataTypes.TEXT,
       allowNull: true,

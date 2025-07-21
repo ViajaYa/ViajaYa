@@ -1,22 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
-
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-
-const getAuthHeaders = () => {
-  const token = localStorage.getItem("token");
-  return {
-    'Authorization': `Bearer ${token}`
-  };
-};
-
-const getAuthHeadersMultipart = () => {
-  const token = localStorage.getItem("token");
-  return {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'multipart/form-data'
-  };
-};
+import api from '../../utils/api';
 
 // Estado inicial
 const initialState = {
@@ -27,11 +10,13 @@ const initialState = {
   loading: false,
   uploadLoading: false,
   statusLoading: false,
+  reviewLoading: false,
+  statsLoading: false,
   error: null,
   uploadProgress: 0
 };
 
-// Thunk para subir documento
+// ✅ Thunk para subir documento
 export const uploadDocument = createAsyncThunk(
   'document/uploadDocument',
   async ({ file, documentData }, { rejectWithValue }) => {
@@ -43,10 +28,10 @@ export const uploadDocument = createAsyncThunk(
       formData.append('description', documentData.description || '');
       formData.append('is_required', documentData.is_required || true);
 
-      const response = await axios.post(
-        `${BASE_URL}/document-users/upload-file`,
-        formData,
-        { headers: getAuthHeadersMultipart() }
+      const response = await api.post(
+        `/document-users/upload-file`,
+        formData
+        // No necesitamos headers - la instancia api los maneja automáticamente
       );
       
       return response.data;
@@ -58,15 +43,12 @@ export const uploadDocument = createAsyncThunk(
   }
 );
 
-// Thunk para obtener documentos de un usuario
+// ✅ Thunk para obtener documentos de un usuario
 export const getUserDocuments = createAsyncThunk(
   'document/getUserDocuments',
   async (userId, { rejectWithValue }) => {
     try {
-      const response = await axios.get(
-        `${BASE_URL}/document-users/user/${userId}`,
-        { headers: getAuthHeaders() }
-      );
+      const response = await api.get(`/document-users/user/${userId}`);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Error al obtener documentos');
@@ -74,15 +56,12 @@ export const getUserDocuments = createAsyncThunk(
   }
 );
 
-// Thunk para verificar estado de documentación
+// ✅ Thunk para verificar estado de documentación
 export const checkDocumentationStatus = createAsyncThunk(
   'document/checkDocumentationStatus',
   async (userId, { rejectWithValue }) => {
     try {
-      const response = await axios.get(
-        `${BASE_URL}/document-users/status/${userId}`,
-        { headers: getAuthHeaders() }
-      );
+      const response = await api.get(`/document-users/status/${userId}`);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Error al verificar documentación');
@@ -90,15 +69,12 @@ export const checkDocumentationStatus = createAsyncThunk(
   }
 );
 
-// Thunk para eliminar documento
+// ✅ Thunk para eliminar documento
 export const deleteDocument = createAsyncThunk(
   'document/deleteDocument',
   async (documentId, { rejectWithValue }) => {
     try {
-      const response = await axios.delete(
-        `${BASE_URL}/document-users/${documentId}`,
-        { headers: getAuthHeaders() }
-      );
+      const response = await api.delete(`/document-users/${documentId}`);
       return { documentId, message: response.data.message };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Error al eliminar documento');
@@ -106,9 +82,65 @@ export const deleteDocument = createAsyncThunk(
   }
 );
 
-// Slice de documentos
+// ✅ Thunks para revisión de documentos (Owner)
+export const getPendingDocuments = createAsyncThunk(
+  'document/getPendingDocuments',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/document-users/pending');
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Error al obtener documentos pendientes');
+    }
+  }
+);
+
+export const getDocumentStats = createAsyncThunk(
+  'document/getDocumentStats',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/document-users/stats');
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Error al obtener estadísticas');
+    }
+  }
+);
+
+export const approveDocument = createAsyncThunk(
+  'document/approveDocument',
+  async ({ documentId, reviewerId, comments }, { rejectWithValue }) => {
+    try {
+      const response = await api.patch(`/document-users/${documentId}/approve`, {
+        reviewerId,
+        comments
+      });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Error al aprobar documento');
+    }
+  }
+);
+
+export const rejectDocument = createAsyncThunk(
+  'document/rejectDocument',
+  async ({ documentId, reviewerId, reason, comments }, { rejectWithValue }) => {
+    try {
+      const response = await api.patch(`/document-users/${documentId}/reject`, {
+        reviewerId,
+        reason,
+        comments
+      });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Error al rechazar documento');
+    }
+  }
+);
+
+// ✅ Slice de documentos
 const documentSlice = createSlice({
-  name: 'document',
+  name: 'document', // Cambiado para coincidir con el store
   initialState,
   reducers: {
     clearError: (state) => {
@@ -131,6 +163,7 @@ const documentSlice = createSlice({
       .addCase(uploadDocument.fulfilled, (state, action) => {
         state.uploadLoading = false;
         if (action.payload.success) {
+          // Agregar o actualizar el documento en la lista
           const existingIndex = state.userDocuments.findIndex(
             doc => doc.id === action.payload.document.id
           );
@@ -188,35 +221,129 @@ const documentSlice = createSlice({
         state.userDocuments = state.userDocuments.filter(
           doc => doc.id !== action.payload.documentId
         );
+        state.pendingDocuments = state.pendingDocuments.filter(
+          doc => doc.id !== action.payload.documentId
+        );
       })
       .addCase(deleteDocument.rejected, (state, action) => {
         state.loading = false;
+        state.error = action.payload;
+      })
+
+      // Get pending documents
+      .addCase(getPendingDocuments.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getPendingDocuments.fulfilled, (state, action) => {
+        state.loading = false;
+        if (action.payload.success) {
+          state.pendingDocuments = action.payload.data.documents || [];
+        }
+      })
+      .addCase(getPendingDocuments.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // Get document stats
+      .addCase(getDocumentStats.pending, (state) => {
+        state.statsLoading = true;
+        state.error = null;
+      })
+      .addCase(getDocumentStats.fulfilled, (state, action) => {
+        state.statsLoading = false;
+        if (action.payload.success) {
+          state.documentStats = action.payload.data;
+        }
+      })
+      .addCase(getDocumentStats.rejected, (state, action) => {
+        state.statsLoading = false;
+        state.error = action.payload;
+      })
+
+      // Approve document
+      .addCase(approveDocument.pending, (state) => {
+        state.reviewLoading = true;
+        state.error = null;
+      })
+      .addCase(approveDocument.fulfilled, (state, action) => {
+        state.reviewLoading = false;
+        if (action.payload.success) {
+          const pendingIndex = state.pendingDocuments.findIndex(
+            doc => doc.id === action.payload.document.id
+          );
+          if (pendingIndex >= 0) {
+            state.pendingDocuments[pendingIndex] = action.payload.document;
+          }
+          const userDocIndex = state.userDocuments.findIndex(
+            doc => doc.id === action.payload.document.id
+          );
+          if (userDocIndex >= 0) {
+            state.userDocuments[userDocIndex] = action.payload.document;
+          }
+        }
+      })
+      .addCase(approveDocument.rejected, (state, action) => {
+        state.reviewLoading = false;
+        state.error = action.payload;
+      })
+
+      // Reject document
+      .addCase(rejectDocument.pending, (state) => {
+        state.reviewLoading = true;
+        state.error = null;
+      })
+      .addCase(rejectDocument.fulfilled, (state, action) => {
+        state.reviewLoading = false;
+        if (action.payload.success) {
+          const pendingIndex = state.pendingDocuments.findIndex(
+            doc => doc.id === action.payload.document.id
+          );
+          if (pendingIndex >= 0) {
+            state.pendingDocuments[pendingIndex] = action.payload.document;
+          }
+          const userDocIndex = state.userDocuments.findIndex(
+            doc => doc.id === action.payload.document.id
+          );
+          if (userDocIndex >= 0) {
+            state.userDocuments[userDocIndex] = action.payload.document;
+          }
+        }
+      })
+      .addCase(rejectDocument.rejected, (state, action) => {
+        state.reviewLoading = false;
         state.error = action.payload;
       });
   }
 });
 
-// Selectores
+// ✅ Selectores
 export const selectUserDocuments = (state) => state.document.userDocuments;
 export const selectDocumentationStatus = (state) => state.document.documentationStatus;
 export const selectDocumentLoading = (state) => state.document.loading;
 export const selectUploadLoading = (state) => state.document.uploadLoading;
 export const selectStatusLoading = (state) => state.document.statusLoading;
+export const selectReviewLoading = (state) => state.document.reviewLoading;
+export const selectStatsLoading = (state) => state.document.statsLoading;
 export const selectDocumentError = (state) => state.document.error;
 export const selectUploadProgress = (state) => state.document.uploadProgress;
+export const selectPendingDocuments = (state) => state.document.pendingDocuments;
+export const selectDocumentStats = (state) => state.document.documentStats;
 
-// Documentos requeridos por rol
+// ✅ Documentos requeridos por rol
 export const REQUIRED_DOCUMENTS_BY_ROLE = {
-  2: ['Firma Digital', 'RUT', 'Cédula Escaneada', 'Certificado Bancario'],
-  3: ['Firma Digital', 'RUT', 'Cédula Escaneada', 'Certificado Bancario', 'Autorización Líder'],
-  4: ['Firma Digital', 'RUT', 'Cédula Escaneada', 'Certificado Bancario', 'Autorización Gerente', 'Referencias Comerciales'],
+  2: ['Firma Digital', 'RUT', 'Cédula Escaneada', 'Certificado Bancario'], // Asesor
+  3: ['Firma Digital', 'RUT', 'Cédula Escaneada', 'Certificado Bancario', 'Autorización Líder'], // Líder
+  4: ['Firma Digital', 'RUT', 'Cédula Escaneada', 'Certificado Bancario', 'Autorización Gerente', 'Referencias Comerciales'], // Gerente
 };
 
-// Selector de documentos requeridos por rol
+// ✅ Selector de documentos requeridos por rol
 export const selectRequiredDocumentsByRole = (state, role) => {
   return REQUIRED_DOCUMENTS_BY_ROLE[role] || [];
 };
 
 export const { clearError, resetUploadProgress, setUploadProgress } = documentSlice.actions;
 
+// Export del reducer como default
 export default documentSlice.reducer;

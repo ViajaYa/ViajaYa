@@ -1,15 +1,10 @@
-const { UserDocument, User } = require('../db');
+const { UserDocument, User, sequelize } = require('../db');
 
 const documentUsersController = {
   // ✅ Subir/actualizar documento de usuario
   uploadDocumentFile: async (req, res) => {
     try {
-      console.log('📁 === CONTROLLER INICIADO ===');
-      console.log('req.body:', JSON.stringify(req.body, null, 2));
-      console.log('req.file:', req.file ? JSON.stringify(req.file, null, 2) : 'NO FILE');
-      
       if (!req.file) {
-        console.log('❌ No se recibió archivo en el controller');
         return res.status(400).json({
           success: false,
           message: 'No se envió ningún archivo'
@@ -53,8 +48,6 @@ const documentUsersController = {
         returning: true
       });
 
-      console.log('✅ Documento guardado exitosamente');
-
       res.status(created ? 201 : 200).json({
         success: true,
         message: created ? 'Documento subido exitosamente' : 'Documento actualizado exitosamente',
@@ -69,8 +62,6 @@ const documentUsersController = {
       });
 
     } catch (error) {
-      console.log('❌ ERROR EN CONTROLLER:', error.message);
-      console.log('Stack:', error.stack);
       return res.status(500).json({
         success: false,
         message: 'Error al subir archivo: ' + error.message,
@@ -219,6 +210,309 @@ const documentUsersController = {
 
     } catch (error) {
       console.error('Error al eliminar documento:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error interno del servidor' 
+      });
+    }
+  },
+
+  // ✅ Obtener todos los documentos pendientes de revisión
+  getPendingDocuments: async (req, res) => {
+    try {
+      const documents = await UserDocument.findAll({
+        where: { status: 'pending' },
+        include: [{
+          association: 'Owner', // Usar el alias definido para el propietario del documento
+          attributes: ['id', 'name', 'lastname', 'email', 'role']
+        }],
+        order: [['createdAt', 'ASC']]
+      });
+
+      res.json({
+        success: true,
+        data: documents
+      });
+
+    } catch (error) {
+      console.error('Error al obtener documentos pendientes:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error interno del servidor' 
+      });
+    }
+  },
+
+  // ✅ Aprobar documento
+  approveDocument: async (req, res) => {
+    try {
+      const { documentId } = req.params;
+      const { reviewerId, comments } = req.body;
+
+      const document = await UserDocument.findByPk(documentId);
+      
+      if (!document) {
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Documento no encontrado' 
+        });
+      }
+
+      await document.update({
+        status: 'approved',
+        verified_by: reviewerId,
+        verified_at: new Date(),
+        reviewed_at: new Date(),
+        review_comments: comments || 'Documento aprobado'
+      });
+
+      res.json({
+        success: true,
+        message: 'Documento aprobado exitosamente',
+        document
+      });
+
+    } catch (error) {
+      console.error('Error al aprobar documento:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error interno del servidor' 
+      });
+    }
+  },
+
+  // ✅ Rechazar documento
+  rejectDocument: async (req, res) => {
+    try {
+      const { documentId } = req.params;
+      const { reviewerId, reason, comments } = req.body;
+
+      if (!reason) {
+        return res.status(400).json({
+          success: false,
+          message: 'La razón del rechazo es requerida'
+        });
+      }
+
+      const document = await UserDocument.findByPk(documentId);
+      
+      if (!document) {
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Documento no encontrado' 
+        });
+      }
+
+      await document.update({
+        status: 'rejected',
+        verified_by: reviewerId,
+        verified_at: new Date(),
+        reviewed_at: new Date(),
+        rejection_reason: reason,
+        review_comments: comments || reason
+      });
+
+      res.json({
+        success: true,
+        message: 'Documento rechazado exitosamente',
+        document
+      });
+
+    } catch (error) {
+      console.error('Error al rechazar documento:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error interno del servidor' 
+      });
+    }
+  },
+
+  // ✅ Obtener estadísticas de documentos
+  getDocumentStats: async (req, res) => {
+    try {
+      const stats = await UserDocument.findAll({
+        attributes: [
+          'status',
+          [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+        ],
+        group: ['status']
+      });
+
+      const totalUsers = await User.count({
+        where: {
+          role: [2, 3, 4] // Solo contar usuarios que requieren documentación
+        }
+      });
+
+      const formattedStats = {
+        pending: 0,
+        approved: 0,
+        rejected: 0,
+        total: 0
+      };
+
+      stats.forEach(stat => {
+        formattedStats[stat.status] = parseInt(stat.dataValues.count);
+        formattedStats.total += parseInt(stat.dataValues.count);
+      });
+
+      res.json({
+        success: true,
+        data: {
+          ...formattedStats,
+          totalUsersRequiringDocs: totalUsers
+        }
+      });
+
+    } catch (error) {
+      console.error('Error al obtener estadísticas:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error interno del servidor' 
+      });
+    }
+  },
+
+  // ✅ Obtener todos los documentos pendientes de revisión (Solo Owner)
+  getPendingDocuments: async (req, res) => {
+    try {
+      const documents = await UserDocument.findAll({
+        where: { status: 'pending' },
+        include: [{
+          model: User,
+          as: 'Owner', // Usar el alias exacto definido en db.js
+          attributes: ['id', 'name', 'lastname', 'email', 'role']
+        }],
+        order: [['createdAt', 'ASC']]
+      });
+
+      res.json({
+        success: true,
+        data: {
+          documents,
+          totalPending: documents.length
+        }
+      });
+
+    } catch (error) {
+      console.error('Error al obtener documentos pendientes:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error interno del servidor' 
+      });
+    }
+  },
+
+  // ✅ Aprobar documento (Solo Owner)
+  approveDocument: async (req, res) => {
+    try {
+      const { documentId } = req.params;
+      const { comments } = req.body;
+
+      const document = await UserDocument.findByPk(documentId);
+      
+      if (!document) {
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Documento no encontrado' 
+        });
+      }
+
+      await document.update({
+        status: 'approved',
+        review_comments: comments || '',
+        reviewed_at: new Date()
+      });
+
+      res.json({
+        success: true,
+        message: 'Documento aprobado exitosamente',
+        document
+      });
+
+    } catch (error) {
+      console.error('Error al aprobar documento:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error interno del servidor' 
+      });
+    }
+  },
+
+  // ✅ Rechazar documento (Solo Owner)
+  rejectDocument: async (req, res) => {
+    try {
+      const { documentId } = req.params;
+      const { comments } = req.body;
+
+      if (!comments || comments.trim() === '') {
+        return res.status(400).json({
+          success: false,
+          message: 'Los comentarios son obligatorios al rechazar un documento'
+        });
+      }
+
+      const document = await UserDocument.findByPk(documentId);
+      
+      if (!document) {
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Documento no encontrado' 
+        });
+      }
+
+      await document.update({
+        status: 'rejected',
+        review_comments: comments,
+        reviewed_at: new Date()
+      });
+
+      res.json({
+        success: true,
+        message: 'Documento rechazado exitosamente',
+        document
+      });
+
+    } catch (error) {
+      console.error('Error al rechazar documento:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error interno del servidor' 
+      });
+    }
+  },
+
+  // ✅ Obtener estadísticas de documentos (Solo Owner)
+  getDocumentStats: async (req, res) => {
+    try {
+      const stats = await UserDocument.findAll({
+        attributes: [
+          'status',
+          [User.sequelize.fn('COUNT', User.sequelize.col('status')), 'count']
+        ],
+        group: ['status'],
+        raw: true
+      });
+
+      const totalUsers = await User.count({
+        where: { role: [2, 3, 4] } // Solo contar Asesores, Líderes y Gerentes
+      });
+
+      const formattedStats = {
+        pending: stats.find(s => s.status === 'pending')?.count || 0,
+        approved: stats.find(s => s.status === 'approved')?.count || 0,
+        rejected: stats.find(s => s.status === 'rejected')?.count || 0,
+        totalUsers,
+        totalDocuments: stats.reduce((acc, curr) => acc + parseInt(curr.count), 0)
+      };
+
+      res.json({
+        success: true,
+        data: formattedStats
+      });
+
+    } catch (error) {
+      console.error('Error al obtener estadísticas:', error);
       res.status(500).json({ 
         success: false, 
         message: 'Error interno del servidor' 

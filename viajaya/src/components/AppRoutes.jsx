@@ -42,6 +42,7 @@ const QuoteEdit = lazy(() => import("./Panel/Quotes/QuoteEdit"));
 const CreateStaff = lazy(() => import("./Panel/CreateStaff"));
 const ContractsList = lazy(() => import("./Panel/Contracts/ContractsList"));
 const ContractSet = lazy(() => import("./Panel/Contracts/ContractSet"));
+const DocumentsReview = lazy(() => import("./Panel/DocumentsReview"));
 
 
 const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
@@ -244,6 +245,14 @@ const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
         <RoleRoute allowedRoles={[USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
           <Suspense fallback={<LoadingSpinner />}>
             <ManagePopup />
+          </Suspense>
+        </RoleRoute>
+      } />
+      
+      <Route path="/panel/documents-review" element={
+        <RoleRoute allowedRoles={[USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <DocumentsReview />
           </Suspense>
         </RoleRoute>
       } />
