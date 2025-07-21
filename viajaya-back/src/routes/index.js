@@ -29,5 +29,5 @@ routes
 .use("/quotes", quoteRoutes)
 .use("/contracts", contractRoutes)
 .use("/payments", paymentRoutes)
-.use("/documents", documentUsersRoutes)
+.use("/document-users", documentUsersRoutes)
 module.exports = routes

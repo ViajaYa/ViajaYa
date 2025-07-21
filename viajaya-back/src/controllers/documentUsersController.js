@@ -1,11 +1,15 @@
 const { UserDocument, User } = require('../db');
-const { sequelize } = require('../db');
 
 const documentUsersController = {
   // ✅ Subir/actualizar documento de usuario
-   uploadDocumentFile: async (req, res) => {
+  uploadDocumentFile: async (req, res) => {
     try {
+      console.log('📁 === CONTROLLER INICIADO ===');
+      console.log('req.body:', JSON.stringify(req.body, null, 2));
+      console.log('req.file:', req.file ? JSON.stringify(req.file, null, 2) : 'NO FILE');
+      
       if (!req.file) {
+        console.log('❌ No se recibió archivo en el controller');
         return res.status(400).json({
           success: false,
           message: 'No se envió ningún archivo'
@@ -13,6 +17,14 @@ const documentUsersController = {
       }
 
       const { user_id, document_name, description, is_required } = req.body;
+
+      // Validar campos requeridos
+      if (!user_id || !document_name) {
+        return res.status(400).json({
+          success: false,
+          message: 'user_id y document_name son campos requeridos'
+        });
+      }
 
       // Verificar que el usuario existe
       const user = await User.findByPk(user_id);
@@ -24,71 +36,69 @@ const documentUsersController = {
       }
 
       // Determinar el tipo de archivo
-      const file_type = req.file.mimetype === 'application/pdf' ? 'pdf' : 'image';
+      const file_type = req.file.mimetype === 'application/pdf' ? 'pdf' : 
+                       req.file.mimetype.includes('word') ? 'document' : 'image';
 
       // Crear o actualizar documento
       const [document, created] = await UserDocument.upsert({
-        user_id,
+        user_id: parseInt(user_id),
         document_name,
-        description,
-        file_url: req.file.path, // URL de Cloudinary
+        description: description || '',
+        file_url: req.file.path,
         file_type,
-        cloudinary_public_id: req.file.filename, // Public ID de Cloudinary
-        is_required: is_required || true,
+        cloudinary_public_id: req.file.public_id || req.file.filename,
+        is_required: is_required === 'true' || is_required === true,
         status: 'pending'
       }, {
         returning: true
       });
 
+      console.log('✅ Documento guardado exitosamente');
+
       res.status(created ? 201 : 200).json({
         success: true,
-        message: created ? 'Archivo subido exitosamente' : 'Archivo actualizado exitosamente',
+        message: created ? 'Documento subido exitosamente' : 'Documento actualizado exitosamente',
         document,
         file: {
           url: req.file.path,
-          public_id: req.file.filename,
+          public_id: req.file.public_id || req.file.filename,
           type: file_type,
-          size: req.file.size
+          size: req.file.size,
+          originalname: req.file.originalname
         }
       });
 
     } catch (error) {
-      console.error('Error al subir archivo:', error);
-      res.status(500).json({
+      console.log('❌ ERROR EN CONTROLLER:', error.message);
+      console.log('Stack:', error.stack);
+      return res.status(500).json({
         success: false,
-        message: 'Error al subir archivo',
+        message: 'Error al subir archivo: ' + error.message,
         error: error.message
       });
     }
   },
-
-  // ✅ Obtener todos los documentos de un usuario
+  
+  // ✅ Obtener documentos de un usuario específico
   getUserDocuments: async (req, res) => {
     try {
       const { userId } = req.params;
 
-      const user = await User.findByPk(userId, {
-        include: [
-          {
-            model: UserDocument,
-            as: 'DocumentsAsOwner',
-            include: [
-              {
-                model: User,
-                as: 'VerifiedBy',
-                attributes: ['id', 'name', 'lastname', 'email']
-              }
-            ]
-          }
-        ]
-      });
-
+      // Primero verificar si el usuario existe
+      const user = await User.findByPk(userId);
+      
       if (!user) {
         return res.status(404).json({ 
           success: false, 
           message: 'Usuario no encontrado' 
         });
       }
+
+      // Buscar documentos del usuario
+      const documents = await UserDocument.findAll({
+        where: { user_id: userId },
+        order: [['createdAt', 'DESC']]
+      });
 
       res.json({
         success: true,
@@ -100,7 +110,7 @@ const documentUsersController = {
             email: user.email,
             role: user.role
           },
-          documents: user.DocumentsAsOwner || []
+          documents: documents || []
         }
       });
 
@@ -108,30 +118,18 @@ const documentUsersController = {
       console.error('Error al obtener documentos:', error);
       res.status(500).json({ 
         success: false, 
-        message: 'Error al obtener documentos del usuario' 
+        message: 'Error interno del servidor' 
       });
     }
   },
 
-  // ✅ Verificar si la documentación del usuario está completa
+  // ✅ Verificar estado de documentación de un usuario
   checkDocumentationStatus: async (req, res) => {
     try {
       const { userId } = req.params;
 
-      const user = await User.findByPk(userId, {
-        include: [
-          {
-            model: UserDocument,
-            as: 'DocumentsAsOwner',
-            where: { 
-              status: 'approved',
-              is_required: true 
-            },
-            required: false
-          }
-        ]
-      });
-
+      // Verificar que el usuario existe
+      const user = await User.findByPk(userId);
       if (!user) {
         return res.status(404).json({ 
           success: false, 
@@ -139,45 +137,53 @@ const documentUsersController = {
         });
       }
 
-      // Solo verificar para roles 2, 3, 4
-      const requiredRoles = [2, 3, 4];
-      if (!requiredRoles.includes(user.role)) {
+      // Documentos requeridos por rol
+      const REQUIRED_DOCUMENTS_BY_ROLE = {
+        2: ['Firma Digital', 'RUT', 'Cédula Escaneada', 'Certificado Bancario'], // Asesor
+        3: ['Firma Digital', 'RUT', 'Cédula Escaneada', 'Certificado Bancario', 'Autorización Líder'], // Líder
+        4: ['Firma Digital', 'RUT', 'Cédula Escaneada', 'Certificado Bancario', 'Autorización Gerente', 'Referencias Comerciales'], // Gerente
+      };
+
+      const userRole = user.role;
+      const requiredDocuments = REQUIRED_DOCUMENTS_BY_ROLE[userRole] || [];
+      
+      // Si el rol no requiere documentos, devolver que está completo
+      if (requiredDocuments.length === 0) {
         return res.json({
           success: true,
           data: {
             requiresDocumentation: false,
             isComplete: true,
-            message: 'Este rol no requiere documentación especial'
+            approvedDocuments: 0,
+            totalRequired: 0,
+            missingDocuments: [],
+            documents: []
           }
         });
       }
 
-      // Documentos mínimos requeridos (puedes ajustar según tu negocio)
-      const minimumRequiredDocs = ['Firma Digital', 'RUT', 'Cédula Escaneada'];
-      
-      const approvedDocs = user.DocumentsAsOwner || [];
-      const approvedDocNames = approvedDocs.map(doc => doc.document_name);
-      
-      const missingDocs = minimumRequiredDocs.filter(docName => 
-        !approvedDocNames.includes(docName)
-      );
+      // Obtener documentos actuales del usuario
+      const userDocuments = await UserDocument.findAll({
+        where: { user_id: userId },
+        attributes: ['document_name', 'status', 'createdAt']
+      });
 
-      const isComplete = missingDocs.length === 0;
+      // Verificar qué documentos tiene y cuáles faltan
+      const uploadedDocuments = userDocuments.map(doc => doc.document_name);
+      const approvedDocuments = userDocuments.filter(doc => doc.status === 'approved').length;
+      const missingDocuments = requiredDocuments.filter(doc => !uploadedDocuments.includes(doc));
+      
+      const isComplete = missingDocuments.length === 0 && approvedDocuments === requiredDocuments.length;
 
       res.json({
         success: true,
         data: {
           requiresDocumentation: true,
           isComplete,
-          approvedDocuments: approvedDocs.length,
-          totalRequired: minimumRequiredDocs.length,
-          missingDocuments: missingDocs,
-          documents: approvedDocs.map(doc => ({
-            name: doc.document_name,
-            status: doc.status,
-            uploadedAt: doc.createdAt,
-            verifiedAt: doc.verified_at
-          }))
+          approvedDocuments,
+          totalRequired: requiredDocuments.length,
+          missingDocuments,
+          documents: userDocuments
         }
       });
 
@@ -185,122 +191,7 @@ const documentUsersController = {
       console.error('Error al verificar documentación:', error);
       res.status(500).json({ 
         success: false, 
-        message: 'Error al verificar estado de documentación' 
-      });
-    }
-  },
-
-  // ✅ Obtener todos los documentos pendientes de revisión (para admins)
-  getPendingDocuments: async (req, res) => {
-    try {
-      const { page = 1, limit = 10, status = 'pending' } = req.query;
-      const offset = (page - 1) * limit;
-
-      const { count, rows: documents } = await UserDocument.findAndCountAll({
-        where: { status },
-        include: [
-          {
-            model: User,
-            as: 'Owner',
-            attributes: ['id', 'name', 'lastname', 'email', 'role']
-          },
-          {
-            model: User,
-            as: 'VerifiedBy',
-            attributes: ['id', 'name', 'lastname', 'email'],
-            required: false
-          }
-        ],
-        order: [['createdAt', 'DESC']],
-        limit: parseInt(limit),
-        offset
-      });
-
-      res.json({
-        success: true,
-        data: {
-          documents,
-          pagination: {
-            total: count,
-            page: parseInt(page),
-            limit: parseInt(limit),
-            totalPages: Math.ceil(count / limit)
-          }
-        }
-      });
-
-    } catch (error) {
-      console.error('Error al obtener documentos pendientes:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: 'Error al obtener documentos pendientes' 
-      });
-    }
-  },
-
-  // ✅ Revisar/aprobar/rechazar documento (para admins)
-  reviewDocument: async (req, res) => {
-    try {
-      const { documentId } = req.params;
-      const { status, rejection_reason } = req.body;
-      const adminId = req.user?.id; // Asumiendo que viene del middleware de auth
-
-      if (!['approved', 'rejected'].includes(status)) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Status debe ser "approved" o "rejected"' 
-        });
-      }
-
-      if (status === 'rejected' && !rejection_reason) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'La razón de rechazo es requerida' 
-        });
-      }
-
-      const document = await UserDocument.findByPk(documentId);
-      if (!document) {
-        return res.status(404).json({ 
-          success: false, 
-          message: 'Documento no encontrado' 
-        });
-      }
-
-      await document.update({
-        status,
-        rejection_reason: status === 'rejected' ? rejection_reason : null,
-        verified_by: adminId,
-        verified_at: new Date()
-      });
-
-      // Traer el documento actualizado con relaciones
-      const updatedDocument = await UserDocument.findByPk(documentId, {
-        include: [
-          {
-            model: User,
-            as: 'Owner',
-            attributes: ['id', 'name', 'lastname', 'email']
-          },
-          {
-            model: User,
-            as: 'VerifiedBy',
-            attributes: ['id', 'name', 'lastname', 'email']
-          }
-        ]
-      });
-
-      res.json({
-        success: true,
-        message: `Documento ${status === 'approved' ? 'aprobado' : 'rechazado'} exitosamente`,
-        document: updatedDocument
-      });
-
-    } catch (error) {
-      console.error('Error al revisar documento:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: 'Error al revisar documento' 
+        message: 'Error interno del servidor' 
       });
     }
   },
@@ -309,21 +200,13 @@ const documentUsersController = {
   deleteDocument: async (req, res) => {
     try {
       const { documentId } = req.params;
-      const userId = req.user?.id;
 
       const document = await UserDocument.findByPk(documentId);
+      
       if (!document) {
         return res.status(404).json({ 
           success: false, 
           message: 'Documento no encontrado' 
-        });
-      }
-
-      // Solo el propietario o un admin puede eliminar
-      if (document.user_id !== userId && req.user?.role !== 7) {
-        return res.status(403).json({ 
-          success: false, 
-          message: 'No tienes permisos para eliminar este documento' 
         });
       }
 
@@ -338,46 +221,7 @@ const documentUsersController = {
       console.error('Error al eliminar documento:', error);
       res.status(500).json({ 
         success: false, 
-        message: 'Error al eliminar documento' 
-      });
-    }
-  },
-
-  // ✅ Obtener estadísticas de documentos (para dashboard admin)
-  getDocumentStats: async (req, res) => {
-    try {
-      const stats = await UserDocument.findAll({
-        attributes: [
-          'status',
-          [sequelize.fn('COUNT', sequelize.col('id')), 'count']
-        ],
-        group: ['status'],
-        raw: true
-      });
-
-      const formattedStats = {
-        pending: 0,
-        approved: 0,
-        rejected: 0
-      };
-
-      stats.forEach(stat => {
-        formattedStats[stat.status] = parseInt(stat.count);
-      });
-
-      res.json({
-        success: true,
-        data: {
-          ...formattedStats,
-          total: formattedStats.pending + formattedStats.approved + formattedStats.rejected
-        }
-      });
-
-    } catch (error) {
-      console.error('Error al obtener estadísticas:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: 'Error al obtener estadísticas' 
+        message: 'Error interno del servidor' 
       });
     }
   }

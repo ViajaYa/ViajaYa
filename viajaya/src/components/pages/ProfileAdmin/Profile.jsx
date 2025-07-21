@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { FaRegCopy } from "react-icons/fa6";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { MdPayment, MdExitToApp } from "react-icons/md";
-import axios from "axios";
+import api from "../../../utils/api";
 import { findUsers, setUsers } from "../../../redux/actions/actions";
 import { useDispatch, useSelector } from "react-redux";
 import { toast, Toaster } from "react-hot-toast";
@@ -17,8 +17,11 @@ import {
   faChartLine
 } from '@fortawesome/free-solid-svg-icons';
 
-// ✅ Importar hook de permisos
+// ✅ Importar hook de permisos desde la ubicación correcta
 import { useRolePermissions, USER_ROLES } from "../../../redux/hooks/hooks";
+// ✅ Importar componente de alerta de documentación
+import DocumentationAlert from "../../DocumentationAlert";
+import DocumentModal from "../../DocumentModal";
 
 // ✅ Imports del authSlice corregidos
 import { 
@@ -63,6 +66,7 @@ const Profile = () => {
   const [changePass, setChangePass] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showCreateQuote, setShowCreateQuote] = useState(false);
+  const [showDocumentManager, setShowDocumentManager] = useState(false);
   
   // ✅ Estados del formulario
   const [formData, setFormData] = useState({
@@ -100,19 +104,19 @@ const Profile = () => {
   };
 
   // ✅ Cargar datos iniciales
-  useEffect(() => {
-    if (isAuthenticated) {
-      axios.get("/user")
-        .then((data) => {
-          dispatch(setUsers(data.data));
-          setTimeout(() => setLoading(false), 500);
-        })
-        .catch((error) => {
-          console.error('Error loading users:', error);
-          setLoading(false);
-        });
-    }
-  }, [dispatch, isAuthenticated]);
+ useEffect(() => {
+  if (isAuthenticated) {
+    api.get("/user")  // ✅ CORREGIDO: usar api en lugar de axios
+      .then((data) => {
+        dispatch(setUsers(data.data));
+        setTimeout(() => setLoading(false), 500);
+      })
+      .catch((error) => {
+        console.error('Error loading users:', error);
+        setLoading(false);
+      });
+  }
+}, [dispatch, isAuthenticated]);
 
   // ✅ Sincronizar formData con usuario
   useEffect(() => {
@@ -203,33 +207,34 @@ const Profile = () => {
   };
 
   // ✅ Subir imagen de usuario
-  const uploadUserImage = async (e) => {
-    try {
-      const files = e.target.files;
-      if (!files || files.length === 0) return;
+ const uploadUserImage = async (e) => {
+  try {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
-      const data = new FormData();
-      data.append("file", files[0]);
-      data.append("upload_preset", "viajaya");
-      data.append("api_key", "612393625364863");
-      data.append("timestamp", 0);
-      
-      const res = await axios.post(
-        "https://api.cloudinary.com/v1_1/dftvenl2z/image/upload",
-        data
-      );
+    const data = new FormData();
+    data.append("file", files[0]);
+    data.append("upload_preset", "viajaya");
+    data.append("api_key", "612393625364863");
+    data.append("timestamp", 0);
+    
+    // ✅ Esta llamada está bien porque es directa a Cloudinary
+    const res = await api.post(  // ✅ Usar api aunque sea para Cloudinary para consistencia
+      "https://api.cloudinary.com/v1_1/dftvenl2z/image/upload",
+      data
+    );
 
-      await dispatch(updateProfile({
-        image: res.data.secure_url
-      })).unwrap();
+    await dispatch(updateProfile({
+      image: res.data.secure_url
+    })).unwrap();
 
-      toast.success("Imagen actualizada exitosamente");
+    toast.success("Imagen actualizada exitosamente");
 
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      toast.error('Error al subir la imagen');
-    }
-  };
+  } catch (error) {
+    console.error('Error uploading image:', error);
+    toast.error('Error al subir la imagen');
+  }
+};
 
   // ✅ Cerrar sesión
   const handleLogout = async () => {
@@ -416,6 +421,12 @@ const Profile = () => {
               </div>
             </div>
             
+            {/* ✅ Alerta de documentación para empleados (roles 2,3,4) */}
+            <DocumentationAlert 
+              user={user} 
+              onOpenDocuments={() => setShowDocumentManager(true)}
+            />
+            
             {/* ✅ Formulario de datos */}
             {page === 0 && (
               <div className="w-full max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg">
@@ -530,7 +541,7 @@ const Profile = () => {
           </div>
 
           {/* ✅ Columna derecha - Imagen promocional */}
-          <div className="w-full lg:w-1/2 flex items-center justify-center mt-40 lg:mt-32 hidden lg:block">
+          <div className="w-full lg:w-1/2 mt-40 lg:mt-32 hidden lg:flex lg:items-center lg:justify-center">
             <div className="flex flex-col items-center space-y-6">
               <Link to="/productos" className="group">
                 <img
@@ -566,6 +577,13 @@ const Profile = () => {
             }}
           />
         )}
+
+        {/* ✅ Modal de gestión de documentos */}
+        <DocumentModal
+          isOpen={showDocumentManager}
+          onClose={() => setShowDocumentManager(false)}
+          user={user}
+        />
       </div>
     </>
   );

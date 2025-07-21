@@ -21,7 +21,7 @@ const PrivateRoute = ({ children, redirectTo = "/login" }) => {
   }
 
   // Si el token existe pero el usuario no está activo
-  if (!user.is_active) {
+  if (user.isActive === false) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center p-8 bg-white rounded-lg shadow-md max-w-md">
