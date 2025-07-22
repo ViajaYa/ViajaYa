@@ -1,4 +1,4 @@
-const {User} = require("../db")
+const {User, conn: sequelize} = require("../db")
 const jwt = require("jsonwebtoken")
 const bcrypt = require("bcrypt")
 const { Op } = require("sequelize")
@@ -544,7 +544,7 @@ authUser: async ({email, password}) => {
 
             const dateFilter = getDateFilterForPeriod(period);
 
-            // ✅ SQL RECURSIVO para obtener métricas del equipo
+            // ✅ SQL RECURSIVO para obtener métricas del equipo (simplificado)
             const teamMetrics = await sequelize.query(`
                 WITH RECURSIVE team_hierarchy AS (
                     -- Usuario base (manager)
@@ -567,28 +567,17 @@ authUser: async ({email, password}) => {
                     COUNT(DISTINCT CASE WHEN th.role = 2 THEN th.id END) as total_asesores,
                     COUNT(DISTINCT CASE WHEN th.role = 3 THEN th.id END) as total_lideres,
                     COUNT(DISTINCT CASE WHEN th.role = 4 THEN th.id END) as total_gerentes,
-                    COUNT(DISTINCT q.id) as total_quotes_generated,
-                    COUNT(DISTINCT CASE WHEN q.status = 'approved' THEN q.id END) as quotes_approved,
-                    COALESCE(SUM(ct.valor_total), 0) as total_contracts_value,
-                    COUNT(DISTINCT ct.id) as total_contracts,
-                    COALESCE(SUM(com.monto_comision), 0) as total_commissions_generated,
-                    COALESCE(SUM(CASE WHEN com.status = 'paid' THEN com.monto_comision ELSE 0 END), 0) as commissions_paid,
-                    COALESCE(SUM(CASE WHEN com.status = 'pending' THEN com.monto_comision ELSE 0 END), 0) as commissions_pending,
-                    AVG(th.commission_percentage) as avg_commission_percentage
+                    COUNT(DISTINCT CASE WHEN u.is_active_seller = true THEN th.id END) as active_members,
+                    COALESCE(AVG(th.commission_percentage), 0) as avg_commission_percentage,
+                    0 as total_sales,
+                    0 as total_commissions,
+                    0 as total_orders
                 FROM team_hierarchy th
-                LEFT JOIN quotes q ON q.asesor_id = th.id 
-                    AND q.created_at >= :startDate 
-                    AND q.created_at <= :endDate
-                LEFT JOIN contracts ct ON ct.quote_id = q.id
-                LEFT JOIN commissions com ON com.vendedor_id = th.id 
-                    AND com.created_at >= :startDate 
-                    AND com.created_at <= :endDate
+                LEFT JOIN users u ON u.id = th.id
                 WHERE th.level > 0
             `, {
                 replacements: {
-                    managerId,
-                    startDate: dateFilter.start,
-                    endDate: dateFilter.end
+                    managerId
                 },
                 type: sequelize.QueryTypes.SELECT
             });
