@@ -64,7 +64,7 @@ const Profile = () => {
   
   // ✅ Estados locales
   const [changePass, setChangePass] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // ✅ Cambiar a false inicialmente
   const [showCreateQuote, setShowCreateQuote] = useState(false);
   const [showDocumentManager, setShowDocumentManager] = useState(false);
   
@@ -79,12 +79,19 @@ const Profile = () => {
     password3: ''
   });
 
-  // ✅ Protección de ruta
+  // ✅ Protección de ruta - Simplificada
   useEffect(() => {
-    if (!isAuthenticated) {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+    
+    // Si tenemos token pero no user, esperamos a que se cargue
+    if (!authLoading && !user) {
       navigate("/login");
     }
-  }, [isAuthenticated, navigate]);
+  }, [navigate, user, authLoading]);
 
   // ✅ Generar link de referido
   const referralLink = user?.referral_code 
@@ -103,20 +110,23 @@ const Profile = () => {
     }
   };
 
-  // ✅ Cargar datos iniciales
- useEffect(() => {
-  if (isAuthenticated) {
-    api.get("/user")  // ✅ CORREGIDO: usar api en lugar de axios
-      .then((data) => {
-        dispatch(setUsers(data.data));
-        setTimeout(() => setLoading(false), 500);
-      })
-      .catch((error) => {
-        console.error('Error loading users:', error);
-        setLoading(false);
-      });
-  }
-}, [dispatch, isAuthenticated]);
+  // ✅ Cargar datos iniciales - Solo para admins que necesiten ver todos los usuarios
+  useEffect(() => {
+    if (user && user.role >= 5) { // Solo Admin, Contador, Owner
+      setLoading(true);
+      api.get("/user")  // ✅ CORREGIDO: usar api en lugar de axios
+        .then((data) => {
+          dispatch(setUsers(data.data));
+        })
+        .catch((error) => {
+          console.error('Error loading users:', error);
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    }
+    // No hay else - para usuarios con role < 5, loading ya está en false por defecto
+  }, [dispatch, user?.id, user?.role]); // Cambié las dependencias
 
   // ✅ Sincronizar formData con usuario
   useEffect(() => {
@@ -247,8 +257,8 @@ const Profile = () => {
     }
   };
 
-  // ✅ Estados de carga
-  if (authLoading || loading) {
+  // ✅ Estados de carga - Simplificados
+  if (authLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -256,8 +266,32 @@ const Profile = () => {
     );
   }
 
-  // ✅ Redirección si no está autenticado
-  if (!isAuthenticated) {
+  // ✅ Mostrar loading si estamos cargando usuarios (solo para admin)
+  if (loading && user?.role >= 5) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando datos de usuarios...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ Mostrar si no hay usuario pero hay token (esperando carga)
+  if (!user && localStorage.getItem('token')) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando perfil...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ Redirección si no hay token ni usuario
+  if (!user && !localStorage.getItem('token')) {
     return null;
   }
 

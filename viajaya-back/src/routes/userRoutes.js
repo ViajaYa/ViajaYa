@@ -116,6 +116,27 @@ userRoutes.get("/profile", authenticateToken, async (req,res) => {
     }
 });
 
+// Actualizar propio perfil
+userRoutes.put("/profile", authenticateToken, async (req,res) => {
+    try {
+        const userData = {
+            ...req.body,
+            id: req.user.id // Solo puede actualizar su propio perfil
+        };
+        const result = await putUser(userData);
+        res.status(200).json({
+            success: true,
+            message: "Perfil actualizado exitosamente",
+            user: result.user || result
+        });
+    } catch (error) {
+        res.status(400).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+
 // Solo admins y superiores pueden ver todos los usuarios
 userRoutes.get("/", authenticateToken, authorizeRoles(5, 6, 7), async (req,res) => {
     try {

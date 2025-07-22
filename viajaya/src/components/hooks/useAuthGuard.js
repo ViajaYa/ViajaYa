@@ -1,54 +1,66 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '../../redux/hooks/hooks';
 import { useAppDispatch } from '../../redux/hooks/hooks';
 import { verifyToken, logout } from '../../redux/slices/authSlice';
 
 const useAuthGuard = () => {
   const dispatch = useAppDispatch();
-  const { isAuthenticated, user, loading, error } = useAuth();
-  const hasInitialized = useRef(false);
+  const { isAuthenticated, user, loading, error, token } = useAuth();
+  const initializationRef = useRef({ 
+    done: false, 
+    lastToken: null, 
+    verificationInProgress: false 
+  });
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    
-    // ✅ Solo verificar token una vez para evitar bucles infinitos
-    if (token && !isAuthenticated && !loading && !hasInitialized.current) {
-      hasInitialized.current = true;
-      dispatch(verifyToken());
-    }
-    
-    // Si no hay token pero Redux dice que está autenticado, limpiar estado
-    if (!token && isAuthenticated) {
-      hasInitialized.current = false; // Permitir re-inicialización
-      dispatch(logout());
-    }
-    
-    // Resetear flag si el estado cambia (por logout manual, etc.)
-    if (!token && !isAuthenticated) {
-      hasInitialized.current = false;
-    }
-  }, [dispatch, isAuthenticated, loading]);
+    const tokenFromStorage = localStorage.getItem('token');
+    const { done, lastToken, verificationInProgress } = initializationRef.current;
 
-  // Función para verificar permisos
-  const hasPermission = (requiredRoles = []) => {
-    if (!isAuthenticated || !user) return false;
-    if (requiredRoles.length === 0) return true;
-    return requiredRoles.includes(user.role);
-  };
+    // ✅ Evitar múltiples dispatches simultáneos
+    if (verificationInProgress) return;
 
-  // Función para verificar si el usuario está activo
-  const isActiveUser = () => {
-    return isAuthenticated && user && user.is_active;
-  };
+    // ✅ Solo actuar si el token cambió REALMENTE
+    if (tokenFromStorage !== lastToken) {
+      initializationRef.current.lastToken = tokenFromStorage;
+      
+      if (tokenFromStorage && !isAuthenticated && !loading) {
+        // Token existe pero no estamos autenticados -> verificar
+        initializationRef.current.verificationInProgress = true;
+        dispatch(verifyToken())
+          .finally(() => {
+            initializationRef.current.verificationInProgress = false;
+          });
+      } else if (!tokenFromStorage && isAuthenticated) {
+        // No hay token pero estamos autenticados -> logout silencioso
+        initializationRef.current.verificationInProgress = true;
+        dispatch(logout())
+          .finally(() => {
+            initializationRef.current.verificationInProgress = false;
+          });
+      }
+    }
+  }, [dispatch, isAuthenticated, loading]); // ✅ Dependencias más estables
 
-  return {
+  // ✅ Memoizar las funciones para evitar re-creaciones
+  const authMethods = useMemo(() => ({
+    hasPermission: (requiredRoles = []) => {
+      if (!isAuthenticated || !user) return false;
+      if (requiredRoles.length === 0) return true;
+      return requiredRoles.includes(user.role);
+    },
+
+    isActiveUser: () => {
+      return isAuthenticated && user && (user.is_active || user.isActive);
+    }
+  }), [isAuthenticated, user?.role, user?.is_active, user?.isActive]);
+
+  return useMemo(() => ({
     isAuthenticated,
     user,
     loading,
     error,
-    hasPermission,
-    isActiveUser,
-  };
+    ...authMethods
+  }), [isAuthenticated, user, loading, error, authMethods]);
 };
 
-export default useAuthGuard; // ✅ Exportación default
+export default useAuthGuard;

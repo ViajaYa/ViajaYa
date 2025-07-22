@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
@@ -21,17 +21,24 @@ import {
 const DocumentationAlert = ({ user, onOpenDocuments, className = "" }) => {
   const dispatch = useDispatch();
   const [isDismissed, setIsDismissed] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [hasInitialized, setHasInitialized] = useState(false);
   
   // Selectores del Redux store
   const documentationStatus = useSelector(selectDocumentationStatus);
   const statusLoading = useSelector(selectStatusLoading);
   const error = useSelector(selectDocumentError);
   
-  // Solo mostrar para roles 2, 3, 4 (Asesor, Líder, Gerente)
-  const requiresDocumentation = [2, 3, 4].includes(user?.role);
+  // Memoizar valores que no cambian frecuentemente
+  const requiresDocumentation = useMemo(() => 
+    [2, 3, 4].includes(user?.role), 
+    [user?.role]
+  );
   
-  // Obtener documentos requeridos para el rol del usuario
-  const requiredDocuments = REQUIRED_DOCUMENTS_BY_ROLE[user?.role] || [];
+  const requiredDocuments = useMemo(() => 
+    REQUIRED_DOCUMENTS_BY_ROLE[user?.role] || [], 
+    [user?.role]
+  );
 
   // Verificar si la alerta fue previamente cerrada (localStorage)
   useEffect(() => {
@@ -42,54 +49,95 @@ const DocumentationAlert = ({ user, onOpenDocuments, className = "" }) => {
     if (dismissedTime) {
       const timeDiff = Date.now() - parseInt(dismissedTime);
       const hoursDiff = timeDiff / (1000 * 60 * 60);
-      if (hoursDiff < 24) {
+      // Reducir el tiempo de "dismissed" a 1 hora para testing, y solo si la documentación está completa
+      if (hoursDiff < 1 && documentationStatus?.isComplete) {
         setIsDismissed(true);
       } else {
+        // Si han pasado más de 1 hora O la documentación no está completa, mostrar la alerta
         localStorage.removeItem(dismissedKey);
+        setIsDismissed(false);
       }
     }
-  }, [user?.id]);
+  }, [user?.id, documentationStatus?.isComplete]);
 
-  // Cargar datos del backend cuando el componente se monta
+  // Cargar datos del backend cuando el componente se monta - SOLO UNA VEZ
   useEffect(() => {
-    if (requiresDocumentation && user?.id && !isDismissed) {
+    if (requiresDocumentation && user?.id && !isDismissed && !hasInitialized) {
+      setHasInitialized(true);
       dispatch(getUserDocuments(user.id));
       dispatch(checkDocumentationStatus(user.id));
     }
-  }, [dispatch, user?.id, requiresDocumentation, isDismissed]);
+  }, [dispatch, user?.id, requiresDocumentation, isDismissed, hasInitialized]);
 
-  // Mostrar toast si hay error
+  // Mostrar toast si hay error - Solo una vez por error
   useEffect(() => {
     if (error) {
       toast.error(`Error al verificar documentación: ${error}`);
     }
   }, [error]);
 
-  // No mostrar si no requiere documentación, fue dismissada, o está cargando
-  if (!requiresDocumentation || isDismissed || statusLoading) {
+  // Debug logs para identificar problemas
+  useEffect(() => {
+    if (requiresDocumentation) {
+      console.log('DocumentationAlert Debug:', {
+        userRole: user?.role,
+        userId: user?.id,
+        requiresDocumentation,
+        isDismissed,
+        hasInitialized,
+        statusLoading,
+        documentationStatus,
+        error
+      });
+    }
+  }, [requiresDocumentation, user?.role, user?.id, isDismissed, hasInitialized, statusLoading, documentationStatus, error]);
+
+  // No mostrar si no requiere documentación
+  if (!requiresDocumentation || !user?.id) {
     return null;
   }
 
-  // No mostrar si hay error o no hay datos aún
-  if (error && !documentationStatus) {
+  // No mostrar si fue dismissada
+  if (isDismissed) {
     return null;
   }
 
-  // No mostrar si la documentación está completa
-  if (documentationStatus?.isComplete) {
-    return null;
+  // Mostrar si está cargando
+  if (statusLoading) {
+    return (
+      <div className={`bg-yellow-500 text-white p-4 rounded-lg shadow-lg mb-6 ${className}`}>
+        <div className="flex items-center">
+          <FontAwesomeIcon icon={faFileUpload} className="mr-3 text-lg animate-spin" />
+          <span>Verificando estado de documentación...</span>
+        </div>
+      </div>
+    );
   }
 
-  // No mostrar si aún no tenemos datos del status
-  if (!documentationStatus && !statusLoading) {
+  // Mostrar alerta si la documentación NO está completa O si no hay datos aún
+  if (!documentationStatus || !documentationStatus.isComplete) {
+    // Continuar mostrando el componente...
+  } else {
+    // Documentación completa, no mostrar alerta
     return null;
   }
 
   const handleDismiss = () => {
-    setIsDismissed(true);
-    // Guardar en localStorage para que no aparezca por 24 horas
-    const dismissedKey = `docAlert_${user.id}_dismissed`;
-    localStorage.setItem(dismissedKey, Date.now().toString());
+    // Solo permitir cerrar si la documentación está completa
+    if (documentationStatus?.isComplete) {
+      setIsDismissed(true);
+      const dismissedKey = `docAlert_${user.id}_dismissed`;
+      localStorage.setItem(dismissedKey, Date.now().toString());
+      toast.success("¡Excelente! Tu documentación está completa.");
+    } else {
+      // Si no está completa, minimizar en lugar de cerrar
+      setIsMinimized(true);
+      toast.info("Alerta minimizada. Puedes expandirla nuevamente.");
+    }
+  };
+
+  const handleExpand = () => {
+    setIsMinimized(false);
   };
 
   const getRoleText = (role) => {
@@ -101,13 +149,50 @@ const DocumentationAlert = ({ user, onOpenDocuments, className = "" }) => {
     return roleMap[role] || 'Empleado';
   };
 
+  // Vista minimizada
+  if (isMinimized) {
+    return (
+      <div className={`bg-orange-600 text-white p-3 rounded-lg shadow-lg mb-6 relative cursor-pointer hover:bg-orange-700 transition-all duration-300 ${className}`}
+           onClick={handleExpand}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <FontAwesomeIcon 
+              icon={faExclamationTriangle} 
+              className="text-xl text-yellow-300" 
+            />
+            <div>
+              <span className="font-semibold">Documentación Pendiente</span>
+              <span className="ml-2 bg-white bg-opacity-20 px-2 py-1 rounded-full text-xs">
+                {documentationStatus?.missingDocuments?.length || 0} pendientes
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenDocuments();
+              }}
+              className="bg-white text-orange-600 px-3 py-1 rounded text-xs font-semibold hover:bg-gray-100"
+              title="Completar documentación"
+            >
+              <FontAwesomeIcon icon={faFileUpload} className="mr-1" />
+              Completar
+            </button>
+            <span className="text-xs text-yellow-200">Click para expandir</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={`bg-orange-600 text-white p-6 rounded-lg shadow-lg mb-6 relative `}>
-      {/* Botón para cerrar */}
+    <div className={`bg-orange-600 text-white p-6 rounded-lg shadow-lg mb-6 relative ${className}`}>
+      {/* Botón para minimizar */}
       <button
         onClick={handleDismiss}
         className="absolute top-3 right-3 text-white hover:text-gray-200 transition-colors duration-200"
-        title="Cerrar alerta (se mostrará nuevamente en 24 horas)"
+        title={documentationStatus?.isComplete ? "Cerrar alerta permanentemente" : "Minimizar alerta"}
       >
         <FontAwesomeIcon icon={faTimes} className="text-lg" />
       </button>

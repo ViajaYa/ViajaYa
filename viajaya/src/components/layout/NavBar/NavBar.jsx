@@ -27,14 +27,6 @@ const NavBar = () => {
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const loading = useSelector(selectAuthLoading);
 
-  // ✅ Debug temporal
-  console.log('NavBar Debug:', { 
-    isAuthenticated, 
-    user: user?.name, 
-    loading,
-    hasToken: !!localStorage.getItem('token')
-  });
-
   const [showSocialMenu, setShowSocialMenu] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [userDropdown, setUserDropdown] = useState(false);
@@ -43,7 +35,6 @@ const NavBar = () => {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token && !user && !loading) {
-      console.log('Verificando token en NavBar...');
       dispatch(verifyToken());
     }
   }, []); // Solo al montar

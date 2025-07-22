@@ -24,8 +24,8 @@ const UserManagment = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   
-  // ✅ Usar el hook de autenticación mejorado
-  useAuthGuard();
+  // ✅ Comentar useAuthGuard para evitar múltiples llamadas - ya se ejecuta en App.jsx
+  // useAuthGuard();
   
   // ✅ Selectores simplificados
   const user = useSelector(selectUser);

@@ -49,10 +49,12 @@ const Login = () => {
     }
   }, [error, dispatch]);
 
-  // ✅ Redirigir si ya está autenticado
-  if (isAuthenticated) {
-    return <Navigate to="/profile" replace />;
-  }
+  // ✅ Redirigir si ya está autenticado - usar useEffect para evitar loops
+  useEffect(() => {
+    if (isAuthenticated && !loading) {
+      navigate("/profile", { replace: true });
+    }
+  }, [isAuthenticated, loading, navigate]);
 
   // ✅ Función para crear usuario (registro)
   const handleRegister = async (e) => {

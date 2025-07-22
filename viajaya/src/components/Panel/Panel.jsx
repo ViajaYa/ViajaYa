@@ -44,8 +44,8 @@ const Panel = () => {
   const [page, setPage] = useState(0);
   const navigate = useNavigate();
   
-  // ✅ Usar el hook de autenticación mejorado
-  useAuthGuard();
+  // ✅ Comentar useAuthGuard para evitar múltiples llamadas - ya se ejecuta en App.jsx
+  // useAuthGuard();
   
   // ✅ Usar selectores del authSlice
   const dispatch = useDispatch();

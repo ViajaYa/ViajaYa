@@ -1,4 +1,5 @@
 import { useDispatch, useSelector } from 'react-redux';
+import { useMemo } from 'react';
 
 // Hook personalizado para dispatch
 export const useAppDispatch = () => useDispatch();
@@ -20,30 +21,37 @@ export const USER_ROLES = {
 export const useAuth = () => {
   const authState = useAppSelector((state) => state.auth);
   
-  // ✅ Normalizar el usuario si existe
-  const normalizedUser = authState.user ? {
-    ...authState.user,
-    // ✅ Lógica para determinar si está activo
-    isActive: authState.user.is_active !== undefined 
-      ? authState.user.is_active 
-      : authState.user.isActive !== undefined 
-        ? authState.user.isActive 
-        : authState.user.is_active_seller !== undefined
-          ? authState.user.is_active_seller
-          : true, // Por defecto true si no hay información
+  // ✅ Memoizar el usuario normalizado para evitar re-renders infinitos
+  const normalizedUser = useMemo(() => {
+    if (!authState.user) return null;
     
-    isActiveSeller: authState.user.is_active_seller || authState.user.isActiveSeller || false,
-    supervisorId: authState.user.supervisor_id || authState.user.supervisorId,
-    referralCode: authState.user.referral_code || authState.user.referralCode,
-  } : null;
+    // ✅ Solo crear nuevo objeto si alguna propiedad realmente cambió
+    const baseUser = authState.user;
+    return {
+      ...baseUser,
+      // ✅ Lógica para determinar si está activo
+      isActive: baseUser.is_active !== undefined 
+        ? baseUser.is_active 
+        : baseUser.isActive !== undefined 
+          ? baseUser.isActive 
+          : baseUser.is_active_seller !== undefined
+            ? baseUser.is_active_seller
+            : true, // Por defecto true si no hay información
+      
+      isActiveSeller: baseUser.is_active_seller || baseUser.isActiveSeller || false,
+      supervisorId: baseUser.supervisor_id || baseUser.supervisorId,
+      referralCode: baseUser.referral_code || baseUser.referralCode,
+    };
+  }, [authState.user?.id, authState.user?.is_active, authState.user?.isActive, authState.user?.is_active_seller]);
 
-  return {
+  // ✅ Memoizar todo el objeto de retorno con dependencias más específicas
+  return useMemo(() => ({
     user: normalizedUser,
     token: authState.token,
     isAuthenticated: authState.isAuthenticated,
     loading: authState.loading,
     error: authState.error,
-  };
+  }), [normalizedUser, authState.token, authState.isAuthenticated, authState.loading, authState.error]);
 };
 
 
