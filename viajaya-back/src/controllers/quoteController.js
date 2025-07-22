@@ -220,9 +220,9 @@ const quoteController = {
         ninos: ninos || 0,
         edades_ninos: edades_ninos || [],
         observaciones,
-        nombre_cliente: clienteIdFinal ? null : nombre_cliente,
-        email_cliente: clienteIdFinal ? null : email_cliente,
-        telefono_cliente: clienteIdFinal ? null : telefono_cliente,
+        nombre_cliente: nombre_cliente,      // ✅ Cambiar de: clienteIdFinal ? null : nombre_cliente
+  email_cliente: email_cliente,        // ✅ Cambiar de: clienteIdFinal ? null : email_cliente  
+  telefono_cliente: telefono_cliente,  // ✅ Cambiar de: clienteIdFinal ? null : telefono_cliente
         status: "pending",
         source: source,
         is_external: isExternalQuote,

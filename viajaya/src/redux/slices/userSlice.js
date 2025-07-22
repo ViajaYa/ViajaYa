@@ -29,6 +29,12 @@ const initialState = {
   metricsLoading: false,
   dashboardLoading: false,
   commissionsLoading: false,
+  emailValidation: {
+    isChecking: false,
+    userData: null,
+    exists: false,
+    error: null
+  },
 };
 // Thunks asíncronos
 export const registerUser = createAsyncThunk(
@@ -133,6 +139,30 @@ export const fetchUserById = createAsyncThunk(
     }
   }
 );
+
+export const fetchUserByEmail = createAsyncThunk(
+  'user/fetchUserByEmail',
+  async (email, { rejectWithValue }) => {
+    try {
+      const response = await axios.get(`${BASE_URL}/user/email/${encodeURIComponent(email)}`, {
+        headers: getAuthHeaders()
+      });
+      return response.data.data; // Basado en tu estructura de respuesta
+    } catch (error) {
+      // Si es 404, no es realmente un error, solo que no existe
+      if (error.response?.status === 404) {
+        return rejectWithValue({
+          notFound: true,
+          message: 'Usuario no encontrado'
+        });
+      }
+      return rejectWithValue(
+        error.response?.data?.message || 'Error al buscar usuario'
+      );
+    }
+  }
+);
+
 
 export const fetchOrganizationStructure = createAsyncThunk(
   'user/fetchOrganizationStructure',
@@ -361,7 +391,16 @@ const userSlice = createSlice({
       state.dashboard = null;
       state.pendingCommissions = [];
     },
+    clearEmailValidation: (state) => {
+    state.emailValidation = {
+      isChecking: false,
+      userData: null,
+      exists: false,
+      error: null
+    };
   },
+  },
+
   extraReducers: (builder) => {
     builder
       // Register User
@@ -580,7 +619,28 @@ const userSlice = createSlice({
       .addCase(fetchUsersByHierarchy.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
-      });
+      })
+      .addCase(fetchUserByEmail.pending, (state) => {
+  state.emailValidation.isChecking = true;
+  state.emailValidation.error = null;
+})
+.addCase(fetchUserByEmail.fulfilled, (state, action) => {
+  state.emailValidation.isChecking = false;
+  state.emailValidation.userData = action.payload.user;
+  state.emailValidation.exists = true;
+  state.emailValidation.error = null;
+})
+.addCase(fetchUserByEmail.rejected, (state, action) => {
+  state.emailValidation.isChecking = false;
+  state.emailValidation.exists = false;
+  state.emailValidation.userData = null;
+
+  if (action.payload?.notFound) {
+    state.emailValidation.error = null;
+  } else {
+    state.emailValidation.error = action.payload;
+  }
+})
   },
 });
 
@@ -592,7 +652,8 @@ export const {
   filterUsersByStatus,
   clearUserError, 
   clearUserSearch,
-  clearOrganizationData
+  clearOrganizationData,
+  clearEmailValidation
 } = userSlice.actions;
 
 // ✅ NUEVOS selectores
@@ -613,5 +674,7 @@ export const selectOrganizationLoading = (state) => state.user.organizationLoadi
 export const selectMetricsLoading = (state) => state.user.metricsLoading;
 export const selectDashboardLoading = (state) => state.user.dashboardLoading;
 export const selectCommissionsLoading = (state) => state.user.commissionsLoading;
+export const selectEmailValidation = (state) => state.user.emailValidation;
+
 
 export default userSlice.reducer;

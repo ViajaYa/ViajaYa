@@ -1,13 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { createQuote } from '../../redux/slices/quoteSlice';
+import { fetchUserByEmail, clearEmailValidation, selectEmailValidation } from '../../redux/slices/userSlice';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTimes, faUser, faCalendarAlt, faMapMarkerAlt, faExclamationTriangle } from '@fortawesome/free-solid-svg-icons';
+import { faTimes, faUser, faCalendarAlt, faMapMarkerAlt, 
+  faExclamationTriangle, faCheck, faSearch  } from '@fortawesome/free-solid-svg-icons';
 import { useRolePermissions } from '../../redux/hooks/hooks';
 
 const QuotePopup = ({ isOpen, onClose, prefilledData = {} }) => {
   const dispatch = useDispatch();
   const auth = useSelector(state => state.auth);
+  const emailValidation = useSelector(selectEmailValidation); // ✅ Usar selector
   const user = auth.user;
   const isAuthenticated = auth.isAuthenticated;
   
@@ -28,10 +31,77 @@ const QuotePopup = ({ isOpen, onClose, prefilledData = {} }) => {
     ninos: prefilledData.ninos || 0,
     edades_ninos: prefilledData.edades_ninos || '',
     observaciones: prefilledData.observaciones || '',
+    cliente_id: null
   });
 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+
+   useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (form.email_cliente && form.email_cliente.trim() && /\S+@\S+\.\S+/.test(form.email_cliente)) {
+        dispatch(fetchUserByEmail(form.email_cliente.trim().toLowerCase()));
+      } else {
+        dispatch(clearEmailValidation());
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [form.email_cliente, dispatch]);
+
+  // ✅ Autocompletar cuando se encuentra usuario
+  // ✅ Autocompletar cuando se encuentra usuario
+useEffect(() => {
+  if (emailValidation.exists && emailValidation.userData) {
+    const userData = emailValidation.userData;
+    setForm(prev => ({
+      ...prev,
+      cliente_id: userData.id, // ✅ AGREGAR: Guardar ID del cliente existente
+      nombre_cliente: userData.name && userData.lastname 
+        ? `${userData.name} ${userData.lastname}`
+        : prev.nombre_cliente,
+      telefono_cliente: userData.phone || prev.telefono_cliente
+    }));
+  } else {
+    // ✅ AGREGAR: Limpiar cliente_id si no existe el usuario
+    setForm(prev => ({
+      ...prev,
+      cliente_id: null
+    }));
+  }
+}, [emailValidation.exists, emailValidation.userData]);
+
+  // ✅ Renderizar indicador de estado del email
+  const renderEmailStatus = () => {
+    if (emailValidation.isChecking) {
+      return (
+        <div className="flex items-center text-blue-500 text-sm mt-1">
+          <FontAwesomeIcon icon={faSearch} className="animate-spin mr-1" />
+          Verificando email...
+        </div>
+      );
+    }
+
+    if (emailValidation.exists && emailValidation.userData) {
+      return (
+        <div className="flex items-center text-green-500 text-sm mt-1">
+          <FontAwesomeIcon icon={faCheck} className="mr-1" />
+          Cliente encontrado - Datos autocompletados
+        </div>
+      );
+    }
+
+    if (!emailValidation.isChecking && form.email_cliente && /\S+@\S+\.\S+/.test(form.email_cliente) && !emailValidation.exists) {
+      return (
+        <div className="flex items-center text-orange-500 text-sm mt-1">
+          <FontAwesomeIcon icon={faExclamationTriangle} className="mr-1" />
+          Cliente nuevo - Complete los datos
+        </div>
+      );
+    }
+
+    return null;
+  };
 
   // ✅ Validación del formulario
   const validateForm = () => {
@@ -73,79 +143,124 @@ const QuotePopup = ({ isOpen, onClose, prefilledData = {} }) => {
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: null }));
     }
+ 
+
+   if (name === 'email_cliente') {
+      dispatch(clearEmailValidation());
+    }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  if (!validateForm()) {
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    // ✅ Función mejorada para asignar según el rol
+    const getRolePayload = (user) => {
+      if (!user) return {};
+      
+      switch (user.role) {
+        case USER_ROLES.ASESOR:
+          return { 
+            asesor_id: user.id,
+            created_by: `${user.name} ${user.lastname} (Asesor)`
+          };
+        case USER_ROLES.LIDER:
+          return { 
+            lider_id: user.id,
+            created_by: `${user.name} ${user.lastname} (Líder)`
+          };
+        case USER_ROLES.GERENTE:
+          return { 
+            gerente_id: user.id,
+            created_by: `${user.name} ${user.lastname} (Gerente)`
+          };
+        case USER_ROLES.ADMIN:
+        case USER_ROLES.CONTADOR:
+        case USER_ROLES.OWNER:
+          return { 
+            admin_id: user.id,
+            created_by: `${user.name} ${user.lastname} (${getRoleName(user.role)})`
+          };
+        default: 
+          return { 
+            cliente_id: user.id,
+            created_by: `${user.name} ${user.lastname} (Cliente)`
+          };
+      }
+    };
+
+    // ✅ CLAVE: Preparar datos del cliente (desde DB si existe, sino desde el formulario)
+    const getClientData = () => {
+  // ✅ Usar cliente_id del estado (ya se setea en useEffect)
+  const baseData = {
+    cliente_id: form.cliente_id, // ✅ Usar del estado
+    destino: form.destino,
+    origen: form.origen,
+    fecha_ida: form.fecha_ida,
+    fecha_regreso: form.fecha_regreso,
+    numero_personas: form.numero_personas,
+    acomodacion: form.acomodacion,
+    tipo_hotel: form.tipo_hotel,
+    ninos: form.ninos,
+    edades_ninos: form.edades_ninos,
+    observaciones: form.observaciones
+  };
+
+  if (emailValidation.exists && emailValidation.userData) {
+    // Usuario existe - usar datos de DB
+    const userData = emailValidation.userData;
+    return {
+      ...baseData,
+      nombre_cliente: `${userData.name} ${userData.lastname}`.trim(),
+      email_cliente: userData.email,
+      telefono_cliente: userData.phone || form.telefono_cliente
+    };
+  } else {
+    // Cliente nuevo - usar datos del formulario
+    return {
+      ...baseData,
+      nombre_cliente: form.nombre_cliente,
+      email_cliente: form.email_cliente,
+      telefono_cliente: form.telefono_cliente
+    };
+  }
+};
+
+    const payload = {
+      ...getClientData(), // ✅ Usar datos del cliente (DB o formulario)
+      ...(isAuthenticated && user ? getRolePayload(user) : {}), // ✅ Datos del creador
+      created_at: new Date().toISOString(),
+      status: 'pending'
+    };
+
+    console.log('✅ Payload de cotización:', payload);
+    console.log('✅ Cliente desde DB:', emailValidation.exists ? 'SÍ' : 'NO');
+    console.log('✅ Datos del cliente:', {
+      nombre: payload.nombre_cliente,
+      email: payload.email_cliente,
+      telefono: payload.telefono_cliente,
+      cliente_id: payload.cliente_id || 'N/A'
+    });
+
+    await dispatch(createQuote(payload)).unwrap();
+
+    alert('Cotización creada exitosamente');
+   
+    if (onClose) onClose();
     
-    if (!validateForm()) {
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      // ✅ Función mejorada para asignar según el rol
-      const getRolePayload = (user) => {
-        if (!user) return {};
-        
-        switch (user.role) {
-          case USER_ROLES.ASESOR:
-            return { 
-              asesor_id: user.id,
-              created_by: `${user.name} ${user.lastname} (Asesor)`
-            };
-          case USER_ROLES.LIDER:
-            return { 
-              lider_id: user.id,
-              created_by: `${user.name} ${user.lastname} (Líder)`
-            };
-          case USER_ROLES.GERENTE:
-            return { 
-              gerente_id: user.id,
-              created_by: `${user.name} ${user.lastname} (Gerente)`
-            };
-          case USER_ROLES.ADMIN:
-          case USER_ROLES.CONTADOR:
-          case USER_ROLES.OWNER:
-            return { 
-              admin_id: user.id,
-              created_by: `${user.name} ${user.lastname} (${getRoleName(user.role)})`
-            };
-          default: 
-            return { 
-              cliente_id: user.id,
-              created_by: `${user.name} ${user.lastname} (Cliente)`
-            };
-        }
-      };
-
-      const payload = {
-        ...form,
-        ...(isAuthenticated && user ? getRolePayload(user) : {}),
-        created_at: new Date().toISOString(),
-        status: 'pending'
-      };
-
-      console.log('✅ Payload de cotización:', payload);
-
-      await dispatch(createQuote(payload)).unwrap();
-
-      
-      
-      // ✅ Mostrar mensaje de éxito
-      alert('Cotización creada exitosamente');
-      
-      // ✅ Cerrar popup
-      if (onClose) onClose();
-      
-    } catch (error) {
-      console.error('Error creando cotización:', error);
-      alert('Error al crear la cotización: ' + (error.message || error));
-    } finally {
-      setLoading(false);
-    }
-  };
+  } catch (error) {
+    console.error('Error creando cotización:', error);
+    alert('Error al crear la cotización: ' + (error.message || error));
+  } finally {
+    setLoading(false);
+  }
+};
 
   // ✅ Validar permisos - CORREGIDO
   if (isAuthenticated && user && !hasAnyRole([USER_ROLES.ASESOR, USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.CONTADOR, USER_ROLES.OWNER])) {
@@ -214,6 +329,21 @@ const QuotePopup = ({ isOpen, onClose, prefilledData = {} }) => {
               Información del Cliente
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+      <input
+        type="email"
+        name="email_cliente"
+        placeholder="Correo electrónico *"
+        value={form.email_cliente}
+        onChange={handleChange}
+        className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+          errors.email_cliente ? 'border-red-500' : 'border-gray-300'
+        }`}
+      />
+      {errors.email_cliente && <p className="text-red-500 text-xs mt-1">{errors.email_cliente}</p>}
+      {/* ✅ Agregar indicador de estado */}
+      {renderEmailStatus()}
+    </div>
               <div>
                 <input
                   type="text"
@@ -228,19 +358,7 @@ const QuotePopup = ({ isOpen, onClose, prefilledData = {} }) => {
                 {errors.nombre_cliente && <p className="text-red-500 text-xs mt-1">{errors.nombre_cliente}</p>}
               </div>
               
-              <div>
-                <input
-                  type="email"
-                  name="email_cliente"
-                  placeholder="Correo electrónico *"
-                  value={form.email_cliente}
-                  onChange={handleChange}
-                  className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.email_cliente ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                />
-                {errors.email_cliente && <p className="text-red-500 text-xs mt-1">{errors.email_cliente}</p>}
-              </div>
+                
               
               <div className="md:col-span-2">
                 <input

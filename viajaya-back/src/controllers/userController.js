@@ -363,6 +363,48 @@ authUser: async ({email, password}) => {
         }
     },
 
+  // Agregar este método a tu userController existente
+getUserByEmail: async (email) => {
+    try {
+        if (!email) {
+            throw new Error("Email es requerido");
+        }
+
+        const user = await User.findOne({
+            where: { 
+                email: email.toLowerCase(),
+                is_active: true // Solo usuarios activos
+            },
+            attributes: [
+                'id', 'name', 'lastname', 'email', 'phone', 'role',
+                'documento_identidad', 'tipo_documento', 'fecha_nacimiento',
+                'direccion', 'ciudad', 'pais', 'is_active', 'is_active_seller'
+            ]
+        });
+
+        if (!user) {
+            return {
+                success: false,
+                message: 'Usuario no encontrado'
+            };
+        }
+
+        return {
+            success: true,
+            data: {
+                user,
+                exists: true
+            }
+        };
+
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+},
+
     // Nueva función para cambiar contraseña
     changePassword: async (userId, currentPassword, newPassword) => {
         try {

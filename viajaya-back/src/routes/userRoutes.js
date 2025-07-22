@@ -6,6 +6,7 @@ const {
     deleteUser, 
     authUser, 
     getUserById, 
+    getUserByEmail,
     verifyToken, 
     recoveryPass,
     changePassword,
@@ -154,6 +155,8 @@ userRoutes.get("/", authenticateToken, authorizeRoles(5, 6, 7), async (req,res) 
 });
 
 
+
+
 // Obtener estructura organizacional de un usuario (Gerentes y superiores)
 userRoutes.get("/organization/:userId", 
     authenticateToken,
@@ -290,6 +293,24 @@ userRoutes.put("/update/:id", authenticateToken, authorizeHierarchy, async (req,
     }
 });
 
+userRoutes.get('/email/:email', authenticateToken, authorizeHierarchy, async (req,res) => {
+    try {
+        const { email } = req.params;
+        const result = await getUserByEmail(email);
+        
+        if (result.success) {
+            res.json(result);
+        } else {
+            res.status(404).json(result);
+        }
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error al buscar usuario',
+            error: error.message
+        });
+    }
+});
 // Cambiar contraseña propia
 userRoutes.put("/change-password", authenticateToken, async (req,res) => {
     const {currentPassword, newPassword} = req.body;
