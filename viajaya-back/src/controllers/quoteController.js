@@ -229,6 +229,7 @@ const quoteController = {
         created_by: created_by || (isExternalQuote ? 'Web Pública - Usuario no registrado' : 'Sistema'),
         priority: isExternalQuote ? 'high' : 'normal',
       });
+      console.log(newQuote);  
 
       // ✅ Incluir información completa de los usuarios relacionados
       const quoteWithUsers = await Quote.findByPk(newQuote.id, {
@@ -1644,3 +1645,6 @@ const getRoleName = (role) => {
 };
 
 module.exports = quoteController;
+
+
+

@@ -130,6 +130,8 @@ const QuotePopup = ({ isOpen, onClose, prefilledData = {} }) => {
       console.log('✅ Payload de cotización:', payload);
 
       await dispatch(createQuote(payload)).unwrap();
+
+      
       
       // ✅ Mostrar mensaje de éxito
       alert('Cotización creada exitosamente');

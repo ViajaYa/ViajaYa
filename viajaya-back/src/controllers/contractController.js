@@ -1,5 +1,6 @@
 const { Contract, Quote, User, Payment, PackagePurchase, Commission, ContractItems } = require('../db');
 const { generateContractPDF } = require('../utils/generateContractPDF');
+const commissionController = require('./commissionController');
 
 
 const contractController = {
@@ -349,12 +350,19 @@ getAllContracts : async (req, res) => {
         fecha_firma: new Date()
       });
 
-      // Aquí se pueden crear las compras del paquete automáticamente
-      // y generar las comisiones correspondientes
+      // ✅ GENERAR COMISIONES AUTOMÁTICAMENTE al firmar contrato
+      try {
+        const commissionResult = await commissionController.generateCommissions(id);
+        console.log('✅ Comisiones generadas:', commissionResult);
+      } catch (commissionError) {
+        console.error('❌ Error generando comisiones:', commissionError);
+        // No fallar la firma del contrato por error en comisiones
+      }
 
       res.json({
         message: 'Contrato firmado exitosamente',
-        contract
+        contract,
+        commissionsGenerated: true
       });
 
     } catch (error) {
@@ -689,6 +697,79 @@ createContractItem : async (req, res) => {
     res.json({ message: 'Item eliminado' });
   } catch (error) {
     res.status(500).json({ message: 'Error eliminando item', error: error.message });
+  }
+},
+
+// ✅ NUEVA FUNCIÓN: Aprobar contrato y generar comisiones
+approveContract: async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { observaciones } = req.body;
+
+    const contract = await Contract.findByPk(id, {
+      include: [
+        {
+          model: Quote,
+          as: 'Quote',
+          include: [
+            { model: User, as: 'Asesor', attributes: ['id', 'name', 'lastname'] },
+            { model: User, as: 'Lider', attributes: ['id', 'name', 'lastname'] },
+            { model: User, as: 'Gerente', attributes: ['id', 'name', 'lastname'] }
+          ]
+        }
+      ]
+    });
+
+    if (!contract) {
+      return res.status(404).json({ message: 'Contrato no encontrado' });
+    }
+
+    if (contract.status !== 'signed' && contract.status !== 'draft') {
+      return res.status(400).json({ 
+        message: 'Solo se pueden aprobar contratos firmados o en borrador' 
+      });
+    }
+
+    // Actualizar estado del contrato
+    await contract.update({
+      status: 'completed', // o 'active' según tu lógica de negocio
+      observaciones: observaciones || 'Contrato aprobado manualmente'
+    });
+
+    // ✅ GENERAR COMISIONES
+    let commissionsGenerated = false;
+    let commissionResult = null;
+    
+    try {
+      commissionResult = await commissionController.generateCommissions(id);
+      commissionsGenerated = true;
+      console.log('✅ Comisiones generadas para contrato aprobado:', commissionResult);
+    } catch (commissionError) {
+      console.error('❌ Error generando comisiones:', commissionError);
+    }
+
+    res.json({
+      success: true,
+      message: 'Contrato aprobado exitosamente',
+      contract: await Contract.findByPk(id, {
+        include: [
+          {
+            model: Quote,
+            as: 'Quote',
+            attributes: ['quote_number', 'nombre_cliente', 'destino', 'precio_total']
+          }
+        ]
+      }),
+      commissionsGenerated,
+      commissionSummary: commissionResult
+    });
+
+  } catch (error) {
+    console.error('Error aprobando contrato:', error);
+    res.status(500).json({ 
+      message: 'Error al aprobar el contrato', 
+      error: error.message 
+    });
   }
 }
 

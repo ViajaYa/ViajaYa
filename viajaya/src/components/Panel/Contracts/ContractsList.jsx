@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import api from '../../../utils/api';
 import {
   faEye,
   faEdit,
@@ -20,9 +21,10 @@ import {
   faCalendarAlt,
   faChevronLeft,
   faChevronRight,
-  faPlus
+  faPlus,
+  faCheckCircle,
+  faCoins
 } from '@fortawesome/free-solid-svg-icons';
-
 import {
   fetchContracts,
   selectContractsWithDetails,
@@ -79,7 +81,7 @@ const ContractsList = () => {
   };
 
   // Función para manejar acciones
-  const handleAction = (action, contractId) => {
+  const handleAction = async (action, contractId) => {
     switch (action) {
       case 'view':
         navigate(`/panel/contracts/${contractId}`);
@@ -95,8 +97,40 @@ const ContractsList = () => {
         // Implementar lógica de descarga
         console.log('Descargar contrato:', contractId);
         break;
+      case 'approve':
+        // ✅ NUEVA ACCIÓN: Aprobar contrato y generar comisiones
+        await handleApproveContract(contractId);
+        break;
       default:
         break;
+    }
+  };
+
+  // ✅ NUEVA FUNCIÓN: Aprobar contrato
+  const handleApproveContract = async (contractId) => {
+    if (!confirm('¿Está seguro de aprobar este contrato? Esto generará las comisiones correspondientes.')) {
+      return;
+    }
+
+    try {
+      const response = await api.patch(`/contracts/${contractId}/approve`, {
+        observaciones: 'Contrato aprobado desde el panel administrativo'
+      });
+
+      if (response.data.success) {
+        alert(`Contrato aprobado exitosamente. ${response.data.commissionSummary?.commissions?.length || 0} comisiones generadas.`);
+        // Recargar la lista
+        dispatch(fetchContracts({ 
+          page: pagination.page, 
+          limit: pagination.limit,
+          filters 
+        }));
+      } else {
+        alert('Error al aprobar el contrato: ' + response.data.message);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error de conexión al aprobar el contrato: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -393,6 +427,28 @@ const ContractsList = () => {
                             title="Enviar al cliente"
                           >
                             <FontAwesomeIcon icon={faPaperPlane} size="sm" />
+                          </button>
+                        )}
+
+                        {/* ✅ NUEVO BOTÓN: Aprobar y generar comisiones */}
+                        {(contract.status === 'signed' || contract.status === 'draft') && (
+                          <button
+                            onClick={() => handleAction('approve', contract.id)}
+                            className="p-2 text-orange-600 hover:bg-orange-50 rounded transition-colors"
+                            title="Aprobar contrato y generar comisiones"
+                          >
+                            <FontAwesomeIcon icon={faCheckCircle} size="sm" />
+                          </button>
+                        )}
+
+                        {/* Ver comisiones */}
+                        {(contract.status === 'completed' || contract.status === 'active') && (
+                          <button
+                            onClick={() => navigate(`/panel/commissions?contractId=${contract.id}`)}
+                            className="p-2 text-teal-600 hover:bg-teal-50 rounded transition-colors"
+                            title="Ver comisiones generadas"
+                          >
+                            <FontAwesomeIcon icon={faCoins} size="sm" />
                           </button>
                         )}
 

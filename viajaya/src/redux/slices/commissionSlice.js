@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { getApiUrl } from '../../utils/env';
+import api from '../../utils/api';
 
 // Estado inicial
 const initialState = {
@@ -26,196 +26,123 @@ const initialState = {
 // Thunks asíncronos
 export const fetchCommissions = createAsyncThunk(
   'commission/fetchCommissions',
-  async ({ page = 1, limit = 10, filters = {} }, { rejectWithValue, getState }) => {
+  async ({ page = 1, limit = 10, filters = {} }, { rejectWithValue }) => {
     try {
-      const { auth } = getState();
       const queryParams = new URLSearchParams({
         page: page.toString(),
         limit: limit.toString(),
         ...filters,
       });
 
-      const response = await fetch(getApiUrl(`/api/commissions?${queryParams}`), {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${auth.token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return rejectWithValue(data.message || 'Error obteniendo comisiones');
-      }
-
-      return data;
+      const response = await api.get(`/commissions?${queryParams}`);
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.message || 'Error de conexión');
+      return rejectWithValue(
+        error.response?.data?.message || 'Error obteniendo comisiones'
+      );
     }
   }
 );
 
 export const fetchUserCommissions = createAsyncThunk(
   'commission/fetchUserCommissions',
-  async ({ userId, page = 1, limit = 10 }, { rejectWithValue, getState }) => {
+  async ({ userId, page = 1, limit = 10 }, { rejectWithValue }) => {
     try {
-      const { auth } = getState();
       const queryParams = new URLSearchParams({
         page: page.toString(),
         limit: limit.toString(),
       });
 
-      const response = await fetch(getApiUrl(`/api/commissions/user/${userId}?${queryParams}`), {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${auth.token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return rejectWithValue(data.message || 'Error obteniendo comisiones del usuario');
-      }
-
-      return data;
+      const response = await api.get(`/commissions/user/${userId}?${queryParams}`);
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.message || 'Error de conexión');
+      return rejectWithValue(
+        error.response?.data?.message || 'Error obteniendo comisiones del usuario'
+      );
     }
   }
 );
 
 export const createCommission = createAsyncThunk(
   'commission/createCommission',
-  async (commissionData, { rejectWithValue, getState }) => {
+  async (commissionData, { rejectWithValue }) => {
     try {
-      const { auth } = getState();
-      const response = await fetch(getApiUrl('/api/commissions'), {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${auth.token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(commissionData),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return rejectWithValue(data.message || 'Error creando comisión');
-      }
-
-      return data;
+      const response = await api.post('/commissions', commissionData);
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.message || 'Error de conexión');
+      return rejectWithValue(
+        error.response?.data?.message || 'Error creando comisión'
+      );
     }
   }
 );
 
 export const updateCommission = createAsyncThunk(
   'commission/updateCommission',
-  async ({ id, updates }, { rejectWithValue, getState }) => {
+  async ({ id, updates }, { rejectWithValue }) => {
     try {
-      const { auth } = getState();
-      const response = await fetch(getApiUrl(`/api/commissions/${id}`), {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${auth.token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updates),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return rejectWithValue(data.message || 'Error actualizando comisión');
-      }
-
-      return data;
+      const response = await api.put(`/commissions/${id}`, updates);
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.message || 'Error de conexión');
+      return rejectWithValue(
+        error.response?.data?.message || 'Error actualizando comisión'
+      );
+    }
+  }
+);
+
+export const approveCommission = createAsyncThunk(
+  'commission/approveCommission',
+  async ({ id, observaciones }, { rejectWithValue }) => {
+    try {
+      const response = await api.put(`/commissions/${id}/approve`, { observaciones });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Error aprobando comisión'
+      );
     }
   }
 );
 
 export const deleteCommission = createAsyncThunk(
   'commission/deleteCommission',
-  async (id, { rejectWithValue, getState }) => {
+  async (id, { rejectWithValue }) => {
     try {
-      const { auth } = getState();
-      const response = await fetch(getApiUrl(`/api/commissions/${id}`), {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${auth.token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        return rejectWithValue(data.message || 'Error eliminando comisión');
-      }
-
+      await api.delete(`/commissions/${id}`);
       return id;
     } catch (error) {
-      return rejectWithValue(error.message || 'Error de conexión');
+      return rejectWithValue(
+        error.response?.data?.message || 'Error eliminando comisión'
+      );
     }
   }
 );
 
 export const calculateCommissions = createAsyncThunk(
   'commission/calculateCommissions',
-  async ({ startDate, endDate }, { rejectWithValue, getState }) => {
+  async ({ startDate, endDate }, { rejectWithValue }) => {
     try {
-      const { auth } = getState();
-      const response = await fetch(getApiUrl('/api/commissions/calculate'), {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${auth.token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ startDate, endDate }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return rejectWithValue(data.message || 'Error calculando comisiones');
-      }
-
-      return data;
+      const response = await api.post('/commissions/calculate', { startDate, endDate });
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.message || 'Error de conexión');
+      return rejectWithValue(
+        error.response?.data?.message || 'Error calculando comisiones'
+      );
     }
   }
 );
 
 export const payCommission = createAsyncThunk(
   'commission/payCommission',
-  async ({ id, paymentData }, { rejectWithValue, getState }) => {
+  async ({ id, observaciones }, { rejectWithValue }) => {
     try {
-      const { auth } = getState();
-      const response = await fetch(getApiUrl(`/api/commissions/${id}/pay`), {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${auth.token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(paymentData),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return rejectWithValue(data.message || 'Error procesando pago de comisión');
-      }
-
-      return data;
+      const response = await api.put(`/commissions/${id}/pay`, { observaciones });
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.message || 'Error de conexión');
+      return rejectWithValue(
+        error.response?.data?.message || 'Error marcando comisión como pagada'
+      );
     }
   }
 );
@@ -332,6 +259,25 @@ const commissionSlice = createSlice({
         }
       })
       .addCase(updateCommission.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Approve Commission
+      .addCase(approveCommission.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(approveCommission.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.commissions.findIndex(c => c.id === action.payload.commission.id);
+        if (index !== -1) {
+          state.commissions[index] = action.payload.commission;
+        }
+        if (state.currentCommission?.id === action.payload.commission.id) {
+          state.currentCommission = action.payload.commission;
+        }
+      })
+      .addCase(approveCommission.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
