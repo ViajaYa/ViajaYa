@@ -12,6 +12,7 @@ const carouselRoutes = require("./carouselRoutes")
 const quoteRoutes = require("./quoteRoutes")
 const contractRoutes = require("./contractRoutes")
 const paymentRoutes = require("./paymentRoutes")
+const passengerRoutes = require("./passengerRoutes")
 const documentUsersRoutes = require("./documentUsersRoutes")
 const commissionRoutes = require("./commissionRoutes")
 const routes = Router()
@@ -32,4 +33,5 @@ routes
 .use("/payments", paymentRoutes)
 .use("/document-users", documentUsersRoutes)
 .use("/commissions", commissionRoutes)
+.use("/passengers", passengerRoutes)
 module.exports = routes

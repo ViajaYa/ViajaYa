@@ -58,7 +58,8 @@ const {
   Invoice,
   ContractItem,
   Purchase,
-  UserDocument
+  UserDocument,
+  Passenger
 } = sequelize.models;
 
 // ===== RELACIONES ORGANIZADAS POR SECCIONES =====
@@ -452,6 +453,16 @@ User.hasMany(UserDocument, {
 UserDocument.belongsTo(User, { 
   as: 'VerifiedBy', 
   foreignKey: 'verified_by' 
+});
+
+Passenger.belongsTo(Quote, { 
+   as: 'Quote',
+  foreignKey: 'quote_id' 
+});
+
+Quote.hasMany(Passenger, { 
+  as: 'Passengers',
+  foreignKey: 'quote_id'
 });
 
 module.exports = {

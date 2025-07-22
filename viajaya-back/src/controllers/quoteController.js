@@ -1,55 +1,52 @@
-const { Quote, User, Contract } = require("../db");
+const { Quote, User, Contract, Passenger } = require("../db");
 const { Op } = require("sequelize");
-const { sendEmail } = require('../utils/emailService');
-const { generateQuotePDF } = require('../utils/generateQuotePDF');
-const path = require('path');
-
-
+const { sendEmail } = require("../utils/emailService");
+const { generateQuotePDF } = require("../utils/generateQuotePDF");
+const path = require("path");
 
 const createClientUser = async (quoteData) => {
   try {
     const { nombre_cliente, email_cliente, telefono_cliente } = quoteData;
-    
+
     // Verificar si ya existe un usuario con ese email
-    let existingUser = await User.findOne({ 
-      where: { email: email_cliente } 
+    let existingUser = await User.findOne({
+      where: { email: email_cliente },
     });
-    
+
     if (existingUser) {
-      console.log('✅ Usuario cliente ya existe:', existingUser.id);
+      console.log("✅ Usuario cliente ya existe:", existingUser.id);
       return existingUser;
     }
-    
+
     // Generar password temporal
-    const tempPassword = Math.random().toString(36).slice(-8) + 'Temp123!';
-    const bcrypt = require('bcrypt');
+    const tempPassword = Math.random().toString(36).slice(-8) + "Temp123!";
+    const bcrypt = require("bcrypt");
     const hashedPassword = await bcrypt.hash(tempPassword, 10);
-    
+
     // Crear nuevo usuario cliente
     const newUser = await User.create({
-      name: nombre_cliente.split(' ')[0] || nombre_cliente,
-      lastname: nombre_cliente.split(' ').slice(1).join(' ') || '',
+      name: nombre_cliente.split(" ")[0] || nombre_cliente,
+      lastname: nombre_cliente.split(" ").slice(1).join(" ") || "",
       email: email_cliente,
       phone: telefono_cliente,
       password: hashedPassword,
       role: 1, // Cliente
       is_active: true,
       email_verified: false, // Requerirá verificación
-      password_changed_at: null // Indicará que debe cambiar password
+      password_changed_at: null, // Indicará que debe cambiar password
     });
-    
-    console.log('✅ Usuario cliente creado:', {
+
+    console.log("✅ Usuario cliente creado:", {
       id: newUser.id,
       email: newUser.email,
-      tempPassword // ⚠️ SOLO PARA LOG - enviarlo por email después
+      tempPassword, // ⚠️ SOLO PARA LOG - enviarlo por email después
     });
-    
+
     // TODO: Enviar email con credenciales temporales
-    
+
     return newUser;
-    
   } catch (error) {
-    console.error('❌ Error creando usuario cliente:', error);
+    console.error("❌ Error creando usuario cliente:", error);
     throw error;
   }
 };
@@ -78,7 +75,7 @@ const quoteController = {
         email_cliente,
         telefono_cliente,
         created_by,
-        source = 'internal', // ✅ NUEVO: Indicar origen de la cotización
+        source = "internal", // ✅ NUEVO: Indicar origen de la cotización
       } = req.body;
 
       // ✅ Buscar cliente por email si no hay cliente_id
@@ -103,9 +100,16 @@ const quoteController = {
       if (asesor_id || lider_id || gerente_id || admin_id) {
         if (asesor_id) {
           const asesor = await User.findByPk(asesor_id, {
-            attributes: ['id', 'name', 'lastname', 'role', 'lider_id', 'gerente_id']
+            attributes: [
+              "id",
+              "name",
+              "lastname",
+              "role",
+              "lider_id",
+              "gerente_id",
+            ],
           });
-          
+
           if (asesor && asesor.role === 2) {
             asesorIdFinal = asesor.id;
             liderIdFinal = asesor.lider_id;
@@ -113,68 +117,78 @@ const quoteController = {
           }
         } else if (lider_id) {
           const lider = await User.findByPk(lider_id, {
-            attributes: ['id', 'name', 'lastname', 'role', 'gerente_id']
+            attributes: ["id", "name", "lastname", "role", "gerente_id"],
           });
-          
+
           if (lider && lider.role === 3) {
             liderIdFinal = lider.id;
             gerenteIdFinal = lider.gerente_id;
           }
         } else if (gerente_id) {
           const gerente = await User.findByPk(gerente_id, {
-            attributes: ['id', 'name', 'lastname', 'role']
+            attributes: ["id", "name", "lastname", "role"],
           });
-          
+
           if (gerente && gerente.role === 4) {
             gerenteIdFinal = gerente.id;
           }
         } else if (admin_id) {
           const admin = await User.findByPk(admin_id, {
-            attributes: ['id', 'name', 'lastname', 'role']
+            attributes: ["id", "name", "lastname", "role"],
           });
-          
+
           if (admin && admin.role >= 5) {
             adminIdFinal = admin.id;
           }
         }
       }
-      
+
       // Caso 2: Cotización externa (desde web pública sin autenticación)
       else {
         isExternalQuote = true;
-        
+
         // ✅ NUEVA LÓGICA: Para cotizaciones externas, asignar directamente al Owner
         const owner = await User.findOne({
-          where: { 
+          where: {
             role: 7,
-            is_active: true 
+            is_active: true,
           },
           order: [["id", "ASC"]], // Primer Owner encontrado
-          attributes: ['id', 'name', 'lastname', 'role']
+          attributes: ["id", "name", "lastname", "role"],
         });
-        
+
         if (owner) {
           adminIdFinal = owner.id;
-          console.log(`✅ Cotización externa asignada al Owner: ${owner.name} ${owner.lastname} (ID: ${owner.id})`);
+          console.log(
+            `✅ Cotización externa asignada al Owner: ${owner.name} ${owner.lastname} (ID: ${owner.id})`
+          );
         } else {
           return res.status(400).json({
-            message: "No hay Owner disponible para asignar la cotización externa.",
+            message:
+              "No hay Owner disponible para asignar la cotización externa.",
           });
         }
       }
 
       // ✅ Si no se pudo determinar ningún responsable (solo para cotizaciones internas), buscar Owner como fallback
-      if (!isExternalQuote && !asesorIdFinal && !liderIdFinal && !gerenteIdFinal && !adminIdFinal) {
+      if (
+        !isExternalQuote &&
+        !asesorIdFinal &&
+        !liderIdFinal &&
+        !gerenteIdFinal &&
+        !adminIdFinal
+      ) {
         const owner = await User.findOne({
           where: { role: 7 },
           order: [["id", "ASC"]],
         });
-        
+
         if (owner) {
           adminIdFinal = owner.id;
         } else {
           return res.status(400).json({
-            message: "No hay responsable disponible para asignar la cotización.",
+            message:
+              "No hay responsable disponible para asignar la cotización.",
           });
         }
       }
@@ -200,7 +214,9 @@ const quoteController = {
         sequence = lastSequence + 1;
       }
 
-      const quote_number = `COT-${year}${month}${day}-${String(sequence).padStart(3, "0")}`;
+      const quote_number = `COT-${year}${month}${day}-${String(
+        sequence
+      ).padStart(3, "0")}`;
 
       // ✅ Crear la cotización con metadatos
       const newQuote = await Quote.create({
@@ -220,16 +236,18 @@ const quoteController = {
         ninos: ninos || 0,
         edades_ninos: edades_ninos || [],
         observaciones,
-        nombre_cliente: nombre_cliente,      // ✅ Cambiar de: clienteIdFinal ? null : nombre_cliente
-  email_cliente: email_cliente,        // ✅ Cambiar de: clienteIdFinal ? null : email_cliente  
-  telefono_cliente: telefono_cliente,  // ✅ Cambiar de: clienteIdFinal ? null : telefono_cliente
+        nombre_cliente: nombre_cliente, // ✅ Cambiar de: clienteIdFinal ? null : nombre_cliente
+        email_cliente: email_cliente, // ✅ Cambiar de: clienteIdFinal ? null : email_cliente
+        telefono_cliente: telefono_cliente, // ✅ Cambiar de: clienteIdFinal ? null : telefono_cliente
         status: "pending",
         source: source,
         is_external: isExternalQuote,
-        created_by: created_by || (isExternalQuote ? 'Web Pública - Usuario no registrado' : 'Sistema'),
-        priority: isExternalQuote ? 'high' : 'normal',
+        created_by:
+          created_by ||
+          (isExternalQuote ? "Web Pública - Usuario no registrado" : "Sistema"),
+        priority: isExternalQuote ? "high" : "normal",
       });
-      console.log(newQuote);  
+      console.log(newQuote);
 
       // ✅ Incluir información completa de los usuarios relacionados
       const quoteWithUsers = await Quote.findByPk(newQuote.id, {
@@ -266,18 +284,19 @@ const quoteController = {
         message: "Cotización creada exitosamente",
         quote: quoteWithUsers,
         assignment_info: {
-          type: isExternalQuote ? 'external' : 'internal',
+          type: isExternalQuote ? "external" : "internal",
           assigned_to: {
             asesor: asesorIdFinal,
             lider: liderIdFinal,
             gerente: gerenteIdFinal,
             admin: adminIdFinal,
           },
-          priority: isExternalQuote ? 'high' : 'normal',
-          reason: isExternalQuote ? 'Auto-asignado al Owner (cotización externa)' : 'Asignación manual'
-        }
+          priority: isExternalQuote ? "high" : "normal",
+          reason: isExternalQuote
+            ? "Auto-asignado al Owner (cotización externa)"
+            : "Asignación manual",
+        },
       });
-
     } catch (error) {
       console.error("Error creating quote:", error);
       res.status(500).json({
@@ -293,8 +312,8 @@ const quoteController = {
       // Forzar parámetros para cotizaciones externas
       const externalQuoteData = {
         ...req.body,
-        source: 'external',
-        created_by: 'Web Pública - Usuario no registrado',
+        source: "external",
+        created_by: "Web Pública - Usuario no registrado",
         // No incluir ningún ID para forzar asignación automática al Owner
         asesor_id: null,
         lider_id: null,
@@ -305,7 +324,6 @@ const quoteController = {
       // Reutilizar la lógica del createQuote
       req.body = externalQuoteData;
       return quoteController.createQuote(req, res);
-
     } catch (error) {
       console.error("Error creating external quote:", error);
       res.status(500).json({
@@ -322,7 +340,14 @@ const quoteController = {
 
       // Obtener el usuario que está creando la cotización
       const creator = await User.findByPk(userId, {
-        attributes: ['id', 'name', 'lastname', 'role', 'lider_id', 'gerente_id']
+        attributes: [
+          "id",
+          "name",
+          "lastname",
+          "role",
+          "lider_id",
+          "gerente_id",
+        ],
       });
 
       if (!creator) {
@@ -331,57 +356,58 @@ const quoteController = {
 
       // ✅ Auto-asignar según el rol del creador
       let assignmentData = {};
-      
+
       switch (creator.role) {
         case 2: // Asesor
           assignmentData = {
             asesor_id: creator.id,
             lider_id: creator.lider_id,
             gerente_id: creator.gerente_id,
-            created_by: `${creator.name} ${creator.lastname} (Asesor)`
+            created_by: `${creator.name} ${creator.lastname} (Asesor)`,
           };
           break;
-          
+
         case 3: // Líder
           assignmentData = {
             lider_id: creator.id,
             gerente_id: creator.gerente_id,
-            created_by: `${creator.name} ${creator.lastname} (Líder)`
+            created_by: `${creator.name} ${creator.lastname} (Líder)`,
           };
           break;
-          
+
         case 4: // Gerente
           assignmentData = {
             gerente_id: creator.id,
-            created_by: `${creator.name} ${creator.lastname} (Gerente)`
+            created_by: `${creator.name} ${creator.lastname} (Gerente)`,
           };
           break;
-          
+
         case 5: // Admin
         case 6: // Contador
         case 7: // Owner
           assignmentData = {
             admin_id: creator.id,
-            created_by: `${creator.name} ${creator.lastname} (${getRoleName(creator.role)})`
+            created_by: `${creator.name} ${creator.lastname} (${getRoleName(
+              creator.role
+            )})`,
           };
           break;
-          
+
         default:
-          return res.status(403).json({ 
-            message: "No tienes permisos para crear cotizaciones" 
+          return res.status(403).json({
+            message: "No tienes permisos para crear cotizaciones",
           });
       }
 
       // Combinar datos de la cotización con la asignación automática
       const completeQuoteData = {
         ...quoteData,
-        ...assignmentData
+        ...assignmentData,
       };
 
       // Usar el método createQuote existente
       req.body = completeQuoteData;
       return quoteController.createQuote(req, res);
-
     } catch (error) {
       console.error("Error creating quote from user:", error);
       res.status(500).json({
@@ -447,100 +473,111 @@ const quoteController = {
         offset: parseInt(offset),
       });
 
-       const now = new Date();
-    const expiredQuotes = quotes.rows.filter(
-      q => q.status === "sent" && q.expires_at && new Date(q.expires_at) < now
-    );
+      const now = new Date();
+      const expiredQuotes = quotes.rows.filter(
+        (q) =>
+          q.status === "sent" && q.expires_at && new Date(q.expires_at) < now
+      );
 
       res.json({
-      quotes: quotes.rows,
-      total: quotes.count,
-      totalPages: Math.ceil(quotes.count / limit),
-      currentPage: parseInt(page),
-      expiredQuotes, // <-- Aquí tienes las expiradas
-      expiredCount: expiredQuotes.length
-    });
-  } catch (error) {
-    console.error("Error fetching quotes:", error);
-    res.status(500).json({
-      message: "Error al obtener las cotizaciones",
-      error: error.message,
-    });
-  }
-},
+        quotes: quotes.rows,
+        total: quotes.count,
+        totalPages: Math.ceil(quotes.count / limit),
+        currentPage: parseInt(page),
+        expiredQuotes, // <-- Aquí tienes las expiradas
+        expiredCount: expiredQuotes.length,
+      });
+    } catch (error) {
+      console.error("Error fetching quotes:", error);
+      res.status(500).json({
+        message: "Error al obtener las cotizaciones",
+        error: error.message,
+      });
+    }
+  },
 
   // ✅ ACTUALIZAR: getQuoteById con nuevos includes
- getQuoteById: async (req, res) => {
-  try {
-    const { id } = req.params;
+  getQuoteById: async (req, res) => {
+    try {
+      const { id } = req.params;
 
-    const quote = await Quote.findByPk(id, {
-      include: [
-        {
-          model: User,
-          as: "Asesor",
-          attributes: ["id", "name", "lastname", "email", "role"],
-        },
-        {
-          model: User,
-          as: "Lider",
-          attributes: ["id", "name", "lastname", "email", "role"],
-        },
-        {
-          model: User,
-          as: "Gerente",
-          attributes: ["id", "name", "lastname", "email", "role"],
-        },
-        {
-          model: User,
-          as: "Admin",
-          attributes: ["id", "name", "lastname", "email", "role"],
-        },
-        {
-          model: User,
-          as: "Cliente",
-          attributes: ["id", "name", "lastname", "email", "phone"],
-        },
-        // ✅ CORREGIR: Especificar el alias para Contract
-        {
-          model: Contract,
-          as: "Contract", // o el alias que hayas definido en las asociaciones
-          required: false // hacer que sea opcional
-        },
-      ],
-    });
+      const quote = await Quote.findByPk(id, {
+        include: [
+          {
+            model: User,
+            as: "Asesor",
+            attributes: ["id", "name", "lastname", "email", "role"],
+          },
+          {
+            model: User,
+            as: "Lider",
+            attributes: ["id", "name", "lastname", "email", "role"],
+          },
+          {
+            model: User,
+            as: "Gerente",
+            attributes: ["id", "name", "lastname", "email", "role"],
+          },
+          {
+            model: User,
+            as: "Admin",
+            attributes: ["id", "name", "lastname", "email", "role"],
+          },
+          {
+            model: User,
+            as: "Cliente",
+            attributes: ["id", "name", "lastname", "email", "phone"],
+          },
+          // ✅ CORREGIR: Especificar el alias para Contract
+          {
+            model: Contract,
+            as: "Contract", // o el alias que hayas definido en las asociaciones
+            required: false, // hacer que sea opcional
+          },
 
-    if (!quote) {
-      return res.status(404).json({ message: "Cotización no encontrada" });
+          {
+          model: Passenger,
+          as: "Passengers",
+          required: false,
+          order: [
+            ['titular', 'DESC'],
+            ['nombre', 'ASC']
+          ]
+        }
+        ],
+      });
+
+      if (!quote) {
+        return res.status(404).json({ message: "Cotización no encontrada" });
+      }
+
+      res.json(quote);
+    } catch (error) {
+      console.error("Error fetching quote:", error);
+      res.status(500).json({
+        message: "Error al obtener la cotización",
+        error: error.message,
+      });
     }
+  },
 
-    res.json(quote);
-  } catch (error) {
-    console.error("Error fetching quote:", error);
-    res.status(500).json({
-      message: "Error al obtener la cotización",
-      error: error.message,
-    });
-  }
-},
-
-   getExternalQuotes: async (req, res) => {
+  getExternalQuotes: async (req, res) => {
     try {
       const { page = 1, limit = 10, owner_only = true } = req.query;
       const offset = (page - 1) * limit;
 
       const where = {
-        is_external: true
+        is_external: true,
       };
 
       // Si owner_only es true, filtrar solo las asignadas a Owners
-      if (owner_only === 'true') {
+      if (owner_only === "true") {
         const owners = await User.findAll({
           where: { role: 7 },
-          attributes: ['id']
+          attributes: ["id"],
         });
-        
-        const ownerIds = owners.map(o => o.id);
+
+        const ownerIds = owners.map((o) => o.id);
         where.admin_id = { [Op.in]: ownerIds };
       }
 
@@ -559,8 +596,8 @@ const quoteController = {
           },
         ],
         order: [
-          ['priority', 'DESC'],
-          ["created_at", "ASC"] // Más antiguas primero para que el Owner las vea en orden
+          ["priority", "DESC"],
+          ["created_at", "ASC"], // Más antiguas primero para que el Owner las vea en orden
         ],
         limit: parseInt(limit),
         offset: parseInt(offset),
@@ -571,9 +608,8 @@ const quoteController = {
         total: quotes.count,
         totalPages: Math.ceil(quotes.count / limit),
         currentPage: parseInt(page),
-        type: 'external_quotes_owner_assigned'
+        type: "external_quotes_owner_assigned",
       });
-
     } catch (error) {
       console.error("Error fetching external quotes:", error);
       res.status(500).json({
@@ -595,65 +631,65 @@ const quoteController = {
       }
 
       if (!quote.is_external) {
-        return res.status(400).json({ 
-          message: "Solo se pueden reasignar cotizaciones externas" 
+        return res.status(400).json({
+          message: "Solo se pueden reasignar cotizaciones externas",
         });
       }
 
       // Validar que se está asignando a un vendedor válido
       let newAssignment = {};
-      
+
       if (asesor_id) {
         const asesor = await User.findByPk(asesor_id, {
-          attributes: ['id', 'role', 'lider_id', 'gerente_id']
+          attributes: ["id", "role", "lider_id", "gerente_id"],
         });
-        
+
         if (asesor && asesor.role === 2) {
           newAssignment = {
             asesor_id: asesor.id,
             lider_id: asesor.lider_id,
             gerente_id: asesor.gerente_id,
-            admin_id: null // Quitar del Owner
+            admin_id: null, // Quitar del Owner
           };
         }
       } else if (lider_id) {
         const lider = await User.findByPk(lider_id, {
-          attributes: ['id', 'role', 'gerente_id']
+          attributes: ["id", "role", "gerente_id"],
         });
-        
+
         if (lider && lider.role === 3) {
           newAssignment = {
             asesor_id: null,
             lider_id: lider.id,
             gerente_id: lider.gerente_id,
-            admin_id: null // Quitar del Owner
+            admin_id: null, // Quitar del Owner
           };
         }
       } else if (gerente_id) {
         const gerente = await User.findByPk(gerente_id, {
-          attributes: ['id', 'role']
+          attributes: ["id", "role"],
         });
-        
+
         if (gerente && gerente.role === 4) {
           newAssignment = {
             asesor_id: null,
             lider_id: null,
             gerente_id: gerente.id,
-            admin_id: null // Quitar del Owner
+            admin_id: null, // Quitar del Owner
           };
         }
       }
 
       if (Object.keys(newAssignment).length === 0) {
         return res.status(400).json({
-          message: "Debe proporcionar un vendedor válido para la reasignación"
+          message: "Debe proporcionar un vendedor válido para la reasignación",
         });
       }
 
       await quote.update({
         ...newAssignment,
         reassigned_at: new Date(),
-        reassignment_reason: reason || 'Reasignación desde Owner a vendedor'
+        reassignment_reason: reason || "Reasignación desde Owner a vendedor",
       });
 
       const updatedQuote = await Quote.findByPk(id, {
@@ -682,10 +718,10 @@ const quoteController = {
       });
 
       res.json({
-        message: "Cotización externa reasignada exitosamente desde Owner a vendedor",
+        message:
+          "Cotización externa reasignada exitosamente desde Owner a vendedor",
         quote: updatedQuote,
       });
-
     } catch (error) {
       console.error("Error reassigning external quote:", error);
       res.status(500).json({
@@ -702,7 +738,7 @@ const quoteController = {
       const { status, page = 1, limit = 10 } = req.query;
 
       const user = await User.findByPk(userId, {
-        attributes: ['id', 'role']
+        attributes: ["id", "role"],
       });
 
       if (!user) {
@@ -722,14 +758,14 @@ const quoteController = {
         case 3: // Líder
           where[Op.or] = [
             { lider_id: userId },
-            { asesor_id: { [Op.in]: await getUsersByLider(userId) } }
+            { asesor_id: { [Op.in]: await getUsersByLider(userId) } },
           ];
           break;
         case 4: // Gerente
           where[Op.or] = [
             { gerente_id: userId },
             { lider_id: { [Op.in]: await getUsersByGerente(userId) } },
-            { asesor_id: { [Op.in]: await getAsesoresByGerente(userId) } }
+            { asesor_id: { [Op.in]: await getAsesoresByGerente(userId) } },
           ];
           break;
         case 5: // Admin
@@ -738,8 +774,8 @@ const quoteController = {
           // Pueden ver todas las cotizaciones
           break;
         default:
-          return res.status(403).json({ 
-            message: "No tienes permisos para ver cotizaciones" 
+          return res.status(403).json({
+            message: "No tienes permisos para ver cotizaciones",
           });
       }
 
@@ -782,7 +818,7 @@ const quoteController = {
         total: quotes.count,
         totalPages: Math.ceil(quotes.count / limit),
         currentPage: parseInt(page),
-        userRole: user.role
+        userRole: user.role,
       });
     } catch (error) {
       console.error("Error fetching quotes by user:", error);
@@ -793,6 +829,345 @@ const quoteController = {
     }
   },
 
+getPassengersByQuote: async (req, res) => {
+    try {
+      const { quoteId } = req.params;
+
+      // Verificar que la cotización existe
+      const quote = await Quote.findByPk(quoteId);
+      if (!quote) {
+        return res.status(404).json({
+          success: false,
+          message: "Cotización no encontrada"
+        });
+      }
+
+      // Obtener pasajeros
+      const passengers = await Passenger.findAll({
+        where: { quote_id: quoteId },
+        order: [
+          ['titular', 'DESC'], // Titular primero
+          ['nombre', 'ASC']    // Luego por nombre
+        ]
+      });
+
+      res.json({
+        success: true,
+        passengers,
+        total: passengers.length,
+        quote: {
+          id: quote.id,
+          quote_number: quote.quote_number,
+          numero_personas: quote.numero_personas,
+          status: quote.status
+        }
+      });
+
+    } catch (error) {
+      console.error("Error fetching passengers:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al obtener los pasajeros",
+        error: error.message
+      });
+    }
+  },
+
+  // ✅ NUEVO: Crear o actualizar pasajeros de una cotización
+  createOrUpdatePassengers: async (req, res) => {
+    try {
+      const { quoteId } = req.params;
+      const { passengers } = req.body; // Array de pasajeros
+
+      // Validaciones
+      if (!passengers || !Array.isArray(passengers) || passengers.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Debe proporcionar al menos un pasajero"
+        });
+      }
+
+      // Verificar que la cotización existe
+      const quote = await Quote.findByPk(quoteId);
+      if (!quote) {
+        return res.status(404).json({
+          success: false,
+          message: "Cotización no encontrada"
+        });
+      }
+
+      // Validar que el número de pasajeros coincida
+      if (passengers.length !== quote.numero_personas) {
+        return res.status(400).json({
+          success: false,
+          message: `El número de pasajeros (${passengers.length}) no coincide con el número de personas de la cotización (${quote.numero_personas})`
+        });
+      }
+
+      // Validar que haya exactamente un titular
+      const titulares = passengers.filter(p => p.titular === true);
+      if (titulares.length !== 1) {
+        return res.status(400).json({
+          success: false,
+          message: "Debe haber exactamente un pasajero titular"
+        });
+      }
+
+      // Eliminar pasajeros existentes para esta cotización
+      await Passenger.destroy({
+        where: { quote_id: quoteId }
+      });
+
+      // Crear nuevos pasajeros
+      const newPassengers = await Promise.all(
+        passengers.map(async (passengerData, index) => {
+          // Validar campos obligatorios
+          const requiredFields = ['nombre', 'apellido', 'documento_identidad', 'tipo_documento', 'fecha_nacimiento'];
+          for (const field of requiredFields) {
+            if (!passengerData[field]) {
+              throw new Error(`El campo '${field}' es obligatorio para el pasajero ${index + 1}`);
+            }
+          }
+
+          return await Passenger.create({
+            quote_id: quoteId,
+            nombre: passengerData.nombre.trim(),
+            apellido: passengerData.apellido.trim(),
+            documento_identidad: passengerData.documento_identidad.trim(),
+            tipo_documento: passengerData.tipo_documento,
+            fecha_nacimiento: passengerData.fecha_nacimiento,
+            titular: passengerData.titular || false
+          });
+        })
+      );
+
+      // Actualizar status de la cotización si estaba pendiente de pasajeros
+      if (quote.status === 'pending_passengers') {
+        await quote.update({
+          status: 'completed'
+        });
+      }
+
+      res.status(201).json({
+        success: true,
+        message: "Pasajeros guardados exitosamente",
+        passengers: newPassengers,
+        total: newPassengers.length
+      });
+
+    } catch (error) {
+      console.error("Error creating/updating passengers:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al guardar los pasajeros",
+        error: error.message
+      });
+    }
+  },
+
+  // ✅ NUEVO: Crear un pasajero individual
+  createPassenger: async (req, res) => {
+    try {
+      const { quoteId } = req.params;
+      const { nombre, apellido, documento_identidad, tipo_documento, fecha_nacimiento, titular } = req.body;
+
+      // Verificar que la cotización existe
+      const quote = await Quote.findByPk(quoteId);
+      if (!quote) {
+        return res.status(404).json({
+          success: false,
+          message: "Cotización no encontrada"
+        });
+      }
+
+      // Validar campos obligatorios
+      if (!nombre || !apellido || !documento_identidad || !tipo_documento || !fecha_nacimiento) {
+        return res.status(400).json({
+          success: false,
+          message: "Todos los campos son obligatorios"
+        });
+      }
+
+      // Verificar que no exceda el número de personas
+      const existingPassengers = await Passenger.count({
+        where: { quote_id: quoteId }
+      });
+
+      if (existingPassengers >= quote.numero_personas) {
+        return res.status(400).json({
+          success: false,
+          message: `No puede agregar más pasajeros. Máximo permitido: ${quote.numero_personas}`
+        });
+      }
+
+      // Si es titular, verificar que no haya otro titular
+      if (titular) {
+        const existingTitular = await Passenger.findOne({
+          where: { 
+            quote_id: quoteId,
+            titular: true 
+          }
+        });
+
+        if (existingTitular) {
+          return res.status(400).json({
+            success: false,
+            message: "Ya existe un pasajero titular para esta cotización"
+          });
+        }
+      }
+
+      const newPassenger = await Passenger.create({
+        quote_id: quoteId,
+        nombre: nombre.trim(),
+        apellido: apellido.trim(),
+        documento_identidad: documento_identidad.trim(),
+        tipo_documento,
+        fecha_nacimiento,
+        titular: titular || false
+      });
+
+      res.status(201).json({
+        success: true,
+        message: "Pasajero creado exitosamente",
+        passenger: newPassenger
+      });
+
+    } catch (error) {
+      console.error("Error creating passenger:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al crear el pasajero",
+        error: error.message
+      });
+    }
+  },
+
+  // ✅ NUEVO: Actualizar un pasajero
+  updatePassenger: async (req, res) => {
+    try {
+      const { passengerId } = req.params;
+      const { nombre, apellido, documento_identidad, tipo_documento, fecha_nacimiento, titular } = req.body;
+
+      const passenger = await Passenger.findByPk(passengerId);
+      if (!passenger) {
+        return res.status(404).json({
+          success: false,
+          message: "Pasajero no encontrado"
+        });
+      }
+
+      // Si se está cambiando a titular, verificar que no haya otro titular
+      if (titular && !passenger.titular) {
+        const existingTitular = await Passenger.findOne({
+          where: { 
+            quote_id: passenger.quote_id,
+            titular: true,
+            id: { [Op.ne]: passengerId } // Excluir el pasajero actual
+          }
+        });
+
+        if (existingTitular) {
+          return res.status(400).json({
+            success: false,
+            message: "Ya existe un pasajero titular para esta cotización"
+          });
+        }
+      }
+
+      await passenger.update({
+        nombre: nombre?.trim() || passenger.nombre,
+        apellido: apellido?.trim() || passenger.apellido,
+        documento_identidad: documento_identidad?.trim() || passenger.documento_identidad,
+        tipo_documento: tipo_documento || passenger.tipo_documento,
+        fecha_nacimiento: fecha_nacimiento || passenger.fecha_nacimiento,
+        titular: titular !== undefined ? titular : passenger.titular
+      });
+
+      res.json({
+        success: true,
+        message: "Pasajero actualizado exitosamente",
+        passenger
+      });
+
+    } catch (error) {
+      console.error("Error updating passenger:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al actualizar el pasajero",
+        error: error.message
+      });
+    }
+  },
+
+  // ✅ NUEVO: Eliminar un pasajero
+  deletePassenger: async (req, res) => {
+    try {
+      const { passengerId } = req.params;
+
+      const passenger = await Passenger.findByPk(passengerId);
+      if (!passenger) {
+        return res.status(404).json({
+          success: false,
+          message: "Pasajero no encontrado"
+        });
+      }
+
+      await passenger.destroy();
+
+      res.json({
+        success: true,
+        message: "Pasajero eliminado exitosamente"
+      });
+
+    } catch (error) {
+      console.error("Error deleting passenger:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al eliminar el pasajero",
+        error: error.message
+      });
+    }
+  },
+
+  // ✅ NUEVO: Obtener enlace público para cargar pasajeros
+  getPassengerFormLink: async (req, res) => {
+    try {
+      const { quoteId } = req.params;
+
+      const quote = await Quote.findByPk(quoteId);
+      if (!quote) {
+        return res.status(404).json({
+          success: false,
+          message: "Cotización no encontrada"
+        });
+      }
+
+      // Generar token o usar el ID de la cotización para el enlace público
+      const publicLink = `${process.env.FRONTEND_URL}/passenger-form/${quoteId}`;
+
+      res.json({
+        success: true,
+        link: publicLink,
+        quote: {
+          id: quote.id,
+          quote_number: quote.quote_number,
+          numero_personas: quote.numero_personas,
+          destino: quote.destino,
+          nombre_cliente: quote.nombre_cliente,
+          email_cliente: quote.email_cliente
+        }
+      });
+
+    } catch (error) {
+      console.error("Error generating passenger form link:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al generar el enlace",
+        error: error.message
+      });
+    }
+  },
 
 
 
@@ -802,22 +1177,41 @@ const quoteController = {
       const { id } = req.params;
       const userId = req.user?.id;
 
-      console.log('🚀 Iniciando envío de cotización al cliente:', { quoteId: id, userId });
+      console.log("🚀 Iniciando envío de cotización al cliente:", {
+        quoteId: id,
+        userId,
+      });
 
       // ✅ Buscar la cotización con todas las relaciones
       const quote = await Quote.findByPk(id, {
         include: [
-          { model: User, as: 'Asesor', attributes: ['id', 'name', 'lastname', 'email'] },
-          { model: User, as: 'Lider', attributes: ['id', 'name', 'lastname', 'email'] },
-          { model: User, as: 'Gerente', attributes: ['id', 'name', 'lastname', 'email'] },
-          { model: User, as: 'Admin', attributes: ['id', 'name', 'lastname', 'email'] }
-        ]
+          {
+            model: User,
+            as: "Asesor",
+            attributes: ["id", "name", "lastname", "email"],
+          },
+          {
+            model: User,
+            as: "Lider",
+            attributes: ["id", "name", "lastname", "email"],
+          },
+          {
+            model: User,
+            as: "Gerente",
+            attributes: ["id", "name", "lastname", "email"],
+          },
+          {
+            model: User,
+            as: "Admin",
+            attributes: ["id", "name", "lastname", "email"],
+          },
+        ],
       });
 
       if (!quote) {
-        return res.status(404).json({ 
-          success: false, 
-          message: 'Cotización no encontrada' 
+        return res.status(404).json({
+          success: false,
+          message: "Cotización no encontrada",
         });
       }
 
@@ -832,32 +1226,34 @@ const quoteController = {
       if (!quote.precio_total || quote.precio_total <= 0) {
         return res.status(400).json({
           success: false,
-          message: 'La cotización debe tener un precio total antes de enviarla'
+          message: "La cotización debe tener un precio total antes de enviarla",
         });
       }
 
-      if (!quote.email_cliente || !quote.email_cliente.includes('@')) {
+      if (!quote.email_cliente || !quote.email_cliente.includes("@")) {
         return res.status(400).json({
           success: false,
-          message: 'La cotización debe tener un email de cliente válido'
+          message: "La cotización debe tener un email de cliente válido",
         });
       }
 
       // ✅ Validar que no se haya enviado ya
-      if (quote.status === 'sent') {
+      if (quote.status === "sent") {
         return res.status(400).json({
           success: false,
-          message: 'Esta cotización ya fue enviada al cliente'
+          message: "Esta cotización ya fue enviada al cliente",
         });
       }
 
       // ✅ PASO 1: Generar PDF
-      console.log('📄 Generando PDF de la cotización...');
+      console.log("📄 Generando PDF de la cotización...");
       const pdfInfo = await generateQuotePDF(quote);
 
       // ✅ PASO 2: Preparar fechas
       const sentAt = new Date();
       const expiresAt = new Date(sentAt.getTime() + 48 * 60 * 60 * 1000);
+
+      const passengerFormLink = `${process.env.FRONTEND_URL}/passenger-form/${quote.id}`;
 
       // ✅ PASO 3: Actualizar la cotización con PDF y estado
       await quote.update({
@@ -867,12 +1263,14 @@ const quoteController = {
         pdf_path: pdfInfo.filepath,
         pdf_filename: pdfInfo.filename,
         pdf_generated_at: new Date(),
-        email_sent_to: quote.email_cliente
+        email_sent_to: quote.email_cliente,
       });
 
       // ✅ PASO 4: Preparar el email
-      const emailSubject = `Cotización de Viaje - ${quote.destino} | ${quote.quote_number || quote.id}`;
-      
+      const emailSubject = `Cotización de Viaje - ${quote.destino} | ${
+        quote.quote_number || quote.id
+      }`;
+
       const emailHTML = `
         <!DOCTYPE html>
         <html>
@@ -895,36 +1293,78 @@ const quoteController = {
           </div>
           
           <div class="content">
-            <h2>Estimado/a ${quote.nombre_cliente || 'Cliente'},</h2>
+            <h2>Estimado/a ${quote.nombre_cliente || "Cliente"},</h2>
             
-            <p>Nos complace presentarle la cotización solicitada para su viaje a <strong>${quote.destino}</strong>.</p>
+            <p>Nos complace presentarle la cotización solicitada para su viaje a <strong>${
+              quote.destino
+            }</strong>.</p>
             
             <div class="quote-details">
               <h3>📋 Detalles del Viaje:</h3>
               <ul>
                 <li><strong>🏖️ Destino:</strong> ${quote.destino}</li>
                 <li><strong>📍 Origen:</strong> ${quote.origen}</li>
-                <li><strong>📅 Fecha de ida:</strong> ${new Date(quote.fecha_ida).toLocaleDateString('es-ES')}</li>
-                <li><strong>📅 Fecha de regreso:</strong> ${new Date(quote.fecha_regreso).toLocaleDateString('es-ES')}</li>
-                <li><strong>👥 Número de personas:</strong> ${quote.numero_personas}</li>
-                ${quote.ninos > 0 ? `<li><strong>👶 Niños:</strong> ${quote.ninos} (Edades: ${quote.edades_ninos.join(', ')})</li>` : ''}
-                <li><strong>🏨 Tipo de acomodación:</strong> ${quote.acomodacion}</li>
+                <li><strong>📅 Fecha de ida:</strong> ${new Date(
+                  quote.fecha_ida
+                ).toLocaleDateString("es-ES")}</li>
+                <li><strong>📅 Fecha de regreso:</strong> ${new Date(
+                  quote.fecha_regreso
+                ).toLocaleDateString("es-ES")}</li>
+                <li><strong>👥 Número de personas:</strong> ${
+                  quote.numero_personas
+                }</li>
+                ${
+                  quote.ninos > 0
+                    ? `<li><strong>👶 Niños:</strong> ${
+                        quote.ninos
+                      } (Edades: ${quote.edades_ninos.join(", ")})</li>`
+                    : ""
+                }
+                <li><strong>🏨 Tipo de acomodación:</strong> ${
+                  quote.acomodacion
+                }</li>
                 <li><strong>⭐ Tipo de hotel:</strong> ${quote.tipo_hotel}</li>
-                ${quote.traslado ? '<li><strong>🚗 Traslados:</strong> Incluidos</li>' : ''}
-                ${quote.alimentacion ? `<li><strong>🍽️ Alimentación:</strong> ${quote.alimentacion}</li>` : ''}
+                ${
+                  quote.traslado
+                    ? "<li><strong>🚗 Traslados:</strong> Incluidos</li>"
+                    : ""
+                }
+                ${
+                  quote.alimentacion
+                    ? `<li><strong>🍽️ Alimentación:</strong> ${quote.alimentacion}</li>`
+                    : ""
+                }
               </ul>
             </div>
             
             <div class="price">
-              <h2>💰 Precio Total: USD $${quote.precio_total.toLocaleString()}</h2>
+              <h2>💰 Precio Total: COP $${quote.precio_total.toLocaleString()}</h2>
+            </div>
+             <div class="passenger-section">
+              <h3>👥 ¡IMPORTANTE! - Datos de Pasajeros</h3>
+              <p>Para procesar su reserva, necesitamos que complete los datos de todos los pasajeros que viajarán.</p>
+              <p><strong>Número de pasajeros a registrar: ${quote.numero_personas}</strong></p>
+              
+              <a href="${passengerFormLink}" class="btn-passenger" target="_blank">
+                📝 COMPLETAR DATOS DE PASAJEROS
+              </a>
+              
+              <p style="font-size: 14px; color: #666; margin-top: 15px;">
+                ⚠️ <strong>Este paso es obligatorio</strong> para confirmar su reserva. 
+                El enlace estará disponible hasta que complete todos los datos requeridos.
+              </p>
             </div>
 
-            ${quote.observaciones ? `
+            ${
+              quote.observaciones
+                ? `
               <div class="quote-details">
                 <h3>📝 Observaciones importantes:</h3>
                 <p>${quote.observaciones}</p>
               </div>
-            ` : ''}
+            `
+                : ""
+            }
             
             <div class="highlight">
               <p><strong>⏰ Esta cotización es válida por 48 Hs </strong> a partir de la fecha de emisión.</p>
@@ -937,8 +1377,23 @@ const quoteController = {
             <div class="quote-details">
               <h3>👨‍💼 Su asesor de confianza:</h3>
               <ul>
-                <li><strong>Nombre:</strong> ${quote.Asesor?.name || quote.Lider?.name || quote.Gerente?.name || quote.Admin?.name} ${quote.Asesor?.lastname || quote.Lider?.lastname || quote.Gerente?.lastname || quote.Admin?.lastname}</li>
-                <li><strong>📧 Email:</strong> ${quote.Asesor?.email || quote.Lider?.email || quote.Gerente?.email || quote.Admin?.email}</li>
+                <li><strong>Nombre:</strong> ${
+                  quote.Asesor?.name ||
+                  quote.Lider?.name ||
+                  quote.Gerente?.name ||
+                  quote.Admin?.name
+                } ${
+        quote.Asesor?.lastname ||
+        quote.Lider?.lastname ||
+        quote.Gerente?.lastname ||
+        quote.Admin?.lastname
+      }</li>
+                <li><strong>📧 Email:</strong> ${
+                  quote.Asesor?.email ||
+                  quote.Lider?.email ||
+                  quote.Gerente?.email ||
+                  quote.Admin?.email
+                }</li>
                 <li><strong>📞 Teléfono general:</strong> +54 123 456 7890</li>
               </ul>
             </div>
@@ -958,8 +1413,8 @@ const quoteController = {
       `;
 
       // ✅ PASO 5: Enviar email con PDF adjunto
-      console.log('📧 Enviando email al cliente...');
-      
+      console.log("📧 Enviando email al cliente...");
+
       const mailOptions = {
         to: quote.email_cliente,
         subject: emailSubject,
@@ -968,27 +1423,43 @@ const quoteController = {
           {
             filename: pdfInfo.filename,
             path: pdfInfo.filepath,
-            contentType: 'application/pdf'
-          }
-        ]
+            contentType: "application/pdf",
+          },
+        ],
       };
 
       const emailResult = await sendEmail(mailOptions);
-      console.log('✅ Email enviado exitosamente:', emailResult.messageId);
+      console.log("✅ Email enviado exitosamente:", emailResult.messageId);
 
       // ✅ PASO 6: Actualizar fecha de envío del email
       await quote.update({
-        sent_at: new Date()
+        sent_at: new Date(),
       });
 
       // ✅ Obtener cotización actualizada con relaciones
       const updatedQuote = await Quote.findByPk(id, {
         include: [
-          { model: User, as: 'Asesor', attributes: ['id', 'name', 'lastname', 'email'] },
-          { model: User, as: 'Lider', attributes: ['id', 'name', 'lastname', 'email'] },
-          { model: User, as: 'Gerente', attributes: ['id', 'name', 'lastname', 'email'] },
-          { model: User, as: 'Admin', attributes: ['id', 'name', 'lastname', 'email'] }
-        ]
+          {
+            model: User,
+            as: "Asesor",
+            attributes: ["id", "name", "lastname", "email"],
+          },
+          {
+            model: User,
+            as: "Lider",
+            attributes: ["id", "name", "lastname", "email"],
+          },
+          {
+            model: User,
+            as: "Gerente",
+            attributes: ["id", "name", "lastname", "email"],
+          },
+          {
+            model: User,
+            as: "Admin",
+            attributes: ["id", "name", "lastname", "email"],
+          },
+        ],
       });
 
       // ✅ Respuesta exitosa
@@ -1000,64 +1471,71 @@ const quoteController = {
           email_sent_to: quote.email_cliente,
           pdf_generated: true,
           pdf_filename: pdfInfo.filename,
+            passenger_form_link: passengerFormLink,
           sent_at: sentAt.toISOString(),
-          expires_at: expiresAt.toISOString()
-        }
+          expires_at: expiresAt.toISOString(),
+        },
       });
-
     } catch (error) {
-      console.error('❌ Error enviando cotización al cliente:', error);
-      
+      console.error("❌ Error enviando cotización al cliente:", error);
+
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al enviar la cotización',
-        error: process.env.NODE_ENV === 'development' ? error.message : 'Error interno'
+        message: "Error interno del servidor al enviar la cotización",
+        error:
+          process.env.NODE_ENV === "development"
+            ? error.message
+            : "Error interno",
       });
     }
   },
+
+
 
   // ✅ NUEVO MÉTODO: Descargar PDF de cotización
   downloadQuotePDF: async (req, res) => {
     try {
       const { id } = req.params;
-      
+
       const quote = await Quote.findByPk(id);
-      
+
       if (!quote) {
-        return res.status(404).json({ 
-          success: false, 
-          message: 'Cotización no encontrada' 
+        return res.status(404).json({
+          success: false,
+          message: "Cotización no encontrada",
         });
       }
 
       if (!quote.pdf_path || !quote.pdf_filename) {
         return res.status(404).json({
           success: false,
-          message: 'PDF no disponible para esta cotización'
+          message: "PDF no disponible para esta cotización",
         });
       }
 
       // Verificar que el archivo existe
-      const fs = require('fs');
+      const fs = require("fs");
       if (!fs.existsSync(quote.pdf_path)) {
         return res.status(404).json({
           success: false,
-          message: 'Archivo PDF no encontrado en el servidor'
+          message: "Archivo PDF no encontrado en el servidor",
         });
       }
 
       // Configurar headers para descarga
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="${quote.pdf_filename}"`);
-      
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${quote.pdf_filename}"`
+      );
+
       // Enviar archivo
       res.sendFile(path.resolve(quote.pdf_path));
-      
     } catch (error) {
-      console.error('❌ Error descargando PDF:', error);
+      console.error("❌ Error descargando PDF:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor'
+        message: "Error interno del servidor",
       });
     }
   },
@@ -1066,27 +1544,44 @@ const quoteController = {
   regenerateQuotePDF: async (req, res) => {
     try {
       const { id } = req.params;
-      
+
       const quote = await Quote.findByPk(id, {
         include: [
-          { model: User, as: 'Asesor', attributes: ['id', 'name', 'lastname', 'email'] },
-          { model: User, as: 'Lider', attributes: ['id', 'name', 'lastname', 'email'] },
-          { model: User, as: 'Gerente', attributes: ['id', 'name', 'lastname', 'email'] },
-          { model: User, as: 'Admin', attributes: ['id', 'name', 'lastname', 'email'] }
-        ]
+          {
+            model: User,
+            as: "Asesor",
+            attributes: ["id", "name", "lastname", "email"],
+          },
+          {
+            model: User,
+            as: "Lider",
+            attributes: ["id", "name", "lastname", "email"],
+          },
+          {
+            model: User,
+            as: "Gerente",
+            attributes: ["id", "name", "lastname", "email"],
+          },
+          {
+            model: User,
+            as: "Admin",
+            attributes: ["id", "name", "lastname", "email"],
+          },
+        ],
       });
-      
+
       if (!quote) {
-        return res.status(404).json({ 
-          success: false, 
-          message: 'Cotización no encontrada' 
+        return res.status(404).json({
+          success: false,
+          message: "Cotización no encontrada",
         });
       }
 
       if (!quote.precio_total) {
         return res.status(400).json({
           success: false,
-          message: 'La cotización debe tener un precio total para generar el PDF'
+          message:
+            "La cotización debe tener un precio total para generar el PDF",
         });
       }
 
@@ -1097,28 +1592,25 @@ const quoteController = {
       await quote.update({
         pdf_path: pdfInfo.filepath,
         pdf_filename: pdfInfo.filename,
-        pdf_generated_at: new Date()
+        pdf_generated_at: new Date(),
       });
 
       res.json({
         success: true,
-        message: 'PDF regenerado exitosamente',
+        message: "PDF regenerado exitosamente",
         pdf_info: {
           filename: pdfInfo.filename,
-          generated_at: new Date().toISOString()
-        }
+          generated_at: new Date().toISOString(),
+        },
       });
-      
     } catch (error) {
-      console.error('❌ Error regenerando PDF:', error);
+      console.error("❌ Error regenerando PDF:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor'
+        message: "Error interno del servidor",
       });
     }
   },
-
-
 
   updateQuote: async (req, res) => {
     try {
@@ -1208,133 +1700,141 @@ const quoteController = {
     }
   },
 
+  approveQuote: async (req, res) => {
+    try {
+      const { id } = req.params;
 
+      const quote = await Quote.findByPk(id);
 
-approveQuote: async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const quote = await Quote.findByPk(id);
-
-    if (!quote) {
-      return res.status(404).json({ message: "Cotización no encontrada" });
-    }
-
-    if (quote.status !== "completed" && quote.status !== "sent") {
-      return res.status(400).json({
-        message: "La cotización debe estar completada o enviada antes de ser aprobada",
-        current_status: quote.status,
-        required_status: "completed o sent"
-      });
-    }
-
-    console.log('✅ Aprobando cotización:', {
-      id: quote.id,
-      current_status: quote.status,
-      quote_number: quote.quote_number
-    });
-
-    // Crear usuario cliente automáticamente si corresponde
-    let clientUser = null;
-    if (quote.email_cliente) {
-      try {
-        clientUser = await createClientUser({
-          nombre_cliente: quote.nombre_cliente,
-          email_cliente: quote.email_cliente,
-          telefono_cliente: quote.telefono_cliente
-        });
-        console.log('✅ Usuario cliente procesado:', clientUser.id);
-      } catch (userError) {
-        console.error('⚠️ Error creando usuario cliente, continuando con aprobación:', userError);
+      if (!quote) {
+        return res.status(404).json({ message: "Cotización no encontrada" });
       }
-    }
 
-    await quote.update({
-      status: "approved",
-      approved_at: new Date(),
-      ...(clientUser && { cliente_id: clientUser.id })
-    });
+      if (quote.status !== "completed" && quote.status !== "sent") {
+        return res.status(400).json({
+          message:
+            "La cotización debe estar completada o enviada antes de ser aprobada",
+          current_status: quote.status,
+          required_status: "completed o sent",
+        });
+      }
 
-    // Crear contrato automáticamente si no existe
-    const existingContract = await Contract.findOne({ where: { quote_id: quote.id } });
-    let newContract = null;
-    if (!existingContract) {
-      // Generar número de contrato único
-      const contractNumber = `CON-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-      newContract = await Contract.create({
-        contract_number: contractNumber,
-        quote_id: quote.id,
-        cliente_id: clientUser ? clientUser.id : quote.cliente_id,
-        asesor_id: quote.asesor_id,
-        lider_id: quote.lider_id,
-        gerente_id: quote.gerente_id,
-        precio_total: quote.precio_total,
-        destino: quote.destino,
-        origen: quote.origen,
-        // Campos obligatorios típicos:
-        forma_pago: 'contado', // o 'cuotas', según tu lógica
-        fecha_inicio_viaje: quote.fecha_ida,
-        fecha_fin_viaje: quote.fecha_regreso,
-        saldo_pendiente: quote.precio_total || 0
+      console.log("✅ Aprobando cotización:", {
+        id: quote.id,
+        current_status: quote.status,
+        quote_number: quote.quote_number,
       });
-      console.log('✅ Contrato creado automáticamente al aprobar cotización:', newContract.id);
-    }
 
-    // Obtener la cotización actualizada con relaciones
-    const updatedQuote = await Quote.findByPk(id, {
-      include: [
-        {
-          model: User,
-          as: "Asesor",
-          attributes: ["id", "name", "lastname", "email", "role"],
-        },
-        {
-          model: User,
-          as: "Lider", 
-          attributes: ["id", "name", "lastname", "email", "role"],
-        },
-        {
-          model: User,
-          as: "Gerente",
-          attributes: ["id", "name", "lastname", "email", "role"],
-        },
-        {
-          model: User,
-          as: "Admin",
-          attributes: ["id", "name", "lastname", "email", "role"],
-        },
-        {
-          model: User,
-          as: "Cliente",
-          attributes: ["id", "name", "lastname", "email", "phone"],
-          required: false
+      // Crear usuario cliente automáticamente si corresponde
+      let clientUser = null;
+      if (quote.email_cliente) {
+        try {
+          clientUser = await createClientUser({
+            nombre_cliente: quote.nombre_cliente,
+            email_cliente: quote.email_cliente,
+            telefono_cliente: quote.telefono_cliente,
+          });
+          console.log("✅ Usuario cliente procesado:", clientUser.id);
+        } catch (userError) {
+          console.error(
+            "⚠️ Error creando usuario cliente, continuando con aprobación:",
+            userError
+          );
         }
-      ],
-    });
+      }
 
-    res.json({
-      success: true,
-      message: "Cotización aprobada exitosamente",
-      quote: updatedQuote,
-      contract: newContract,
-      clientUser: clientUser ? {
-        id: clientUser.id,
-        email: clientUser.email,
-        created: !clientUser.password_changed_at
-      } : null
-    });
+      await quote.update({
+        status: "approved",
+        approved_at: new Date(),
+        ...(clientUser && { cliente_id: clientUser.id }),
+      });
 
-  } catch (error) {
-    console.error("Error approving quote:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error al aprobar la cotización",
-      error: error.message,
-    });
-  }
-},
+      // Crear contrato automáticamente si no existe
+      const existingContract = await Contract.findOne({
+        where: { quote_id: quote.id },
+      });
+      let newContract = null;
+      if (!existingContract) {
+        // Generar número de contrato único
+        const contractNumber = `CON-${Date.now()}-${Math.floor(
+          Math.random() * 1000
+        )}`;
+        newContract = await Contract.create({
+          contract_number: contractNumber,
+          quote_id: quote.id,
+          cliente_id: clientUser ? clientUser.id : quote.cliente_id,
+          asesor_id: quote.asesor_id,
+          lider_id: quote.lider_id,
+          gerente_id: quote.gerente_id,
+          precio_total: quote.precio_total,
+          destino: quote.destino,
+          origen: quote.origen,
+          // Campos obligatorios típicos:
+          forma_pago: "contado", // o 'cuotas', según tu lógica
+          fecha_inicio_viaje: quote.fecha_ida,
+          fecha_fin_viaje: quote.fecha_regreso,
+          saldo_pendiente: quote.precio_total || 0,
+        });
+        console.log(
+          "✅ Contrato creado automáticamente al aprobar cotización:",
+          newContract.id
+        );
+      }
 
+      // Obtener la cotización actualizada con relaciones
+      const updatedQuote = await Quote.findByPk(id, {
+        include: [
+          {
+            model: User,
+            as: "Asesor",
+            attributes: ["id", "name", "lastname", "email", "role"],
+          },
+          {
+            model: User,
+            as: "Lider",
+            attributes: ["id", "name", "lastname", "email", "role"],
+          },
+          {
+            model: User,
+            as: "Gerente",
+            attributes: ["id", "name", "lastname", "email", "role"],
+          },
+          {
+            model: User,
+            as: "Admin",
+            attributes: ["id", "name", "lastname", "email", "role"],
+          },
+          {
+            model: User,
+            as: "Cliente",
+            attributes: ["id", "name", "lastname", "email", "phone"],
+            required: false,
+          },
+        ],
+      });
 
+      res.json({
+        success: true,
+        message: "Cotización aprobada exitosamente",
+        quote: updatedQuote,
+        contract: newContract,
+        clientUser: clientUser
+          ? {
+              id: clientUser.id,
+              email: clientUser.email,
+              created: !clientUser.password_changed_at,
+            }
+          : null,
+      });
+    } catch (error) {
+      console.error("Error approving quote:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al aprobar la cotización",
+        error: error.message,
+      });
+    }
+  },
 
   rejectQuote: async (req, res) => {
     try {
@@ -1377,11 +1877,16 @@ approveQuote: async (req, res) => {
         return res.status(404).json({ message: "Cotización no encontrada" });
       }
 
-       if (quote.status !== "sent" && quote.status !== "expired" && quote.status !== "rejected") {
-      return res.status(400).json({
-        message: "Solo se pueden solicitar recotizaciones en cotizaciones enviadas o expiradas",
-      });
-    }
+      if (
+        quote.status !== "sent" &&
+        quote.status !== "expired" &&
+        quote.status !== "rejected"
+      ) {
+        return res.status(400).json({
+          message:
+            "Solo se pueden solicitar recotizaciones en cotizaciones enviadas o expiradas",
+        });
+      }
 
       await quote.update({
         status: "requote",
@@ -1428,105 +1933,107 @@ approveQuote: async (req, res) => {
   },
 
   previewQuotePDF: async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    console.log('🔍 Generando vista previa de PDF para cotización:', id);
+    try {
+      const { id } = req.params;
 
-    // ✅ CORREGIR: Buscar la cotización con todas las relaciones usando alias específicos
-    const quote = await Quote.findByPk(id, {
-      include: [
-        { 
-          model: User, 
-          as: 'Asesor', 
-          attributes: ['id', 'name', 'lastname', 'email'],
-          required: false 
-        },
-        { 
-          model: User, 
-          as: 'Lider', 
-          attributes: ['id', 'name', 'lastname', 'email'],
-          required: false 
-        },
-        { 
-          model: User, 
-          as: 'Gerente', 
-          attributes: ['id', 'name', 'lastname', 'email'],
-          required: false 
-        },
-        { 
-          model: User, 
-          as: 'Admin', 
-          attributes: ['id', 'name', 'lastname', 'email'],
-          required: false 
-        },
-        { 
-          model: User, 
-          as: 'Owner', 
-          attributes: ['id', 'name', 'lastname', 'email'],
-          required: false 
-        }
-      ]
-    });
+      console.log("🔍 Generando vista previa de PDF para cotización:", id);
 
-    if (!quote) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Cotización no encontrada' 
+      // ✅ CORREGIR: Buscar la cotización con todas las relaciones usando alias específicos
+      const quote = await Quote.findByPk(id, {
+        include: [
+          {
+            model: User,
+            as: "Asesor",
+            attributes: ["id", "name", "lastname", "email"],
+            required: false,
+          },
+          {
+            model: User,
+            as: "Lider",
+            attributes: ["id", "name", "lastname", "email"],
+            required: false,
+          },
+          {
+            model: User,
+            as: "Gerente",
+            attributes: ["id", "name", "lastname", "email"],
+            required: false,
+          },
+          {
+            model: User,
+            as: "Admin",
+            attributes: ["id", "name", "lastname", "email"],
+            required: false,
+          },
+          {
+            model: User,
+            as: "Owner",
+            attributes: ["id", "name", "lastname", "email"],
+            required: false,
+          },
+        ],
       });
-    }
 
-    // Validar que tenga precio para generar PDF
-    if (!quote.precio_total || quote.precio_total <= 0) {
-      return res.status(400).json({
+      if (!quote) {
+        return res.status(404).json({
+          success: false,
+          message: "Cotización no encontrada",
+        });
+      }
+
+      // Validar que tenga precio para generar PDF
+      if (!quote.precio_total || quote.precio_total <= 0) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "La cotización debe tener un precio total para generar el PDF",
+        });
+      }
+
+      console.log("📄 Generando PDF para vista previa...");
+      console.log("📋 Datos de la cotización:", {
+        id: quote.id,
+        quote_number: quote.quote_number,
+        asesor: quote.Asesor?.name,
+        lider: quote.Lider?.name,
+        gerente: quote.Gerente?.name,
+        admin: quote.Admin?.name,
+        owner: quote.Owner?.name,
+      });
+
+      // ✅ Generar PDF en memoria (sin guardar archivo)
+      const pdfResult = await generateQuotePDF(quote, false);
+
+      if (!pdfResult || !pdfResult.buffer) {
+        throw new Error("Error generando buffer de PDF");
+      }
+
+      console.log("✅ PDF generado exitosamente para vista previa");
+
+      // ✅ Configurar headers para PDF
+      const filename =
+        pdfResult.filename ||
+        `cotizacion-${quote.quote_number || quote.id}.pdf`;
+
+      res.set({
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `inline; filename="${filename}"`,
+        "Content-Length": pdfResult.buffer.length,
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
+      });
+
+      // ✅ Enviar el buffer directamente
+      res.send(pdfResult.buffer);
+    } catch (error) {
+      console.error("❌ Error generando vista previa PDF:", error);
+      res.status(500).json({
         success: false,
-        message: 'La cotización debe tener un precio total para generar el PDF'
+        message: "Error generando vista previa del PDF: " + error.message,
       });
     }
-
-    console.log('📄 Generando PDF para vista previa...');
-    console.log('📋 Datos de la cotización:', {
-      id: quote.id,
-      quote_number: quote.quote_number,
-      asesor: quote.Asesor?.name,
-      lider: quote.Lider?.name,
-      gerente: quote.Gerente?.name,
-      admin: quote.Admin?.name,
-      owner: quote.Owner?.name
-    });
-    
-    // ✅ Generar PDF en memoria (sin guardar archivo)
-    const pdfResult = await generateQuotePDF(quote, false);
-    
-    if (!pdfResult || !pdfResult.buffer) {
-      throw new Error('Error generando buffer de PDF');
-    }
-
-    console.log('✅ PDF generado exitosamente para vista previa');
-
-    // ✅ Configurar headers para PDF
-    const filename = pdfResult.filename || `cotizacion-${quote.quote_number || quote.id}.pdf`;
-    
-    res.set({
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `inline; filename="${filename}"`,
-      'Content-Length': pdfResult.buffer.length,
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0'
-    });
-
-    // ✅ Enviar el buffer directamente
-    res.send(pdfResult.buffer);
-    
-  } catch (error) {
-    console.error('❌ Error generando vista previa PDF:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error generando vista previa del PDF: ' + error.message
-    });
-  }
-},
+  },
 
   getQuotesByVendedor: async (req, res) => {
     try {
@@ -1605,46 +2112,43 @@ approveQuote: async (req, res) => {
   },
 };
 
-
-
 // ✅ Funciones helper para obtener usuarios por jerarquía
 const getUsersByLider = async (liderId) => {
   const asesores = await User.findAll({
     where: { lider_id: liderId, role: 2 },
-    attributes: ['id']
+    attributes: ["id"],
   });
-  return asesores.map(a => a.id);
+  return asesores.map((a) => a.id);
 };
 
 const getUsersByGerente = async (gerenteId) => {
   const lideres = await User.findAll({
     where: { gerente_id: gerenteId, role: 3 },
-    attributes: ['id']
+    attributes: ["id"],
   });
-  return lideres.map(l => l.id);
+  return lideres.map((l) => l.id);
 };
 
 const getAsesoresByGerente = async (gerenteId) => {
   const asesores = await User.findAll({
     where: { gerente_id: gerenteId, role: 2 },
-    attributes: ['id']
+    attributes: ["id"],
   });
-  return asesores.map(a => a.id);
+  return asesores.map((a) => a.id);
 };
 
 const getRoleName = (role) => {
   const roleNames = {
-    2: 'Asesor',
-    3: 'Líder',
-    4: 'Gerente',
-    5: 'Admin',
-    6: 'Contador',
-    7: 'Owner'
+    2: "Asesor",
+    3: "Líder",
+    4: "Gerente",
+    5: "Admin",
+    6: "Contador",
+    7: "Owner",
   };
-  return roleNames[role] || 'Usuario';
+  return roleNames[role] || "Usuario";
 };
 
+
+
 module.exports = quoteController;
-
-
-

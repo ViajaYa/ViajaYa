@@ -6,11 +6,11 @@ module.exports = (sequelize) => {
       primaryKey: true,
       autoIncrement: true,
     },
-    contract_id: {
+    quote_id: {
       type: DataTypes.UUID,
       allowNull: false,
       references: {
-        model: 'contracts',
+        model: 'quotes',
         key: 'id'
       }
     },

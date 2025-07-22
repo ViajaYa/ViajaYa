@@ -14,6 +14,6 @@ module.exports = {
     WOMPI_PRIVATE_KEY:process.env.WOMPI_PRIVATE_KEY,
     WOMPI_PUBLIC_KEY:process.env.WOMPI_PUBLIC_KEY,
     WOMPI_INTEGRITY_SECRET:process.env.WOMPI_INTEGRITY_SECRET,
-    WOMPI_EVENT_KEY:process.env.WOMPI_EVENT_KEY
-    
+    WOMPI_EVENT_KEY:process.env.WOMPI_EVENT_KEY,
+    FRONTEND_URL: process.env.FRONTEND_URL
 }  

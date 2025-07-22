@@ -6,6 +6,13 @@ const initialState = {
   quotes: [],
   externalQuotes: [], // ✅ NUEVO: Para cotizaciones externas
   currentQuote: null,
+  passengers: {
+    list: [],
+    loading: false,
+    error: null,
+    currentQuoteId: null,
+    formLink: null,
+  },
   loading: false,
   error: null,
   filters: {
@@ -72,6 +79,7 @@ export const QUOTE_STATUSES = {
   PENDING: 'pending',
   COMPLETED: 'completed',
   SENT: 'sent',
+  PENDING_PASSENGERS: 'pending_passengers',
   APPROVED: 'approved',
   REJECTED: 'rejected',
   REQUOTE: 'requote',
@@ -377,6 +385,222 @@ export const fetchQuotesByVendedor = createAsyncThunk(
       };
     } catch (error) {
       console.error('❌ fetchQuotesByVendedor error:', error);
+      return rejectWithValue(error.message || 'Error de conexión');
+    }
+  }
+);
+
+
+// ===== THUNKS DE PASAJEROS =====
+
+// ✅ NUEVO: Obtener pasajeros de una cotización (público)
+export const fetchPassengersByQuote = createAsyncThunk(
+  'quote/fetchPassengersByQuote',
+  async (quoteId, { rejectWithValue }) => {
+    try {
+      console.log('🔍 fetchPassengersByQuote - QuoteId:', quoteId);
+
+      const response = await fetch(getApiUrl(`/passengers/quote/${quoteId}`), {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      console.log('🔍 fetchPassengersByQuote - Response:', data);
+
+      if (!response.ok) {
+        return rejectWithValue(data.message || 'Error obteniendo pasajeros');
+      }
+
+      return {
+        quoteId,
+        passengers: data.passengers || [],
+        total: data.total || 0,
+        quote: data.quote
+      };
+    } catch (error) {
+      console.error('❌ fetchPassengersByQuote error:', error);
+      return rejectWithValue(error.message || 'Error de conexión');
+    }
+  }
+);
+
+// ✅ NUEVO: Crear/actualizar pasajeros en lote (público)
+export const createOrUpdatePassengers = createAsyncThunk(
+  'quote/createOrUpdatePassengers',
+  async ({ quoteId, passengers }, { rejectWithValue }) => {
+    try {
+      console.log('🔍 createOrUpdatePassengers - QuoteId:', quoteId, 'Passengers:', passengers);
+
+      const response = await fetch(getApiUrl(`/passengers/quote/${quoteId}/bulk`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ passengers }),
+      });
+
+      const data = await response.json();
+      console.log('🔍 createOrUpdatePassengers - Response:', data);
+
+      if (!response.ok) {
+        return rejectWithValue(data.message || 'Error guardando pasajeros');
+      }
+
+      return {
+        quoteId,
+        passengers: data.passengers || [],
+        total: data.total || 0,
+        message: data.message
+      };
+    } catch (error) {
+      console.error('❌ createOrUpdatePassengers error:', error);
+      return rejectWithValue(error.message || 'Error de conexión');
+    }
+  }
+);
+
+// ✅ NUEVO: Crear un pasajero individual (con autenticación)
+export const createPassenger = createAsyncThunk(
+  'quote/createPassenger',
+  async ({ quoteId, passengerData }, { rejectWithValue, getState }) => {
+    try {
+      const { auth } = getState();
+      
+      console.log('🔍 createPassenger - QuoteId:', quoteId, 'Data:', passengerData);
+
+      const response = await fetch(getApiUrl(`/passengers/quote/${quoteId}`), {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${auth.token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(passengerData),
+      });
+
+      const data = await response.json();
+      console.log('🔍 createPassenger - Response:', data);
+
+      if (!response.ok) {
+        return rejectWithValue(data.message || 'Error creando pasajero');
+      }
+
+      return {
+        quoteId,
+        passenger: data.passenger,
+        message: data.message
+      };
+    } catch (error) {
+      console.error('❌ createPassenger error:', error);
+      return rejectWithValue(error.message || 'Error de conexión');
+    }
+  }
+);
+
+// ✅ NUEVO: Actualizar un pasajero (con autenticación)
+export const updatePassenger = createAsyncThunk(
+  'quote/updatePassenger',
+  async ({ passengerId, updates }, { rejectWithValue, getState }) => {
+    try {
+      const { auth } = getState();
+      
+      console.log('🔍 updatePassenger - PassengerId:', passengerId, 'Updates:', updates);
+
+      const response = await fetch(getApiUrl(`/passengers/${passengerId}`), {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${auth.token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updates),
+      });
+
+      const data = await response.json();
+      console.log('🔍 updatePassenger - Response:', data);
+
+      if (!response.ok) {
+        return rejectWithValue(data.message || 'Error actualizando pasajero');
+      }
+
+      return {
+        passenger: data.passenger,
+        message: data.message
+      };
+    } catch (error) {
+      console.error('❌ updatePassenger error:', error);
+      return rejectWithValue(error.message || 'Error de conexión');
+    }
+  }
+);
+
+// ✅ NUEVO: Eliminar un pasajero (con autenticación)
+export const deletePassenger = createAsyncThunk(
+  'quote/deletePassenger',
+  async (passengerId, { rejectWithValue, getState }) => {
+    try {
+      const { auth } = getState();
+      
+      console.log('🔍 deletePassenger - PassengerId:', passengerId);
+
+      const response = await fetch(getApiUrl(`/passengers/${passengerId}`), {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${auth.token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      console.log('🔍 deletePassenger - Response:', data);
+
+      if (!response.ok) {
+        return rejectWithValue(data.message || 'Error eliminando pasajero');
+      }
+
+      return {
+        passengerId,
+        message: data.message
+      };
+    } catch (error) {
+      console.error('❌ deletePassenger error:', error);
+      return rejectWithValue(error.message || 'Error de conexión');
+    }
+  }
+);
+
+// ✅ NUEVO: Obtener enlace del formulario de pasajeros (con autenticación)
+export const getPassengerFormLink = createAsyncThunk(
+  'quote/getPassengerFormLink',
+  async (quoteId, { rejectWithValue, getState }) => {
+    try {
+      const { auth } = getState();
+      
+      console.log('🔍 getPassengerFormLink - QuoteId:', quoteId);
+
+      const response = await fetch(getApiUrl(`/passengers/form-link/${quoteId}`), {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${auth.token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      console.log('🔍 getPassengerFormLink - Response:', data);
+
+      if (!response.ok) {
+        return rejectWithValue(data.message || 'Error obteniendo enlace');
+      }
+
+      return {
+        quoteId,
+        link: data.link,
+        quote: data.quote
+      };
+    } catch (error) {
+      console.error('❌ getPassengerFormLink error:', error);
       return rejectWithValue(error.message || 'Error de conexión');
     }
   }
@@ -875,6 +1099,33 @@ const quoteSlice = createSlice({
         externalQuote.updated_at = new Date().toISOString();
       }
     },
+      clearPassengerError: (state) => {
+    state.passengers.error = null;
+  },
+  setCurrentQuotePassengers: (state, action) => {
+    state.passengers.currentQuoteId = action.payload;
+  },
+  clearPassengers: (state) => {
+    state.passengers.list = [];
+    state.passengers.currentQuoteId = null;
+    state.passengers.formLink = null;
+    state.passengers.error = null;
+  },
+  optimisticAddPassenger: (state, action) => {
+    state.passengers.list.push(action.payload);
+  },
+  optimisticUpdatePassenger: (state, action) => {
+    const { passengerId, updates } = action.payload;
+    const index = state.passengers.list.findIndex(p => p.id === passengerId);
+    if (index !== -1) {
+      state.passengers.list[index] = { ...state.passengers.list[index], ...updates };
+    }
+  },
+  optimisticRemovePassenger: (state, action) => {
+    const passengerId = action.payload;
+    state.passengers.list = state.passengers.list.filter(p => p.id !== passengerId);
+  },
+    
     // ✅ NUEVO: Mover cotización de externas a regulares tras reasignación
     moveQuoteFromExternal: (state, action) => {
       const { quoteId } = action.payload;
@@ -1110,6 +1361,98 @@ const quoteSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
+      .addCase(fetchPassengersByQuote.pending, (state) => {
+      state.passengers.loading = true;
+      state.passengers.error = null;
+    })
+    .addCase(fetchPassengersByQuote.fulfilled, (state, action) => {
+      state.passengers.loading = false;
+      state.passengers.list = action.payload.passengers;
+      state.passengers.currentQuoteId = action.payload.quoteId;
+      console.log('✅ fetchPassengersByQuote.fulfilled');
+    })
+    .addCase(fetchPassengersByQuote.rejected, (state, action) => {
+      state.passengers.loading = false;
+      state.passengers.error = action.payload;
+    })
+
+    // Create/Update Passengers Bulk
+    .addCase(createOrUpdatePassengers.pending, (state) => {
+      state.passengers.loading = true;
+      state.passengers.error = null;
+    })
+    .addCase(createOrUpdatePassengers.fulfilled, (state, action) => {
+      state.passengers.loading = false;
+      state.passengers.list = action.payload.passengers;
+      console.log('✅ createOrUpdatePassengers.fulfilled');
+    })
+    .addCase(createOrUpdatePassengers.rejected, (state, action) => {
+      state.passengers.loading = false;
+      state.passengers.error = action.payload;
+    })
+
+    // Create Passenger
+    .addCase(createPassenger.pending, (state) => {
+      state.passengers.loading = true;
+      state.passengers.error = null;
+    })
+    .addCase(createPassenger.fulfilled, (state, action) => {
+      state.passengers.loading = false;
+      state.passengers.list.push(action.payload.passenger);
+      console.log('✅ createPassenger.fulfilled');
+    })
+    .addCase(createPassenger.rejected, (state, action) => {
+      state.passengers.loading = false;
+      state.passengers.error = action.payload;
+    })
+
+    // Update Passenger
+    .addCase(updatePassenger.pending, (state) => {
+      state.passengers.loading = true;
+      state.passengers.error = null;
+    })
+    .addCase(updatePassenger.fulfilled, (state, action) => {
+      state.passengers.loading = false;
+      const index = state.passengers.list.findIndex(p => p.id === action.payload.passenger.id);
+      if (index !== -1) {
+        state.passengers.list[index] = action.payload.passenger;
+      }
+      console.log('✅ updatePassenger.fulfilled');
+    })
+    .addCase(updatePassenger.rejected, (state, action) => {
+      state.passengers.loading = false;
+      state.passengers.error = action.payload;
+    })
+
+    // Delete Passenger
+    .addCase(deletePassenger.pending, (state) => {
+      state.passengers.loading = true;
+      state.passengers.error = null;
+    })
+    .addCase(deletePassenger.fulfilled, (state, action) => {
+      state.passengers.loading = false;
+      state.passengers.list = state.passengers.list.filter(p => p.id !== action.payload.passengerId);
+      console.log('✅ deletePassenger.fulfilled');
+    })
+    .addCase(deletePassenger.rejected, (state, action) => {
+      state.passengers.loading = false;
+      state.passengers.error = action.payload;
+    })
+
+    // Get Passenger Form Link
+    .addCase(getPassengerFormLink.pending, (state) => {
+      state.passengers.loading = true;
+      state.passengers.error = null;
+    })
+    .addCase(getPassengerFormLink.fulfilled, (state, action) => {
+      state.passengers.loading = false;
+      state.passengers.formLink = action.payload.link;
+      console.log('✅ getPassengerFormLink.fulfilled');
+    })
+    .addCase(getPassengerFormLink.rejected, (state, action) => {
+      state.passengers.loading = false;
+      state.passengers.error = action.payload;
+    })
 
       // ✅ Fetch Quotes By Vendedor
       .addCase(fetchQuotesByVendedor.pending, (state) => {
@@ -1375,7 +1718,13 @@ export const {
   addToAssignmentHistory,
   clearPDFError,
   setPDFLoading,
-  clearLastPreviewUrl, // ✅ NUEVO
+  clearLastPreviewUrl, 
+  clearPassengerError,
+  setCurrentQuotePassengers,
+  clearPassengers,
+  optimisticAddPassenger,
+  optimisticUpdatePassenger,
+  optimisticRemovePassenger,
 } = quoteSlice.actions;
 
 // ===== SELECTORES ACTUALIZADOS =====
@@ -1450,6 +1799,29 @@ export const selectQuotesByGerente = (gerenteId) => (state) =>
 export const selectQuotesByCliente = (clienteId) => (state) =>
   state.quote.quotes.filter(quote => quote.cliente_id === clienteId);
 
+export const selectPassengers = (state) => state.quote.passengers.list;
+export const selectPassengersLoading = (state) => state.quote.passengers.loading;
+export const selectPassengersError = (state) => state.quote.passengers.error;
+export const selectCurrentQuotePassengers = (state) => state.quote.passengers.currentQuoteId;
+export const selectPassengerFormLink = (state) => state.quote.passengers.formLink;
+
+export const selectPassengersByQuote = (quoteId) => (state) =>
+  state.quote.passengers.currentQuoteId === quoteId ? state.quote.passengers.list : [];
+
+export const selectTitularPassenger = (state) =>
+  state.quote.passengers.list.find(p => p.titular === true);
+
+export const selectNonTitularPassengers = (state) =>
+  state.quote.passengers.list.filter(p => p.titular !== true);
+
+export const selectPassengerCount = (state) => state.quote.passengers.list.length;
+
+export const selectMissingPassengers = (state) => {
+  const currentQuote = state.quote.currentQuote;
+  const passengersCount = state.quote.passengers.list.length;
+  if (!currentQuote) return 0;
+  return Math.max(0, currentQuote.numero_personas - passengersCount);
+}; 
 export const selectQuotesTotalValue = (state) =>
   state.quote.quotes.reduce((total, quote) => total + (quote.precio_total || 0), 0);
 

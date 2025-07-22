@@ -134,7 +134,7 @@ module.exports = (sequelize) => {
     },
     // ✅ Estados y precios
     status: {
-      type: DataTypes.ENUM('pending', 'completed', 'sent', 'approved', 'requote', 'rejected', 'expired'),
+      type: DataTypes.ENUM('pending', 'completed', 'sent', 'pending_passengers', 'approved', 'requote', 'rejected', 'expired'),
       defaultValue: 'pending',
     },
     precio_total: {

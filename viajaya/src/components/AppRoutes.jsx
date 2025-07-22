@@ -46,6 +46,8 @@ const CommissionsList = lazy(() => import("./Panel/Commissions/CommissionsList")
 const DocumentsReview = lazy(() => import("./Panel/DocumentsReview"));
 const OrganizationView = lazy(() => import("./pages/Organization/OrganizationView"));
 const AllTeamsView = lazy(() => import("./pages/Organization/AllTeamsView"));
+const PassengerForm = lazy(() => import("./Panel/Quotes/PassengerForm"));
+const PassengerSuccess = lazy(() => import("./Panel/Quotes/PassengerSuccess"));
 
 
 const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
@@ -105,6 +107,8 @@ const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
           <Popup />
         </Suspense>
       } />
+        <Route path="/passenger-form/:quoteId" element={<PassengerForm />} />
+        <Route path="/passenger-success" element={<PassengerSuccess />} />
       
       <Route path="/" element={
         <Suspense fallback={<LoadingSpinner />}>

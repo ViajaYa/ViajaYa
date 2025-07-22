@@ -64,4 +64,6 @@ router.post('/mark-expired', authenticateToken, authorizeRoles(7), quoteControll
 // Obtener cotizaciones por vendedor (Con verificación de jerarquía)
 router.get('/vendedor/:vendedor_id/:tipo', authenticateToken, authorizeHierarchy, quoteController.getQuotesByVendedor);
 
+
+
 module.exports = router;
