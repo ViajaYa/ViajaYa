@@ -52,7 +52,8 @@ export const fetchAllUsers = createAsyncThunk(
       const response = await axios.get(`${BASE_URL}/user`, {
         headers: getAuthHeaders()
       });
-      return response.data.users;
+      // Manejar diferentes estructuras de respuesta
+      return Array.isArray(response.data) ? response.data : (response.data.users || response.data.data || []);
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.message || 'Error al obtener usuarios'

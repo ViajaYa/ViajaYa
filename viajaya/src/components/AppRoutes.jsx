@@ -43,6 +43,8 @@ const CreateStaff = lazy(() => import("./Panel/CreateStaff"));
 const ContractsList = lazy(() => import("./Panel/Contracts/ContractsList"));
 const ContractSet = lazy(() => import("./Panel/Contracts/ContractSet"));
 const DocumentsReview = lazy(() => import("./Panel/DocumentsReview"));
+const OrganizationView = lazy(() => import("./pages/Organization/OrganizationView"));
+const AllTeamsView = lazy(() => import("./pages/Organization/AllTeamsView"));
 
 
 const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
@@ -314,6 +316,31 @@ const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
         <RoleRoute allowedRoles={[ USER_ROLES.OWNER]}>
           <Suspense fallback={<LoadingSpinner />}>
             <CreateStaff />
+          </Suspense>
+        </RoleRoute>
+      } />
+
+      {/* ✅ RUTAS DE ORGANIZACIÓN */}
+      <Route path="/panel/organization" element={
+        <RoleRoute allowedRoles={[USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <OrganizationView />
+          </Suspense>
+        </RoleRoute>
+      } />
+
+      <Route path="/panel/organization/:userId" element={
+        <RoleRoute allowedRoles={[USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <OrganizationView />
+          </Suspense>
+        </RoleRoute>
+      } />
+
+      <Route path="/panel/all-teams" element={
+        <RoleRoute allowedRoles={[USER_ROLES.ADMIN, USER_ROLES.CONTADOR, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <AllTeamsView />
           </Suspense>
         </RoleRoute>
       } />

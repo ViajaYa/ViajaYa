@@ -422,6 +422,17 @@ const Profile = () => {
                       </Link>
                     )}
 
+                    {/* ✅ Todos los Equipos - Solo para Admin, Contador, Owner */}
+                    {user?.role >= 5 && (
+                      <Link
+                        to="/panel/all-teams"
+                        className="px-4 py-2 text-white font-nunito font-semibold rounded-lg bg-pink-500 hover:bg-pink-600 transition-colors flex items-center justify-center text-sm"
+                      >
+                        <FontAwesomeIcon icon={faUsers} className="mr-2" />
+                        Todos los Equipos
+                      </Link>
+                    )}
+
                     {/* ✅ Capacitaciones */}
                     {user?.role >= 2 && (
                       <Link
