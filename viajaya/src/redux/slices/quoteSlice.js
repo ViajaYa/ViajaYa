@@ -525,6 +525,7 @@ export const updatePassenger = createAsyncThunk(
       }
 
       return {
+        passengerId,
         passenger: data.passenger,
         message: data.message
       };

@@ -15,6 +15,7 @@ import {
   faEdit,
   faFilter,
   faSearch,
+  faUsers,
   faDownload,
   faExternalLinkAlt,
   faSpinner // ✅ NUEVO
@@ -51,8 +52,11 @@ import {
   selectPDFOperations,
   selectPDFLoading,
   selectPDFError,
-  selectLastPreviewUrl
+  selectLastPreviewUrl,
+  fetchQuoteById
 } from '../../../redux/slices/quoteSlice';
+
+
 
 // ✅ Importar selectores de auth
 import { selectUser, selectIsAuthenticated } from '../../../redux/slices/authSlice';
@@ -70,6 +74,7 @@ import {
 // ✅ Importar componentes
 import NavBar from '../../layout/NavBar/NavBar';
 import QuotePopup from '../../popups/QuotePopup';
+import PassengerModal from '../../popups/PassengerModal';
 
 const QuotesList = () => {
   const dispatch = useDispatch();
@@ -107,6 +112,11 @@ const QuotesList = () => {
     pdfUrl: null,
     filename: null
   });
+
+  const [passengerModal, setPassengerModal] = useState({
+  isOpen: false,
+  quote: null
+});
 
   // ✅ NUEVA FUNCIÓN: Filtrar cotizaciones según jerarquía
   const getFilteredQuotesByHierarchy = useMemo(() => {
@@ -413,6 +423,33 @@ const QuotesList = () => {
     });
   };
 
+  const handlePassengersClick = async (quote) => {
+  try {
+    setActionLoading(prev => ({ ...prev, [`passengers_${quote.id}`]: true }));
+    
+    // Cargar datos completos de la cotización incluyendo pasajeros
+    const fullQuote = await dispatch(fetchQuoteById(quote.id)).unwrap();
+    
+    setPassengerModal({
+      isOpen: true,
+      quote: fullQuote
+    });
+  } catch (error) {
+    console.error('Error cargando datos de la cotización:', error);
+    alert('Error cargando datos de la cotización');
+  } finally {
+    setActionLoading(prev => ({ ...prev, [`passengers_${quote.id}`]: false }));
+  }
+};
+
+// ✅ AGREGAR: Función para cerrar modal de pasajeros
+const closePassengerModal = () => {
+  setPassengerModal({
+    isOpen: false,
+    quote: null
+  });
+};
+
   const handlePDFDownload = async (quoteId) => {
     try {
       setActionLoading(prev => ({ ...prev, [`pdf_download_${quoteId}`]: true }));
@@ -555,6 +592,12 @@ const QuotesList = () => {
     const isPDFPreviewLoading = actionLoading[`pdf_preview_${quote.id}`];
     const isPDFDownloadLoading = actionLoading[`pdf_download_${quote.id}`];
     const isPDFRegenerateLoading = actionLoading[`pdf_regenerate_${quote.id}`];
+    const isPassengersLoading = actionLoading[`passengers_${quote.id}`]; 
+
+    const passengers = quote.Passengers || [];
+  const hasPassengers = passengers.length > 0;
+  const passengersComplete = passengers.length === quote.numero_personas;
+
     console.log('stats:', stats);
     return (
       <div className="flex items-center gap-1">
@@ -568,6 +611,33 @@ const QuotesList = () => {
             <FontAwesomeIcon icon={faEye} size="sm" />
           </button>
         )}
+{quote.status === QUOTE_STATUSES.SENT && (
+        <button
+          onClick={() => handlePassengersClick(quote)}
+          disabled={isPassengersLoading}
+          className={`p-2 rounded transition-colors disabled:opacity-50 ${
+            passengersComplete 
+              ? 'text-green-600 hover:bg-green-50' 
+              : hasPassengers
+                ? 'text-orange-600 hover:bg-orange-50'
+                : 'text-gray-400 hover:bg-gray-50'
+          }`}
+          title={
+            passengersComplete 
+              ? 'Pasajeros completos - Click para revisar' 
+              : hasPassengers
+                ? 'Pasajeros incompletos - Click para completar'
+                : 'Sin datos de pasajeros - Click para verificar'
+          }
+        >
+          {isPassengersLoading ? (
+            <FontAwesomeIcon icon={faSpinner} spin size="sm" />
+          ) : (
+            <FontAwesomeIcon icon={faUsers} size="sm" />
+          )}
+        </button>
+      )}
+
 
         {/* Editar - Solo Owner y Admin */}
         {canPerformAction('edit', quote) && 
@@ -1170,6 +1240,30 @@ const QuotesList = () => {
           </div>
         </div>
       )}
+
+{passengerModal.isOpen && (
+  <PassengerModal
+    isOpen={passengerModal.isOpen}
+    onClose={closePassengerModal}
+    quote={passengerModal.quote}
+  />
+)}
+
+{/* Modal para crear nueva cotización */}
+{showCreateQuote && (
+  <QuotePopup
+    isOpen={showCreateQuote}
+    onClose={() => setShowCreateQuote(false)}
+    onSuccess={() => {
+      setShowCreateQuote(false);
+      dispatch(fetchQuotes({ 
+        page: pagination.page, 
+        limit: pagination.limit, 
+        filters 
+      }));
+    }}
+  />
+)}
 
       {/* Modal para crear nueva cotización */}
       {showCreateQuote && (

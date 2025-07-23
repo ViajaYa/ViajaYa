@@ -27,6 +27,8 @@ const PassengerForm = () => {
   const [submitError, setSubmitError] = useState(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
+  console.log(quoteInfo)
+
   // Cargar datos iniciales
   useEffect(() => {
     if (quoteId) {

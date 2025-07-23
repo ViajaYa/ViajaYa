@@ -857,6 +857,7 @@ getPassengersByQuote: async (req, res) => {
         total: passengers.length,
         quote: {
           id: quote.id,
+          destino: quote.destino,
           quote_number: quote.quote_number,
           numero_personas: quote.numero_personas,
           status: quote.status
