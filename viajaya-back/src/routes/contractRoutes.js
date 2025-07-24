@@ -30,7 +30,7 @@ router.get('/:id/download-pdf', contractController.downloadContractPDF);
 router.get('/:id/preview-pdf', contractController.generateContractPDF);
 router.get('/:id/email-preview', contractController.previewContractEmail);
 // Firmar contrato
-router.patch('/:id/sign', contractController.signContract);
+router.post('/:id/sign', contractController.signContract);
 
 // ✅ NUEVA RUTA: Aprobar contrato y generar comisiones
 router.patch('/:id/approve', contractController.approveContract);

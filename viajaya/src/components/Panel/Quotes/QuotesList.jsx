@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faPlus, 
-  faPaperPlane, 
-  faCheck, 
-  faTimes, 
-  faRedo, 
+import React, { useState, useEffect, useMemo } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faPlus,
+  faPaperPlane,
+  faCheck,
+  faTimes,
+  faRedo,
   faFileContract,
   faFilePdf,
   faCopy,
@@ -18,8 +18,8 @@ import {
   faUsers,
   faDownload,
   faExternalLinkAlt,
-  faSpinner // ✅ NUEVO
-} from '@fortawesome/free-solid-svg-icons';
+  faSpinner, // ✅ NUEVO
+} from "@fortawesome/free-solid-svg-icons";
 
 // ✅ Importar funciones del slice ACTUALIZADAS
 import {
@@ -53,28 +53,29 @@ import {
   selectPDFLoading,
   selectPDFError,
   selectLastPreviewUrl,
-  fetchQuoteById
-} from '../../../redux/slices/quoteSlice';
-
-
+  fetchQuoteById,
+} from "../../../redux/slices/quoteSlice";
 
 // ✅ Importar selectores de auth
-import { selectUser, selectIsAuthenticated } from '../../../redux/slices/authSlice';
+import {
+  selectUser,
+  selectIsAuthenticated,
+} from "../../../redux/slices/authSlice";
 
 // ✅ Importar hook de permisos
-import { useRolePermissions } from '../../../redux/hooks/hooks';
+import { useRolePermissions } from "../../../redux/hooks/hooks";
 
 // ✅ Importar helpers PDF
-import { 
-  cleanupBlobUrl, 
-  hasGeneratedPDF, 
-  canGeneratePDF 
-} from '../../../utils/pdfPreview';
+import {
+  cleanupBlobUrl,
+  hasGeneratedPDF,
+  canGeneratePDF,
+} from "../../../utils/pdfPreview";
 
 // ✅ Importar componentes
-import NavBar from '../../layout/NavBar/NavBar';
-import QuotePopup from '../../popups/QuotePopup';
-import PassengerModal from '../../popups/PassengerModal';
+import NavBar from "../../layout/NavBar/NavBar";
+import QuotePopup from "../../popups/QuotePopup";
+import PassengerModal from "../../popups/PassengerModal";
 
 const QuotesList = () => {
   const dispatch = useDispatch();
@@ -102,7 +103,7 @@ const QuotesList = () => {
   // ✅ Estados locales
   const [showCreateQuote, setShowCreateQuote] = useState(false);
   const [selectedQuotes, setSelectedQuotes] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [actionLoading, setActionLoading] = useState({});
 
@@ -110,13 +111,13 @@ const QuotesList = () => {
   const [pdfPreviewModal, setPdfPreviewModal] = useState({
     isOpen: false,
     pdfUrl: null,
-    filename: null
+    filename: null,
   });
 
   const [passengerModal, setPassengerModal] = useState({
-  isOpen: false,
-  quote: null
-});
+    isOpen: false,
+    quote: null,
+  });
 
   // ✅ NUEVA FUNCIÓN: Filtrar cotizaciones según jerarquía
   const getFilteredQuotesByHierarchy = useMemo(() => {
@@ -125,73 +126,78 @@ const QuotesList = () => {
     const userRole = user.role;
     const userId = user.id;
 
-    console.log('🔍 Filtrando cotizaciones para usuario:', {
+    console.log("🔍 Filtrando cotizaciones para usuario:", {
       id: userId,
       role: userRole,
       name: `${user.name} ${user.lastname}`,
       liderId: user.lider_id,
-      gerenteId: user.gerente_id
+      gerenteId: user.gerente_id,
     });
 
     switch (userRole) {
       case 7: // Owner
       case 5: // Admin
       case 6: // Contador
-        console.log('👑 Usuario con permisos totales - mostrando todas las cotizaciones');
+        console.log(
+          "👑 Usuario con permisos totales - mostrando todas las cotizaciones"
+        );
         return quotes;
 
-      case 4: { // Gerente
-        const gerenteQuotes = quotes.filter(quote => {
+      case 4: {
+        // Gerente
+        const gerenteQuotes = quotes.filter((quote) => {
           if (quote.gerente_id === userId) return true;
           if (quote.admin_id === userId) return true;
           return false;
         });
-        
-        console.log('👨‍💼 Gerente - cotizaciones filtradas:', {
+
+        console.log("👨‍💼 Gerente - cotizaciones filtradas:", {
           total: quotes.length,
           filtered: gerenteQuotes.length,
-          criteria: `gerente_id === ${userId} OR admin_id === ${userId}`
+          criteria: `gerente_id === ${userId} OR admin_id === ${userId}`,
         });
-        
+
         return gerenteQuotes;
       }
-      case 3: { // Líder
-        const liderQuotes = quotes.filter(quote => {
+      case 3: {
+        // Líder
+        const liderQuotes = quotes.filter((quote) => {
           if (quote.lider_id === userId) return true;
           if (quote.admin_id === userId) return true;
           return false;
         });
-        
-        console.log('👨‍🏫 Líder - cotizaciones filtradas:', {
+
+        console.log("👨‍🏫 Líder - cotizaciones filtradas:", {
           total: quotes.length,
           filtered: liderQuotes.length,
-          criteria: `lider_id === ${userId} OR admin_id === ${userId}`
+          criteria: `lider_id === ${userId} OR admin_id === ${userId}`,
         });
-        
+
         return liderQuotes;
       }
-      case 2: { // Asesor
-        const asesorQuotes = quotes.filter(quote => {
+      case 2: {
+        // Asesor
+        const asesorQuotes = quotes.filter((quote) => {
           if (quote.asesor_id === userId) return true;
           if (quote.admin_id === userId) return true;
           return false;
         });
-        
-        console.log('👨‍💼 Asesor - cotizaciones filtradas:', {
+
+        console.log("👨‍💼 Asesor - cotizaciones filtradas:", {
           total: quotes.length,
           filtered: asesorQuotes.length,
-          criteria: `asesor_id === ${userId} OR admin_id === ${userId}`
+          criteria: `asesor_id === ${userId} OR admin_id === ${userId}`,
         });
-        
+
         return asesorQuotes;
       }
-        
+
       case 1: // Cliente
-        console.log('🚫 Cliente - sin acceso a cotizaciones');
+        console.log("🚫 Cliente - sin acceso a cotizaciones");
         return [];
 
       default:
-        console.log('❓ Rol desconocido - sin acceso');
+        console.log("❓ Rol desconocido - sin acceso");
         return [];
     }
   }, [quotes, user]);
@@ -214,49 +220,72 @@ const QuotesList = () => {
     if (!user) return false;
 
     switch (action) {
-      case 'edit':
+      case "edit":
         return canEditQuote(quote);
-        
-      case 'send':
+
+      case "send":
         // Líderes y superiores pueden enviar
-        return hasAnyRole([USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]) &&
-               quote.status === QUOTE_STATUSES.COMPLETED;
-        
-      case 'approve':
-      case 'reject':
+        return (
+          hasAnyRole([
+            USER_ROLES.LIDER,
+            USER_ROLES.GERENTE,
+            USER_ROLES.ADMIN,
+            USER_ROLES.OWNER,
+          ]) && quote.status === QUOTE_STATUSES.COMPLETED
+        );
+
+      case "approve":
+      case "reject":
         // Gerentes y superiores pueden aprobar/rechazar
-        return hasAnyRole([USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]) &&
-               quote.status === QUOTE_STATUSES.SENT;
-        
-      case 'convert':
+        return (
+          hasAnyRole([
+            USER_ROLES.GERENTE,
+            USER_ROLES.ADMIN,
+            USER_ROLES.OWNER,
+          ]) && quote.status === QUOTE_STATUSES.SENT
+        );
+
+      case "convert":
         // Gerentes y superiores pueden convertir a contrato
-        return hasAnyRole([USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]) &&
-               quote.status === QUOTE_STATUSES.APPROVED;
-        
-      case 'delete':
+        return (
+          hasAnyRole([
+            USER_ROLES.GERENTE,
+            USER_ROLES.ADMIN,
+            USER_ROLES.OWNER,
+          ]) && quote.status === QUOTE_STATUSES.APPROVED
+        );
+
+      case "delete":
         // Solo Owner puede eliminar
-        return hasAnyRole([USER_ROLES.OWNER]) &&
-               quote.status === QUOTE_STATUSES.PENDING;
-        
-      case 'view':
-      case 'duplicate':
+        return (
+          hasAnyRole([USER_ROLES.OWNER]) &&
+          quote.status === QUOTE_STATUSES.PENDING
+        );
+
+      case "view":
         // Todos los roles pueden ver y duplicar sus cotizaciones asignadas
         return true;
 
       // ✅ NUEVOS CASOS PARA PDF
-      case 'pdf_preview':
+      case "pdf_preview":
         // Todos pueden ver vista previa si la cotización tiene precio
         return canGeneratePDF(quote);
-        
-      case 'pdf_download':
+
+      case "pdf_download":
         // Todos pueden descargar si ya se generó PDF
         return hasGeneratedPDF(quote);
-        
-      case 'pdf_regenerate':
+
+      case "pdf_regenerate":
         // Líderes y superiores pueden regenerar PDF
-        return hasAnyRole([USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]) &&
-               canGeneratePDF(quote);
-        
+        return (
+          hasAnyRole([
+            USER_ROLES.LIDER,
+            USER_ROLES.GERENTE,
+            USER_ROLES.ADMIN,
+            USER_ROLES.OWNER,
+          ]) && canGeneratePDF(quote)
+        );
+
       default:
         return false;
     }
@@ -265,15 +294,24 @@ const QuotesList = () => {
   // ✅ Cargar cotizaciones al montar
   useEffect(() => {
     if (isAuthenticated && user) {
-      dispatch(fetchQuotes({ 
-        page: pagination.page, 
-        limit: pagination.limit, 
-        filters: {
-          ...filters,
-        }
-      }));
+      dispatch(
+        fetchQuotes({
+          page: pagination.page,
+          limit: pagination.limit,
+          filters: {
+            ...filters,
+          },
+        })
+      );
     }
-  }, [dispatch, isAuthenticated, user, pagination.page, pagination.limit, filters]);
+  }, [
+    dispatch,
+    isAuthenticated,
+    user,
+    pagination.page,
+    pagination.limit,
+    filters,
+  ]);
 
   // ✅ Limpiar errores
   useEffect(() => {
@@ -311,48 +349,51 @@ const QuotesList = () => {
   // ✅ Cotizaciones filtradas por jerarquía Y búsqueda
   const filteredQuotes = useMemo(() => {
     const hierarchyFilteredQuotes = getFilteredQuotesByHierarchy;
-    
+
     if (!searchTerm.trim()) return hierarchyFilteredQuotes;
-    
-    return hierarchyFilteredQuotes.filter(quote => 
-      quote.nombre_cliente?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      quote.email_cliente?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      quote.destino?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      quote.id?.toString().includes(searchTerm) ||
-      quote.quote_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      quote.Asesor?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      quote.Asesor?.email?.toLowerCase().includes(searchTerm.toLowerCase())
+
+    return hierarchyFilteredQuotes.filter(
+      (quote) =>
+        quote.nombre_cliente
+          ?.toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        quote.email_cliente?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        quote.destino?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        quote.id?.toString().includes(searchTerm) ||
+        quote.quote_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        quote.Asesor?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        quote.Asesor?.email?.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [getFilteredQuotesByHierarchy, searchTerm]);
 
   // ✅ Función para obtener el color del estado
   const getStatusColor = (status) => {
     const statusColors = {
-      [QUOTE_STATUSES.PENDING]: 'bg-yellow-100 text-yellow-800',
-      [QUOTE_STATUSES.COMPLETED]: 'bg-blue-100 text-blue-800',
-      [QUOTE_STATUSES.SENT]: 'bg-indigo-100 text-indigo-800',
-      [QUOTE_STATUSES.APPROVED]: 'bg-green-100 text-green-800',
-      [QUOTE_STATUSES.REJECTED]: 'bg-red-100 text-red-800',
-      [QUOTE_STATUSES.REQUOTE]: 'bg-orange-100 text-orange-800',
-      [QUOTE_STATUSES.EXPIRED]: 'bg-gray-100 text-gray-800',
-      [QUOTE_STATUSES.CONVERTED]: 'bg-purple-100 text-purple-800'
+      [QUOTE_STATUSES.PENDING]: "bg-yellow-100 text-yellow-800",
+      [QUOTE_STATUSES.COMPLETED]: "bg-blue-100 text-blue-800",
+      [QUOTE_STATUSES.SENT]: "bg-indigo-100 text-indigo-800",
+      [QUOTE_STATUSES.APPROVED]: "bg-green-100 text-green-800",
+      [QUOTE_STATUSES.REJECTED]: "bg-red-100 text-red-800",
+      [QUOTE_STATUSES.REQUOTE]: "bg-orange-100 text-orange-800",
+      [QUOTE_STATUSES.EXPIRED]: "bg-gray-100 text-gray-800",
+      [QUOTE_STATUSES.CONVERTED]: "bg-purple-100 text-purple-800",
     };
-    return statusColors[status] || 'bg-gray-100 text-gray-800';
+    return statusColors[status] || "bg-gray-100 text-gray-800";
   };
 
   // ✅ Función para obtener el texto del estado
   const getStatusText = (status) => {
     const statusTexts = {
-      [QUOTE_STATUSES.PENDING]: 'Pendiente',
-      [QUOTE_STATUSES.COMPLETED]: 'Completada',
-      [QUOTE_STATUSES.SENT]: 'Enviada',
-      [QUOTE_STATUSES.APPROVED]: 'Aprobada',
-      [QUOTE_STATUSES.REJECTED]: 'Rechazada',
-      [QUOTE_STATUSES.REQUOTE]: 'Re-cotización',
-      [QUOTE_STATUSES.EXPIRED]: 'Expirada',
-      [QUOTE_STATUSES.CONVERTED]: 'Convertida'
+      [QUOTE_STATUSES.PENDING]: "Pendiente",
+      [QUOTE_STATUSES.COMPLETED]: "Completada",
+      [QUOTE_STATUSES.SENT]: "Enviada",
+      [QUOTE_STATUSES.APPROVED]: "Aprobada",
+      [QUOTE_STATUSES.REJECTED]: "Rechazada",
+      [QUOTE_STATUSES.REQUOTE]: "Re-cotización",
+      [QUOTE_STATUSES.EXPIRED]: "Expirada",
+      [QUOTE_STATUSES.CONVERTED]: "Convertida",
     };
-    return statusTexts[status] || 'Desconocido';
+    return statusTexts[status] || "Desconocido";
   };
 
   const handleMarkExpiredQuotes = async () => {
@@ -364,48 +405,52 @@ const QuotesList = () => {
   // ✅ ACTUALIZAR: Función de vista previa PDF con modal
   const handlePDFPreview = async (quoteId) => {
     try {
-      setActionLoading(prev => ({ ...prev, [`pdf_preview_${quoteId}`]: true }));
-      
-      console.log('🔍 Iniciando vista previa PDF para cotización:', quoteId);
+      setActionLoading((prev) => ({
+        ...prev,
+        [`pdf_preview_${quoteId}`]: true,
+      }));
+
+      console.log("🔍 Iniciando vista previa PDF para cotización:", quoteId);
 
       const result = await dispatch(previewQuotePDF(quoteId)).unwrap();
-      
-      console.log('✅ Vista previa PDF - Resultado:', {
+
+      console.log("✅ Vista previa PDF - Resultado:", {
         quoteId: result.quoteId,
         filename: result.filename,
         blobSize: result.blobSize,
-        hasUrl: !!result.pdfUrl
+        hasUrl: !!result.pdfUrl,
       });
-      
+
       if (!result.pdfUrl) {
-        throw new Error('No se pudo generar la URL del PDF');
+        throw new Error("No se pudo generar la URL del PDF");
       }
 
       // ✅ Abrir en modal en lugar de nueva ventana
       setPdfPreviewModal({
         isOpen: true,
         pdfUrl: result.pdfUrl,
-        filename: result.filename
+        filename: result.filename,
       });
-      
-      console.log('✅ Vista previa PDF abierta en modal');
-      
+
+      console.log("✅ Vista previa PDF abierta en modal");
     } catch (error) {
-      console.error('❌ Error en vista previa PDF:', error);
-      
+      console.error("❌ Error en vista previa PDF:", error);
+
       // ✅ Mensaje de error más descriptivo
-      let errorMessage = 'Error al generar vista previa del PDF';
-      
-      if (typeof error === 'string') {
+      let errorMessage = "Error al generar vista previa del PDF";
+
+      if (typeof error === "string") {
         errorMessage = error;
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       alert(`${errorMessage}\n\nDetalles: ${error}`);
-      
     } finally {
-      setActionLoading(prev => ({ ...prev, [`pdf_preview_${quoteId}`]: false }));
+      setActionLoading((prev) => ({
+        ...prev,
+        [`pdf_preview_${quoteId}`]: false,
+      }));
     }
   };
 
@@ -415,131 +460,156 @@ const QuotesList = () => {
     if (pdfPreviewModal.pdfUrl) {
       cleanupBlobUrl(pdfPreviewModal.pdfUrl);
     }
-    
+
     setPdfPreviewModal({
       isOpen: false,
       pdfUrl: null,
-      filename: null
+      filename: null,
     });
   };
 
   const handlePassengersClick = async (quote) => {
-  try {
-    setActionLoading(prev => ({ ...prev, [`passengers_${quote.id}`]: true }));
-    
-    // Cargar datos completos de la cotización incluyendo pasajeros
-    const fullQuote = await dispatch(fetchQuoteById(quote.id)).unwrap();
-    
-    setPassengerModal({
-      isOpen: true,
-      quote: fullQuote
-    });
-  } catch (error) {
-    console.error('Error cargando datos de la cotización:', error);
-    alert('Error cargando datos de la cotización');
-  } finally {
-    setActionLoading(prev => ({ ...prev, [`passengers_${quote.id}`]: false }));
-  }
-};
+    try {
+      setActionLoading((prev) => ({
+        ...prev,
+        [`passengers_${quote.id}`]: true,
+      }));
 
-// ✅ AGREGAR: Función para cerrar modal de pasajeros
-const closePassengerModal = () => {
-  setPassengerModal({
-    isOpen: false,
-    quote: null
-  });
-};
+      // Cargar datos completos de la cotización incluyendo pasajeros
+      const fullQuote = await dispatch(fetchQuoteById(quote.id)).unwrap();
+
+      setPassengerModal({
+        isOpen: true,
+        quote: fullQuote,
+      });
+    } catch (error) {
+      console.error("Error cargando datos de la cotización:", error);
+      alert("Error cargando datos de la cotización");
+    } finally {
+      setActionLoading((prev) => ({
+        ...prev,
+        [`passengers_${quote.id}`]: false,
+      }));
+    }
+  };
+
+  // ✅ AGREGAR: Función para cerrar modal de pasajeros
+  const closePassengerModal = () => {
+    setPassengerModal({
+      isOpen: false,
+      quote: null,
+    });
+  };
 
   const handlePDFDownload = async (quoteId) => {
     try {
-      setActionLoading(prev => ({ ...prev, [`pdf_download_${quoteId}`]: true }));
-      
-      console.log('🔍 Iniciando descarga PDF para cotización:', quoteId);
-      
+      setActionLoading((prev) => ({
+        ...prev,
+        [`pdf_download_${quoteId}`]: true,
+      }));
+
+      console.log("🔍 Iniciando descarga PDF para cotización:", quoteId);
+
       await dispatch(downloadQuotePDF(quoteId)).unwrap();
-      
-      console.log('✅ Descarga PDF completada exitosamente');
-      
+
+      console.log("✅ Descarga PDF completada exitosamente");
     } catch (error) {
-      console.error('❌ Error en descarga PDF:', error);
+      console.error("❌ Error en descarga PDF:", error);
       alert(`Error al descargar PDF: ${error.message || error}`);
     } finally {
-      setActionLoading(prev => ({ ...prev, [`pdf_download_${quoteId}`]: false }));
+      setActionLoading((prev) => ({
+        ...prev,
+        [`pdf_download_${quoteId}`]: false,
+      }));
     }
   };
 
   const handlePDFRegenerate = async (quoteId) => {
     try {
-      if (!window.confirm('¿Estás seguro de regenerar el PDF? Esto sobrescribirá el archivo actual.')) {
+      if (
+        !window.confirm(
+          "¿Estás seguro de regenerar el PDF? Esto sobrescribirá el archivo actual."
+        )
+      ) {
         return;
       }
 
-      setActionLoading(prev => ({ ...prev, [`pdf_regenerate_${quoteId}`]: true }));
-      
-      console.log('🔍 Regenerando PDF para cotización:', quoteId);
-      
+      setActionLoading((prev) => ({
+        ...prev,
+        [`pdf_regenerate_${quoteId}`]: true,
+      }));
+
+      console.log("🔍 Regenerando PDF para cotización:", quoteId);
+
       await dispatch(regenerateQuotePDF(quoteId)).unwrap();
-      
-      alert('PDF regenerado exitosamente');
-      console.log('✅ PDF regenerado exitosamente');
-      
+
+      alert("PDF regenerado exitosamente");
+      console.log("✅ PDF regenerado exitosamente");
     } catch (error) {
-      console.error('❌ Error regenerando PDF:', error);
+      console.error("❌ Error regenerando PDF:", error);
       alert(`Error al regenerar PDF: ${error.message || error}`);
     } finally {
-      setActionLoading(prev => ({ ...prev, [`pdf_regenerate_${quoteId}`]: false }));
+      setActionLoading((prev) => ({
+        ...prev,
+        [`pdf_regenerate_${quoteId}`]: false,
+      }));
     }
   };
 
   // ✅ ACTUALIZAR: Manejo de acciones con validación de permisos
   const handleAction = async (action, quoteId, data = {}) => {
-    const quote = quotes.find(q => q.id === quoteId);
-    
+    const quote = quotes.find((q) => q.id === quoteId);
+
     if (!quote) {
-      alert('Cotización no encontrada');
+      alert("Cotización no encontrada");
       return;
     }
 
     if (!canPerformAction(action, quote)) {
-      alert('No tienes permisos para realizar esta acción');
+      alert("No tienes permisos para realizar esta acción");
       return;
     }
 
     // ✅ MANEJAR ACCIONES PDF DIRECTAMENTE
-    if (action === 'pdf_preview') {
+    if (action === "pdf_preview") {
       return handlePDFPreview(quoteId);
     }
-    if (action === 'pdf_download') {
+    if (action === "pdf_download") {
       return handlePDFDownload(quoteId);
     }
-    if (action === 'pdf_regenerate') {
+    if (action === "pdf_regenerate") {
       return handlePDFRegenerate(quoteId);
     }
 
-    setActionLoading(prev => ({ ...prev, [quoteId]: true }));
-    
+    setActionLoading((prev) => ({ ...prev, [quoteId]: true }));
+
     try {
       switch (action) {
-        case 'send':
+        case "send":
           await dispatch(sendQuoteToClient(quoteId)).unwrap();
-          alert('✅ Cotización enviada exitosamente al cliente con PDF adjunto!');
+          alert(
+            "✅ Cotización enviada exitosamente al cliente con PDF adjunto!"
+          );
           break;
-        case 'approve':
-          await dispatch(approveQuote({ quoteId, approvalData: data })).unwrap();
+        case "approve":
+          await dispatch(
+            approveQuote({ quoteId, approvalData: data })
+          ).unwrap();
           break;
-        case 'reject':
-          await dispatch(rejectQuote({ quoteId, reason: data.reason })).unwrap();
+        case "reject":
+          await dispatch(
+            rejectQuote({ quoteId, reason: data.reason })
+          ).unwrap();
           break;
-        case 'requote':
-          await dispatch(requestRequote({ quoteId, requote_reason: data.reason })).unwrap();
+        case "requote":
+          await dispatch(
+            requestRequote({ quoteId, requote_reason: data.reason })
+          ).unwrap();
           break;
-        case 'convert':
+        case "convert":
           await handleConvertToContract(quoteId, data);
           break;
-        case 'duplicate':
-          await handleDuplicateQuote(quoteId);
-          break;
-        
+
         default:
           break;
       }
@@ -547,29 +617,22 @@ const closePassengerModal = () => {
       console.error(`Error en acción ${action}:`, error);
       alert(`Error: ${error.message || error}`);
     } finally {
-      setActionLoading(prev => ({ ...prev, [quoteId]: false }));
+      setActionLoading((prev) => ({ ...prev, [quoteId]: false }));
     }
   };
 
   // ✅ Funciones auxiliares para acciones no implementadas
-  const handleConvertToContract = async (quoteId, ) => {
-    await dispatch(updateQuote({ 
-      id: quoteId, 
-      updates: { 
-        status: QUOTE_STATUSES.CONVERTED,
-        converted_at: new Date().toISOString()
-      } 
-    })).unwrap();
-    alert('Cotización marcada como convertida a contrato');
-  };
-
-  const handleDuplicateQuote = async (quoteId) => {
-    const originalQuote = quotes.find(q => q.id === quoteId);
-    if (!originalQuote) {
-      throw new Error('Cotización no encontrada');
-    }
-    setShowCreateQuote(true);
-    alert('Se abrirá el formulario para duplicar la cotización');
+  const handleConvertToContract = async (quoteId) => {
+    await dispatch(
+      updateQuote({
+        id: quoteId,
+        updates: {
+          status: QUOTE_STATUSES.CONVERTED,
+          converted_at: new Date().toISOString(),
+        },
+      })
+    ).unwrap();
+    alert("Cotización marcada como convertida a contrato");
   };
 
   // const handleDeleteQuote = async (quoteId) => {
@@ -592,17 +655,17 @@ const closePassengerModal = () => {
     const isPDFPreviewLoading = actionLoading[`pdf_preview_${quote.id}`];
     const isPDFDownloadLoading = actionLoading[`pdf_download_${quote.id}`];
     const isPDFRegenerateLoading = actionLoading[`pdf_regenerate_${quote.id}`];
-    const isPassengersLoading = actionLoading[`passengers_${quote.id}`]; 
+    const isPassengersLoading = actionLoading[`passengers_${quote.id}`];
 
     const passengers = quote.Passengers || [];
-  const hasPassengers = passengers.length > 0;
-  const passengersComplete = passengers.length === quote.numero_personas;
+    const hasPassengers = passengers.length > 0;
+    const passengersComplete = passengers.length === quote.numero_personas;
 
-    console.log('stats:', stats);
+    console.log("stats:", stats);
     return (
       <div className="flex items-center gap-1">
         {/* Ver detalles - Todos pueden ver */}
-        {canPerformAction('view', quote) && (
+        {canPerformAction("view", quote) && (
           <button
             onClick={() => navigate(`/quotes/${quote.id}/edit`)}
             className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
@@ -611,50 +674,51 @@ const closePassengerModal = () => {
             <FontAwesomeIcon icon={faEye} size="sm" />
           </button>
         )}
-{quote.status === QUOTE_STATUSES.SENT && (
-        <button
-          onClick={() => handlePassengersClick(quote)}
-          disabled={isPassengersLoading}
-          className={`p-2 rounded transition-colors disabled:opacity-50 ${
-            passengersComplete 
-              ? 'text-green-600 hover:bg-green-50' 
-              : hasPassengers
-                ? 'text-orange-600 hover:bg-orange-50'
-                : 'text-gray-400 hover:bg-gray-50'
-          }`}
-          title={
-            passengersComplete 
-              ? 'Pasajeros completos - Click para revisar' 
-              : hasPassengers
-                ? 'Pasajeros incompletos - Click para completar'
-                : 'Sin datos de pasajeros - Click para verificar'
-          }
-        >
-          {isPassengersLoading ? (
-            <FontAwesomeIcon icon={faSpinner} spin size="sm" />
-          ) : (
-            <FontAwesomeIcon icon={faUsers} size="sm" />
-          )}
-        </button>
-      )}
-
-
-        {/* Editar - Solo Owner y Admin */}
-        {canPerformAction('edit', quote) && 
-         (quote.status === QUOTE_STATUSES.PENDING  || quote.status === QUOTE_STATUSES.APPROVED || quote.status === QUOTE_STATUSES.EXPIRED) && (
+        {quote.status === QUOTE_STATUSES.SENT && (
           <button
-            onClick={() => navigate(`/quotes/${quote.id}/edit`)}
-            className="p-2 text-yellow-600 hover:bg-yellow-50 rounded transition-colors"
-            title="Editar"
+            onClick={() => handlePassengersClick(quote)}
+            disabled={isPassengersLoading}
+            className={`p-2 rounded transition-colors disabled:opacity-50 ${
+              passengersComplete
+                ? "text-green-600 hover:bg-green-50"
+                : hasPassengers
+                ? "text-orange-600 hover:bg-orange-50"
+                : "text-gray-400 hover:bg-gray-50"
+            }`}
+            title={
+              passengersComplete
+                ? "Pasajeros completos - Click para revisar"
+                : hasPassengers
+                ? "Pasajeros incompletos - Click para completar"
+                : "Sin datos de pasajeros - Click para verificar"
+            }
           >
-            <FontAwesomeIcon icon={faEdit} size="sm" />
+            {isPassengersLoading ? (
+              <FontAwesomeIcon icon={faSpinner} spin size="sm" />
+            ) : (
+              <FontAwesomeIcon icon={faUsers} size="sm" />
+            )}
           </button>
         )}
 
+        {/* Editar - Solo Owner y Admin */}
+        {canPerformAction("edit", quote) &&
+          (quote.status === QUOTE_STATUSES.PENDING ||
+            quote.status === QUOTE_STATUSES.APPROVED ||
+            quote.status === QUOTE_STATUSES.EXPIRED) && (
+            <button
+              onClick={() => navigate(`/quotes/${quote.id}/edit`)}
+              className="p-2 text-yellow-600 hover:bg-yellow-50 rounded transition-colors"
+              title="Editar"
+            >
+              <FontAwesomeIcon icon={faEdit} size="sm" />
+            </button>
+          )}
+
         {/* ✅ Vista previa PDF - Todos pueden ver si tiene precio */}
-        {canPerformAction('pdf_preview', quote) && (
+        {canPerformAction("pdf_preview", quote) && (
           <button
-            onClick={() => handleAction('pdf_preview', quote.id)}
+            onClick={() => handleAction("pdf_preview", quote.id)}
             disabled={isPDFPreviewLoading || pdfLoading}
             className="p-2 text-purple-600 hover:bg-purple-50 rounded transition-colors disabled:opacity-50"
             title="Vista previa PDF"
@@ -668,9 +732,9 @@ const closePassengerModal = () => {
         )}
 
         {/* ✅ Descargar PDF - Si ya tiene PDF generado */}
-        {canPerformAction('pdf_download', quote) && (
+        {canPerformAction("pdf_download", quote) && (
           <button
-            onClick={() => handleAction('pdf_download', quote.id)}
+            onClick={() => handleAction("pdf_download", quote.id)}
             disabled={isPDFDownloadLoading || pdfLoading}
             className="p-2 text-green-600 hover:bg-green-50 rounded transition-colors disabled:opacity-50"
             title="Descargar PDF"
@@ -684,25 +748,26 @@ const closePassengerModal = () => {
         )}
 
         {/* ✅ Regenerar PDF - Líderes y superiores */}
-        {canPerformAction('pdf_regenerate', quote) && hasGeneratedPDF(quote) && (
-          <button
-            onClick={() => handleAction('pdf_regenerate', quote.id)}
-            disabled={isPDFRegenerateLoading || pdfLoading}
-            className="p-2 text-orange-600 hover:bg-orange-50 rounded transition-colors disabled:opacity-50"
-            title="Regenerar PDF"
-          >
-            {isPDFRegenerateLoading ? (
-              <FontAwesomeIcon icon={faSpinner} spin size="sm" />
-            ) : (
-              <FontAwesomeIcon icon={faRedo} size="sm" />
-            )}
-          </button>
-        )}
+        {canPerformAction("pdf_regenerate", quote) &&
+          hasGeneratedPDF(quote) && (
+            <button
+              onClick={() => handleAction("pdf_regenerate", quote.id)}
+              disabled={isPDFRegenerateLoading || pdfLoading}
+              className="p-2 text-orange-600 hover:bg-orange-50 rounded transition-colors disabled:opacity-50"
+              title="Regenerar PDF"
+            >
+              {isPDFRegenerateLoading ? (
+                <FontAwesomeIcon icon={faSpinner} spin size="sm" />
+              ) : (
+                <FontAwesomeIcon icon={faRedo} size="sm" />
+              )}
+            </button>
+          )}
 
         {/* ✅ Enviar - Ahora envía con PDF y email automáticamente */}
-        {canPerformAction('send', quote) && (
+        {canPerformAction("send", quote) && (
           <button
-            onClick={() => handleAction('send', quote.id)}
+            onClick={() => handleAction("send", quote.id)}
             disabled={isLoading}
             className="p-2 text-indigo-600 hover:bg-indigo-50 rounded transition-colors disabled:opacity-50"
             title="Enviar al cliente (con PDF)"
@@ -716,9 +781,9 @@ const closePassengerModal = () => {
         )}
 
         {/* Aprobar - Gerentes y superiores */}
-        {canPerformAction('approve', quote) && (
+        {canPerformAction("approve", quote) && (
           <button
-            onClick={() => handleAction('approve', quote.id)}
+            onClick={() => handleAction("approve", quote.id)}
             disabled={isLoading}
             className="p-2 text-green-600 hover:bg-green-50 rounded transition-colors disabled:opacity-50"
             title="Aprobar"
@@ -728,11 +793,11 @@ const closePassengerModal = () => {
         )}
 
         {/* Rechazar - Gerentes y superiores */}
-        {canPerformAction('reject', quote) && (
+        {canPerformAction("reject", quote) && (
           <button
             onClick={() => {
-              const reason = window.prompt('Motivo del rechazo:');
-              if (reason) handleAction('reject', quote.id, { reason });
+              const reason = window.prompt("Motivo del rechazo:");
+              if (reason) handleAction("reject", quote.id, { reason });
             }}
             disabled={isLoading}
             className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
@@ -743,9 +808,9 @@ const closePassengerModal = () => {
         )}
 
         {/* Convertir a contrato - Gerentes y superiores */}
-        {canPerformAction('convert', quote) && (
+        {canPerformAction("convert", quote) && (
           <button
-            onClick={() => handleAction('convert', quote.id, {})}
+            onClick={() => handleAction("convert", quote.id, {})}
             disabled={isLoading}
             className="p-2 text-purple-600 hover:bg-purple-50 rounded transition-colors disabled:opacity-50"
             title="Convertir a contrato"
@@ -753,20 +818,6 @@ const closePassengerModal = () => {
             <FontAwesomeIcon icon={faFileContract} size="sm" />
           </button>
         )}
-
-        {/* Duplicar - Todos pueden duplicar */}
-        {canPerformAction('duplicate', quote) && (
-          <button
-            onClick={() => handleAction('duplicate', quote.id)}
-            disabled={isLoading}
-            className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors disabled:opacity-50"
-            title="Duplicar"
-          >
-            <FontAwesomeIcon icon={faCopy} size="sm" />
-          </button>
-        )}
-
-        
       </div>
     );
   };
@@ -782,18 +833,31 @@ const closePassengerModal = () => {
   }
 
   // ✅ Verificar permisos para ver cotizaciones
-  if (!hasAnyRole([USER_ROLES.ASESOR, USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.CONTADOR, USER_ROLES.OWNER])) {
+  if (
+    !hasAnyRole([
+      USER_ROLES.ASESOR,
+      USER_ROLES.LIDER,
+      USER_ROLES.GERENTE,
+      USER_ROLES.ADMIN,
+      USER_ROLES.CONTADOR,
+      USER_ROLES.OWNER,
+    ])
+  ) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <div className='fixed top-0 left-0 z-50 w-full'>
+        <div className="fixed top-0 left-0 z-50 w-full">
           <NavBar />
         </div>
         <div className="flex justify-center items-center h-screen">
           <div className="text-center">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Sin Permisos</h2>
-            <p className="text-gray-600 mb-4">No tienes permisos para acceder a las cotizaciones.</p>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              Sin Permisos
+            </h2>
+            <p className="text-gray-600 mb-4">
+              No tienes permisos para acceder a las cotizaciones.
+            </p>
             <button
-              onClick={() => navigate('/panel')}
+              onClick={() => navigate("/panel")}
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
             >
               Volver al Panel
@@ -806,7 +870,7 @@ const closePassengerModal = () => {
 
   return (
     <div className="container mx-auto p-4">
-      <div className='fixed top-0 left-0 z-50 w-full'>
+      <div className="fixed top-0 left-0 z-50 w-full">
         <NavBar />
       </div>
 
@@ -816,15 +880,21 @@ const closePassengerModal = () => {
           <div>
             <h2>Gestión de Cotizaciones</h2>
             <p className="text-sm font-normal text-gray-300 mt-1">
-              {user.role === 7 && 'Vista completa - Owner'}
-              {user.role === 5 && 'Vista completa - Admin'}
-              {user.role === 6 && 'Vista completa - Contador'}
-              {user.role === 4 && 'Vista de Gerente - Tu equipo y subordinados'}
-              {user.role === 3 && 'Vista de Líder - Tu equipo de asesores'}
-              {user.role === 2 && 'Vista de Asesor - Tus cotizaciones'}
+              {user.role === 7 && "Vista completa - Owner"}
+              {user.role === 5 && "Vista completa - Admin"}
+              {user.role === 6 && "Vista completa - Contador"}
+              {user.role === 4 && "Vista de Gerente - Tu equipo y subordinados"}
+              {user.role === 3 && "Vista de Líder - Tu equipo de asesores"}
+              {user.role === 2 && "Vista de Asesor - Tus cotizaciones"}
             </p>
           </div>
-          {hasAnyRole([USER_ROLES.ASESOR, USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]) && (
+          {hasAnyRole([
+            USER_ROLES.ASESOR,
+            USER_ROLES.LIDER,
+            USER_ROLES.GERENTE,
+            USER_ROLES.ADMIN,
+            USER_ROLES.OWNER,
+          ]) && (
             <button
               onClick={() => setShowCreateQuote(true)}
               className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 text-base font-medium"
@@ -850,39 +920,51 @@ const closePassengerModal = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-blue-500 text-white p-4 rounded-lg">
           <h3 className="text-lg font-semibold">Visible para ti</h3>
-          <p className="text-2xl font-bold">{getFilteredQuotesByHierarchy.length}</p>
+          <p className="text-2xl font-bold">
+            {getFilteredQuotesByHierarchy.length}
+          </p>
           <p className="text-sm opacity-80">de {quotes.length} totales</p>
         </div>
         <div className="bg-yellow-500 text-white p-4 rounded-lg">
           <h3 className="text-lg font-semibold">Pendientes</h3>
           <p className="text-2xl font-bold">
-            {getFilteredQuotesByHierarchy.filter(q => q.status === QUOTE_STATUSES.PENDING).length}
+            {
+              getFilteredQuotesByHierarchy.filter(
+                (q) => q.status === QUOTE_STATUSES.PENDING
+              ).length
+            }
           </p>
         </div>
         <div className="bg-green-500 text-white p-4 rounded-lg">
           <h3 className="text-lg font-semibold">Aprobadas</h3>
           <p className="text-2xl font-bold">
-            {getFilteredQuotesByHierarchy.filter(q => q.status === QUOTE_STATUSES.APPROVED).length}
+            {
+              getFilteredQuotesByHierarchy.filter(
+                (q) => q.status === QUOTE_STATUSES.APPROVED
+              ).length
+            }
           </p>
         </div>
         <div className="bg-red-500 text-white p-4 rounded-lg">
           <h3 className="text-lg font-semibold">Rechazadas</h3>
           <p className="text-2xl font-bold">
-            {getFilteredQuotesByHierarchy.filter(q => q.status === QUOTE_STATUSES.REJECTED).length}
+            {
+              getFilteredQuotesByHierarchy.filter(
+                (q) => q.status === QUOTE_STATUSES.REJECTED
+              ).length
+            }
           </p>
         </div>
       </div>
-
- 
 
       {/* Filtros y búsqueda */}
       <div className="bg-white p-4 rounded-lg shadow-md mb-6">
         <div className="flex flex-col md:flex-row gap-4 items-center">
           {/* Búsqueda */}
           <div className="flex-1 relative">
-            <FontAwesomeIcon 
-              icon={faSearch} 
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" 
+            <FontAwesomeIcon
+              icon={faSearch}
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
             />
             <input
               type="text"
@@ -895,8 +977,13 @@ const closePassengerModal = () => {
 
           {/* Filtro por estado */}
           <select
-            value={filters.status || 'all'}
-            onChange={(e) => handleFilterChange('status', e.target.value === 'all' ? '' : e.target.value)}
+            value={filters.status || "all"}
+            onChange={(e) =>
+              handleFilterChange(
+                "status",
+                e.target.value === "all" ? "" : e.target.value
+              )
+            }
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="all">Todos los estados</option>
@@ -914,9 +1001,9 @@ const closePassengerModal = () => {
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={`px-4 py-2 border rounded-lg transition-colors ${
-              showFilters 
-                ? 'bg-blue-500 text-white border-blue-500' 
-                : 'border-gray-300 hover:bg-gray-50'
+              showFilters
+                ? "bg-blue-500 text-white border-blue-500"
+                : "border-gray-300 hover:bg-gray-50"
             }`}
           >
             <FontAwesomeIcon icon={faFilter} className="mr-2" />
@@ -927,7 +1014,7 @@ const closePassengerModal = () => {
           <button
             onClick={() => {
               dispatch(clearFilters());
-              setSearchTerm('');
+              setSearchTerm("");
             }}
             className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
           >
@@ -945,8 +1032,10 @@ const closePassengerModal = () => {
                 </label>
                 <input
                   type="date"
-                  value={filters.startDate || ''}
-                  onChange={(e) => handleFilterChange('startDate', e.target.value)}
+                  value={filters.startDate || ""}
+                  onChange={(e) =>
+                    handleFilterChange("startDate", e.target.value)
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -956,8 +1045,10 @@ const closePassengerModal = () => {
                 </label>
                 <input
                   type="date"
-                  value={filters.endDate || ''}
-                  onChange={(e) => handleFilterChange('endDate', e.target.value)}
+                  value={filters.endDate || ""}
+                  onChange={(e) =>
+                    handleFilterChange("endDate", e.target.value)
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -968,8 +1059,10 @@ const closePassengerModal = () => {
                 <input
                   type="text"
                   placeholder="Filtrar por destino"
-                  value={filters.destino || ''}
-                  onChange={(e) => handleFilterChange('destino', e.target.value)}
+                  value={filters.destino || ""}
+                  onChange={(e) =>
+                    handleFilterChange("destino", e.target.value)
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -985,21 +1078,22 @@ const closePassengerModal = () => {
         </div>
       )}
 
-           {stats && stats.expiredCount > 0 && (
-  <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 flex items-center justify-between">
-    <div>
-      <strong>¡Atención!</strong> Hay <b>{stats.expiredCount}</b> cotizaciones enviadas que superaron las 48hs y deben ser marcadas como <b>expiradas</b>.
-    </div>
-    {/* Botón para refrescar o marcar como expiradas si tienes esa función */}
-    <button
-      onClick={handleMarkExpiredQuotes}
-      className="ml-4 px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition-colors"
-    >
-      Marcar como expiradas
-    </button>
-  </div>
-)}
-
+      {stats && stats.expiredCount > 0 && (
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 flex items-center justify-between">
+          <div>
+            <strong>¡Atención!</strong> Hay <b>{stats.expiredCount}</b>{" "}
+            cotizaciones enviadas que superaron las 48hs y deben ser marcadas
+            como <b>expiradas</b>.
+          </div>
+          {/* Botón para refrescar o marcar como expiradas si tienes esa función */}
+          <button
+            onClick={handleMarkExpiredQuotes}
+            className="ml-4 px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition-colors"
+          >
+            Marcar como expiradas
+          </button>
+        </div>
+      )}
 
       {/* ✅ Tabla de cotizaciones con columna de PDF */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -1038,7 +1132,6 @@ const closePassengerModal = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-
               {loading ? (
                 <tr>
                   <td colSpan="9" className="px-6 py-12 text-center">
@@ -1050,81 +1143,110 @@ const closePassengerModal = () => {
                 </tr>
               ) : filteredQuotes.length === 0 ? (
                 <tr>
-                  <td colSpan="9" className="px-6 py-12 text-center text-gray-500">
-                    {searchTerm ? 'No se encontraron cotizaciones que coincidan con la búsqueda' : 'No hay cotizaciones disponibles para tu rol'}
+                  <td
+                    colSpan="9"
+                    className="px-6 py-12 text-center text-gray-500"
+                  >
+                    {searchTerm
+                      ? "No se encontraron cotizaciones que coincidan con la búsqueda"
+                      : "No hay cotizaciones disponibles para tu rol"}
                   </td>
                 </tr>
               ) : (
                 filteredQuotes.map((quote) => {
-
-                  const isExpiredButSent = Array.isArray(stats?.expiredQuotes) && stats.expiredQuotes.some(q => q.id === quote.id);
+                  const isExpiredButSent =
+                    Array.isArray(stats?.expiredQuotes) &&
+                    stats.expiredQuotes.some((q) => q.id === quote.id);
                   return (
-                  <tr key={quote.id} className={`hover:bg-gray-50 ${isExpiredButSent ? 'bg-yellow-50 border-l-4 border-yellow-500' : ''}`}
-                  >
-                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-            {quote.quote_number || quote.id}
-          </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {quote.nombre_cliente || 'Sin nombre'}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {quote.email_cliente || 'Sin email'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <div className="font-medium">{quote.destino}</div>
-                      <div className="text-gray-500 text-xs">desde {quote.origen}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {quote.Asesor?.name} {quote.Asesor?.lastname}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {quote.Asesor?.email}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {quote.precio_total ? (
-                        <span className="font-semibold text-green-600">
-                          ${quote.precio_total.toLocaleString()}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">Pendiente</span>
-                      )}
-                    </td>
-                    {/* ✅ Columna PDF */}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {hasGeneratedPDF(quote) ? (
-                        <div className="flex items-center">
-                          <FontAwesomeIcon icon={faFilePdf} className="text-red-500 mr-1" />
-                          <span className="text-xs text-green-600 font-medium">Generado</span>
+                    <tr
+                      key={quote.id}
+                      className={`hover:bg-gray-50 ${
+                        isExpiredButSent
+                          ? "bg-yellow-50 border-l-4 border-yellow-500"
+                          : ""
+                      }`}
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {quote.quote_number || quote.id}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {quote.nombre_cliente || "Sin nombre"}
                         </div>
-                      ) : canGeneratePDF(quote) ? (
-                        <span className="text-xs text-blue-600 font-medium">Disponible</span>
-                      ) : (
-                        <span className="text-xs text-gray-400">Sin precio</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(quote.status)}`}>
-                        {getStatusText(quote.status)}
-                      </span>
-                       {isExpiredButSent && (
-              <span className="ml-2 px-2 py-1 bg-yellow-200 text-yellow-800 rounded text-xs font-semibold">
-                Expirada (48hs)
-              </span>
-            )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(quote.created_at || quote.fecha_creacion).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      {renderActionButtons(quote)}
-                    </td>
-                  </tr>
-                   );
-              })
+                        <div className="text-sm text-gray-500">
+                          {quote.email_cliente || "Sin email"}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <div className="font-medium">{quote.destino}</div>
+                        <div className="text-gray-500 text-xs">
+                          desde {quote.origen}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {quote.Asesor?.name} {quote.Asesor?.lastname}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {quote.Asesor?.email}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {quote.precio_total ? (
+                          <span className="font-semibold text-green-600">
+                            ${quote.precio_total.toLocaleString()}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">Pendiente</span>
+                        )}
+                      </td>
+                      {/* ✅ Columna PDF */}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {hasGeneratedPDF(quote) ? (
+                          <div className="flex items-center">
+                            <FontAwesomeIcon
+                              icon={faFilePdf}
+                              className="text-red-500 mr-1"
+                            />
+                            <span className="text-xs text-green-600 font-medium">
+                              Generado
+                            </span>
+                          </div>
+                        ) : canGeneratePDF(quote) ? (
+                          <span className="text-xs text-blue-600 font-medium">
+                            Disponible
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">
+                            Sin precio
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
+                            quote.status
+                          )}`}
+                        >
+                          {getStatusText(quote.status)}
+                        </span>
+                        {isExpiredButSent && (
+                          <span className="ml-2 px-2 py-1 bg-yellow-200 text-yellow-800 rounded text-xs font-semibold">
+                            Expirada (48hs)
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(
+                          quote.created_at || quote.fecha_creacion
+                        ).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        {renderActionButtons(quote)}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -1152,15 +1274,27 @@ const closePassengerModal = () => {
             <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm text-gray-700">
-                  Mostrando <span className="font-medium">{((pagination.page - 1) * pagination.limit) + 1}</span> a{' '}
+                  Mostrando{" "}
                   <span className="font-medium">
-                    {Math.min(pagination.page * pagination.limit, filteredQuotes.length)}
-                  </span> de{' '}
-                  <span className="font-medium">{filteredQuotes.length}</span> resultados
+                    {(pagination.page - 1) * pagination.limit + 1}
+                  </span>{" "}
+                  a{" "}
+                  <span className="font-medium">
+                    {Math.min(
+                      pagination.page * pagination.limit,
+                      filteredQuotes.length
+                    )}
+                  </span>{" "}
+                  de{" "}
+                  <span className="font-medium">{filteredQuotes.length}</span>{" "}
+                  resultados
                 </p>
               </div>
               <div>
-                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                <nav
+                  className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
+                  aria-label="Pagination"
+                >
                   <button
                     onClick={() => handlePageChange(pagination.page - 1)}
                     disabled={pagination.page === 1}
@@ -1168,25 +1302,28 @@ const closePassengerModal = () => {
                   >
                     Anterior
                   </button>
-                  
+
                   {/* Números de página */}
-                  {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                    const page = i + 1;
-                    return (
-                      <button
-                        key={page}
-                        onClick={() => handlePageChange(page)}
-                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                          page === pagination.page
-                            ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                            : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    );
-                  })}
-                  
+                  {Array.from(
+                    { length: Math.min(5, pagination.totalPages) },
+                    (_, i) => {
+                      const page = i + 1;
+                      return (
+                        <button
+                          key={page}
+                          onClick={() => handlePageChange(page)}
+                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                            page === pagination.page
+                              ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
+                              : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    }
+                  )}
+
                   <button
                     onClick={() => handlePageChange(pagination.page + 1)}
                     disabled={pagination.page === pagination.totalPages}
@@ -1206,7 +1343,9 @@ const closePassengerModal = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-4 max-w-4xl max-h-[90vh] w-full mx-4">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Vista Previa PDF - {pdfPreviewModal.filename}</h3>
+              <h3 className="text-lg font-semibold">
+                Vista Previa PDF - {pdfPreviewModal.filename}
+              </h3>
               <button
                 onClick={closePDFModal}
                 className="text-gray-500 hover:text-gray-700 text-xl font-bold"
@@ -1241,29 +1380,13 @@ const closePassengerModal = () => {
         </div>
       )}
 
-{passengerModal.isOpen && (
-  <PassengerModal
-    isOpen={passengerModal.isOpen}
-    onClose={closePassengerModal}
-    quote={passengerModal.quote}
-  />
-)}
-
-{/* Modal para crear nueva cotización */}
-{showCreateQuote && (
-  <QuotePopup
-    isOpen={showCreateQuote}
-    onClose={() => setShowCreateQuote(false)}
-    onSuccess={() => {
-      setShowCreateQuote(false);
-      dispatch(fetchQuotes({ 
-        page: pagination.page, 
-        limit: pagination.limit, 
-        filters 
-      }));
-    }}
-  />
-)}
+      {passengerModal.isOpen && (
+        <PassengerModal
+          isOpen={passengerModal.isOpen}
+          onClose={closePassengerModal}
+          quote={passengerModal.quote}
+        />
+      )}
 
       {/* Modal para crear nueva cotización */}
       {showCreateQuote && (
@@ -1272,11 +1395,31 @@ const closePassengerModal = () => {
           onClose={() => setShowCreateQuote(false)}
           onSuccess={() => {
             setShowCreateQuote(false);
-            dispatch(fetchQuotes({ 
-              page: pagination.page, 
-              limit: pagination.limit, 
-              filters 
-            }));
+            dispatch(
+              fetchQuotes({
+                page: pagination.page,
+                limit: pagination.limit,
+                filters,
+              })
+            );
+          }}
+        />
+      )}
+
+      {/* Modal para crear nueva cotización */}
+      {showCreateQuote && (
+        <QuotePopup
+          isOpen={showCreateQuote}
+          onClose={() => setShowCreateQuote(false)}
+          onSuccess={() => {
+            setShowCreateQuote(false);
+            dispatch(
+              fetchQuotes({
+                page: pagination.page,
+                limit: pagination.limit,
+                filters,
+              })
+            );
           }}
         />
       )}

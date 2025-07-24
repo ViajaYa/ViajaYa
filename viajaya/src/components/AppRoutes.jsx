@@ -48,7 +48,7 @@ const OrganizationView = lazy(() => import("./pages/Organization/OrganizationVie
 const AllTeamsView = lazy(() => import("./pages/Organization/AllTeamsView"));
 const PassengerForm = lazy(() => import("./Panel/Quotes/PassengerForm"));
 const PassengerSuccess = lazy(() => import("./Panel/Quotes/PassengerSuccess"));
-
+const ContractSignature = lazy(() => import("./Panel/Contracts/ContractSignature"));
 
 const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
   return (
@@ -109,12 +109,14 @@ const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
       } />
         <Route path="/passenger-form/:quoteId" element={<PassengerForm />} />
         <Route path="/passenger-success" element={<PassengerSuccess />} />
-      
+      <Route path="/contract-signature/:contractId" element={<ContractSignature />} />
       <Route path="/" element={
         <Suspense fallback={<LoadingSpinner />}>
           <Landing />
         </Suspense>
       } />
+
+
 
       {/* ✅ RUTAS PARA CLIENTES AUTENTICADOS */}
       <Route path="/profile" element={
@@ -316,6 +318,16 @@ const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
           </Suspense>
         </RoleRoute>
       } />
+
+      <Route path="/contracts/:id/edit" element={
+        <RoleRoute allowedRoles={[USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <ContractSet />
+          </Suspense>
+        </RoleRoute>
+      } />
+
+      
 
       {/* ✅ NUEVA RUTA: Comisiones */}
       <Route path="/panel/commissions" element={

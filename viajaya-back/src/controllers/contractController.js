@@ -1,6 +1,8 @@
 const { Contract, Quote, User, Passenger,  Payment, PackagePurchase, Commission, ContractItems } = require('../db');
 const { generateContractPDF } = require('../utils/generateContractPDF');
 const commissionController = require('./commissionController');
+const { generateSignatureToken, verifySignatureToken } = require('../utils/generateSignatureToken');
+const { generateSignedContractPDF } = require('../utils/generateSignedContractPDF');
 
 
 const contractController = {
@@ -353,49 +355,118 @@ getAllContracts : async (req, res) => {
 
   // Firmar contrato
   signContract: async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { signature, signer_info, signed_at, signature_token, ip_address } = req.body;
+
+    // ✅ VERIFICAR token de firma
+    const { verifySignatureToken } = require('../utils/generateSignatureToken');
     try {
-      const { id } = req.params;
-
-      const contract = await Contract.findByPk(id);
-
-      if (!contract) {
-        return res.status(404).json({ message: 'Contrato no encontrado' });
+      const tokenData = verifySignatureToken(signature_token);
+      if (tokenData.contractId !== id) {
+        return res.status(400).json({ message: 'Token de firma inválido para este contrato' });
       }
-
-      if (contract.status !== 'sent') {
-        return res.status(400).json({ 
-          message: 'El contrato debe estar enviado para poder ser firmado' 
-        });
-      }
-
-      await contract.update({
-        status: 'signed',
-        fecha_firma: new Date()
-      });
-
-      // ✅ GENERAR COMISIONES AUTOMÁTICAMENTE al firmar contrato
-      try {
-        const commissionResult = await commissionController.generateCommissions(id);
-        console.log('✅ Comisiones generadas:', commissionResult);
-      } catch (commissionError) {
-        console.error('❌ Error generando comisiones:', commissionError);
-        // No fallar la firma del contrato por error en comisiones
-      }
-
-      res.json({
-        message: 'Contrato firmado exitosamente',
-        contract,
-        commissionsGenerated: true
-      });
-
     } catch (error) {
-      console.error('Error signing contract:', error);
-      res.status(500).json({ 
-        message: 'Error al firmar el contrato', 
-        error: error.message 
-      });
+      return res.status(400).json({ message: 'Token de firma inválido o expirado' });
     }
-  },
+
+    const contract = await Contract.findByPk(id, {
+      include: [
+        { 
+          model: Quote,
+          as: 'Quote',
+          include: [
+            { model: User, as: 'Cliente' },
+            { model: Passenger, as: 'Passengers' }
+          ]
+        },
+        { model: User, as: 'Cliente' }
+      ]
+    });
+
+    if (!contract) {
+      return res.status(404).json({ message: 'Contrato no encontrado' });
+    }
+
+    if (contract.status === 'signed') {
+      return res.status(400).json({ message: 'El contrato ya está firmado' });
+    }
+
+    // ✅ GUARDAR datos de firma
+    const signatureData = {
+      signature_image: signature,
+      signer_name: signer_info.nombre,
+      signer_document: signer_info.documento,
+      signer_email: signer_info.email,
+      signer_role: signer_info.cargo,
+      signed_at: signed_at,
+      signature_ip: ip_address,
+      signature_token: signature_token
+    };
+
+    // ✅ ACTUALIZAR contrato con datos de firma
+    await contract.update({
+      status: 'signed',
+      fecha_firma: new Date(signed_at),
+      signature_data: JSON.stringify(signatureData)
+    });
+
+    // ✅ REGENERAR PDF con firma
+    try {
+      console.log('📄 Regenerando PDF con firma...');
+      const { generateSignedContractPDF } = require('../utils/generateSignedContractPDF');
+      const pdfResult = await generateSignedContractPDF(contract, signatureData);
+      
+      // Actualizar con la nueva URL del PDF firmado
+      await contract.update({
+        contrato_pdf_url: pdfResult.relativePath,
+        signed_pdf_generated: true
+      });
+      
+      console.log('✅ PDF con firma generado:', pdfResult.filename);
+    } catch (pdfError) {
+      console.error('⚠️ Error generando PDF con firma:', pdfError);
+      // No fallar la firma si el PDF falla, se puede regenerar después
+    }
+
+    // ✅ ENVIAR email de confirmación (opcional)
+    try {
+      const { sendEmail } = require('../utils/emailService');
+      await sendEmail({
+        to: signer_info.email,
+        subject: `✅ Contrato Firmado - ${contract.contract_number}`,
+        html: `
+          <h2>¡Contrato firmado exitosamente!</h2>
+          <p>Su contrato <strong>${contract.contract_number}</strong> ha sido firmado digitalmente.</p>
+          <p>Recibirá una copia del contrato firmado en breve.</p>
+          <p>Gracias por elegir ViajaYa.</p>
+        `
+      });
+    } catch (emailError) {
+      console.error('Error enviando email de confirmación:', emailError);
+    }
+
+    res.json({
+      success: true,
+      message: 'Contrato firmado exitosamente',
+      contract: {
+        id: contract.id,
+        contract_number: contract.contract_number,
+        status: 'signed',
+        signed_at: signed_at,
+        signer_name: signer_info.nombre
+      }
+    });
+
+  } catch (error) {
+    console.error('Error signing contract:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error al firmar el contrato', 
+      error: error.message 
+    });
+  }
+},
 
   // Enviar contrato para firma
   // ✅ AGREGAR: Función para previsualizar email del contrato
@@ -531,9 +602,14 @@ sendContract: async (req, res) => {
       });
     }
 
+
+
     // ✅ GENERAR EMAIL HTML (mismo código que antes)
     const emailSubject = subject || `📋 Contrato de Viaje - ${contract.Quote?.destino} | ${contract.contract_number}`;
     const passengers = contract.Quote?.Passengers || [];
+
+const signatureToken = generateSignatureToken(contract.id);
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 
     const emailHtml = `
       <!DOCTYPE html>
@@ -702,10 +778,10 @@ sendContract: async (req, res) => {
 
             <!-- Botón de Confirmación -->
             <div style="text-align: center;">
-              <a href="mailto:info@viajaya.com?subject=Confirmación de Contrato ${contract.contract_number}&body=Confirmo que he revisado y acepto los términos del contrato ${contract.contract_number} para el viaje a ${contract.Quote?.destino}." class="cta-button">
-                ✅ CONFIRMAR CONTRATO
-              </a>
-            </div>
+    <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/contract-signature/${contract.id}?token=${generateSignatureToken(contract.id)}" class="cta-button">
+      ✅ FIRMAR CONTRATO DIGITALMENTE
+    </a>
+  </div>
 
             <p style="margin-top: 30px;">
               <strong>🎯 ¡Estamos emocionados de hacer realidad su viaje a ${contract.Quote?.destino}!</strong>

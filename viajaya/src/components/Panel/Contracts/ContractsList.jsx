@@ -532,14 +532,7 @@ const ContractsList = () => {
                     {/* Acciones */}
                     <div className="col-span-1">
                       <div className="flex items-center gap-1">
-                        {/* Ver */}
-                        <button
-                          onClick={() => handleAction("view", contract.id)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                          title="Ver detalles"
-                        >
-                          <FontAwesomeIcon icon={faEye} size="sm" />
-                        </button>
+                        
 
                         {/* Editar */}
                         {contract.status === "draft" && (
@@ -551,6 +544,15 @@ const ContractsList = () => {
                             <FontAwesomeIcon icon={faEdit} size="sm" />
                           </button>
                         )}
+
+                        {/* Ver */}
+                        <button
+                          onClick={() => handleAction("view", contract.id)}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                          title="Ver detalles"
+                        >
+                          <FontAwesomeIcon icon={faEye} size="sm" />
+                        </button>
 
                         {/* Enviar */}
                         {(contract.status === "draft" ||
