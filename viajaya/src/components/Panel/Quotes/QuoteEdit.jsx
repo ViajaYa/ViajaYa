@@ -93,7 +93,7 @@ const QuoteEdit = () => {
 
   // ✅ Estados del formulario
   const [formData, setFormData] = useState({
-    numero_personas: 1,
+    numero_personas: "",
     fecha_ida: "",
     fecha_regreso: "",
     destino: "",
@@ -114,6 +114,7 @@ const QuoteEdit = () => {
 
   const [showContractModal, setShowContractModal] = useState(false);
   const [contractData, setContractData] = useState({
+    numero_personas: "",
     forma_pago: "contado",
     numero_cuotas: 1,
     fecha_inicio_viaje: "",
@@ -265,6 +266,7 @@ const QuoteEdit = () => {
       : new Date();
 
     setContractData({
+      numero_personas: "",
       forma_pago: "contado",
       numero_cuotas: 1,
       fecha_inicio_viaje: fechaInicio.toISOString().split("T")[0],

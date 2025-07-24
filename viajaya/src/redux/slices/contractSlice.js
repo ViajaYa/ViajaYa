@@ -1,5 +1,5 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { getApiUrl } from '../../utils/env';
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { getApiUrl } from "../../utils/env";
 
 // Estado inicial
 const initialState = {
@@ -9,11 +9,11 @@ const initialState = {
   loading: false,
   error: null,
   filters: {
-    status: 'all',
+    status: "all",
     clientId: null,
     startDate: null,
     endDate: null,
-    contractType: 'all',
+    contractType: "all",
   },
   pagination: {
     page: 1,
@@ -30,12 +30,18 @@ const initialState = {
   contractItems: [],
   contractItemsLoading: false,
   contractItemsError: null,
+  emailPreview: null,
+  emailPreviewLoading: false,
+  emailPreviewError: null,
 };
 
 // Thunks asíncronos
 export const fetchContracts = createAsyncThunk(
-  'contract/fetchContracts',
-  async ({ page = 1, limit = 10, filters = {} }, { rejectWithValue, getState }) => {
+  "contract/fetchContracts",
+  async (
+    { page = 1, limit = 10, filters = {} },
+    { rejectWithValue, getState }
+  ) => {
     try {
       const { auth } = getState();
       const queryParams = new URLSearchParams({
@@ -45,62 +51,62 @@ export const fetchContracts = createAsyncThunk(
       });
 
       const response = await fetch(getApiUrl(`/contracts?${queryParams}`), {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Authorization': `Bearer ${auth.token}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${auth.token}`,
+          "Content-Type": "application/json",
         },
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        return rejectWithValue(data.message || 'Error obteniendo contratos');
+        return rejectWithValue(data.message || "Error obteniendo contratos");
       }
 
       return data;
     } catch (error) {
-      return rejectWithValue(error.message || 'Error de conexión');
+      return rejectWithValue(error.message || "Error de conexión");
     }
   }
 );
 
 export const fetchContractById = createAsyncThunk(
-  'contract/fetchContractById',
+  "contract/fetchContractById",
   async (contractId, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
       const response = await fetch(getApiUrl(`/contracts/${contractId}`), {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Authorization': `Bearer ${auth.token}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${auth.token}`,
+          "Content-Type": "application/json",
         },
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        return rejectWithValue(data.message || 'Error obteniendo contrato');
+        return rejectWithValue(data.message || "Error obteniendo contrato");
       }
 
       return data;
     } catch (error) {
-      return rejectWithValue(error.message || 'Error de conexión');
+      return rejectWithValue(error.message || "Error de conexión");
     }
   }
 );
 
 export const createContract = createAsyncThunk(
-  'contract/createContract',
+  "contract/createContract",
   async (contractData, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl('/contracts'), {
-        method: 'POST',
+      const response = await fetch(getApiUrl("/contracts"), {
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${auth.token}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${auth.token}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(contractData),
       });
@@ -108,50 +114,54 @@ export const createContract = createAsyncThunk(
       const data = await response.json();
 
       if (!response.ok) {
-        return rejectWithValue(data.message || 'Error creando contrato');
+        return rejectWithValue(data.message || "Error creando contrato");
       }
 
       return data;
     } catch (error) {
-      return rejectWithValue(error.message || 'Error de conexión');
+      return rejectWithValue(error.message || "Error de conexión");
     }
   }
 );
 
 export const fetchContractItems = createAsyncThunk(
-  'contractItems/fetchContractItems',
+  "contractItems/fetchContractItems",
   async (contractId, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl(`/contracts/${contractId}/items`), {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${auth.token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await fetch(
+        getApiUrl(`/contracts/${contractId}/items`),
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${auth.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
       const data = await response.json();
       if (!response.ok) {
-        return rejectWithValue(data.message || 'Error obteniendo items del contrato');
+        return rejectWithValue(
+          data.message || "Error obteniendo items del contrato"
+        );
       }
       return data.items;
     } catch (error) {
-      return rejectWithValue(error.message || 'Error de conexión');
+      return rejectWithValue(error.message || "Error de conexión");
     }
   }
 );
 
-
 export const updateContract = createAsyncThunk(
-  'contract/updateContract',
+  "contract/updateContract",
   async ({ id, updates }, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
       const response = await fetch(getApiUrl(`/contracts/${id}`), {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Authorization': `Bearer ${auth.token}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${auth.token}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(updates),
       });
@@ -159,51 +169,51 @@ export const updateContract = createAsyncThunk(
       const data = await response.json();
 
       if (!response.ok) {
-        return rejectWithValue(data.message || 'Error actualizando contrato');
+        return rejectWithValue(data.message || "Error actualizando contrato");
       }
 
       return data;
     } catch (error) {
-      return rejectWithValue(error.message || 'Error de conexión');
+      return rejectWithValue(error.message || "Error de conexión");
     }
   }
 );
 
 export const deleteContract = createAsyncThunk(
-  'contract/deleteContract',
+  "contract/deleteContract",
   async (contractId, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
       const response = await fetch(getApiUrl(`/contracts/${contractId}`), {
-        method: 'DELETE',
+        method: "DELETE",
         headers: {
-          'Authorization': `Bearer ${auth.token}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${auth.token}`,
+          "Content-Type": "application/json",
         },
       });
 
       if (!response.ok) {
         const data = await response.json();
-        return rejectWithValue(data.message || 'Error eliminando contrato');
+        return rejectWithValue(data.message || "Error eliminando contrato");
       }
 
       return contractId;
     } catch (error) {
-      return rejectWithValue(error.message || 'Error de conexión');
+      return rejectWithValue(error.message || "Error de conexión");
     }
   }
 );
 
 export const signContract = createAsyncThunk(
-  'contract/signContract',
+  "contract/signContract",
   async ({ contractId, signatureData }, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
       const response = await fetch(getApiUrl(`/contracts/${contractId}/sign`), {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${auth.token}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${auth.token}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(signatureData),
       });
@@ -211,61 +221,105 @@ export const signContract = createAsyncThunk(
       const data = await response.json();
 
       if (!response.ok) {
-        return rejectWithValue(data.message || 'Error firmando contrato');
+        return rejectWithValue(data.message || "Error firmando contrato");
       }
 
       return data;
     } catch (error) {
-      return rejectWithValue(error.message || 'Error de conexión');
+      return rejectWithValue(error.message || "Error de conexión");
     }
   }
 );
 
 export const generateContractPDF = createAsyncThunk(
-  'contract/generateContractPDF',
+  "contract/generateContractPDF",
+  async (contractId, { rejectWithValue, getState }) => {
+    try {
+      console.log("🔄 Generando PDF para contrato:", contractId);
+
+      const { auth } = getState();
+      const response = await fetch(
+        getApiUrl(`/contracts/${contractId}/generate-pdf`),
+        {
+          // ✅ CORREGIR: Ruta correcta
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${auth.token}`,
+            "Content-Type": "application/json", // ✅ AGREGAR: Content-Type
+          },
+        }
+      );
+
+      console.log("📡 Status de respuesta:", response.status);
+      console.log("📡 Content-Type:", response.headers.get("content-type"));
+
+      // ✅ VERIFICAR: Si la respuesta es JSON (no blob)
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const textResponse = await response.text();
+        console.error(
+          "❌ Respuesta no es JSON:",
+          textResponse.substring(0, 200)
+        );
+        throw new Error("El servidor no devolvió una respuesta JSON válida");
+      }
+
+      const data = await response.json(); // ✅ CAMBIAR: Manejar como JSON
+
+      if (!response.ok) {
+        return rejectWithValue(data.message || "Error generando PDF");
+      }
+
+      console.log("✅ PDF generado exitosamente:", data);
+      return data; // ✅ RETORNAR: Datos del PDF generado
+    } catch (error) {
+      console.error("❌ Error en generateContractPDF:", error);
+      return rejectWithValue(error.message || "Error de conexión");
+    }
+  }
+);
+
+export const previewContractEmail = createAsyncThunk(
+  "contract/previewContractEmail",
   async (contractId, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl(`/contracts/${contractId}/pdf`), {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${auth.token}`,
-        },
-      });
+      const response = await fetch(
+        getApiUrl(`/contracts/${contractId}/email-preview`),
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${auth.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const data = await response.json();
 
       if (!response.ok) {
-        const data = await response.json();
-        return rejectWithValue(data.message || 'Error generando PDF');
+        return rejectWithValue(
+          data.message || "Error obteniendo preview del email"
+        );
       }
 
-      // Manejar respuesta de archivo
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `contrato-${contractId}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-
-      return { contractId, downloaded: true };
+      return data;
     } catch (error) {
-      return rejectWithValue(error.message || 'Error de conexión');
+      return rejectWithValue(error.message || "Error de conexión");
     }
   }
 );
 
 export const sendContractForSignature = createAsyncThunk(
-  'contract/sendContractForSignature',
+  "contract/sendContractForSignature",
   async ({ contractId, emailData }, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl(`/contracts/${contractId}/send-signature`), {
-        method: 'POST',
+      const response = await fetch(getApiUrl(`/contracts/${contractId}/send`), {
+        method: "PATCH",
         headers: {
-          'Authorization': `Bearer ${auth.token}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${auth.token}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(emailData),
       });
@@ -273,98 +327,105 @@ export const sendContractForSignature = createAsyncThunk(
       const data = await response.json();
 
       if (!response.ok) {
-        return rejectWithValue(data.message || 'Error enviando contrato para firma');
+        return rejectWithValue(
+          data.message || "Error enviando contrato para firma"
+        );
       }
 
       return data;
     } catch (error) {
-      return rejectWithValue(error.message || 'Error de conexión');
+      return rejectWithValue(error.message || "Error de conexión");
     }
   }
 );
 
 export const fetchContractTemplates = createAsyncThunk(
-  'contract/fetchContractTemplates',
+  "contract/fetchContractTemplates",
   async (_, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl('/contracts/templates'), {
-        method: 'GET',
+      const response = await fetch(getApiUrl("/contracts/templates"), {
+        method: "GET",
         headers: {
-          'Authorization': `Bearer ${auth.token}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${auth.token}`,
+          "Content-Type": "application/json",
         },
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        return rejectWithValue(data.message || 'Error obteniendo plantillas');
+        return rejectWithValue(data.message || "Error obteniendo plantillas");
       }
 
       return data;
     } catch (error) {
-      return rejectWithValue(error.message || 'Error de conexión');
+      return rejectWithValue(error.message || "Error de conexión");
     }
   }
 );
 
 export const createContractFromTemplate = createAsyncThunk(
-  'contract/createContractFromTemplate',
+  "contract/createContractFromTemplate",
   async ({ templateId, contractData }, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl(`/contracts/from-template/${templateId}`), {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${auth.token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(contractData),
-      });
+      const response = await fetch(
+        getApiUrl(`/contracts/from-template/${templateId}`),
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${auth.token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(contractData),
+        }
+      );
 
       const data = await response.json();
 
       if (!response.ok) {
-        return rejectWithValue(data.message || 'Error creando contrato desde plantilla');
+        return rejectWithValue(
+          data.message || "Error creando contrato desde plantilla"
+        );
       }
 
       return data;
     } catch (error) {
-      return rejectWithValue(error.message || 'Error de conexión');
+      return rejectWithValue(error.message || "Error de conexión");
     }
   }
 );
 
 export const fetchContractStats = createAsyncThunk(
-  'contract/fetchContractStats',
+  "contract/fetchContractStats",
   async (_, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl('/contracts/stats'), {
-        method: 'GET',
+      const response = await fetch(getApiUrl("/contracts/stats"), {
+        method: "GET",
         headers: {
-          'Authorization': `Bearer ${auth.token}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${auth.token}`,
+          "Content-Type": "application/json",
         },
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        return rejectWithValue(data.message || 'Error obteniendo estadísticas');
+        return rejectWithValue(data.message || "Error obteniendo estadísticas");
       }
 
       return data;
     } catch (error) {
-      return rejectWithValue(error.message || 'Error de conexión');
+      return rejectWithValue(error.message || "Error de conexión");
     }
   }
 );
 
 // Slice
 const contractSlice = createSlice({
-  name: 'contract',
+  name: "contract",
   initialState,
   reducers: {
     clearContractError: (state) => {
@@ -381,11 +442,11 @@ const contractSlice = createSlice({
     },
     clearFilters: (state) => {
       state.filters = {
-        status: 'all',
+        status: "all",
         clientId: null,
         startDate: null,
         endDate: null,
-        contractType: 'all',
+        contractType: "all",
       };
     },
     setPagination: (state, action) => {
@@ -403,7 +464,7 @@ const contractSlice = createSlice({
     },
     updateContractStatus: (state, action) => {
       const { contractId, status } = action.payload;
-      const contract = state.contracts.find(c => c.id === contractId);
+      const contract = state.contracts.find((c) => c.id === contractId);
       if (contract) {
         contract.status = status;
       }
@@ -419,8 +480,14 @@ const contractSlice = createSlice({
       state.contractItems = [];
       state.contractItemsLoading = false;
       state.contractItemsError = null;
-    }
-  
+    },
+    clearEmailPreview: (state) => {
+      state.emailPreview = null;
+      state.emailPreviewError = null;
+    },
+    clearEmailPreviewError: (state) => {
+      state.emailPreviewError = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -436,7 +503,9 @@ const contractSlice = createSlice({
           ...state.pagination,
           page: action.payload.page || 1,
           total: action.payload.total || 0,
-          totalPages: Math.ceil((action.payload.total || 0) / state.pagination.limit),
+          totalPages: Math.ceil(
+            (action.payload.total || 0) / state.pagination.limit
+          ),
         };
       })
       .addCase(fetchContracts.rejected, (state, action) => {
@@ -462,19 +531,18 @@ const contractSlice = createSlice({
         state.error = null;
       })
       .addCase(createContract.fulfilled, (state, action) => {
+        state.loading = false;
+        // ✅ AJUSTAR: Verificar que action.payload tenga la estructura correcta
+        const newContract = action.payload.contract || action.payload;
+        state.contracts.unshift(newContract);
+        state.currentContract = newContract;
 
-  state.loading = false;
-  // ✅ AJUSTAR: Verificar que action.payload tenga la estructura correcta
-  const newContract = action.payload.contract || action.payload;
-  state.contracts.unshift(newContract);
-  state.currentContract = newContract;
-  
-  // ✅ ACTUALIZAR: Estadísticas
-  state.stats.totalContracts += 1;
-  if (newContract.status === 'draft') {
-    state.stats.pendingContracts += 1;
-  }
-})
+        // ✅ ACTUALIZAR: Estadísticas
+        state.stats.totalContracts += 1;
+        if (newContract.status === "draft") {
+          state.stats.pendingContracts += 1;
+        }
+      })
       .addCase(createContract.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
@@ -486,7 +554,9 @@ const contractSlice = createSlice({
       })
       .addCase(updateContract.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.contracts.findIndex(c => c.id === action.payload.id);
+        const index = state.contracts.findIndex(
+          (c) => c.id === action.payload.id
+        );
         if (index !== -1) {
           state.contracts[index] = action.payload;
         }
@@ -505,7 +575,9 @@ const contractSlice = createSlice({
       })
       .addCase(deleteContract.fulfilled, (state, action) => {
         state.loading = false;
-        state.contracts = state.contracts.filter(c => c.id !== action.payload);
+        state.contracts = state.contracts.filter(
+          (c) => c.id !== action.payload
+        );
         if (state.currentContract?.id === action.payload) {
           state.currentContract = null;
         }
@@ -514,6 +586,19 @@ const contractSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
+
+      .addCase(previewContractEmail.pending, (state) => {
+        state.emailPreviewLoading = true;
+        state.emailPreviewError = null;
+      })
+      .addCase(previewContractEmail.fulfilled, (state, action) => {
+        state.emailPreviewLoading = false;
+        state.emailPreview = action.payload.emailData;
+      })
+      .addCase(previewContractEmail.rejected, (state, action) => {
+        state.emailPreviewLoading = false;
+        state.emailPreviewError = action.payload;
+      })
       // Sign Contract
       .addCase(signContract.pending, (state) => {
         state.loading = true;
@@ -521,7 +606,9 @@ const contractSlice = createSlice({
       })
       .addCase(signContract.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.contracts.findIndex(c => c.id === action.payload.id);
+        const index = state.contracts.findIndex(
+          (c) => c.id === action.payload.id
+        );
         if (index !== -1) {
           state.contracts[index] = action.payload;
         }
@@ -534,12 +621,34 @@ const contractSlice = createSlice({
         state.error = action.payload;
       })
       // Generate Contract PDF
+      // ✅ MODIFICAR: extraReducers para generateContractPDF
       .addCase(generateContractPDF.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(generateContractPDF.fulfilled, (state) => {
+      .addCase(generateContractPDF.fulfilled, (state, action) => {
         state.loading = false;
+
+        const { contractId, pdf } = action.payload;
+
+        // ✅ ACTUALIZAR: El contrato actual con la URL del PDF
+        if (
+          state.currentContract &&
+          state.currentContract.contract &&
+          state.currentContract.contract.id === action.payload.contract?.id
+        ) {
+          state.currentContract.contract.contrato_pdf_url = pdf?.url;
+        }
+
+        // ✅ ACTUALIZAR: En la lista de contratos si existe
+        const contractIndex = state.contracts.findIndex(
+          (c) => c.id === action.payload.contract?.id
+        );
+        if (contractIndex !== -1) {
+          state.contracts[contractIndex].contrato_pdf_url = pdf?.url;
+        }
+
+        console.log("✅ Estado actualizado con PDF URL:", pdf?.url);
       })
       .addCase(generateContractPDF.rejected, (state, action) => {
         state.loading = false;
@@ -552,7 +661,9 @@ const contractSlice = createSlice({
       })
       .addCase(sendContractForSignature.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.contracts.findIndex(c => c.id === action.payload.id);
+        const index = state.contracts.findIndex(
+          (c) => c.id === action.payload.id
+        );
         if (index !== -1) {
           state.contracts[index] = action.payload;
         }
@@ -632,61 +743,85 @@ export const {
   updateContractStatus,
   clearContractItemsError,
   resetContractItems,
+  clearEmailPreview,
+  clearEmailPreviewError,
 } = contractSlice.actions;
 
 // Selectores
 export const selectContracts = (state) => state.contract.contracts;
 export const selectCurrentContract = (state) => state.contract.currentContract;
-export const selectContractTemplates = (state) => state.contract.contractTemplates;
+export const selectContractTemplates = (state) =>
+  state.contract.contractTemplates;
 export const selectContractLoading = (state) => state.contract.loading;
 export const selectContractError = (state) => state.contract.error;
 export const selectContractFilters = (state) => state.contract.filters;
 export const selectContractPagination = (state) => state.contract.pagination;
 export const selectContractStats = (state) => state.contract.stats;
 export const selectContractItems = (state) => state.contract.contractItems;
-export const selectContractItemsLoading = (state) => state.contract.contractItemsLoading;
-export const selectContractItemsError = (state) => state.contract.contractItemsError;
+export const selectContractItemsLoading = (state) =>
+  state.contract.contractItemsLoading;
+export const selectContractItemsError = (state) =>
+  state.contract.contractItemsError;
+export const selectEmailPreview = (state) => state.contract.emailPreview;
+export const selectEmailPreviewLoading = (state) =>
+  state.contract.emailPreviewLoading;
+export const selectEmailPreviewError = (state) =>
+  state.contract.emailPreviewError;
 export const selectContractsWithDetails = (state) => {
-  return state.contract.contracts.map(contract => ({
+  return state.contract.contracts.map((contract) => ({
     ...contract,
     // ✅ Datos del cliente (desde relación directa)
-    clienteName: contract.Cliente ? `${contract.Cliente.name} ${contract.Cliente.lastname}` : contract.Quote?.nombre_cliente,
+    clienteName: contract.Cliente
+      ? `${contract.Cliente.name} ${contract.Cliente.lastname}`
+      : contract.Quote?.nombre_cliente,
     clienteEmail: contract.Cliente?.email || contract.Quote?.email_cliente,
     clientePhone: contract.Cliente?.phone,
-    
+
     // ✅ Datos del viaje (desde Quote)
     destino: contract.Quote?.destino,
     origen: contract.Quote?.origen,
     quoteNumber: contract.Quote?.quote_number,
-    
+
     // ✅ Jerarquía de ventas
     asesor: contract.Quote?.Asesor,
     lider: contract.Quote?.Lider,
     gerente: contract.Quote?.Gerente,
     admin: contract.Quote?.Admin,
-    
+
     // ✅ Estado calculado
-    isActive: contract.status === 'active',
-    isPending: contract.status === 'draft',
-    isCompleted: contract.status === 'completed',
-    
+    isActive: contract.status === "active",
+    isPending: contract.status === "draft",
+    isCompleted: contract.status === "completed",
+
     // ✅ Información de pagos
     hasPendingPayments: parseFloat(contract.saldo_pendiente) > 0,
-    paymentProgress: ((parseFloat(contract.total_pagado) / parseFloat(contract.precio_total)) * 100).toFixed(1),
+    paymentProgress: (
+      (parseFloat(contract.total_pagado) / parseFloat(contract.precio_total)) *
+      100
+    ).toFixed(1),
   }));
 };
 
 export const selectContractSummary = (state) => {
   const contracts = state.contract.contracts;
-  
+
   return {
     total: contracts.length,
-    active: contracts.filter(c => c.status === 'active').length,
-    pending: contracts.filter(c => c.status === 'draft').length,
-    completed: contracts.filter(c => c.status === 'completed').length,
-    totalValue: contracts.reduce((sum, c) => sum + parseFloat(c.precio_total || 0), 0),
-    totalPaid: contracts.reduce((sum, c) => sum + parseFloat(c.total_pagado || 0), 0),
-    totalPending: contracts.reduce((sum, c) => sum + parseFloat(c.saldo_pendiente || 0), 0),
+    active: contracts.filter((c) => c.status === "active").length,
+    pending: contracts.filter((c) => c.status === "draft").length,
+    completed: contracts.filter((c) => c.status === "completed").length,
+    totalValue: contracts.reduce(
+      (sum, c) => sum + parseFloat(c.precio_total || 0),
+      0
+    ),
+    totalPaid: contracts.reduce(
+      (sum, c) => sum + parseFloat(c.total_pagado || 0),
+      0
+    ),
+    totalPending: contracts.reduce(
+      (sum, c) => sum + parseFloat(c.saldo_pendiente || 0),
+      0
+    ),
   };
 };
 

@@ -1705,7 +1705,18 @@ getPassengersByQuote: async (req, res) => {
     try {
       const { id } = req.params;
 
-      const quote = await Quote.findByPk(id);
+      const quote = await Quote.findByPk(id, {
+      include: [
+        {
+          model: Passenger,
+          as: 'Passengers',
+          attributes: [
+            'id', 'nombre', 'apellido', 'documento_identidad', 
+            'tipo_documento', 'fecha_nacimiento', 'titular'
+          ]
+        }
+      ]
+    });
 
       if (!quote) {
         return res.status(404).json({ message: "Cotización no encontrada" });
@@ -1719,11 +1730,41 @@ getPassengersByQuote: async (req, res) => {
           required_status: "completed o sent",
         });
       }
+ if (!quote.Passengers || quote.Passengers.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No se puede aprobar: La cotización no tiene datos de pasajeros registrados",
+        missing_data: "passengers"
+      });
+    }
+
+    if (quote.Passengers.length !== quote.numero_personas) {
+      return res.status(400).json({
+        success: false,
+        message: `No se puede aprobar: Faltan datos de pasajeros. Se esperan ${quote.numero_personas} pero solo hay ${quote.Passengers.length}`,
+        expected: quote.numero_personas,
+        actual: quote.Passengers.length,
+        missing_data: "passengers"
+      });
+    }
+
+    // ✅ AGREGAR: Verificar que hay un pasajero titular
+    const titularPassenger = quote.Passengers.find(p => p.titular === true);
+    if (!titularPassenger) {
+      return res.status(400).json({
+        success: false,
+        message: "No se puede aprobar: Debe haber un pasajero titular designado",
+        missing_data: "titular_passenger"
+      });
+    }
+
 
       console.log("✅ Aprobando cotización:", {
         id: quote.id,
         current_status: quote.status,
         quote_number: quote.quote_number,
+         passengers_count: quote.Passengers.length,
+      titular: `${titularPassenger.nombre} ${titularPassenger.apellido}`
       });
 
       // Crear usuario cliente automáticamente si corresponde
@@ -1775,12 +1816,18 @@ getPassengersByQuote: async (req, res) => {
           fecha_inicio_viaje: quote.fecha_ida,
           fecha_fin_viaje: quote.fecha_regreso,
           saldo_pendiente: quote.precio_total || 0,
+          numero_pasajeros: quote.Passengers.length,
+        pasajero_titular: `${titularPassenger.nombre} ${titularPassenger.apellido}`,
+        documento_titular: `${titularPassenger.tipo_documento}: ${titularPassenger.documento_identidad}`,
+        status: 'draft'
         });
-        console.log(
-          "✅ Contrato creado automáticamente al aprobar cotización:",
-          newContract.id
-        );
-      }
+        console.log("✅ Contrato creado automáticamente al aprobar cotización:", {
+        contract_id: newContract.id,
+        contract_number: newContract.contract_number,
+        passengers: quote.Passengers.length,
+        titular: newContract.pasajero_titular
+      });
+    }
 
       // Obtener la cotización actualizada con relaciones
       const updatedQuote = await Quote.findByPk(id, {
@@ -1811,31 +1858,60 @@ getPassengersByQuote: async (req, res) => {
             attributes: ["id", "name", "lastname", "email", "phone"],
             required: false,
           },
-        ],
-      });
+          {
+          model: Passenger,
+          as: 'Passengers',
+          attributes: [
+            'id', 'nombre', 'apellido', 'documento_identidad', 
+            'tipo_documento', 'fecha_nacimiento', 'titular'
+          ]
+        },
+        // ✅ AGREGAR: Incluir el contrato creado si existe
+        {
+          model: Contract,
+          as: 'Contract',
+          attributes: [
+            'id', 'contract_number', 'status', 'precio_total', 
+            'forma_pago', 'numero_pasajeros', 'pasajero_titular', 'documento_titular'
+          ],
+          required: false
+        }
+      ],
+    });
 
-      res.json({
-        success: true,
-        message: "Cotización aprobada exitosamente",
-        quote: updatedQuote,
-        contract: newContract,
-        clientUser: clientUser
-          ? {
-              id: clientUser.id,
-              email: clientUser.email,
-              created: !clientUser.password_changed_at,
-            }
-          : null,
-      });
-    } catch (error) {
-      console.error("Error approving quote:", error);
-      res.status(500).json({
-        success: false,
-        message: "Error al aprobar la cotización",
-        error: error.message,
-      });
-    }
-  },
+    res.json({
+      success: true,
+      message: "Cotización aprobada exitosamente",
+      quote: updatedQuote,
+      contract: newContract,
+      // ✅ AGREGAR: Resumen de pasajeros en la respuesta
+      passengers_summary: {
+        total: quote.Passengers.length,
+        expected: quote.numero_personas,
+        complete: quote.Passengers.length === quote.numero_personas,
+        titular: titularPassenger ? {
+          nombre: `${titularPassenger.nombre} ${titularPassenger.apellido}`,
+          documento: `${titularPassenger.tipo_documento}: ${titularPassenger.documento_identidad}`
+        } : null,
+        all_passengers: quote.Passengers
+      },
+      clientUser: clientUser
+        ? {
+            id: clientUser.id,
+            email: clientUser.email,
+            created: !clientUser.password_changed_at,
+          }
+        : null,
+    });
+  } catch (error) {
+    console.error("Error approving quote:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error al aprobar la cotización",
+      error: error.message,
+    });
+  }
+},
 
   rejectQuote: async (req, res) => {
     try {

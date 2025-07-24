@@ -15,7 +15,8 @@ router.get('/:id', contractController.getContractById);
 
 // Actualizar contrato
 router.put('/:id', contractController.updateContract);
-
+router.get('/pdf/:id', contractController.servePDF);
+router.get('/:id/email-preview', contractController.previewContractEmail);
 // Enviar contrato para firma (actualiza estado)
 router.patch('/:id/send', contractController.sendContract);
 
@@ -27,7 +28,7 @@ router.get('/:id/download-pdf', contractController.downloadContractPDF);
 
 // Vista previa del PDF (sin guardar)
 router.get('/:id/preview-pdf', contractController.generateContractPDF);
-
+router.get('/:id/email-preview', contractController.previewContractEmail);
 // Firmar contrato
 router.patch('/:id/sign', contractController.signContract);
 

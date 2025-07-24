@@ -1,4 +1,4 @@
-const { Contract, Quote, User, Payment, PackagePurchase, Commission, ContractItems } = require('../db');
+const { Contract, Quote, User, Passenger,  Payment, PackagePurchase, Commission, ContractItems } = require('../db');
 const { generateContractPDF } = require('../utils/generateContractPDF');
 const commissionController = require('./commissionController');
 
@@ -189,6 +189,7 @@ getAllContracts : async (req, res) => {
             }
           ]
         },
+        
         {
           model: User,
           as: 'Cliente', // ✅ Cliente directo del contrato
@@ -254,9 +255,18 @@ getAllContracts : async (req, res) => {
               as: 'Admin', 
               attributes: ['id', 'name', 'lastname', 'email'],
               required: false 
+            },
+             {
+              model: Passenger,
+              as: 'Passengers',
+              attributes: [
+                'id', 'nombre', 'apellido', 'documento_identidad', 
+                'tipo_documento', 'fecha_nacimiento', 'titular'
+              ]
             }
           ]
         },
+         
         {
           model: User,
           as: 'Cliente', // ✅ Cliente directo del contrato
@@ -273,9 +283,22 @@ getAllContracts : async (req, res) => {
       });
     }
 
+    const passengers = contract.Quote?.Passengers || [];
+    const titularPassenger = passengers.find(p => p.titular === true);
+
     res.json({
       success: true,
-      contract
+      contract,
+      passengers_summary: {
+        total: passengers.length,
+        expected: contract.Quote?.numero_personas || 0,
+        complete: passengers.length === contract.Quote?.numero_personas,
+        titular: titularPassenger ? {
+          nombre: `${titularPassenger.nombre} ${titularPassenger.apellido}`,
+          documento: `${titularPassenger.tipo_documento}: ${titularPassenger.documento_identidad}`
+        } : null,
+        all_passengers: passengers
+      }
     });
 
   } catch (error) {
@@ -375,122 +398,480 @@ getAllContracts : async (req, res) => {
   },
 
   // Enviar contrato para firma
-  sendContract: async (req, res) => {
-    try {
-      const { id } = req.params;
-
-      const contract = await Contract.findByPk(id, {
-        include: [
-          { 
-            model: Quote,
-            as: 'Quote',
-            include: [
-              { model: User, as: 'Cliente', attributes: ['id', 'name', 'lastname', 'email', 'phone'] }
-            ]
-          },
-          {
-            model: User,
-            as: 'Cliente',
-            attributes: ['id', 'name', 'lastname', 'email', 'phone', 'documento_identidad', 'tipo_documento']
-          }
-        ]
-      });
-
-      if (!contract) {
-        return res.status(404).json({ message: 'Contrato no encontrado' });
-      }
-
-      // ✅ GENERAR PDF DEL CONTRATO
-      console.log('🔄 Generando PDF del contrato...');
-      const pdfResult = await generateContractPDF(contract, true);
-
-      // ✅ GUARDAR LA URL DEL PDF EN EL CONTRATO
-      await contract.update({
-        status: 'sent',
-        contrato_pdf_url: pdfResult.relativePath
-      });
-
-      console.log('✅ PDF generado y guardado:', pdfResult.filename);
-
-      // Aquí se enviaría el email con el contrato al cliente
-      // TODO: Implementar envío de email con PDF adjunto
-
-      res.json({
-        message: 'Contrato enviado para firma',
-        contract,
-        pdf: {
-          filename: pdfResult.filename,
-          url: pdfResult.relativePath
+  // ✅ AGREGAR: Función para previsualizar email del contrato
+// ✅ CORREGIR: previewContractEmail para incluir pasajeros
+previewContractEmail: async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const contract = await Contract.findByPk(id, {
+      include: [
+        { 
+          model: Quote,
+          as: 'Quote',
+          include: [
+            { model: User, as: 'Cliente', attributes: ['id', 'name', 'lastname', 'email', 'phone'] },
+            {
+              model: Passenger,
+              as: 'Passengers',
+              attributes: [
+                'id', 'nombre', 'apellido', 'documento_identidad', 
+                'tipo_documento', 'fecha_nacimiento', 'titular'
+              ],
+              required: false
+            }
+          ]
+        },
+        {
+          model: User,
+          as: 'Cliente',
+          attributes: ['id', 'name', 'lastname', 'email', 'phone', 'documento_identidad', 'tipo_documento']
         }
-      });
+      ]
+    });
 
-    } catch (error) {
-      console.error('Error sending contract:', error);
-      res.status(500).json({ 
-        message: 'Error al enviar el contrato', 
-        error: error.message 
+    if (!contract) {
+      return res.status(404).json({ message: 'Contrato no encontrado' });
+    }
+
+    // ✅ OBTENER PASAJEROS
+    const passengers = contract.Quote?.Passengers || [];
+    
+    // ✅ GENERAR HTML DEL EMAIL (usa el mismo código que sendContract)
+    const emailSubject = `📋 Contrato de Viaje - ${contract.Quote?.destino} | ${contract.contract_number}`;
+    
+    // ✅ USAR EL MISMO HTML QUE EN sendContract para consistencia
+    const emailHtml = `[AQUÍ VA EL MISMO HTML QUE EN sendContract - para evitar duplicación, usaremos una función helper]`;
+
+    // ✅ DATOS PARA EL FRONTEND
+    const emailData = {
+      to: contract.Cliente?.email,
+      subject: emailSubject,
+      html: emailHtml,
+      contractInfo: {
+        contract_number: contract.contract_number,
+        cliente_name: `${contract.Cliente?.name} ${contract.Cliente?.lastname}`,
+        destino: contract.Quote?.destino,
+        precio_total: contract.precio_total,
+        fecha_viaje: `${new Date(contract.fecha_inicio_viaje).toLocaleDateString('es-ES')} - ${new Date(contract.fecha_fin_viaje).toLocaleDateString('es-ES')}`
+      }
+    };
+
+    res.json({
+      success: true,
+      emailData
+    });
+
+  } catch (error) {
+    console.error('Error previewing contract email:', error);
+    res.status(500).json({ 
+      message: 'Error al generar preview del email', 
+      error: error.message 
+    });
+  }
+},
+
+// ✅ ACTUALIZAR: sendContract para usar el servicio de email
+// ✅ CORREGIR: sendContract para usar el servicio de email correctamente
+sendContract: async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { 
+      email, 
+      subject, 
+      customMessage
+    } = req.body;
+
+    const contract = await Contract.findByPk(id, {
+      include: [
+        { 
+          model: Quote,
+          as: 'Quote',
+          include: [
+            { model: User, as: 'Cliente', attributes: ['id', 'name', 'lastname', 'email', 'phone'] },
+            {
+              model: Passenger,
+              as: 'Passengers',
+              attributes: [
+                'id', 'nombre', 'apellido', 'documento_identidad', 
+                'tipo_documento', 'fecha_nacimiento', 'titular'
+              ],
+              required: false
+            }
+          ]
+        },
+        {
+          model: User,
+          as: 'Cliente',
+          attributes: ['id', 'name', 'lastname', 'email', 'phone', 'documento_identidad', 'tipo_documento']
+        }
+      ]
+    });
+
+    if (!contract) {
+      return res.status(404).json({ message: 'Contrato no encontrado' });
+    }
+
+    // ✅ VERIFICAR que el PDF ya existe
+    if (!contract.contrato_pdf_url) {
+      return res.status(400).json({ 
+        message: 'Debe generar el PDF del contrato antes de enviarlo',
+        action: 'generate_pdf_first'
       });
     }
-  },
+
+    const path = require('path');
+    const fs = require('fs');
+    const pdfFilePath = path.join(__dirname, '../../', contract.contrato_pdf_url);
+    
+    if (!fs.existsSync(pdfFilePath)) {
+      return res.status(404).json({ 
+        message: 'Archivo PDF no encontrado. Regenere el PDF del contrato.',
+        action: 'regenerate_pdf'
+      });
+    }
+
+    // ✅ GENERAR EMAIL HTML (mismo código que antes)
+    const emailSubject = subject || `📋 Contrato de Viaje - ${contract.Quote?.destino} | ${contract.contract_number}`;
+    const passengers = contract.Quote?.Passengers || [];
+
+    const emailHtml = `
+      <!DOCTYPE html>
+      <html lang="es">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Contrato de Viaje - ViajaYa</title>
+        <style>
+          body { font-family: 'Arial', sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; }
+          .container { max-width: 600px; margin: 0 auto; background-color: white; }
+          .header { background: linear-gradient(135deg, #421261, #573b58); color: white; padding: 30px 20px; text-align: center; }
+          .header h1 { margin: 0; font-size: 28px; font-weight: bold; }
+          .header p { margin: 5px 0 0 0; font-size: 14px; opacity: 0.9; }
+          .content { padding: 30px 20px; }
+          .contract-info { background: linear-gradient(135deg, #dc86c7, #cdb2d5); padding: 20px; border-radius: 10px; margin: 20px 0; color: white; }
+          .contract-info h2 { margin: 0 0 15px 0; font-size: 20px; }
+          .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0; }
+          .info-item { background: rgba(255,255,255,0.2); padding: 10px; border-radius: 5px; }
+          .info-item label { font-weight: bold; font-size: 12px; opacity: 0.9; display: block; }
+          .info-item value { font-size: 14px; }
+          .price-highlight { background: #2be0e9; color: white; padding: 15px; border-radius: 8px; text-align: center; margin: 20px 0; }
+          .price-highlight .amount { font-size: 24px; font-weight: bold; }
+          .price-highlight .label { font-size: 12px; opacity: 0.9; }
+          .payment-info { background: #f8f9fa; border-left: 4px solid #421261; padding: 15px; margin: 20px 0; }
+          .payment-info h3 { margin: 0 0 10px 0; color: #421261; }
+          .passengers-section { background: #f0f8ff; border-radius: 8px; padding: 15px; margin: 20px 0; }
+          .passenger { background: white; padding: 10px; margin: 5px 0; border-radius: 5px; border-left: 3px solid #2be0e9; }
+          .passenger.titular { border-left-color: #421261; background: #faf5ff; }
+          .instructions { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0; }
+          .instructions h3 { margin: 0 0 10px 0; color: #856404; }
+          .footer { background: #421261; color: white; padding: 20px; text-align: center; }
+          .footer a { color: #2be0e9; text-decoration: none; }
+          .cta-button { background: #2be0e9; color: white; padding: 12px 25px; border-radius: 5px; text-decoration: none; display: inline-block; margin: 15px 0; font-weight: bold; }
+          @media (max-width: 600px) {
+            .info-grid { grid-template-columns: 1fr; }
+            .container { margin: 0; }
+            .content { padding: 20px 15px; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <!-- Header -->
+          <div class="header">
+            <h1>📋 CONTRATO DE VIAJE</h1>
+            <p>ViajaYa - Operador Turístico | RNT 122035</p>
+          </div>
+
+          <!-- Content -->
+          <div class="content">
+            <h2>¡Estimado/a ${contract.Cliente?.name} ${contract.Cliente?.lastname}!</h2>
+            
+            <p>Nos complace enviarle su <strong>contrato de viaje</strong> para revisión y confirmación. Este documento contiene todos los detalles de su reserva y las condiciones del servicio.</p>
+
+            <!-- Información del Contrato -->
+            <div class="contract-info">
+              <h2>🏖️ ${contract.Quote?.destino?.toUpperCase()}</h2>
+              
+              <div class="info-grid">
+                <div class="info-item">
+                  <label>📅 FECHA DE SALIDA</label>
+                  <value>${new Date(contract.fecha_inicio_viaje).toLocaleDateString('es-ES', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })}</value>
+                </div>
+                
+                <div class="info-item">
+                  <label>📅 FECHA DE REGRESO</label>
+                  <value>${new Date(contract.fecha_fin_viaje).toLocaleDateString('es-ES', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })}</value>
+                </div>
+                
+                <div class="info-item">
+                  <label>🛫 ORIGEN</label>
+                  <value>${contract.Quote?.origen}</value>
+                </div>
+                
+                <div class="info-item">
+                  <label>🎯 DESTINO</label>
+                  <value>${contract.Quote?.destino}</value>
+                </div>
+                
+                <div class="info-item">
+                  <label>👥 PASAJEROS</label>
+                  <value>${contract.Quote?.numero_personas} personas</value>
+                </div>
+                
+                <div class="info-item">
+                  <label>📋 N° CONTRATO</label>
+                  <value>${contract.contract_number}</value>
+                </div>
+              </div>
+            </div>
+
+            <!-- Precio Total -->
+            <div class="price-highlight">
+              <div class="amount">$${parseFloat(contract.precio_total).toLocaleString('es-CO')}</div>
+              <div class="label">VALOR TOTAL DEL CONTRATO</div>
+            </div>
+
+            <!-- Información de Pago -->
+            ${contract.forma_pago === 'cuotas' ? `
+            <div class="payment-info">
+              <h3>💳 FORMA DE PAGO: EN CUOTAS</h3>
+              ${contract.tiene_cuota_inicial ? `
+                <p><strong>Cuota Inicial:</strong> $${parseFloat(contract.cuota_inicial_monto || 0).toLocaleString('es-CO')} (${contract.cuota_inicial_porcentaje}%)</p>
+                <p><strong>Fecha límite cuota inicial:</strong> ${contract.fecha_vencimiento_inicial ? new Date(contract.fecha_vencimiento_inicial).toLocaleDateString('es-ES') : 'N/A'}</p>
+              ` : ''}
+              <p><strong>Número de cuotas:</strong> ${contract.numero_cuotas_restantes || 'N/A'}</p>
+              <p><strong>Valor por cuota:</strong> $${parseFloat(contract.valor_cuota_restante || 0).toLocaleString('es-CO')}</p>
+              <p><strong>Saldo restante:</strong> $${parseFloat(contract.monto_restante || contract.saldo_pendiente || 0).toLocaleString('es-CO')}</p>
+            </div>
+            ` : `
+            <div class="payment-info">
+              <h3>💳 FORMA DE PAGO: CONTADO</h3>
+              <p>Pago único por el valor total del contrato.</p>
+            </div>
+            `}
+
+            <!-- Información de Pasajeros -->
+            <div class="passengers-section">
+              <h3>👥 INFORMACIÓN DE PASAJEROS</h3>
+              ${passengers.length > 0 ? passengers.map(passenger => `
+                <div class="passenger ${passenger.titular ? 'titular' : ''}">
+                  <strong>${passenger.nombre} ${passenger.apellido}</strong> ${passenger.titular ? '👑 (Titular)' : ''}
+                  <br>
+                  <small>${passenger.tipo_documento?.toUpperCase()}: ${passenger.documento_identidad} | 
+                  Nacimiento: ${new Date(passenger.fecha_nacimiento).toLocaleDateString('es-ES')}</small>
+                </div>
+              `).join('') : `
+                <div class="passenger titular">
+                  <strong>${contract.Cliente?.name} ${contract.Cliente?.lastname}</strong> 👑 (Titular)
+                  <br>
+                  <small>${contract.Cliente?.tipo_documento?.toUpperCase()}: ${contract.Cliente?.documento_identidad}</small>
+                </div>
+              `}
+            </div>
+
+            <!-- Instrucciones -->
+            <div class="instructions">
+              <h3>📋 INSTRUCCIONES IMPORTANTES</h3>
+              <ol>
+                <li><strong>Revise cuidadosamente</strong> todos los detalles del contrato adjunto.</li>
+                <li><strong>Confirme su aceptación</strong> respondiendo a este email dentro de las próximas <strong>48 horas</strong>.</li>
+                <li><strong>Realice los pagos</strong> según el cronograma establecido en el contrato.</li>
+                <li><strong>Envíe los soportes de pago</strong> a: <a href="mailto:soportedepagosviajaya@gmail.com">soportedepagosviajaya@gmail.com</a></li>
+              </ol>
+            </div>
+
+            <!-- Cuentas Bancarias -->
+            <div class="payment-info">
+              <h3>🏦 CUENTAS PARA PAGOS</h3>
+              <p><strong>Bancolombia - Cuenta de Ahorros</strong></p>
+              <p>No. 846-772-51165</p>
+              <p>Titular: MAYERLY ALEJANDRA HENAO HIGUERA</p>
+              <p>CC: 1032406128</p>
+            </div>
+
+            <!-- Botón de Confirmación -->
+            <div style="text-align: center;">
+              <a href="mailto:info@viajaya.com?subject=Confirmación de Contrato ${contract.contract_number}&body=Confirmo que he revisado y acepto los términos del contrato ${contract.contract_number} para el viaje a ${contract.Quote?.destino}." class="cta-button">
+                ✅ CONFIRMAR CONTRATO
+              </a>
+            </div>
+
+            <p style="margin-top: 30px;">
+              <strong>🎯 ¡Estamos emocionados de hacer realidad su viaje a ${contract.Quote?.destino}!</strong>
+            </p>
+
+            <p>Para cualquier consulta o aclaración, no dude en contactarnos:</p>
+            <ul>
+              <li>📧 Email: <a href="mailto:info@viajaya.com">info@viajaya.com</a></li>
+              <li>📱 WhatsApp: <a href="https://wa.me/573001234567">+57 300 123 4567</a></li>
+              <li>📍 Oficina: Centro Comercial Plaza En Sueño 2 PISO, Bogotá</li>
+            </ul>
+          </div>
+
+          <!-- Footer -->
+          <div class="footer">
+            <p><strong>ViajaYa - Operador Turístico y Agencia de Viajes</strong></p>
+            <p>🌟 Hacemos realidad tus sueños de viaje 🌟</p>
+            <p>📧 info@viajaya.com | 📱 +57 300 123 4567</p>
+            <p>📍 Bogotá, Colombia | 📋 RNT 122035</p>
+            <p>📸 Síguenos: <a href="https://instagram.com/viajaya_pagina_oficial">@viajaya_pagina_oficial</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    // ✅ PREPARAR EMAIL
+    const finalEmail = email || contract.Cliente?.email;
+
+    const mailOptions = {
+      to: finalEmail,
+      subject: emailSubject,
+      html: customMessage ? `
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 5px; margin-bottom: 20px; border-left: 4px solid #421261;">
+          <h3 style="color: #421261; margin: 0 0 10px 0;">💬 Mensaje Personalizado:</h3>
+          <p style="margin: 0; white-space: pre-line;">${customMessage}</p>
+        </div>
+        ${emailHtml}
+      ` : emailHtml,
+      attachments: [
+        {
+          filename: `contrato-${contract.contract_number}.pdf`,
+          path: pdfFilePath,
+          contentType: 'application/pdf',
+        }
+      ]
+    };
+
+    // ✅ ENVIAR EMAIL
+    console.log('📧 Enviando email a:', finalEmail);
+    const { sendEmail } = require('../utils/emailService');
+    const emailResult = await sendEmail(mailOptions);
+
+    // ✅ ACTUALIZAR ESTADO DEL CONTRATO
+    await contract.update({
+      status: 'sent',
+      sent_at: new Date(),
+      email_sent_to: finalEmail
+    });
+
+    console.log('✅ Contrato enviado exitosamente');
+
+    res.json({
+      success: true,
+      message: 'Contrato enviado exitosamente',
+      contract: {
+        id: contract.id,
+        contract_number: contract.contract_number,
+        status: 'sent'
+      },
+      email_info: {
+        sent_to: finalEmail,
+        pdf_attached: true,
+        sent_at: new Date().toISOString(),
+        message_id: emailResult?.messageId || 'no-message-id'
+      }
+    });
+
+  } catch (error) {
+    console.error('Error sending contract:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error al enviar el contrato', 
+      error: error.message 
+    });
+  }
+},
 
    generateContractPDF: async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { preview = false } = req.query; // ?preview=true para vista previa
+  try {
+    const { id } = req.params;
+    const { preview = false } = req.query; // ?preview=true para vista previa
 
-      const contract = await Contract.findByPk(id, {
-        include: [
-          { 
-            model: Quote,
-            as: 'Quote',
-            include: [
-              { model: User, as: 'Cliente', attributes: ['id', 'name', 'lastname', 'email', 'phone'] }
-            ]
-          },
-          {
-            model: User,
-            as: 'Cliente',
-            attributes: ['id', 'name', 'lastname', 'email', 'phone', 'documento_identidad', 'tipo_documento']
-          }
-        ]
-      });
+    const contract = await Contract.findByPk(id, {
+      include: [
+        { 
+          model: Quote,
+          as: 'Quote',
+          include: [
+            { model: User, as: 'Cliente', attributes: ['id', 'name', 'lastname', 'email', 'phone'] },
+            {
+              model: Passenger,
+              as: 'Passengers',
+              attributes: [
+                'id', 'nombre', 'apellido', 'documento_identidad', 
+                'tipo_documento', 'fecha_nacimiento', 'titular'
+              ]
+            }
+          ]
+        },
+        {
+          model: User,
+          as: 'Cliente',
+          attributes: ['id', 'name', 'lastname', 'email', 'phone', 'documento_identidad', 'tipo_documento']
+        }
+      ]
+    });
 
-      if (!contract) {
-        return res.status(404).json({ message: 'Contrato no encontrado' });
-      }
+    if (!contract) {
+      return res.status(404).json({ message: 'Contrato no encontrado' });
+    }
 
-      const saveToFile = preview !== 'true';
-      const pdfResult = await generateContractPDF(contract, saveToFile);
+    // ✅ GENERAR PDF (siempre guardamos el archivo)
+    const { generateContractPDF } = require('../utils/generateContractPDF');
+    const pdfResult = await generateContractPDF(contract, true); // Siempre guardar
 
-      if (preview === 'true') {
-        // Para vista previa, devolver el PDF directamente
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `inline; filename="${pdfResult.filename}"`);
-        res.send(pdfResult.buffer);
-      } else {
-        // Guardar la URL del PDF en el contrato
-        await contract.update({
+    // ✅ ACTUALIZAR contrato con la URL del PDF
+    await contract.update({
+      contrato_pdf_url: pdfResult.relativePath
+    });
+
+    if (preview === 'true') {
+      // ✅ VISTA PREVIA: Devolver el PDF directamente en el response
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${pdfResult.filename}"`);
+      
+      const fs = require('fs');
+      const fileBuffer = fs.readFileSync(pdfResult.filepath);
+      res.send(fileBuffer);
+    } else {
+      // ✅ RESPUESTA JSON: Info del PDF generado
+      res.json({
+        success: true,
+        message: 'PDF del contrato generado exitosamente',
+        pdf: {
+          filename: pdfResult.filename,
+          url: pdfResult.relativePath,
+          filepath: pdfResult.filepath
+        },
+        contract: {
+          id: contract.id,
+          contract_number: contract.contract_number,
           contrato_pdf_url: pdfResult.relativePath
-        });
-
-        res.json({
-          message: 'PDF del contrato generado exitosamente',
-          pdf: {
-            filename: pdfResult.filename,
-            url: pdfResult.relativePath,
-            filepath: pdfResult.filepath
-          }
-        });
-      }
-
-    } catch (error) {
-      console.error('Error generating contract PDF:', error);
-      res.status(500).json({ 
-        message: 'Error al generar el PDF del contrato', 
-        error: error.message 
+        }
       });
     }
-  },
+
+  } catch (error) {
+    console.error('Error generating contract PDF:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error al generar el PDF del contrato', 
+      error: error.message 
+    });
+  }
+},
 
   // ✅ NUEVO: Descargar PDF del contrato
   downloadContractPDF: async (req, res) => {
@@ -527,6 +908,42 @@ getAllContracts : async (req, res) => {
       });
     }
   },
+
+  servePDF: async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const contract = await Contract.findByPk(id);
+    if (!contract) {
+      return res.status(404).json({ message: 'Contrato no encontrado' });
+    }
+
+    if (!contract.contrato_pdf_url) {
+      return res.status(404).json({ message: 'PDF no generado para este contrato' });
+    }
+
+    const path = require('path');
+    const fs = require('fs');
+    const filePath = path.join(__dirname, '../../', contract.contrato_pdf_url);
+    
+    // ✅ VERIFICAR si el archivo existe físicamente
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ message: 'Archivo PDF no encontrado en el servidor' });
+    }
+
+    // ✅ ESTABLECER headers para PDF
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="contrato-${contract.contract_number}.pdf"`);
+    res.setHeader('Cache-Control', 'private, max-age=3600'); // Cache por 1 hora
+    
+    // ✅ ENVIAR archivo
+    res.sendFile(filePath);
+    
+  } catch (error) {
+    console.error('Error sirviendo PDF:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+},
 
   // Completar contrato (después del viaje)
   completeContract: async (req, res) => {

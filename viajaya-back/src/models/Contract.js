@@ -29,6 +29,18 @@ module.exports = (sequelize) => {
         key: 'id'
       }
     },
+    numero_pasajeros: {
+  type: DataTypes.INTEGER,
+  allowNull: true
+},
+pasajero_titular: {
+  type: DataTypes.STRING(200),
+  allowNull: true
+},
+documento_titular: {
+  type: DataTypes.STRING(100),
+  allowNull: true
+},
     // Detalles financieros principales
     precio_total: {
       type: DataTypes.DECIMAL(12, 2),

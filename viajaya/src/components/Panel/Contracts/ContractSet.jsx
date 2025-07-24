@@ -12,6 +12,8 @@ import {
   faFileContract,
   faSpinner,
   faExclamationTriangle,
+  faUsers,
+  faCrown
 } from "@fortawesome/free-solid-svg-icons";
 
 import {
@@ -19,6 +21,7 @@ import {
   updateContract,
   selectCurrentContract,
   selectContractLoading,
+  generateContractPDF,
 } from "../../../redux/slices/contractSlice";
 
 const ContractSet = () => {
@@ -93,6 +96,83 @@ const getDateInputValue = (date) => {
   return cleaned ? cleaned.split("T")[0] : "";
 };
 
+const getPassengers = () => {
+    if (contract?.passengers_summary?.all_passengers) {
+      return contract.passengers_summary.all_passengers;
+    }
+    if (contract?.contract?.Quote?.Passengers) {
+      return contract.contract.Quote.Passengers;
+    }
+    return [];
+  };
+
+  const renderPassengersList = () => {
+    const passengers = getPassengers();
+
+    if (!passengers || passengers.length === 0) {
+      return (
+        <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+          <p className="text-gray-600 text-sm">
+            No hay información de pasajeros disponible
+          </p>
+        </div>
+      );
+    }
+
+    const titularPassenger = passengers.find(p => p.titular === true);
+    const nonTitularPassengers = passengers.filter(p => !p.titular);
+
+    return (
+      <div className="mt-4 space-y-3">
+        {/* Pasajero Titular */}
+        {titularPassenger && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <FontAwesomeIcon icon={faCrown} className="text-blue-600 text-sm" />
+              <span className="font-medium text-blue-900 text-sm">Titular</span>
+            </div>
+            <div className="text-sm">
+              <p className="font-semibold text-gray-900">
+                {titularPassenger.nombre} {titularPassenger.apellido}
+              </p>
+              <p className="text-gray-600">
+                {titularPassenger.tipo_documento?.toUpperCase()}: {titularPassenger.documento_identidad}
+              </p>
+              <p className="text-gray-600">
+                {new Date(titularPassenger.fecha_nacimiento).toLocaleDateString('es-ES')}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Otros Pasajeros */}
+        {nonTitularPassengers.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-gray-700">
+              Acompañantes ({nonTitularPassengers.length})
+            </p>
+            {nonTitularPassengers.map((passenger, index) => (
+              <div key={passenger.id} className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                <div className="text-sm">
+                  <p className="font-medium text-gray-900">
+                    {passenger.nombre} {passenger.apellido}
+                  </p>
+                  <p className="text-gray-600">
+                    {passenger.tipo_documento?.toUpperCase()}: {passenger.documento_identidad}
+                  </p>
+                  <p className="text-gray-600">
+                    {new Date(passenger.fecha_nacimiento).toLocaleDateString('es-ES')}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+ 
   useEffect(() => {
     if (id) {
       dispatch(fetchContractById(id));
@@ -105,23 +185,22 @@ const getDateInputValue = (date) => {
       const contractData = contract.contract;
       console.log(
         "🔍 Inicializando formulario con contractData:",
-        contractData
+       
       );
 
       setFormData((prev) => ({
         ...prev,
         // ✅ DATOS DEL CLIENTE
          cliente_fecha_nacimiento: getDateInputValue(contractData.Cliente?.fecha_nacimiento),
-         cliente_documento_identidad: contractData.Cliente?.documento_identidad || "",
+        cliente_documento_identidad: contractData.Cliente?.documento_identidad || "",
         cliente_tipo_documento: contractData.Cliente?.tipo_documento || "cc",
         cliente_direccion: contractData.Cliente?.direccion || "",
         cliente_ciudad: contractData.Cliente?.ciudad || "",
         cliente_pais: contractData.Cliente?.pais || "Colombia",
         cliente_nacionalidad: contractData.cliente_nacionalidad || "Colombiana",
-
         cliente_codigo_postal: contractData.cliente_codigo_postal || "",
 
-        // ✅ DATOS DEL CONTRATO
+        // Datos del contrato
         fecha_firma: getDateInputValue(contractData.fecha_firma),
         observaciones: contractData.observaciones || "",
         condiciones_especiales: contractData.condiciones_especiales || "",
@@ -330,30 +409,7 @@ const getDateInputValue = (date) => {
   const validateForm = () => {
     const newErrors = {};
 
-    // ✅ Validaciones de identificación
-    if (!formData.cliente_fecha_nacimiento) {
-      newErrors.cliente_fecha_nacimiento =
-        "La fecha de nacimiento es requerida";
-    }
-
-    if (!formData.cliente_tipo_documento) {
-      newErrors.cliente_tipo_documento = "El tipo de documento es requerido";
-    }
-
-    if (!formData.cliente_documento_identidad) {
-      newErrors.cliente_documento_identidad =
-        "El número de documento es requerido";
-    }
-
-    if (!formData.cliente_direccion) {
-      newErrors.cliente_direccion = "La dirección es requerida";
-    }
-
-    if (!formData.cliente_ciudad) {
-      newErrors.cliente_ciudad = "La ciudad es requerida";
-    }
-
-    // ✅ Validaciones de forma de pago
+       
     if (formData.forma_pago === "cuotas") {
       if (formData.tiene_cuota_inicial && !formData.fecha_vencimiento_inicial) {
         newErrors.fecha_vencimiento_inicial =
@@ -380,28 +436,47 @@ const getDateInputValue = (date) => {
 
   // ✅ CORREGIR: Función para guardar el contrato
   const handleSave = async () => {
-    if (!validateForm()) {
-      return;
-    }
+  if (!validateForm()) {
+    return;
+  }
 
-    setSaving(true);
+  setSaving(true);
+  try {
+    // ✅ PASO 1: Actualizar contrato
+    console.log('📝 Actualizando contrato...');
+    const updatedContract = await dispatch(
+      updateContract({
+        id: contract.contract.id,
+        updates: formData,
+      })
+    ).unwrap();
+
+    console.log('✅ Contrato actualizado exitosamente');
+
+    // ✅ PASO 2: Generar PDF automáticamente
+    console.log('📄 Generando PDF del contrato...');
     try {
-      await dispatch(
-        updateContract({
-          id: contract.contract.id, // ✅ CORREGIR: Usar contract.contract.id
-          updates: formData,
-        })
+      const pdfResult = await dispatch(
+        generateContractPDF(contract.contract.id)
       ).unwrap();
-
-      alert("✅ Contrato actualizado exitosamente");
-      navigate(`/contractsList`); // ✅ CORREGIR
-    } catch (error) {
-      console.error("Error saving contract:", error);
-      alert(`❌ Error al guardar: ${error.message || error}`);
-    } finally {
-      setSaving(false);
+      
+      console.log('✅ PDF generado exitosamente:', pdfResult);
+      alert("✅ Contrato actualizado y PDF generado exitosamente");
+    } catch (pdfError) {
+      console.error('⚠️ Error generando PDF:', pdfError);
+      alert("✅ Contrato actualizado, pero hubo un error generando el PDF. Puede generarlo manualmente.");
     }
-  };
+
+    // ✅ PASO 3: Navegar de vuelta
+    navigate(`/contractsList`);
+    
+  } catch (error) {
+    console.error("❌ Error saving contract:", error);
+    alert(`❌ Error al guardar: ${error.message || error}`);
+  } finally {
+    setSaving(false);
+  }
+};
 
   if (loading && !contract) {
     return (
@@ -473,7 +548,7 @@ const getDateInputValue = (date) => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Información del viaje (solo lectura) */}
+        {/* Información del viaje con pasajeros */}
         <div className="lg:col-span-1">
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -542,6 +617,15 @@ const getDateInputValue = (date) => {
                   $
                   {parseFloat(contract.contract?.precio_total).toLocaleString()}
                 </p>
+              </div>
+
+              {/* Información de pasajeros */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <FontAwesomeIcon icon={faUsers} className="mr-2" />
+                  Pasajeros
+                </label>
+                {renderPassengersList()}
               </div>
             </div>
           </div>
@@ -636,270 +720,20 @@ const getDateInputValue = (date) => {
                     {contract.contract?.Cliente?.documento_identidad}
                   </p>
                 </div>
-                <p className="text-sm text-blue-700 mt-2">
-                  💡 Complete o actualice los campos adicionales necesarios para
-                  el contrato
-                </p>
+                
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* ✅ ACTUALIZAR: Fecha de nacimiento */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Fecha de Nacimiento *
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.cliente_fecha_nacimiento}
-                    onChange={(e) =>
-                      handleInputChange(
-                        "cliente_fecha_nacimiento",
-                        e.target.value
-                      )
-                    }
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.cliente_fecha_nacimiento
-                        ? "border-red-500"
-                        : "border-gray-300"
-                    }`}
-                  />
-                  {errors.cliente_fecha_nacimiento && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {errors.cliente_fecha_nacimiento}
-                    </p>
-                  )}
-                </div>
-
-                {/* ✅ NUEVO: Tipo de documento */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tipo de Documento *
-                  </label>
-                  <select
-                    value={formData.cliente_tipo_documento}
-                    onChange={(e) =>
-                      handleInputChange(
-                        "cliente_tipo_documento",
-                        e.target.value
-                      )
-                    }
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.cliente_tipo_documento
-                        ? "border-red-500"
-                        : "border-gray-300"
-                    }`}
-                  >
-                    <option value="cc">Cédula de Ciudadanía (CC)</option>
-                    <option value="ce">Cédula de Extranjería (CE)</option>
-                    <option value="ti">Tarjeta de Identidad (TI)</option>
-                    <option value="rc">Registro Civil (RC)</option>
-                    <option value="passport">Pasaporte</option>
-                    <option value="pep">
-                      Permiso Especial de Permanencia (PEP)
-                    </option>
-                    <option value="ppt">
-                      Permiso por Protección Temporal (PPT)
-                    </option>
-                    <option value="nit">
-                      Número de Identificación Tributaria (NIT)
-                    </option>
-                    <option value="nuip">
-                      Número Único de Identificación Personal (NUIP)
-                    </option>
-                    <option value="dni">
-                      Documento Nacional de Identidad (DNI)
-                    </option>
-                    <option value="salvoconducto">Salvoconducto</option>
-                    <option value="cedula_diplomatica">
-                      Cédula Diplomática
-                    </option>
-                  </select>
-                  {errors.cliente_tipo_documento && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {errors.cliente_tipo_documento}
-                    </p>
-                  )}
-                </div>
-
-                {/* ✅ NUEVO: Número de documento */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Número de Documento *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.cliente_documento_identidad}
-                    onChange={(e) =>
-                      handleInputChange(
-                        "cliente_documento_identidad",
-                        e.target.value
-                      )
-                    }
-                    placeholder="Ej: 12345678, AB123456, etc."
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.cliente_documento_identidad
-                        ? "border-red-500"
-                        : "border-gray-300"
-                    }`}
-                  />
-                  {errors.cliente_documento_identidad && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {errors.cliente_documento_identidad}
-                    </p>
-                  )}
-                </div>
-
-                {/* ✅ ACTUALIZAR: Nacionalidad */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nacionalidad
-                  </label>
-                  <select
-                    value={formData.cliente_nacionalidad}
-                    onChange={(e) =>
-                      handleInputChange("cliente_nacionalidad", e.target.value)
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="Colombiana">Colombiana</option>
-                    <option value="Argentina">Argentina</option>
-                    <option value="Venezolana">Venezolana</option>
-                    <option value="Ecuatoriana">Ecuatoriana</option>
-                    <option value="Peruana">Peruana</option>
-                    <option value="Brasileña">Brasileña</option>
-                    <option value="Chilena">Chilena</option>
-                    <option value="Uruguaya">Uruguaya</option>
-                    <option value="Boliviana">Boliviana</option>
-                    <option value="Paraguaya">Paraguaya</option>
-                    <option value="Mexicana">Mexicana</option>
-                    <option value="Española">Española</option>
-                    <option value="Estadounidense">Estadounidense</option>
-                    <option value="Otra">Otra</option>
-                  </select>
-                </div>
-
-                {/* ✅ NUEVO: Teléfono de emergencia */}
-                {/* <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Teléfono de Emergencia
-                  </label>
-                  <input
-                    type="tel"
-                    value={formData.cliente_telefono_emergencia}
-                    onChange={(e) =>
-                      handleInputChange(
-                        "cliente_telefono_emergencia",
-                        e.target.value
-                      )
-                    }
-                    placeholder="+57 300 123 4567"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div> */}
-
-                {/* ✅ NUEVO: Contacto de emergencia */}
-                {/* <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Contacto de Emergencia
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.cliente_contacto_emergencia}
-                    onChange={(e) =>
-                      handleInputChange(
-                        "cliente_contacto_emergencia",
-                        e.target.value
-                      )
-                    }
-                    placeholder="Nombre del contacto de emergencia"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div> */}
-
-                {/* ✅ NUEVO: Dirección completa */}
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Dirección *
-                  </label>
-                  <textarea
-                    value={formData.cliente_direccion}
-                    onChange={(e) =>
-                      handleInputChange("cliente_direccion", e.target.value)
-                    }
-                    rows={2}
-                    placeholder="Calle, carrera, número, barrio, localidad"
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.cliente_direccion
-                        ? "border-red-500"
-                        : "border-gray-300"
-                    }`}
-                  />
-                  {errors.cliente_direccion && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {errors.cliente_direccion}
-                    </p>
-                  )}
-                </div>
-
-                {/* ✅ NUEVO: Ciudad */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Ciudad *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.cliente_ciudad}
-                    onChange={(e) =>
-                      handleInputChange("cliente_ciudad", e.target.value)
-                    }
-                    placeholder="Ej: Bogotá, Medellín, Cali"
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.cliente_ciudad
-                        ? "border-red-500"
-                        : "border-gray-300"
-                    }`}
-                  />
-                  {errors.cliente_ciudad && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {errors.cliente_ciudad}
-                    </p>
-                  )}
-                </div>
-
-                {/* ✅ NUEVO: País */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    País de Residencia
-                  </label>
-                  <select
-                    value={formData.cliente_pais}
-                    onChange={(e) =>
-                      handleInputChange("cliente_pais", e.target.value)
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="Colombia">Colombia</option>
-                    <option value="Argentina">Argentina</option>
-                    <option value="Venezuela">Venezuela</option>
-                    <option value="Ecuador">Ecuador</option>
-                    <option value="Perú">Perú</option>
-                    <option value="Brasil">Brasil</option>
-                    <option value="Chile">Chile</option>
-                    <option value="Uruguay">Uruguay</option>
-                    <option value="Bolivia">Bolivia</option>
-                    <option value="Paraguay">Paraguay</option>
-                    <option value="México">México</option>
-                    <option value="España">España</option>
-                    <option value="Estados Unidos">Estados Unidos</option>
-                    <option value="Otro">Otro</option>
-                  </select>
-                </div>
-              </div>
+              
             </div>
 
             {formData.contractItem.map((item, idx) => (
               <div key={idx} className="mb-6 border-b pb-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <FontAwesomeIcon icon={faUser} className="text-blue-500" />
+                Item del contrato
+              </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Tipo *
