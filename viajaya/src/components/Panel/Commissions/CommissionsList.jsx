@@ -18,7 +18,8 @@ import {
   faCreditCard,
   faChevronLeft,
   faChevronRight,
-  faArrowLeft
+  faArrowLeft,
+  faFilePdf
 } from '@fortawesome/free-solid-svg-icons';
 import {
   fetchCommissions,
@@ -29,6 +30,8 @@ import {
   selectCommissionError,
   selectCommissionPagination
 } from '../../../redux/slices/commissionSlice';
+import api from '../../../utils/api';
+import { toast } from 'react-hot-toast';
 
 const CommissionsList = () => {
   const dispatch = useDispatch();
@@ -54,6 +57,52 @@ const CommissionsList = () => {
       filters 
     }));
   }, [dispatch, pagination.page, pagination.limit, filters]);
+
+   const handlePreviewDocument = async (commission) => {
+    try {
+      console.log('📋 Commission data para preview:', commission); // Debug
+
+      // Verificar si existe documento de soporte
+      if (!commission.DocumentoSoporte || !commission.DocumentoSoporte.id) {
+        toast.error('No hay documento de soporte disponible');
+        return;
+      }
+
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error('No estás autenticado');
+        return;
+      }
+
+      // Construir URL de vista previa
+      const previewUrl = `${api.defaults.baseURL}/commissions/document/${commission.DocumentoSoporte.id}/preview?token=${token}`;
+      
+      console.log('🔍 Abriendo vista previa:', previewUrl); // Debug
+      
+      // Abrir en nueva ventana
+      const popup = window.open(
+        previewUrl,
+        'DocumentPreview',
+        'width=900,height=700,scrollbars=yes,resizable=yes,toolbar=no,location=no,status=no'
+      );
+
+      if (!popup) {
+        toast.error('El navegador bloqueó la ventana emergente. Por favor permite ventanas emergentes para este sitio.');
+      } else {
+        popup.focus();
+      }
+    } catch (error) {
+      console.error('Error abriendo vista previa:', error);
+      toast.error('Error al abrir vista previa del documento');
+    }
+  };
+
+  useEffect(() => {
+    if (commissions.length > 0) {
+      console.log('📋 Primera comisión con datos completos:', commissions[0]);
+      console.log('📋 ¿Tiene DocumentoSoporte?', commissions[0].DocumentoSoporte);
+    }
+  }, [commissions]);
 
   // Función para obtener el color del estado
   const getStatusColor = (status) => {
@@ -471,15 +520,19 @@ const CommissionsList = () => {
                       </div>
                     </td>
                     
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
+                     
+                        
+                        {/* Cambiar la condición para mostrar siempre temporalmente */}
                         <button
-                          onClick={() => handleAction('view', commission.id)}
-                          className="text-blue-600 hover:text-blue-900 p-1 rounded"
-                          title="Ver detalles"
+                          onClick={() => handlePreviewDocument(commission)}
+                          className="text-purple-600 hover:text-purple-900 p-1 rounded"
+                          title={`Previsualizar PDF ${commission.DocumentoSoporte ? '(Disponible)' : '(No disponible)'}`}
                         >
-                          <FontAwesomeIcon icon={faEye} />
+                          <FontAwesomeIcon icon={faFilePdf} />
                         </button>
+                        
                         
                         {commission.status === 'pending' && (
                           <button

@@ -281,6 +281,11 @@ const commissionController = {
             as: 'PagadoPor',
             attributes: ['id', 'name', 'lastname'],
             required: false
+          },
+          {
+            model: SupportDocument,
+            as: 'DocumentoSoporte',
+            required: false
           }
         ],
         order: [['fecha_generacion', 'DESC']],
