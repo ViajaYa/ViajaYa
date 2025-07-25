@@ -308,6 +308,63 @@ const commissionController = {
     }
   },
 
+  // ✅ OBTENER comisiones específicas de un contrato
+  getCommissionsByContract: async (req, res) => {
+    try {
+      const { contractId } = req.params;
+
+      if (!contractId) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'ID del contrato es requerido' 
+        });
+      }
+
+      const commissions = await Commission.findAll({
+        where: { contract_id: contractId },
+        include: [
+          {
+            model: Contract,
+            as: 'Contract',
+            attributes: ['contract_number', 'precio_total', 'status'],
+            include: [
+              {
+                model: Quote,
+                as: 'Quote',
+                attributes: ['quote_number', 'nombre_cliente']
+              }
+            ]
+          },
+          {
+            model: User,
+            as: 'Vendedor',
+            attributes: ['id', 'name', 'lastname', 'email']
+          },
+          {
+            model: SupportDocument,
+            as: 'DocumentoSoporte',
+            required: false
+          }
+        ],
+        order: [['created_at', 'DESC']]
+      });
+
+      res.json({
+        success: true,
+        commissions,
+        total: commissions.length
+      });
+
+    } catch (error) {
+      console.error('Error obteniendo comisiones del contrato:', error);
+      res.status(500).json({ 
+        success: false,
+        message: 'Error al obtener las comisiones del contrato', 
+        error: error.message 
+      });
+    }
+  },
+
   // ✅ ESTADÍSTICAS de comisiones
 getCommissionStats: async (req, res) => {
     try {
@@ -661,6 +718,108 @@ requestPayment: async (req, res) => {
       if (!res.headersSent) {
         res.status(500).json({ 
           message: 'Error al descargar documento', 
+          error: error.message 
+        });
+      }
+    }
+  },
+
+  // ✅ VISTA PREVIA del documento de comisión
+  previewDocument: async (req, res) => {
+    try {
+      const { documentId } = req.params;
+      const userId = req.user.id;
+
+      console.log('🔍 Vista previa de documento:', documentId, 'usuario:', userId);
+
+      // Buscar el documento
+      const document = await SupportDocument.findByPk(documentId);
+
+      if (!document) {
+        return res.status(404).json({ message: 'Documento no encontrado' });
+      }
+
+      // Verificar permisos: el usuario debe ser el dueño del documento o admin+
+      if (document.vendedor_id !== userId && req.user.role < 5) {
+        return res.status(403).json({ message: 'No tienes permisos para ver este documento' });
+      }
+
+      // ✅ Asegurar que el directorio existe
+      const uploadsDir = path.join(__dirname, '../../uploads/payment-documents');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+
+      const fileName = `cuenta-cobro-${document.numero_documento}.pdf`;
+      const filePath = path.join(uploadsDir, fileName);
+
+      // Si no existe el PDF, generarlo
+      if (!fs.existsSync(filePath)) {
+        console.log('🔄 Generando PDF para vista previa...');
+        
+        // Buscar la comisión asociada
+        const commission = await Commission.findOne({
+          where: { documento_soporte_id: documentId },
+          include: [
+            {
+              model: Contract,
+              as: 'Contract',
+              include: [
+                {
+                  model: Quote,
+                  as: 'Quote'
+                }
+              ]
+            },
+            {
+              model: User,
+              as: 'Vendedor'
+            }
+          ]
+        });
+
+        if (!commission) {
+          return res.status(404).json({ message: 'Comisión no encontrada para este documento' });
+        }
+
+        // Generar el PDF
+        try {
+          await generatePaymentDocument(document, commission);
+          console.log('✅ PDF generado para vista previa');
+        } catch (generateError) {
+          console.error('❌ Error generando PDF:', generateError);
+          return res.status(500).json({ message: 'Error generando documento para vista previa' });
+        }
+      }
+
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ message: 'Error: no se pudo generar el archivo para vista previa' });
+      }
+
+      console.log('📖 Enviando vista previa del archivo:', fileName);
+
+      // Configurar headers para vista previa (inline en lugar de attachment)
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+      res.setHeader('Cache-Control', 'no-cache');
+      
+      // Enviar archivo para vista previa
+      res.sendFile(filePath, (err) => {
+        if (err) {
+          console.error('❌ Error enviando vista previa:', err);
+          if (!res.headersSent) {
+            res.status(500).json({ message: 'Error al mostrar vista previa: ' + err.message });
+          }
+        } else {
+          console.log('✅ Vista previa enviada exitosamente');
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ Error preview document:', error);
+      if (!res.headersSent) {
+        res.status(500).json({ 
+          message: 'Error al mostrar vista previa del documento', 
           error: error.message 
         });
       }

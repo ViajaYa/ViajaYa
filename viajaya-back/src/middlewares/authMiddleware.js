@@ -6,7 +6,12 @@ require('dotenv').config();
 const authenticateToken = async (req, res, next) => {
     try {
         const authHeader = req.headers['authorization'];
-        const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+        let token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+        
+        // ✅ Si no hay token en header, buscar en query params (para vistas previas)
+        if (!token && req.query.token) {
+            token = req.query.token;
+        }
 
         if (!token) {
             return res.status(401).json({

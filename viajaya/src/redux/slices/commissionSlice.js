@@ -5,6 +5,7 @@ import api from '../../utils/api';
 const initialState = {
   commissions: [],
   userCommissions: [],
+  contractCommissions: [], // Nueva propiedad para comisiones por contrato
   totalCommissions: 0,
   currentCommission: null,
   loading: false,
@@ -142,6 +143,20 @@ export const payCommission = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.message || 'Error marcando comisión como pagada'
+      );
+    }
+  }
+);
+
+export const fetchCommissionsByContract = createAsyncThunk(
+  'commission/fetchCommissionsByContract',
+  async (contractId, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/commissions/contract/${contractId}`);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Error obteniendo comisiones del contrato'
       );
     }
   }
@@ -333,6 +348,19 @@ const commissionSlice = createSlice({
       .addCase(payCommission.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+      // Fetch Commissions by Contract
+      .addCase(fetchCommissionsByContract.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchCommissionsByContract.fulfilled, (state, action) => {
+        state.loading = false;
+        state.contractCommissions = action.payload.commissions || [];
+      })
+      .addCase(fetchCommissionsByContract.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       });
   },
 });
@@ -351,6 +379,7 @@ export const {
 // Selectores
 export const selectCommissions = (state) => state.commission.commissions;
 export const selectUserCommissions = (state) => state.commission.userCommissions;
+export const selectCommissionsByContract = (state) => state.commission.contractCommissions;
 export const selectTotalCommissions = (state) => state.commission.totalCommissions;
 export const selectCurrentCommission = (state) => state.commission.currentCommission;
 export const selectCommissionLoading = (state) => state.commission.loading;

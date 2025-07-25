@@ -20,10 +20,24 @@ router.get('/stats',
   commissionController.getCommissionStats
 );
 
+// Obtener comisiones específicas de un contrato
+router.get('/contract/:contractId', 
+  authenticateToken,
+  authorizeRoles(2, 3, 4, 5, 6, 7), 
+  commissionController.getCommissionsByContract
+);
+
 router.get('/document/:documentId', 
   authenticateToken,
   authorizeRoles(2, 3, 4, 5, 6, 7), // Todos los roles autenticados
   commissionController.downloadDocument
+);
+
+// Vista previa del documento de comisión
+router.get('/document/:documentId/preview', 
+  authenticateToken,
+  authorizeRoles(2, 3, 4, 5, 6, 7), 
+  commissionController.previewDocument
 );
 
 router.post('/request-payment', 

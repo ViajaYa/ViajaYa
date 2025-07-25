@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import NavBar from "../../layout/NavBar/NavBar";
 import api from "../../../utils/api";
 import {
   faEye,
@@ -24,6 +25,7 @@ import {
   faPlus,
   faCheckCircle,
   faCoins,
+  faArrowLeft,
 } from "@fortawesome/free-solid-svg-icons";
 import {
   fetchContractById,
@@ -33,7 +35,7 @@ import {
   selectContractSummary,
   selectContractPagination,
   generateContractPDF,
-  
+
 } from "../../../redux/slices/contractSlice";
 import SendContractModal from "./SendContractModal";
 
@@ -100,11 +102,11 @@ const ContractsList = () => {
   // Función para manejar acciones
   const handleAction = async (action, contractId, contract = null) => {
     switch (action) {
-  case "view": {
-    const pdfUrl = `${import.meta.env.VITE_API_URL}/contracts/pdf/${contractId}`;
-    window.open(pdfUrl, '_blank');
-    break;
-  }
+      case "view": {
+        const pdfUrl = `${import.meta.env.VITE_API_URL}/contracts/pdf/${contractId}`;
+        window.open(pdfUrl, '_blank');
+        break;
+      }
       case "edit":
         navigate(`/contracts/${contractId}/edit`);
         break;
@@ -115,20 +117,20 @@ const ContractsList = () => {
         setShowSendModal(true);
         break;
       case "download":
-      // ✅ MEJORAR: Acción de descarga
-      if (contract?.contrato_pdf_url) {
-        const pdfUrl = `${import.meta.env.VITE_API_URL}/${contract.contrato_pdf_url}`;
-        const link = document.createElement('a');
-        link.href = pdfUrl;
-        link.download = `contrato-${contract.contract_number}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } else {
-        // Generar y descargar
-        dispatch(generateContractPDF(contractId));
-      }
-      break;
+        // ✅ MEJORAR: Acción de descarga
+        if (contract?.contrato_pdf_url) {
+          const pdfUrl = `${import.meta.env.VITE_API_URL}/${contract.contrato_pdf_url}`;
+          const link = document.createElement('a');
+          link.href = pdfUrl;
+          link.download = `contrato-${contract.contract_number}.pdf`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        } else {
+          // Generar y descargar
+          dispatch(generateContractPDF(contractId));
+        }
+        break;
       case "approve":
         // ✅ NUEVA ACCIÓN: Aprobar contrato y generar comisiones
         await handleApproveContract(contractId);
@@ -141,10 +143,10 @@ const ContractsList = () => {
   const handleSendSuccess = () => {
     console.log('✅ Contrato enviado exitosamente, recargando lista...');
     // Recargar la lista de contratos
-    dispatch(fetchContracts({ 
-      page: pagination.page, 
+    dispatch(fetchContracts({
+      page: pagination.page,
       limit: pagination.limit,
-      filters 
+      filters
     }));
   };
 
@@ -171,8 +173,7 @@ const ContractsList = () => {
 
       if (response.data.success) {
         alert(
-          `Contrato aprobado exitosamente. ${
-            response.data.commissionSummary?.commissions?.length || 0
+          `Contrato aprobado exitosamente. ${response.data.commissionSummary?.commissions?.length || 0
           } comisiones generadas.`
         );
         // Recargar la lista
@@ -190,7 +191,7 @@ const ContractsList = () => {
       console.error("Error:", error);
       alert(
         "Error de conexión al aprobar el contrato: " +
-          (error.response?.data?.message || error.message)
+        (error.response?.data?.message || error.message)
       );
     }
   };
@@ -226,9 +227,19 @@ const ContractsList = () => {
   }
 
   return (
-    <div className="container mx-auto p-6">
+       <div className="mb-64 pt-20 p-8"> {/* Agregado pt-20 para el margen superior */}
+      <div className='fixed top-0 left-0 z-50 w-full'>
+            <NavBar />
+          </div>
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
+        <button
+          onClick={() => navigate("/panel")}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
+        >
+          <FontAwesomeIcon icon={faArrowLeft} />
+          Volver
+        </button>
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Contratos</h1>
           <p className="text-gray-600 mt-1">Gestión de contratos de viaje</p>
@@ -532,7 +543,7 @@ const ContractsList = () => {
                     {/* Acciones */}
                     <div className="col-span-1">
                       <div className="flex items-center gap-1">
-                        
+
 
                         {/* Editar */}
                         {contract.status === "draft" && (
@@ -557,44 +568,44 @@ const ContractsList = () => {
                         {/* Enviar */}
                         {(contract.status === "draft" ||
                           contract.status === "active") && (
-                          <button
-                            onClick={() =>
-                              handleAction("send", contract.id, contract)
-                            }
-                            className="p-2 text-green-600 hover:bg-green-50 rounded transition-colors"
-                            title="Enviar al cliente"
-                          >
-                            <FontAwesomeIcon icon={faPaperPlane} size="sm" />
-                          </button>
-                        )}
+                            <button
+                              onClick={() =>
+                                handleAction("send", contract.id, contract)
+                              }
+                              className="p-2 text-green-600 hover:bg-green-50 rounded transition-colors"
+                              title="Enviar al cliente"
+                            >
+                              <FontAwesomeIcon icon={faPaperPlane} size="sm" />
+                            </button>
+                          )}
 
                         {/* ✅ NUEVO BOTÓN: Aprobar y generar comisiones */}
                         {(contract.status === "signed" ||
                           contract.status === "draft") && (
-                          <button
-                            onClick={() => handleAction("approve", contract.id)}
-                            className="p-2 text-orange-600 hover:bg-orange-50 rounded transition-colors"
-                            title="Aprobar contrato y generar comisiones"
-                          >
-                            <FontAwesomeIcon icon={faCheckCircle} size="sm" />
-                          </button>
-                        )}
+                            <button
+                              onClick={() => handleAction("approve", contract.id)}
+                              className="p-2 text-orange-600 hover:bg-orange-50 rounded transition-colors"
+                              title="Aprobar contrato y generar comisiones"
+                            >
+                              <FontAwesomeIcon icon={faCheckCircle} size="sm" />
+                            </button>
+                          )}
 
                         {/* Ver comisiones */}
                         {(contract.status === "completed" ||
                           contract.status === "active") && (
-                          <button
-                            onClick={() =>
-                              navigate(
-                                `/panel/commissions?contractId=${contract.id}`
-                              )
-                            }
-                            className="p-2 text-teal-600 hover:bg-teal-50 rounded transition-colors"
-                            title="Ver comisiones generadas"
-                          >
-                            <FontAwesomeIcon icon={faCoins} size="sm" />
-                          </button>
-                        )}
+                            <button
+                              onClick={() =>
+                                navigate(
+                                  `/contracts/${contract.id}/commissions`
+                                )
+                              }
+                              className="p-2 text-teal-600 hover:bg-teal-50 rounded transition-colors"
+                              title="Ver comisiones generadas"
+                            >
+                              <FontAwesomeIcon icon={faCoins} size="sm" />
+                            </button>
+                          )}
 
                         {/* Descargar */}
                         <button
@@ -658,11 +669,10 @@ const ContractsList = () => {
                     <button
                       key={pageNum}
                       onClick={() => handlePageChange(pageNum)}
-                      className={`px-3 py-2 rounded transition-colors ${
-                        pageNum === pagination.page
+                      className={`px-3 py-2 rounded transition-colors ${pageNum === pagination.page
                           ? "bg-blue-500 text-white"
                           : "text-gray-600 hover:bg-gray-100"
-                      }`}
+                        }`}
                     >
                       {pageNum}
                     </button>

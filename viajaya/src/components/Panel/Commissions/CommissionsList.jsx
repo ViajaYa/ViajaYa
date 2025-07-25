@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faCoins,
@@ -16,7 +17,8 @@ import {
   faCheckCircle,
   faCreditCard,
   faChevronLeft,
-  faChevronRight
+  faChevronRight,
+  faArrowLeft
 } from '@fortawesome/free-solid-svg-icons';
 import {
   fetchCommissions,
@@ -30,7 +32,7 @@ import {
 
 const CommissionsList = () => {
   const dispatch = useDispatch();
-  
+  const navigate = useNavigate();
   const commissions = useSelector(selectCommissions);
   const loading = useSelector(selectCommissionLoading);
   const error = useSelector(selectCommissionError);
@@ -211,6 +213,13 @@ const CommissionsList = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
+         <button
+          onClick={() => navigate("/panel")}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
+        >
+          <FontAwesomeIcon icon={faArrowLeft} />
+          Volver
+        </button>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Comisiones</h1>
           <p className="text-gray-600">Gestión de comisiones de ventas</p>

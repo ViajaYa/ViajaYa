@@ -43,6 +43,7 @@ const CreateStaff = lazy(() => import("./Panel/CreateStaff"));
 const ContractsList = lazy(() => import("./Panel/Contracts/ContractsList"));
 const ContractSet = lazy(() => import("./Panel/Contracts/ContractSet"));
 const CommissionsList = lazy(() => import("./Panel/Commissions/CommissionsList"));
+const ContractCommissions = lazy(() => import("./Panel/Contracts/ContractCommissions"));
 const DocumentsReview = lazy(() => import("./Panel/DocumentsReview"));
 const OrganizationView = lazy(() => import("./pages/Organization/OrganizationView"));
 const AllTeamsView = lazy(() => import("./pages/Organization/AllTeamsView"));
@@ -331,6 +332,14 @@ const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
         </RoleRoute>
       } />
 
+      <Route path="/contracts/:contractId/commissions" element={
+        <RoleRoute allowedRoles={[USER_ROLES.ASESOR, USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <ContractCommissions />
+          </Suspense>
+        </RoleRoute>
+      } />
+
       <Route path="/contracts/:id/edit" element={
         <RoleRoute allowedRoles={[USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
           <Suspense fallback={<LoadingSpinner />}>
@@ -343,7 +352,15 @@ const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
 
       {/* ✅ NUEVA RUTA: Comisiones */}
       <Route path="/panel/commissions" element={
-        <RoleRoute allowedRoles={[USER_ROLES.ASESOR, USER_ROLES.LEADER, USER_ROLES.MANAGER, USER_ROLES.ADMIN, USER_ROLES.CONTADOR, USER_ROLES.OWNER]}>
+        <RoleRoute allowedRoles={[USER_ROLES.ASESOR, USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.CONTADOR, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <CommissionsList />
+          </Suspense>
+        </RoleRoute>
+      } />
+
+      <Route path="/commissionsList" element={
+        <RoleRoute allowedRoles={[USER_ROLES.ASESOR, USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.CONTADOR, USER_ROLES.OWNER]}>
           <Suspense fallback={<LoadingSpinner />}>
             <CommissionsList />
           </Suspense>
