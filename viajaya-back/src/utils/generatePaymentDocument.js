@@ -2,6 +2,16 @@ const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
 
+// ✅ Función para verificar si necesitamos comprimir espaciado
+const needsCompression = (yPosition, pageHeight) => {
+  return yPosition > pageHeight * 0.6; // Si estamos en el 60% de la página
+};
+
+// ✅ Función para obtener espaciado dinámico
+const getDynamicSpacing = (yPosition, pageHeight, normalSpacing, compressedSpacing) => {
+  return needsCompression(yPosition, pageHeight) ? compressedSpacing : normalSpacing;
+};
+
 const generatePaymentDocument = async (supportDocument, commission) => {
   return new Promise((resolve, reject) => {
     try {
@@ -26,8 +36,8 @@ const generatePaymentDocument = async (supportDocument, commission) => {
       // Crear PDF con márgenes específicos
       const doc = new PDFDocument({
         margins: {
-          top: 50,
-          bottom: 50,
+          top: 40,
+          bottom: 40,
           left: 80,
           right: 80
         }
@@ -42,7 +52,8 @@ const generatePaymentDocument = async (supportDocument, commission) => {
 
       doc.pipe(stream);
 
-      let yPosition = 80;
+      const pageHeight = doc.page.height;
+      let yPosition = 60; // Reducido de 80
 
       // ✅ FECHA DEL DÍA (formato exacto como en la imagen)
       const fechaHoy = new Date().toLocaleDateString('es-CO', {
@@ -53,16 +64,16 @@ const generatePaymentDocument = async (supportDocument, commission) => {
       doc.fontSize(12)
          .text(`Bogotá, ${fechaHoy}`, 80, yPosition);
 
-      yPosition += 80; // Más espacio después de la fecha
+      yPosition += getDynamicSpacing(yPosition, pageHeight, 50, 35); // Reducido de 80
 
-      // ✅ DATOS DE QUIEN PAGA (ViajaYa) - CENTRADO Y CON ESPACIADO CORRECTO
+      // ✅ DATOS DE QUIEN PAGA (ViajaYa) - CENTRADO Y CON ESPACIADO OPTIMIZADO
       doc.fontSize(14)
          .font('Helvetica-Bold')
          .text('MAYERLY ALEJANDRA HENAO HIGUERA', 80, yPosition, { 
            width: 430, 
            align: 'center' 
          });
-      yPosition += 20;
+      yPosition += getDynamicSpacing(yPosition, pageHeight, 20, 15);
       
       doc.fontSize(12)
          .font('Helvetica')
@@ -70,33 +81,33 @@ const generatePaymentDocument = async (supportDocument, commission) => {
            width: 430, 
            align: 'center' 
          });
-      yPosition += 18;
+      yPosition += getDynamicSpacing(yPosition, pageHeight, 18, 12);
       
       doc.text('OPERADOR TURÍSTICO Y AGENCIA DE VIAJES VIAJA YA', 80, yPosition, { 
         width: 430, 
         align: 'center' 
       });
-      yPosition += 18;
+      yPosition += getDynamicSpacing(yPosition, pageHeight, 18, 12);
       
       doc.text('Nit: 1032406128', 80, yPosition, { 
         width: 430, 
         align: 'center' 
       });
-      yPosition += 80; // Mucho espacio después de los datos de ViajaYa
+      yPosition += getDynamicSpacing(yPosition, pageHeight, 50, 35); // Reducido de 80
 
-      // ✅ DEBE A (con espaciado correcto)
+      // ✅ DEBE A (con espaciado optimizado)
       const vendedorInfo = commission?.Vendedor || supportDocument.Vendedor;
       const nombreCompleto = `${vendedorInfo?.name || ''} ${vendedorInfo?.lastname || ''}`.trim();
       
       doc.fontSize(14)
          .font('Helvetica-Bold')
          .text('Debe a:', 80, yPosition);
-      yPosition += 25;
+      yPosition += getDynamicSpacing(yPosition, pageHeight, 25, 18);
       
       doc.fontSize(14)
          .font('Helvetica-Bold')
          .text(nombreCompleto.toUpperCase(), 80, yPosition);
-      yPosition += 20;
+      yPosition += getDynamicSpacing(yPosition, pageHeight, 20, 15);
       
       // Extraer CC del campo observaciones o usar placeholder
       const observaciones = supportDocument.observaciones || '';
@@ -106,13 +117,13 @@ const generatePaymentDocument = async (supportDocument, commission) => {
       doc.fontSize(12)
          .font('Helvetica')
          .text(`CC: ${numeroCC}`, 80, yPosition);
-      yPosition += 60; // Más espacio antes de "LA SUMA DE"
+      yPosition += getDynamicSpacing(yPosition, pageHeight, 40, 30); // Reducido de 60
 
-      // ✅ LA SUMA DE (En números y letras)
+      // ✅ LA SUMA DE (En números y letras) - espaciado optimizado
       doc.fontSize(14)
          .font('Helvetica-Bold')
          .text('LA SUMA DE:', 80, yPosition);
-      yPosition += 25;
+      yPosition += getDynamicSpacing(yPosition, pageHeight, 25, 18);
       
       const montoEnLetras = convertirNumeroALetras(supportDocument.monto);
       doc.fontSize(12)
@@ -121,49 +132,49 @@ const generatePaymentDocument = async (supportDocument, commission) => {
            width: 430,
            align: 'left'
          });
-      yPosition += 60; // Más espacio antes de "Por concepto de"
+      yPosition += getDynamicSpacing(yPosition, pageHeight, 40, 30); // Reducido de 60
 
-      // ✅ POR CONCEPTO DE
+      // ✅ POR CONCEPTO DE - espaciado optimizado
       doc.fontSize(14)
          .font('Helvetica-Bold')
          .text('Por concepto de:', 80, yPosition);
-      yPosition += 25;
+      yPosition += getDynamicSpacing(yPosition, pageHeight, 25, 18);
       
       const contratoNumero = commission?.Contract?.contract_number || 'N/A';
       doc.fontSize(12)
          .font('Helvetica')
          .text(`Comisión de venta contrato ${contratoNumero}`, 80, yPosition);
-      yPosition += 60; // Más espacio antes de "Favor efectuar"
+      yPosition += getDynamicSpacing(yPosition, pageHeight, 40, 30); // Reducido de 60
 
-      // ✅ FAVOR EFECTUAR EL PAGO
+      // ✅ FAVOR EFECTUAR EL PAGO - espaciado optimizado
       doc.fontSize(12)
          .font('Helvetica')
          .text('Favor efectuar el pago en efectivo o por transferencia bancaria a:', 80, yPosition);
-      yPosition += 40;
+      yPosition += getDynamicSpacing(yPosition, pageHeight, 30, 20); // Reducido de 40
 
-      // ✅ DATOS BANCARIOS (con formato específico)
+      // ✅ DATOS BANCARIOS (con formato específico) - espaciado optimizado
       doc.fontSize(12)
          .font('Helvetica')
          .text(`Banco: ${supportDocument.banco?.toUpperCase() || 'N/A'}`, 80, yPosition);
-      yPosition += 18;
+      yPosition += getDynamicSpacing(yPosition, pageHeight, 18, 12);
       
       doc.text(`Tipo de Cuenta: ${supportDocument.tipo_cuenta?.toUpperCase() || 'N/A'}`, 80, yPosition);
-      yPosition += 18;
+      yPosition += getDynamicSpacing(yPosition, pageHeight, 18, 12);
       
       doc.text(`Número de Cuenta: ${supportDocument.numero_cuenta || 'N/A'}`, 80, yPosition);
-      yPosition += 80; // Mucho espacio antes de "Atentamente"
+      yPosition += getDynamicSpacing(yPosition, pageHeight, 50, 35); // Reducido de 80
 
-      // ✅ ATENTAMENTE
+      // ✅ ATENTAMENTE - espaciado optimizado
       doc.fontSize(12)
          .font('Helvetica')
          .text('Atentamente,', 80, yPosition);
-      yPosition += 80; // Espacio para la firma
+      yPosition += getDynamicSpacing(yPosition, pageHeight, 50, 35); // Reducido de 80 para la firma
 
-      // ✅ FIRMA Y DATOS DEL ASESOR
+      // ✅ FIRMA Y DATOS DEL ASESOR - espaciado optimizado
       doc.fontSize(14)
          .font('Helvetica-Bold')
          .text(nombreCompleto.toUpperCase(), 80, yPosition);
-      yPosition += 25;
+      yPosition += getDynamicSpacing(yPosition, pageHeight, 25, 18);
       
       // Extraer teléfono del campo observaciones
       const telMatch = observaciones.match(/Tel:\s*([^\n\r]+)/);
@@ -173,11 +184,13 @@ const generatePaymentDocument = async (supportDocument, commission) => {
          .font('Helvetica')
          .text(`Celular: ${numeroTel}`, 80, yPosition);
 
-      // ✅ PIE DE PÁGINA (en la parte inferior)
+      // ✅ PIE DE PÁGINA (posicionado de forma inteligente)
+      const footerY = Math.max(yPosition + 40, pageHeight - 60); // Asegurar que esté cerca del final pero no se corte
+      
       doc.fontSize(8)
          .font('Helvetica')
-         .text(`Documento No: ${supportDocument.numero_documento}`, 80, 750)
-         .text(`Generado el ${new Date().toLocaleString('es-CO')}`, 400, 750);
+         .text(`Documento No: ${supportDocument.numero_documento}`, 80, footerY)
+         .text(`Generado el ${new Date().toLocaleString('es-CO')}`, 400, footerY);
 
       // ✅ Finalizar documento
       doc.end();

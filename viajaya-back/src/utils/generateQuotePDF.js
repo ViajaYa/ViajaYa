@@ -35,10 +35,19 @@ function calcularNoches(fechaIda, fechaRegreso) {
   return noches;
 }
 
-// ✅ Función para NO crear páginas adicionales (todo en una página)
+// ✅ Función para controlar espaciado y evitar páginas innecesarias
 const checkNewPage = (doc, yPosition, requiredHeight, pageHeight, margin) => {
-  // NO crear páginas adicionales - mantener todo en una página
+  // Si no hay suficiente espacio para el contenido, ajustar posición
+  if (yPosition + requiredHeight > pageHeight - 80) {
+    // Si está muy cerca del final, comprimir el espaciado
+    return Math.min(yPosition, pageHeight - requiredHeight - 50);
+  }
   return yPosition;
+};
+
+// ✅ Función para verificar si necesitamos comprimir espaciado
+const needsCompression = (yPosition, pageHeight) => {
+  return yPosition > pageHeight * 0.7; // Si estamos en el 70% de la página
 };
 
 // ✅ Generar PDF de cotización con el formato de Viaja Ya
@@ -166,10 +175,10 @@ const generateQuotePDF = async (quote, saveToFile = true) => {
         width: contentWidth - 12,
         lineGap: 0
       });
-      yPosition += 10; // Reducido de 12 a 10
+      yPosition += needsCompression(yPosition, pageHeight) ? 8 : 10;
     });
 
-    yPosition += 8; // Reducido de 10 a 8
+    yPosition += needsCompression(yPosition, pageHeight) ? 4 : 8;
 
     // ✅ DETALLES DEL VIAJE (más compacto)
     doc.rect(margin, yPosition, contentWidth, 18)
@@ -236,10 +245,10 @@ const generateQuotePDF = async (quote, saveToFile = true) => {
          .text(detalle.value, margin + 90, yPosition, { 
            width: contentWidth - 96
          });
-      yPosition += 10; // Reducido de 12 a 10
+      yPosition += needsCompression(yPosition, pageHeight) ? 8 : 10;
     });
 
-    yPosition += 6; // Reducido de 8 a 6
+    yPosition += needsCompression(yPosition, pageHeight) ? 4 : 6;
 
     // ✅ ADICIONALES (más compacto)
     doc.rect(margin, yPosition, contentWidth, 18)
@@ -268,10 +277,10 @@ const generateQuotePDF = async (quote, saveToFile = true) => {
         width: contentWidth - 12,
         lineGap: 0
       });
-      yPosition += 10; // Reducido de 12 a 10
+      yPosition += needsCompression(yPosition, pageHeight) ? 6 : 10;
     });
 
-    yPosition += 6; // Reducido de 8 a 6
+    yPosition += needsCompression(yPosition, pageHeight) ? 3 : 6;
 
     // ✅ OBSERVACIONES (más compacto)
     doc.fontSize(10)
@@ -279,13 +288,16 @@ const generateQuotePDF = async (quote, saveToFile = true) => {
        .font('Helvetica-Bold')
        .text('Observaciones:', margin, yPosition);
     
-    yPosition += 15;
+    yPosition += needsCompression(yPosition, pageHeight) ? 10 : 15;
 
     const observacionesTexto = quote.observaciones && quote.observaciones.trim() 
       ? quote.observaciones 
       : 'Infórmanos si algún viajero presenta alguna condición especial';
 
-    doc.rect(margin, yPosition, contentWidth, 20)
+    // Calcular altura dinámica para observaciones
+    const observacionesHeight = needsCompression(yPosition, pageHeight) ? 15 : 20;
+
+    doc.rect(margin, yPosition, contentWidth, observacionesHeight)
        .fillColor('#f8f9fa')
        .stroke(COLORS.separador)
        .fill();
@@ -293,16 +305,18 @@ const generateQuotePDF = async (quote, saveToFile = true) => {
     doc.fontSize(8)
        .fillColor(COLORS.textoGris)
        .font('Helvetica')
-       .text(observacionesTexto, margin + 8, yPosition + 6, { 
+       .text(observacionesTexto, margin + 8, yPosition + 4, { 
          width: contentWidth - 16,
          align: 'justify',
          lineGap: 1
        });
 
-    yPosition += 25;
+    yPosition += observacionesHeight + (needsCompression(yPosition, pageHeight) ? 3 : 5);
 
-    // ✅ ATENCIÓN PERSONALIZADA (más compacto)
-    doc.rect(margin, yPosition, contentWidth, 18)
+    // ✅ ATENCIÓN PERSONALIZADA (ajustado dinámicamente)
+    const atencionHeight = needsCompression(yPosition, pageHeight) ? 15 : 18;
+    
+    doc.rect(margin, yPosition, contentWidth, atencionHeight)
        .fillColor(COLORS.ColorAzul)
        .fill();
     
@@ -311,7 +325,7 @@ const generateQuotePDF = async (quote, saveToFile = true) => {
        .font('Helvetica-Bold')
        .text('ATENCIÓN PERSONALIZADA:', margin + 10, yPosition + 4);
     
-    yPosition += 20; // Reducido de 25 a 20
+    yPosition += atencionHeight + (needsCompression(yPosition, pageHeight) ? 2 : 5);
 
     const atencionTexto = `En Viaja Ya, contamos con un canal de atención a los viajeros donde estarás acompañado desde un día antes del viaje hasta que finaliza. ¡Realizamos check-in, brindamos recomendaciones y aseguramos que tu experiencia de viaje sea la mejor!`;
 
@@ -324,18 +338,22 @@ const generateQuotePDF = async (quote, saveToFile = true) => {
          lineGap: 1
        });
 
-    yPosition += 25; // Reducido de 30 a 25
+    yPosition += needsCompression(yPosition, pageHeight) ? 20 : 25;
 
-    // ✅ INFORMACIÓN DEL RESPONSABLE (más compacto y sin checkNewPage)
+    // ✅ INFORMACIÓN DEL RESPONSABLE (optimizado para espacio)
     const responsable = quote.Asesor || quote.Lider || quote.Gerente || quote.Admin || quote.Owner;
 
     if (responsable) {
-      // Verificar si hay espacio suficiente, si no, reducir aún más
-      if (yPosition + 35 > pageHeight - 80) {
-        yPosition = pageHeight - 120; // Posicionar cerca del footer
+      // Verificar espacio disponible y ajustar posicionamiento
+      const espacioDisponible = pageHeight - 80 - yPosition;
+      const alturaResponsable = needsCompression(yPosition, pageHeight) ? 25 : 30;
+      
+      // Si no hay suficiente espacio, comprimir más o mover cerca del footer
+      if (espacioDisponible < alturaResponsable + 40) {
+        yPosition = pageHeight - 115;
       }
       
-      doc.rect(margin, yPosition, contentWidth, 30)
+      doc.rect(margin, yPosition, contentWidth, alturaResponsable)
          .fillColor(COLORS.fondoPopup)
          .fill();
       
@@ -344,7 +362,7 @@ const generateQuotePDF = async (quote, saveToFile = true) => {
          .font('Helvetica-Bold')
          .text('TU ASESOR DE CONFIANZA:', margin + 8, yPosition + 3);
       
-      yPosition += 15;
+      yPosition += needsCompression(yPosition, pageHeight) ? 12 : 15;
       
       // Determinar el tipo de responsable
       let tipoResponsable = 'Asesor';
@@ -360,9 +378,9 @@ const generateQuotePDF = async (quote, saveToFile = true) => {
          .fontSize(7)
          .fillColor('white')
          .font('Helvetica')
-         .text(`${responsable.email}`, margin + 8, yPosition + 10);
+         .text(`${responsable.email}`, margin + 8, yPosition + 8);
 
-      yPosition += 25;
+      yPosition += needsCompression(yPosition, pageHeight) ? 15 : 20;
     }
 
     // ✅ FOOTER (más compacto)
