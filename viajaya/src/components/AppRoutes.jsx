@@ -49,6 +49,7 @@ const AllTeamsView = lazy(() => import("./pages/Organization/AllTeamsView"));
 const PassengerForm = lazy(() => import("./Panel/Quotes/PassengerForm"));
 const PassengerSuccess = lazy(() => import("./Panel/Quotes/PassengerSuccess"));
 const ContractSignature = lazy(() => import("./Panel/Contracts/ContractSignature"));
+const MyCommissions = lazy(() => import("./Panel/Commissions/MyCommissions"));
 
 const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
   return (
@@ -126,7 +127,18 @@ const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
           </Suspense>
         </PrivateRoute>
       } />
-      
+
+       <Route
+        path="/my-commissions"
+        element={
+          <RoleRoute allowedRoles={[USER_ROLES.ASESOR, USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+            <Suspense fallback={<LoadingSpinner />}>
+              <MyCommissions />
+            </Suspense>
+          </RoleRoute>
+        }
+      />
+
       <Route path="/userReservas" element={
         <PrivateRoute>
           <Suspense fallback={<LoadingSpinner />}>

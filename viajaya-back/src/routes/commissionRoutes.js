@@ -16,8 +16,20 @@ router.get('/',
 // Obtener estadísticas de comisiones
 router.get('/stats', 
   authenticateToken,
-  authorizeRoles(3, 4, 5, 6, 7), 
+  authorizeRoles(2, 3, 4, 5, 6, 7), 
   commissionController.getCommissionStats
+);
+
+router.get('/document/:documentId', 
+  authenticateToken,
+  authorizeRoles(2, 3, 4, 5, 6, 7), // Todos los roles autenticados
+  commissionController.downloadDocument
+);
+
+router.post('/request-payment', 
+  authenticateToken,
+  authorizeRoles(2, 3, 4), // Solo asesores, líderes, gerentes pueden solicitar pago
+  commissionController.requestPayment
 );
 
 // Aprobar comisión manualmente (solo roles 4+)

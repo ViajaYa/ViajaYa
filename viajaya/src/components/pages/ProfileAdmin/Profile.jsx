@@ -14,7 +14,8 @@ import {
   faPlus, 
   faFileInvoice,
   faUsers,
-  faChartLine
+  faChartLine,
+  faCoins
 } from '@fortawesome/free-solid-svg-icons';
 
 // ✅ Importar hook de permisos desde la ubicación correcta
@@ -377,6 +378,16 @@ const Profile = () => {
                       Mis Reservas
                       <MdPayment className="ml-2" />
                     </button>
+
+                    {user?.role >= 2 && user?.role <= 4 && (
+                      <Link
+                        to="/my-commissions"
+                        className="px-4 py-2 text-white font-nunito font-semibold rounded-lg bg-emerald-500 hover:bg-emerald-600 transition-colors flex items-center justify-center text-sm"
+                      >
+                        <FontAwesomeIcon icon={faCoins} className="mr-2" />
+                        Mis Comisiones
+                      </Link>
+                    )}
 
                     {/* ✅ Nueva Cotización */}
                     {canCreateQuotes() && (

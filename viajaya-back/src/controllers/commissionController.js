@@ -1,5 +1,8 @@
-const { Commission, Contract, Quote, User, conn: sequelize } = require('../db');
+const { Commission, Contract, Quote, User, SupportDocument, conn: sequelize } = require('../db');
 const { Op } = require('sequelize');
+const generatePaymentDocument = require('../utils/generatePaymentDocument');    
+const path = require('path'); // ✅ Agregar este import
+const fs = require('fs'); // ✅ Agregar este import
 
 const commissionController = {
   // ✅ GENERAR COMISIONES cuando el contrato es aprobado
@@ -306,52 +309,363 @@ const commissionController = {
   },
 
   // ✅ ESTADÍSTICAS de comisiones
-  getCommissionStats: async (req, res) => {
+getCommissionStats: async (req, res) => {
     try {
-      const { userId, startDate, endDate } = req.query;
-      const whereConditions = {};
+      const userId = req.query.userId || req.user.id;
+      
+      console.log('📊 Obteniendo stats para usuario:', userId, 'rol:', req.user.role);
 
-      if (userId) {
-        whereConditions.vendedor_id = userId;
+      let whereClause = {};
+      
+      // ✅ Si es un usuario normal (rol < 5), solo ver sus propias comisiones
+      if (req.user.role < 5) {
+        whereClause.vendedor_id = req.user.id;
+        console.log('👤 Usuario normal - filtrando por vendedor_id:', req.user.id);
+      } else if (userId && userId !== 'all') {
+        // Si es admin+ puede ver stats de usuario específico
+        whereClause.vendedor_id = userId;
+        console.log('👑 Admin+ - filtrando por vendedor_id:', userId);
       }
 
-      if (startDate && endDate) {
-        whereConditions.fecha_generacion = {
-          [Op.between]: [new Date(startDate), new Date(endDate)]
-        };
-      }
+      // Obtener estadísticas generales
+      const totalAmount = await Commission.sum('monto_comision', { where: whereClause });
 
-      const stats = await Commission.findAll({
-        where: whereConditions,
+      // Obtener estadísticas por estado
+      const byStatus = await Commission.findAll({
         attributes: [
           'status',
           [sequelize.fn('COUNT', sequelize.col('id')), 'count'],
-          [sequelize.fn('SUM', sequelize.col('monto_comision')), 'total']
+          [sequelize.fn('SUM', sequelize.col('monto_comision')), 'amount']
         ],
+        where: whereClause,
         group: ['status'],
         raw: true
       });
 
-      const totalCommissions = await Commission.count({ where: whereConditions });
-      const totalAmount = await Commission.sum('monto_comision', { where: whereConditions });
+      // ✅ CORREGIR: Usar TO_CHAR para PostgreSQL en lugar de DATE_FORMAT
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+      const byMonth = await Commission.findAll({
+        attributes: [
+          [sequelize.fn('TO_CHAR', sequelize.col('fecha_generacion'), 'YYYY-MM'), 'month'],
+          [sequelize.fn('COUNT', sequelize.col('id')), 'count'],
+          [sequelize.fn('SUM', sequelize.col('monto_comision')), 'amount']
+        ],
+        where: {
+          ...whereClause,
+          fecha_generacion: {
+            [Op.gte]: sixMonthsAgo
+          }
+        },
+        group: [sequelize.fn('TO_CHAR', sequelize.col('fecha_generacion'), 'YYYY-MM')],
+        order: [[sequelize.fn('TO_CHAR', sequelize.col('fecha_generacion'), 'YYYY-MM'), 'ASC']],
+        raw: true
+      });
+
+      console.log('✅ Stats calculadas:', { totalAmount, byStatus: byStatus.length, byMonth: byMonth.length });
 
       res.json({
         success: true,
         stats: {
-          byStatus: stats,
-          totalCommissions,
-          totalAmount: totalAmount || 0
+          totalAmount: totalAmount || 0,
+          byStatus: byStatus || [],
+          byMonth: byMonth || []
         }
       });
 
     } catch (error) {
-      console.error('Error obteniendo estadísticas de comisiones:', error);
+      console.error('❌ Error getting commission stats:', error);
       res.status(500).json({ 
-        message: 'Error al obtener estadísticas', 
+        success: false,
+        message: 'Error al obtener estadísticas de comisiones', 
         error: error.message 
       });
     }
-  }
+  },
+requestPayment: async (req, res) => {
+    try {
+      console.log('🔍 Datos recibidos en requestPayment:', req.body); // ✅ Debug log
+      console.log('🔍 Usuario autenticado:', req.user?.id); // ✅ Debug log
+      
+      const { commissionId, paymentData } = req.body;
+      const userId = req.user.id;
+
+      // ✅ Validar datos requeridos
+      if (!commissionId) {
+        console.log('❌ commissionId faltante');
+        return res.status(400).json({ message: 'ID de comisión requerido' });
+      }
+
+      if (!paymentData) {
+        console.log('❌ paymentData faltante');
+        return res.status(400).json({ message: 'Datos de pago requeridos' });
+      }
+
+      if (!paymentData.banco || !paymentData.numero_cuenta || !paymentData.nombre_titular) {
+        console.log('❌ Datos bancarios incompletos:', paymentData);
+        return res.status(400).json({ 
+          message: 'Datos bancarios incompletos', 
+          required: ['banco', 'numero_cuenta', 'nombre_titular'] 
+        });
+      }
+
+      console.log('✅ Buscando comisión:', commissionId);
+
+      const commission = await Commission.findByPk(commissionId, {
+        include: [
+          {
+            model: Contract,
+            as: 'Contract',
+            attributes: ['contract_number', 'precio_total'],
+            include: [
+              {
+                model: Quote,
+                as: 'Quote',
+                attributes: ['quote_number', 'nombre_cliente']
+              }
+            ]
+          },
+          {
+            model: User,
+            as: 'Vendedor',
+            attributes: ['id', 'name', 'lastname', 'email']
+          }
+        ]
+      });
+
+      if (!commission) {
+        console.log('❌ Comisión no encontrada:', commissionId);
+        return res.status(404).json({ message: 'Comisión no encontrada' });
+      }
+
+      console.log('✅ Comisión encontrada:', {
+        id: commission.id,
+        vendedor_id: commission.vendedor_id,
+        status: commission.status
+      });
+
+      if (commission.vendedor_id !== userId) {
+        console.log('❌ Usuario sin permisos:', { commission_vendedor: commission.vendedor_id, user: userId });
+        return res.status(403).json({ message: 'No tienes permisos para esta comisión' });
+      }
+
+      if (commission.status !== 'pending') {
+        console.log('❌ Estado inválido:', commission.status);
+        return res.status(400).json({ message: 'Esta comisión ya fue procesada' });
+      }
+   const numeroDocumento = `SOL-${Date.now()}-${commission.id.substring(0, 8)}`;
+
+      console.log('✅ Creando documento de soporte:', numeroDocumento);
+
+      // Crear documento de soporte
+      const supportDocument = await SupportDocument.create({
+        numero_documento: numeroDocumento,
+        vendedor_id: userId,
+        vendedor_real_id: userId,
+        monto: commission.monto_comision,
+        fecha_generacion: new Date(),
+        status: 'generated',
+        banco: paymentData.banco,
+        numero_cuenta: paymentData.numero_cuenta,
+        tipo_cuenta: paymentData.tipo_cuenta || 'ahorros',
+        observaciones: `Solicitud de pago - ${paymentData.nombre_titular}\nCC: ${paymentData.documento_titular || 'No especificado'}\nTel: ${paymentData.telefono || 'No especificado'}\n\n${paymentData.observaciones || ''}`
+      });
+
+      console.log('✅ Documento creado:', supportDocument.id);
+
+      // Actualizar comisión
+      await commission.update({
+        status: 'generated',
+        documento_soporte_id: supportDocument.id,
+        observaciones: `Documento de cobro generado: ${numeroDocumento}`
+      });
+
+      console.log('✅ Comisión actualizada');
+
+      // ✅ VERSIÓN TEMPORAL SIN PDF para debuggear
+      const pdfUrl = `/uploads/payment-documents/documento-cobro-${numeroDocumento}.pdf`;
+      
+      await supportDocument.update({
+        documento_pdf_url: pdfUrl
+      });
+
+      console.log('✅ Documento actualizado con PDF URL');
+
+      const updatedCommission = await Commission.findByPk(commissionId, {
+        include: [
+          { model: Contract, as: 'Contract' },
+          { model: User, as: 'Vendedor', attributes: ['id', 'name', 'lastname'] }
+        ]
+      });
+
+      console.log('✅ Respuesta exitosa preparada');
+
+      res.json({
+        success: true,
+        message: 'Solicitud de pago enviada exitosamente',
+        document: {
+          ...supportDocument.toJSON(),
+          documento_pdf_url: pdfUrl
+        },
+        commission: updatedCommission
+      });
+
+    } catch (error) {
+      console.error('❌ Error requesting payment:', error);
+      res.status(500).json({ 
+        message: 'Error al enviar solicitud de pago', 
+        error: error.message 
+      });
+    }
+  },
+
+  downloadDocument: async (req, res) => {
+    try {
+      const { documentId } = req.params;
+      const userId = req.user.id;
+
+      console.log('📥 Descargando documento:', documentId, 'para usuario:', userId);
+
+      // Buscar el documento
+      const document = await SupportDocument.findByPk(documentId, {
+        include: [
+          {
+            model: User,
+            as: 'Vendedor',
+            attributes: ['id', 'name', 'lastname', 'email']
+          }
+        ]
+      });
+
+      if (!document) {
+        console.log('❌ Documento no encontrado:', documentId);
+        return res.status(404).json({ message: 'Documento no encontrado' });
+      }
+
+      console.log('📄 Documento encontrado:', document.numero_documento);
+
+      // Verificar permisos: el usuario debe ser el dueño del documento o admin+
+      if (document.vendedor_id !== userId && req.user.role < 5) {
+        console.log('🚫 Sin permisos - vendedor:', document.vendedor_id, 'usuario:', userId, 'rol:', req.user.role);
+        return res.status(403).json({ message: 'No tienes permisos para descargar este documento' });
+      }
+
+      // ✅ Asegurar que el directorio existe
+      const uploadsDir = path.join(__dirname, '../../uploads/payment-documents');
+      if (!fs.existsSync(uploadsDir)) {
+        console.log('📁 Creando directorio:', uploadsDir);
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+
+      const fileName = `documento-cobro-${document.numero_documento}.pdf`;
+      const filePath = path.join(uploadsDir, fileName);
+
+      console.log('📁 Buscando archivo en:', filePath);
+      console.log('📁 Directorio existe:', fs.existsSync(uploadsDir));
+
+      // Si no existe el PDF, generarlo
+      if (!fs.existsSync(filePath)) {
+        console.log('🔄 Archivo no existe, generando...');
+        
+        // Buscar la comisión asociada
+        const commission = await Commission.findOne({
+          where: { documento_soporte_id: documentId },
+          include: [
+            {
+              model: Contract,
+              as: 'Contract',
+              include: [
+                {
+                  model: Quote,
+                  as: 'Quote'
+                }
+              ]
+            },
+            {
+              model: User,
+              as: 'Vendedor'
+            }
+          ]
+        });
+
+        if (!commission) {
+          console.log('❌ Comisión no encontrada para documento:', documentId);
+          return res.status(404).json({ message: 'Comisión asociada no encontrada' });
+        }
+
+        try {
+          console.log('🔄 Generando PDF para:', fileName);
+          const pdfUrl = await generatePaymentDocument(document, commission);
+          await document.update({ documento_pdf_url: pdfUrl });
+          console.log('✅ PDF generado exitosamente:', pdfUrl);
+          
+          // ✅ Esperar un poco para que el archivo se escriba completamente
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+        } catch (pdfError) {
+          console.error('❌ Error generando PDF:', pdfError);
+          return res.status(500).json({ message: 'Error al generar documento PDF: ' + pdfError.message });
+        }
+      }
+
+      // ✅ Verificar nuevamente después de la generación
+      console.log('🔍 Verificando archivo después de generación...');
+      console.log('📁 Archivo existe:', fs.existsSync(filePath));
+      
+      if (fs.existsSync(filePath)) {
+        const stats = fs.statSync(filePath);
+        console.log('📊 Tamaño del archivo:', stats.size, 'bytes');
+      }
+
+      if (!fs.existsSync(filePath)) {
+        // ✅ Listar archivos en el directorio para debug
+        console.log('📂 Archivos en directorio:');
+        try {
+          const files = fs.readdirSync(uploadsDir);
+          console.log('📂 Archivos encontrados:', files);
+        } catch (dirError) {
+          console.log('❌ Error leyendo directorio:', dirError.message);
+        }
+        
+        return res.status(404).json({ 
+          message: 'Error: archivo no se pudo generar o encontrar',
+          debug: {
+            expectedFile: fileName,
+            directory: uploadsDir,
+            filePath: filePath
+          }
+        });
+      }
+
+      console.log('📤 Enviando archivo:', fileName);
+
+      // Configurar headers para descarga
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      
+      // Enviar archivo
+      res.sendFile(filePath, (err) => {
+        if (err) {
+          console.error('❌ Error enviando archivo:', err);
+          if (!res.headersSent) {
+            res.status(500).json({ message: 'Error al enviar archivo: ' + err.message });
+          }
+        } else {
+          console.log('✅ Archivo enviado exitosamente');
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ Error downloading document:', error);
+      if (!res.headersSent) {
+        res.status(500).json({ 
+          message: 'Error al descargar documento', 
+          error: error.message 
+        });
+      }
+    }
+  },
 };
 
 module.exports = commissionController;
