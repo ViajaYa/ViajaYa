@@ -116,7 +116,7 @@ const commissionController = {
   },
 
   // ✅ APROBAR comisión manualmente cuando se registra el pago
-  approveCommission: async (req, res) => {
+ approveCommission: async (req, res) => {
     try {
       const { commissionId } = req.params;
       const { observaciones } = req.body;
@@ -133,6 +133,11 @@ const commissionController = {
             model: User,
             as: 'Vendedor',
             attributes: ['id', 'name', 'lastname', 'email']
+          },
+          {
+            model: SupportDocument,
+            as: 'DocumentoSoporte',
+            attributes: ['id', 'numero_documento', 'status', 'documento_pdf_url']
           }
         ]
       });
@@ -141,9 +146,17 @@ const commissionController = {
         return res.status(404).json({ message: 'Comisión no encontrada' });
       }
 
-      if (commission.status !== 'pending') {
+      // ✅ CORREGIR: Solo se pueden aprobar comisiones en estado 'generated' que tengan documento
+      if (commission.status !== 'generated') {
         return res.status(400).json({ 
-          message: 'Solo se pueden aprobar comisiones en estado pending' 
+          message: `Solo se pueden aprobar comisiones activas. Estado actual: ${commission.status}` 
+        });
+      }
+
+      // ✅ NUEVA VALIDACIÓN: Verificar que tenga documento de soporte subido
+      if (!commission.DocumentoSoporte) {
+        return res.status(400).json({ 
+          message: 'No se puede aprobar una comisión sin documento de cuenta-cobro subido' 
         });
       }
 
@@ -151,8 +164,8 @@ const commissionController = {
       await commission.update({
         status: 'approved',
         fecha_aprobacion: new Date(),
-        observaciones: observaciones || 'Comisión aprobada manualmente',
-        pagado_por: userId
+        observaciones: observaciones || 'Comisión aprobada - documento revisado',
+        aprobado_por: userId // Cambiar de pagado_por a aprobado_por
       });
 
       res.json({
@@ -161,7 +174,8 @@ const commissionController = {
         commission: await Commission.findByPk(commissionId, {
           include: [
             { model: Contract, as: 'Contract' },
-            { model: User, as: 'Vendedor', attributes: ['id', 'name', 'lastname'] }
+            { model: User, as: 'Vendedor', attributes: ['id', 'name', 'lastname'] },
+            { model: SupportDocument, as: 'DocumentoSoporte' }
           ]
         })
       });
@@ -176,21 +190,39 @@ const commissionController = {
   },
 
   // ✅ MARCAR comisión como PAGADA
-  payCommission: async (req, res) => {
+ payCommission: async (req, res) => {
     try {
       const { commissionId } = req.params;
       const { observaciones } = req.body;
       const userId = req.user.id;
 
-      const commission = await Commission.findByPk(commissionId);
+      const commission = await Commission.findByPk(commissionId, {
+        include: [
+          {
+            model: Contract,
+            as: 'Contract',
+            attributes: ['contract_number', 'precio_total']
+          },
+          {
+            model: User,
+            as: 'Vendedor',
+            attributes: ['id', 'name', 'lastname', 'email']
+          },
+          {
+            model: SupportDocument,
+            as: 'DocumentoSoporte'
+          }
+        ]
+      });
 
       if (!commission) {
         return res.status(404).json({ message: 'Comisión no encontrada' });
       }
 
+      // ✅ Verificar que esté en estado correcto
       if (commission.status !== 'approved') {
         return res.status(400).json({ 
-          message: 'Solo se pueden pagar comisiones aprobadas' 
+          message: `Solo se pueden pagar comisiones aprobadas. Estado actual: ${commission.status}` 
         });
       }
 
@@ -203,11 +235,12 @@ const commissionController = {
 
       res.json({
         success: true,
-        message: 'Comisión marcada como pagada',
+        message: 'Comisión marcada como pagada exitosamente',
         commission: await Commission.findByPk(commissionId, {
           include: [
             { model: Contract, as: 'Contract' },
-            { model: User, as: 'Vendedor', attributes: ['id', 'name', 'lastname'] }
+            { model: User, as: 'Vendedor', attributes: ['id', 'name', 'lastname'] },
+            { model: SupportDocument, as: 'DocumentoSoporte' }
           ]
         })
       });
@@ -222,7 +255,7 @@ const commissionController = {
   },
 
   // ✅ OBTENER comisiones con filtros
-  getCommissions: async (req, res) => {
+getCommissions: async (req, res) => {
     try {
       const { 
         page = 1, 
@@ -231,13 +264,15 @@ const commissionController = {
         userId, 
         startDate, 
         endDate,
-        contractId 
+        contractId,
+        search
       } = req.query;
 
       const offset = (page - 1) * limit;
       const whereConditions = {};
+      const includeConditions = [];
 
-      // Filtros
+      // Filtros básicos
       if (status !== 'all') {
         whereConditions.status = status;
       }
@@ -250,32 +285,65 @@ const commissionController = {
         whereConditions.contract_id = contractId;
       }
 
+      // Filtro de fechas
       if (startDate && endDate) {
         whereConditions.fecha_generacion = {
-          [Op.between]: [new Date(startDate), new Date(endDate)]
+          [Op.between]: [new Date(startDate), new Date(endDate + ' 23:59:59')]
         };
+      } else if (startDate) {
+        whereConditions.fecha_generacion = {
+          [Op.gte]: new Date(startDate)
+        };
+      } else if (endDate) {
+        whereConditions.fecha_generacion = {
+          [Op.lte]: new Date(endDate + ' 23:59:59')
+        };
+      }
+
+      // Configurar includes con filtros de búsqueda
+      const contractInclude = {
+        model: Contract,
+        as: 'Contract',
+        attributes: ['contract_number', 'precio_total', 'status'],
+        include: [
+          {
+            model: Quote,
+            as: 'Quote',
+            attributes: ['quote_number', 'nombre_cliente']
+          }
+        ]
+      };
+
+      const vendedorInclude = {
+        model: User,
+        as: 'Vendedor',
+        attributes: ['id', 'name', 'lastname', 'email']
+      };
+
+      // Aplicar filtro de búsqueda si existe
+      if (search) {
+        const searchTerm = `%${search}%`;
+        
+        // Buscar en múltiples campos
+        whereConditions[Op.or] = [
+          // Buscar en observaciones de la comisión
+          { observaciones: { [Op.iLike]: searchTerm } },
+          // Buscar en número de contrato
+          { '$Contract.contract_number$': { [Op.iLike]: searchTerm } },
+          // Buscar en nombre del cliente
+          { '$Contract.Quote.nombre_cliente$': { [Op.iLike]: searchTerm } },
+          // Buscar en nombre del vendedor
+          { '$Vendedor.name$': { [Op.iLike]: searchTerm } },
+          { '$Vendedor.lastname$': { [Op.iLike]: searchTerm } },
+          { '$Vendedor.email$': { [Op.iLike]: searchTerm } }
+        ];
       }
 
       const { rows: commissions, count } = await Commission.findAndCountAll({
         where: whereConditions,
         include: [
-          {
-            model: Contract,
-            as: 'Contract',
-            attributes: ['contract_number', 'precio_total', 'status'],
-            include: [
-              {
-                model: Quote,
-                as: 'Quote',
-                attributes: ['quote_number', 'nombre_cliente']
-              }
-            ]
-          },
-          {
-            model: User,
-            as: 'Vendedor',
-            attributes: ['id', 'name', 'lastname', 'email']
-          },
+          contractInclude,
+          vendedorInclude,
           {
             model: User,
             as: 'PagadoPor',
@@ -285,12 +353,14 @@ const commissionController = {
           {
             model: SupportDocument,
             as: 'DocumentoSoporte',
+            attributes: ['id', 'numero_documento', 'status', 'documento_pdf_url', 'fecha_generacion'],
             required: false
           }
         ],
         order: [['fecha_generacion', 'DESC']],
         limit: parseInt(limit),
-        offset
+        offset,
+        distinct: true // Importante para count correcto con joins
       });
 
       res.json({
@@ -307,6 +377,7 @@ const commissionController = {
     } catch (error) {
       console.error('Error obteniendo comisiones:', error);
       res.status(500).json({ 
+        success: false,
         message: 'Error al obtener las comisiones', 
         error: error.message 
       });

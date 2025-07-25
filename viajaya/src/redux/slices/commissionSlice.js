@@ -213,17 +213,18 @@ const commissionSlice = createSlice({
       .addCase(fetchCommissions.fulfilled, (state, action) => {
         state.loading = false;
         state.commissions = action.payload.commissions || [];
-        state.totalCommissions = action.payload.total || 0;
+        state.totalCommissions = action.payload.pagination?.total || 0;
         state.pagination = {
-          ...state.pagination,
-          page: action.payload.page || 1,
-          total: action.payload.total || 0,
-          totalPages: action.payload.totalPages || 0,
+          page: action.payload.pagination?.page || 1,
+          limit: action.payload.pagination?.limit || 10,
+          total: action.payload.pagination?.total || 0,
+          totalPages: action.payload.pagination?.totalPages || 0,
         };
       })
       .addCase(fetchCommissions.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+        state.commissions = [];
       })
       // Fetch User Commissions
       .addCase(fetchUserCommissions.pending, (state) => {
