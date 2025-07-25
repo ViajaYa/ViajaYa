@@ -59,7 +59,8 @@ const {
   ContractItem,
   Purchase,
   UserDocument,
-  Passenger
+  Passenger,
+  CommissionConfig
 } = sequelize.models;
 
 // ===== RELACIONES ORGANIZADAS POR SECCIONES =====
@@ -347,6 +348,27 @@ SupportDocument.hasMany(Commission, {
 Commission.belongsTo(SupportDocument, { 
   as: 'DocumentoSoporte', 
   foreignKey: 'documento_soporte_id' 
+});
+
+// ✅ 14.1 RELACIONES COMMISSION CONFIG
+CommissionConfig.belongsTo(User, {
+  as: 'CreatedBy',
+  foreignKey: 'created_by'
+});
+
+CommissionConfig.belongsTo(User, {
+  as: 'UpdatedBy',
+  foreignKey: 'updated_by'
+});
+
+User.hasMany(CommissionConfig, {
+  as: 'CommissionConfigsCreated',
+  foreignKey: 'created_by'
+});
+
+User.hasMany(CommissionConfig, {
+  as: 'CommissionConfigsUpdated',
+  foreignKey: 'updated_by'
 });
 
 // ✅ 15. RELACIONES DE MENSAJES AUTOMÁTICOS

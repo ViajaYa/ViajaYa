@@ -75,16 +75,13 @@ module.exports = (sequelize) => {
     },
     commission_limit: {
       type: DataTypes.DECIMAL(12, 2),
-      defaultValue: 1400000.00, // Límite para documentos soporte
+      defaultValue: 1400000.00, // Límite para documentos soporte - se mantiene para control
     },
     current_commission_used: {
       type: DataTypes.DECIMAL(12, 2),
-      defaultValue: 0.00, // Comisión usada en el período actual
+      defaultValue: 0.00, // Comisión usada en el período actual - se mantiene para control
     },
-    commission_percentage: {
-      type: DataTypes.DECIMAL(5, 2),
-      allowNull: true, // Porcentaje de comisión que recibe
-    },
+    // ✅ REMOVIDO: commission_percentage - ahora se maneja en CommissionConfig
     // Información bancaria para comisiones
     banco: {
       type: DataTypes.STRING,

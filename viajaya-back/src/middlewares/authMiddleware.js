@@ -32,7 +32,7 @@ const authenticateToken = async (req, res, next) => {
             attributes: [
                 'id', 'name', 'lastname', 'email', 'role', 'phone', 'image',
                 'lider_id', 'gerente_id', 'is_active_seller', 'is_active',
-                'commission_percentage', 'commission_limit', 'current_commission_used',
+                'commission_limit', 'current_commission_used',
                 'referral_code', 'points', 'last_login'
             ]
         });

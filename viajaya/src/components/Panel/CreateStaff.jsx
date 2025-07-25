@@ -73,9 +73,9 @@ const CreateStaff = () => {
     referral_code: "",
     referred_by: "",
 
-    // ✅ NUEVOS campos de comisiones
-    commission_percentage: "",
-    commission_limit: 1400000.0,
+    // ✅ REMOVIDOS: campos de comisión individual (ahora se manejan globalmente)
+    // commission_percentage: "", - REMOVIDO
+    commission_limit: 1400000.0, // Se mantiene para control de documentos
 
     // ✅ NUEVOS campos bancarios
     banco: "",
@@ -417,16 +417,7 @@ const CreateStaff = () => {
       newErrors.gerente_id = "Un Líder debe tener un Gerente asignado";
     }
 
-    // ✅ Validaciones de comisión
-    if (
-      formData.commission_percentage &&
-      (isNaN(formData.commission_percentage) ||
-        formData.commission_percentage < 0 ||
-        formData.commission_percentage > 100)
-    ) {
-      newErrors.commission_percentage =
-        "El porcentaje debe estar entre 0 y 100";
-    }
+    // ✅ REMOVIDO: Validaciones de comisión individual (ahora se maneja globalmente)
 
     // ✅ Validaciones bancarias (si se proporcionan)
     if (formData.numero_cuenta && !formData.banco) {
@@ -481,9 +472,7 @@ const handleSubmit = async (e) => {
       referral_code: formData.referral_code?.trim() || null,
       referred_by: formData.referred_by?.trim() || null,
       
-      // ✅ CORREGIR: Comisiones - Validar y convertir números
-      commission_percentage: formData.commission_percentage ? 
-        parseFloat(formData.commission_percentage) : null,
+      // ✅ REMOVIDO: commission_percentage (ahora se maneja globalmente)
       commission_limit: formData.commission_limit ? 
         parseFloat(formData.commission_limit) : 1400000.00,
       
@@ -543,8 +532,7 @@ const handleSubmit = async (e) => {
         is_active_seller: false,
         referral_code: "",
         referred_by: "",
-        commission_percentage: "",
-        commission_limit: 1400000.0,
+        commission_limit: 1400000.0, // Se mantiene para control de documentos
         banco: "",
         numero_cuenta: "",
         tipo_cuenta: "",
@@ -1105,39 +1093,28 @@ const handleSubmit = async (e) => {
                 />
                 Configuración de Comisiones
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Porcentaje de Comisión (%)
-                  </label>
-                  <input
-                    type="number"
-                    name="commission_percentage"
-                    value={formData.commission_percentage}
-                    onChange={handleInputChange}
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.commission_percentage
-                        ? "border-red-500"
-                        : "border-gray-300"
-                    }`}
-                    placeholder="Ej: 5.00"
-                  />
-                  {errors.commission_percentage && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {errors.commission_percentage}
+              
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <FontAwesomeIcon icon={faPercentage} className="text-blue-600 mt-1" />
+                  </div>
+                  <div className="ml-3">
+                    <h4 className="text-sm font-medium text-blue-800">
+                      Comisiones Configuradas Globalmente
+                    </h4>
+                    <p className="text-sm text-blue-700 mt-1">
+                      Las comisiones se calculan automáticamente según el rol del empleado y el tipo de viaje (nacional/internacional). 
+                      Los montos se configuran en la sección de <strong>Configuración de Comisiones</strong> del panel administrativo.
                     </p>
-                  )}
-                  <p className="text-sm text-gray-500 mt-1">
-                    Porcentaje específico de comisión para este usuario
-                  </p>
+                  </div>
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Límite de Comisión (COP)
+                    Límite de Comisión para Documentos (COP)
                   </label>
                   <input
                     type="number"
@@ -1150,7 +1127,7 @@ const handleSubmit = async (e) => {
                     placeholder="1400000"
                   />
                   <p className="text-sm text-gray-500 mt-1">
-                    Límite para documentos soporte
+                    Límite anual para generar documentos de soporte automáticos
                   </p>
                 </div>
               </div>

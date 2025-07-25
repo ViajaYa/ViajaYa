@@ -23,7 +23,7 @@ module.exports = {
             // ✅ Actualizar campos para incluir jerarquía
            const fieldsToUpdate = [
                 'name', 'lastname', 'email', 'phone', 'password', 'role', 'image', 'points', 
-                'referredBy', 'lider_id', 'gerente_id', 'commission_percentage', 'is_active_seller',
+                'referredBy', 'lider_id', 'gerente_id', 'is_active_seller',
                 'commission_limit', 'current_commission_used', 'banco', 'numero_cuenta', 'tipo_cuenta',
                 'fecha_ingreso', 'documento_identidad', 'tipo_documento', 'fecha_nacimiento', 
                 'direccion', 'ciudad', 'pais'
@@ -108,8 +108,7 @@ module.exports = {
                 points: 0,
                 referral_code: user.referral_code || null,
                 referred_by: user.referred_by || null,
-                // ✅ CORREGIDO: Solo asignar si viene específicamente
-                commission_percentage: user.commission_percentage || null,
+                // ✅ REMOVIDO: commission_percentage - ahora se maneja globalmente
                 commission_limit: user.commission_limit || 1400000.00,
                 current_commission_used: 0.00,
                 banco: user.banco || null,
@@ -266,7 +265,7 @@ authUser: async ({email, password}) => {
                 referral_code: user.referral_code,
                 points: user.points || 0,
                 last_login: user.last_login,
-                commission_percentage: user.commission_percentage,
+                // ✅ REMOVIDO: commission_percentage - ahora se maneja globalmente
                 commission_limit: user.commission_limit,
                 current_commission_used: user.current_commission_used,
                 banco: user.banco,
@@ -319,7 +318,7 @@ authUser: async ({email, password}) => {
                 attributes: [
                     'id', 'name', 'lastname', 'email', 'role', 'phone', 
                     'image', 'lider_id', 'gerente_id', 'is_active_seller', 'is_active', // ✅ Actualizado
-                    'last_login', 'referral_code', 'points', 'commission_percentage',
+                    'last_login', 'referral_code', 'points',
                     'commission_limit', 'current_commission_used', 'banco', 'numero_cuenta'
                 ]
             });
@@ -344,7 +343,7 @@ authUser: async ({email, password}) => {
                 referral_code: user.referral_code,
                 points: user.points || 0,
                 last_login: user.last_login,
-                commission_percentage: user.commission_percentage,
+                // ✅ REMOVIDO: commission_percentage - ahora se maneja globalmente
                 commission_limit: user.commission_limit,
                 current_commission_used: user.current_commission_used
             };
@@ -500,22 +499,22 @@ getUserByEmail: async (email) => {
                     {
                         model: User,
                         as: 'AsesoresDirectos',
-                        attributes: ['id', 'name', 'lastname', 'email', 'role', 'is_active_seller', 'commission_percentage']
+                        attributes: ['id', 'name', 'lastname', 'email', 'role', 'is_active_seller']
                     },
                     {
                         model: User,
                         as: 'LideresDirectos',
-                        attributes: ['id', 'name', 'lastname', 'email', 'role', 'is_active_seller', 'commission_percentage'],
+                        attributes: ['id', 'name', 'lastname', 'email', 'role', 'is_active_seller'],
                         include: [{
                             model: User,
                             as: 'AsesoresDirectos',
-                            attributes: ['id', 'name', 'lastname', 'email', 'role', 'is_active_seller', 'commission_percentage']
+                            attributes: ['id', 'name', 'lastname', 'email', 'role', 'is_active_seller']
                         }]
                     },
                     {
                         model: User,
                         as: 'AsesoresIndirectos',
-                        attributes: ['id', 'name', 'lastname', 'email', 'role', 'is_active_seller', 'commission_percentage']
+                        attributes: ['id', 'name', 'lastname', 'email', 'role', 'is_active_seller']
                     },
                     {
                         model: User,
@@ -547,7 +546,7 @@ getUserByEmail: async (email) => {
                     lastname: user.lastname,
                     email: user.email,
                     role: user.role,
-                    commission_percentage: user.commission_percentage,
+                    // ✅ REMOVIDO: commission_percentage - ahora se maneja globalmente
                     total_team_members: (user.LideresDirectos?.length || 0) + 
                                       (user.AsesoresDirectos?.length || 0) + 
                                       (user.AsesoresIndirectos?.length || 0)
@@ -590,14 +589,14 @@ getUserByEmail: async (email) => {
             const teamMetrics = await sequelize.query(`
                 WITH RECURSIVE team_hierarchy AS (
                     -- Usuario base (manager)
-                    SELECT id, name, role, commission_percentage, lider_id, gerente_id, 0 as level
+                    SELECT id, name, role, lider_id, gerente_id, 0 as level
                     FROM users 
                     WHERE id = :managerId
                     
                     UNION ALL
                     
                     -- Miembros del equipo recursivamente
-                    SELECT u.id, u.name, u.role, u.commission_percentage, u.lider_id, u.gerente_id, th.level + 1
+                    SELECT u.id, u.name, u.role, u.lider_id, u.gerente_id, th.level + 1
                     FROM users u
                     INNER JOIN team_hierarchy th ON (
                         u.lider_id = th.id OR u.gerente_id = th.id
@@ -610,7 +609,7 @@ getUserByEmail: async (email) => {
                     COUNT(DISTINCT CASE WHEN th.role = 3 THEN th.id END) as total_lideres,
                     COUNT(DISTINCT CASE WHEN th.role = 4 THEN th.id END) as total_gerentes,
                     COUNT(DISTINCT CASE WHEN u.is_active_seller = true THEN th.id END) as active_members,
-                    COALESCE(AVG(th.commission_percentage), 0) as avg_commission_percentage,
+                    -- ✅ REMOVIDO: avg_commission_percentage - ahora se maneja globalmente
                     0 as total_sales,
                     0 as total_commissions,
                     0 as total_orders
@@ -735,10 +734,10 @@ const calculateCommissionSummary = async (userId, period) => {
 
         const commissionData = await sequelize.query(`
             WITH RECURSIVE team_hierarchy AS (
-                SELECT id, role, name, lastname, commission_percentage, 0 as level
+                SELECT id, role, name, lastname, 0 as level
                 FROM users WHERE id = :userId
                 UNION ALL
-                SELECT u.id, u.role, u.name, u.lastname, u.commission_percentage, th.level + 1
+                SELECT u.id, u.role, u.name, u.lastname, th.level + 1
                 FROM users u
                 INNER JOIN team_hierarchy th ON (u.lider_id = th.id OR u.gerente_id = th.id)
                 WHERE th.level < 5
@@ -747,7 +746,7 @@ const calculateCommissionSummary = async (userId, period) => {
                 th.role,
                 th.name,
                 th.lastname,
-                th.commission_percentage,
+                -- ✅ REMOVIDO: commission_percentage - ahora se maneja globalmente
                 COUNT(c.id) as total_commissions,
                 COALESCE(SUM(c.monto_comision), 0) as total_amount,
                 COALESCE(SUM(CASE WHEN c.status = 'paid' THEN c.monto_comision ELSE 0 END), 0) as paid_amount,

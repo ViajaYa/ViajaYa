@@ -1,11 +1,12 @@
-const { Commission, Contract, Quote, User, SupportDocument, conn: sequelize } = require('../db');
+const { Commission, Contract, Quote, User, SupportDocument, CommissionConfig, conn: sequelize } = require('../db');
 const { Op } = require('sequelize');
 const generatePaymentDocument = require('../utils/generatePaymentDocument');    
+const commissionConfigController = require('./commissionConfigController');
 const path = require('path'); // ✅ Agregar este import
 const fs = require('fs'); // ✅ Agregar este import
 
 const commissionController = {
-  // ✅ GENERAR COMISIONES cuando el contrato es aprobado
+  // ✅ GENERAR COMISIONES cuando el contrato es aprobado - NUEVA LÓGICA
   generateCommissions: async (contractId) => {
     const transaction = await sequelize.transaction();
     
@@ -17,9 +18,9 @@ const commissionController = {
             model: Quote,
             as: 'Quote',
             include: [
-              { model: User, as: 'Asesor', attributes: ['id', 'name', 'lastname', 'commission_percentage'] },
-              { model: User, as: 'Lider', attributes: ['id', 'name', 'lastname', 'commission_percentage'] },
-              { model: User, as: 'Gerente', attributes: ['id', 'name', 'lastname', 'commission_percentage'] }
+              { model: User, as: 'Asesor', attributes: ['id', 'name', 'lastname'] },
+              { model: User, as: 'Lider', attributes: ['id', 'name', 'lastname'] },
+              { model: User, as: 'Gerente', attributes: ['id', 'name', 'lastname'] }
             ]
           }
         ]
@@ -31,76 +32,124 @@ const commissionController = {
 
       const quote = contract.Quote;
       const montoBase = contract.precio_total;
+      const numeroPasajeros = contract.numero_pasajeros || quote.numero_personas || 1;
       const commissionsToCreate = [];
 
-      // ✅ Porcentajes de comisión por rol
-      const commissionRates = {
-        asesor: 0.05,   // 5%
-        lider: 0.02,    // 2%
-        gerente: 0.015  // 1.5%
-      };
+      // ✅ DETERMINAR TIPO DE VIAJE (nacional/internacional)
+      const destinoLower = quote.destino.toLowerCase();
+      const destinosInternacionales = [
+        'panamá', 'panama', 'méxico', 'mexico', 'perú', 'peru', 'ecuador', 
+        'venezuela', 'brasil', 'argentina', 'chile', 'bolivia', 'uruguay', 
+        'paraguay', 'miami', 'cancún', 'punta cana', 'madrid', 'barcelona',
+        'parís', 'roma', 'londres', 'nueva york', 'los angeles'
+      ];
+      
+      const trip_type = destinosInternacionales.some(dest => 
+        destinoLower.includes(dest)
+      ) ? 'internacional' : 'nacional';
+
+      console.log(`📍 Destino: ${quote.destino} - Tipo: ${trip_type}`);
 
       // Generar comisión para ASESOR
       if (quote.Asesor) {
-        const asesorRate = quote.Asesor.commission_percentage 
-          ? parseFloat(quote.Asesor.commission_percentage) / 100 
-          : commissionRates.asesor;
+        const montoComision = await commissionConfigController.calculateCommission(
+          'asesor', 
+          trip_type, 
+          montoBase, 
+          numeroPasajeros
+        );
         
-        commissionsToCreate.push({
-          contract_id: contractId,
-          vendedor_id: quote.Asesor.id,
-          tipo_vendedor: 'asesor',
-          porcentaje: asesorRate * 100,
-          monto_base: montoBase,
-          monto_comision: montoBase * asesorRate,
-          status: 'pending',
-          fecha_generacion: new Date()
-        });
+        if (montoComision > 0) {
+          // Calcular el porcentaje equivalente para compatibilidad
+          const porcentajeEquivalente = ((montoComision / montoBase) * 100).toFixed(2);
+          
+          commissionsToCreate.push({
+            contract_id: contractId,
+            vendedor_id: quote.Asesor.id,
+            tipo_vendedor: 'asesor',
+            porcentaje: porcentajeEquivalente,
+            monto_base: montoBase,
+            monto_comision: montoComision,
+            status: 'pending',
+            fecha_generacion: new Date(),
+            observaciones: `Comisión ${trip_type} - ${numeroPasajeros} pasajeros`
+          });
+        }
       }
 
       // Generar comisión para LÍDER
       if (quote.Lider) {
-        const liderRate = quote.Lider.commission_percentage 
-          ? parseFloat(quote.Lider.commission_percentage) / 100 
-          : commissionRates.lider;
+        const montoComision = await commissionConfigController.calculateCommission(
+          'lider', 
+          trip_type, 
+          montoBase, 
+          numeroPasajeros
+        );
         
-        commissionsToCreate.push({
-          contract_id: contractId,
-          vendedor_id: quote.Lider.id,
-          tipo_vendedor: 'lider',
-          porcentaje: liderRate * 100,
-          monto_base: montoBase,
-          monto_comision: montoBase * liderRate,
-          status: 'pending',
-          fecha_generacion: new Date()
-        });
+        if (montoComision > 0) {
+          // Calcular el porcentaje equivalente para compatibilidad
+          const porcentajeEquivalente = ((montoComision / montoBase) * 100).toFixed(2);
+          
+          commissionsToCreate.push({
+            contract_id: contractId,
+            vendedor_id: quote.Lider.id,
+            tipo_vendedor: 'lider',
+            porcentaje: porcentajeEquivalente,
+            monto_base: montoBase,
+            monto_comision: montoComision,
+            status: 'pending',
+            fecha_generacion: new Date(),
+            observaciones: `Comisión ${trip_type} - ${numeroPasajeros} pasajeros`
+          });
+        }
       }
 
       // Generar comisión para GERENTE
       if (quote.Gerente) {
-        const gerenteRate = quote.Gerente.commission_percentage 
-          ? parseFloat(quote.Gerente.commission_percentage) / 100 
-          : commissionRates.gerente;
+        const montoComision = await commissionConfigController.calculateCommission(
+          'gerente', 
+          trip_type, 
+          montoBase, 
+          numeroPasajeros
+        );
         
-        commissionsToCreate.push({
-          contract_id: contractId,
-          vendedor_id: quote.Gerente.id,
-          tipo_vendedor: 'gerente',
-          porcentaje: gerenteRate * 100,
-          monto_base: montoBase,
-          monto_comision: montoBase * gerenteRate,
-          status: 'pending',
-          fecha_generacion: new Date()
-        });
+        if (montoComision > 0) {
+          // Calcular el porcentaje equivalente para compatibilidad
+          const porcentajeEquivalente = ((montoComision / montoBase) * 100).toFixed(2);
+          
+          commissionsToCreate.push({
+            contract_id: contractId,
+            vendedor_id: quote.Gerente.id,
+            tipo_vendedor: 'gerente',
+            porcentaje: porcentajeEquivalente,
+            monto_base: montoBase,
+            monto_comision: montoComision,
+            status: 'pending',
+            fecha_generacion: new Date(),
+            observaciones: `Comisión ${trip_type} - ${numeroPasajeros} pasajeros`
+          });
+        }
       }
 
       // Crear las comisiones en batch
+      if (commissionsToCreate.length === 0) {
+        console.log('⚠️ No se encontraron configuraciones de comisiones activas');
+        await transaction.commit();
+        return {
+          success: true,
+          message: 'No se generaron comisiones - sin configuraciones activas',
+          commissions: []
+        };
+      }
+
       const createdCommissions = await Commission.bulkCreate(commissionsToCreate, { 
         transaction,
         returning: true 
       });
 
       await transaction.commit();
+      
+      console.log(`✅ Se generaron ${createdCommissions.length} comisiones para contrato ${contract.contract_number}`);
       
       return {
         success: true,
@@ -110,7 +159,7 @@ const commissionController = {
 
     } catch (error) {
       await transaction.rollback();
-      console.error('Error generando comisiones:', error);
+      console.error('❌ Error generando comisiones:', error);
       throw error;
     }
   },
