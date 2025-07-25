@@ -109,7 +109,7 @@ const MyCommissions = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `documento-cobro-${numeroDocumento}.pdf`;
+      link.download = `cuenta-cobro-${numeroDocumento}.pdf`;
       document.body.appendChild(link);
       link.click();
       

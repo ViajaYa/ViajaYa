@@ -478,13 +478,13 @@ requestPayment: async (req, res) => {
       await commission.update({
         status: 'generated',
         documento_soporte_id: supportDocument.id,
-        observaciones: `Documento de cobro generado: ${numeroDocumento}`
+        observaciones: `Cuenta de cobro generada: ${numeroDocumento}` // ✅ CAMBIAR aquí también
       });
 
       console.log('✅ Comisión actualizada');
 
       // ✅ VERSIÓN TEMPORAL SIN PDF para debuggear
-      const pdfUrl = `/uploads/payment-documents/documento-cobro-${numeroDocumento}.pdf`;
+      const pdfUrl = `/uploads/payment-documents/cuenta-cobro-${numeroDocumento}.pdf`;
       
       await supportDocument.update({
         documento_pdf_url: pdfUrl
@@ -558,7 +558,7 @@ requestPayment: async (req, res) => {
         fs.mkdirSync(uploadsDir, { recursive: true });
       }
 
-      const fileName = `documento-cobro-${document.numero_documento}.pdf`;
+      const fileName = `cuenta-cobro-${document.numero_documento}.pdf`;
       const filePath = path.join(uploadsDir, fileName);
 
       console.log('📁 Buscando archivo en:', filePath);

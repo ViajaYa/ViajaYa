@@ -12,7 +12,7 @@ const generatePaymentDocument = async (supportDocument, commission) => {
         fs.mkdirSync(uploadsDir, { recursive: true });
       }
 
-      const fileName = `documento-cobro-${supportDocument.numero_documento}.pdf`;
+      const fileName = `cuenta-cobro-${supportDocument.numero_documento}.pdf`;
       const filePath = path.join(uploadsDir, fileName);
 
       console.log('📝 Generando PDF en:', filePath);
