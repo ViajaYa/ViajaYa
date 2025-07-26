@@ -65,6 +65,7 @@ const quoteController = {
         fecha_ida,
         fecha_regreso,
         destino,
+        trip_type, // ✅ NUEVO: Campo explícito para tipo de viaje
         origen,
         acomodacion,
         tipo_hotel,
@@ -230,6 +231,7 @@ const quoteController = {
         fecha_ida,
         fecha_regreso,
         destino,
+        trip_type: trip_type || 'nacional', // ✅ NUEVO: Campo explícito para tipo de viaje
         origen,
         acomodacion,
         tipo_hotel,
@@ -1624,12 +1626,15 @@ getPassengersByQuote: async (req, res) => {
         fecha_ida,
         fecha_regreso,
         destino,
+        trip_type, // ✅ AGREGADO: Campo faltante
         origen,
         acomodacion,
         tipo_hotel,
         ninos,
         edades_ninos,
       } = req.body;
+
+      console.log('🔍 DEBUG - updateQuote recibió trip_type:', trip_type);
 
       const quote = await Quote.findByPk(id);
 
@@ -1643,6 +1648,7 @@ getPassengersByQuote: async (req, res) => {
         fecha_ida,
         fecha_regreso,
         destino,
+        trip_type, // ✅ AGREGADO: Campo faltante
         origen,
         acomodacion,
         tipo_hotel,
@@ -1801,10 +1807,15 @@ getPassengersByQuote: async (req, res) => {
         const contractNumber = `CON-${Date.now()}-${Math.floor(
           Math.random() * 1000
         )}`;
+        
+        // ✅ DEBUG: Verificar trip_type de la cotización
+        console.log('🔍 DEBUG - approveQuote creando contrato con trip_type:', quote.trip_type);
+        
         newContract = await Contract.create({
           contract_number: contractNumber,
           quote_id: quote.id,
           cliente_id: clientUser ? clientUser.id : quote.cliente_id,
+          trip_type: quote.trip_type || 'nacional', // ✅ AGREGADO: Campo faltante
           asesor_id: quote.asesor_id,
           lider_id: quote.lider_id,
           gerente_id: quote.gerente_id,

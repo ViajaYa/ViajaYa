@@ -88,6 +88,11 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: false,
     },
+    trip_type: {
+      type: DataTypes.ENUM('nacional', 'internacional'),
+      allowNull: true, // Temporal para no romper registros existentes
+      defaultValue: 'nacional',
+    },
     origen: {
       type: DataTypes.STRING,
       allowNull: false,

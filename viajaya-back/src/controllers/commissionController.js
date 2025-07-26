@@ -35,20 +35,10 @@ const commissionController = {
       const numeroPasajeros = contract.numero_pasajeros || quote.numero_personas || 1;
       const commissionsToCreate = [];
 
-      // ✅ DETERMINAR TIPO DE VIAJE (nacional/internacional)
-      const destinoLower = quote.destino.toLowerCase();
-      const destinosInternacionales = [
-        'panamá', 'panama', 'méxico', 'mexico', 'perú', 'peru', 'ecuador', 
-        'venezuela', 'brasil', 'argentina', 'chile', 'bolivia', 'uruguay', 
-        'paraguay', 'miami', 'cancún', 'punta cana', 'madrid', 'barcelona',
-        'parís', 'roma', 'londres', 'nueva york', 'los angeles'
-      ];
-      
-      const trip_type = destinosInternacionales.some(dest => 
-        destinoLower.includes(dest)
-      ) ? 'internacional' : 'nacional';
+      // ✅ USAR EL CAMPO TRIP_TYPE DEL CONTRATO O LA COTIZACIÓN
+      const trip_type = quote.trip_type || contract.trip_type || quote.trip_type || 'nacional';
 
-      console.log(`📍 Destino: ${quote.destino} - Tipo: ${trip_type}`);
+      console.log(`📍 Destino: ${quote.destino} - Tipo: ${trip_type} (desde ${contract.trip_type ? 'contrato' : 'cotización'})`);
 
       // Generar comisión para ASESOR
       if (quote.Asesor) {

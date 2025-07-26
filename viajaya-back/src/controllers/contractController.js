@@ -11,7 +11,7 @@ const contractController = {
     console.log('Llamada a createContract', req.body);
     try {
       const {
-        quote_id,
+        quote_id, // ✅ AGREGADO: Aceptar trip_type explícito del frontend
         forma_pago,
         numero_cuotas,
         fecha_inicio_viaje,
@@ -74,10 +74,24 @@ const contractController = {
         valor_cuota = precio_total / numero_cuotas;
       }
 
+      // ✅ DEBUG: Verificar trip_type de la cotización
+      console.log('🔍 DEBUG - createContract recibió quote con trip_type:', quote.trip_type);
+      console.log('🔍 DEBUG - createContract recibió trip_type explícito:', trip_type);
+      console.log('🔍 DEBUG - Quote completa:', { 
+        id: quote.id, 
+        destino: quote.destino, 
+        trip_type: quote.trip_type,
+        updatedAt: quote.updatedAt 
+      });
+
+      const finalTripType = trip_type || quote.trip_type || 'nacional';
+      console.log('🔍 DEBUG - Tipo final asignado al contrato:', finalTripType);
+
       const newContract = await Contract.create({
         contract_number,
         quote_id,
         cliente_id: quote.cliente_id,
+        trip_type: quote.trip_type, // ✅ CORREGIDO: Usar valor explícito primero
         precio_total,
         forma_pago,
         numero_cuotas: forma_pago === 'cuotas' ? numero_cuotas : 1,
@@ -96,7 +110,7 @@ const contractController = {
       as: 'Quote', // ✅ AGREGAR EL ALIAS REQUERIDO
       attributes: [
         'id', 'quote_number', 'nombre_cliente', 'email_cliente',
-        'destino', 'origen', 'precio_total', 'numero_personas',
+        'destino', 'trip_type', 'origen', 'precio_total', 'numero_personas',
         'fecha_ida', 'fecha_regreso'
       ],
       include: [
@@ -161,7 +175,7 @@ getAllContracts : async (req, res) => {
           as: 'Quote', // ✅ AGREGAR ESTE ALIAS
           attributes: [
             'id', 'quote_number', 'nombre_cliente', 'email_cliente',
-            'destino', 'origen', 'precio_total', 'numero_personas'
+            'destino', 'trip_type', 'origen', 'precio_total', 'numero_personas'
           ],
           include: [
             // ✅ Jerarquía de ventas desde la cotización
@@ -230,7 +244,7 @@ getAllContracts : async (req, res) => {
           as: 'Quote', // ✅ AGREGAR ESTE ALIAS
           attributes: [
             'id', 'quote_number', 'nombre_cliente', 'email_cliente',
-            'destino', 'origen', 'precio_total', 'numero_personas',
+            'destino', 'trip_type', 'origen', 'precio_total', 'numero_personas',
             'fecha_ida', 'fecha_regreso'
           ],
           include: [
@@ -319,13 +333,154 @@ getAllContracts : async (req, res) => {
       const { id } = req.params;
       const updateData = req.body;
 
+      console.log('🔍 DEBUG - updateContract recibió datos:', updateData);
+
       const contract = await Contract.findByPk(id);
 
       if (!contract) {
         return res.status(404).json({ message: 'Contrato no encontrado' });
       }
 
-      await contract.update(updateData);
+      // ✅ FUNCIÓN AUXILIAR para validar fechas
+      const validateAndCleanDate = (dateValue, fieldName) => {
+        if (!dateValue) return null;
+        
+        if (dateValue === 'Invalid date' || dateValue === 'null' || dateValue === 'undefined') {
+          console.log(`⚠️ ${fieldName} inválida, estableciendo como null:`, dateValue);
+          return null;
+        }
+        
+        const fecha = new Date(dateValue);
+        if (isNaN(fecha.getTime())) {
+          console.log(`⚠️ ${fieldName} inválida, estableciendo como null:`, dateValue);
+          return null;
+        }
+        
+        return dateValue; // Mantener el valor original si es válido
+      };
+
+      // ✅ LIMPIAR TODAS LAS FECHAS antes de actualizar
+      const cleanUpdateData = { ...updateData };
+      
+      // ✅ MANEJO ESPECIAL PARA FORMA DE PAGO
+      if (cleanUpdateData.forma_pago === 'contado') {
+        console.log('💰 Contrato de contado - limpiando campos de cuotas');
+        
+        // Para pago de contado, limpiar todos los campos relacionados con cuotas
+        cleanUpdateData.tiene_cuota_inicial = false;
+        cleanUpdateData.cuota_inicial_porcentaje = 0;
+        cleanUpdateData.cuota_inicial_monto = 0;
+        cleanUpdateData.fecha_vencimiento_inicial = null; // ✅ Esto era el problema principal
+        cleanUpdateData.numero_cuotas_restantes = 0;
+        cleanUpdateData.monto_restante = 0;
+        cleanUpdateData.valor_cuota_restante = 0;
+        cleanUpdateData.fechas_vencimiento_cuotas = [];
+        cleanUpdateData.cuotas_pagadas = [];
+        cleanUpdateData.fechas_pago_cuotas = [];
+        
+        // Para contado, el saldo pendiente debe ser el precio total (hasta que se marque como pagado)
+        if (cleanUpdateData.precio_total && !cleanUpdateData.total_pagado) {
+          cleanUpdateData.saldo_pendiente = cleanUpdateData.precio_total;
+        }
+      }
+      
+      // Lista de campos de fecha a validar (solo si no son parte de cuotas en contado)
+      const dateFields = [
+        'fecha_firma', 
+        'fecha_pago_inicial',
+        'fecha_inicio_viaje',
+        'fecha_fin_viaje'
+      ];
+
+      // ✅ Solo validar fecha_vencimiento_inicial si NO es contado
+      if (cleanUpdateData.forma_pago !== 'contado') {
+        dateFields.push('fecha_vencimiento_inicial');
+      }
+
+      // Validar cada campo de fecha
+      dateFields.forEach(field => {
+        if (cleanUpdateData[field] !== undefined) {
+          cleanUpdateData[field] = validateAndCleanDate(cleanUpdateData[field], field);
+        }
+      });
+
+      // ✅ VALIDAR arrays de fechas solo si NO es contado
+      if (cleanUpdateData.forma_pago !== 'contado') {
+        if (cleanUpdateData.fechas_vencimiento_cuotas && Array.isArray(cleanUpdateData.fechas_vencimiento_cuotas)) {
+          cleanUpdateData.fechas_vencimiento_cuotas = cleanUpdateData.fechas_vencimiento_cuotas.map((fecha, index) => 
+            validateAndCleanDate(fecha, `fechas_vencimiento_cuotas[${index}]`)
+          ).filter(fecha => fecha !== null); // Remover fechas null del array
+        }
+
+        if (cleanUpdateData.fechas_pago_cuotas && Array.isArray(cleanUpdateData.fechas_pago_cuotas)) {
+          cleanUpdateData.fechas_pago_cuotas = cleanUpdateData.fechas_pago_cuotas.map((fecha, index) => 
+            validateAndCleanDate(fecha, `fechas_pago_cuotas[${index}]`)
+          ).filter(fecha => fecha !== null); // Remover fechas null del array
+        }
+      }
+
+      console.log('🔍 DEBUG - datos después de limpieza:', cleanUpdateData);
+
+      await contract.update(cleanUpdateData);
+
+      // ✅ REGENERAR PDF automáticamente si se cambiaron datos importantes
+      const shouldRegeneratePDF = (
+        cleanUpdateData.hasOwnProperty('forma_pago') ||
+        cleanUpdateData.hasOwnProperty('precio_total') ||
+        cleanUpdateData.hasOwnProperty('numero_cuotas_restantes') ||
+        cleanUpdateData.hasOwnProperty('cuota_inicial_monto') ||
+        cleanUpdateData.hasOwnProperty('fecha_vencimiento_inicial') ||
+        cleanUpdateData.hasOwnProperty('valor_cuota_restante')
+      );
+
+      let pdfRegenerated = false;
+      
+      if (shouldRegeneratePDF && contract.contrato_pdf_url) {
+        try {
+          console.log('🔄 Regenerando PDF automáticamente tras actualización de contrato...');
+          
+          // Obtener contrato con todas las relaciones necesarias para el PDF
+          const contractForPDF = await Contract.findByPk(id, {
+            include: [
+              { 
+                model: Quote,
+                as: 'Quote',
+                include: [
+                  { model: User, as: 'Cliente', attributes: ['id', 'name', 'lastname', 'email', 'phone'] },
+                  {
+                    model: Passenger,
+                    as: 'Passengers',
+                    attributes: [
+                      'id', 'nombre', 'apellido', 'documento_identidad', 
+                      'tipo_documento', 'fecha_nacimiento', 'titular'
+                    ]
+                  }
+                ]
+              },
+              {
+                model: User,
+                as: 'Cliente',
+                attributes: ['id', 'name', 'lastname', 'email', 'phone', 'documento_identidad', 'tipo_documento']
+              }
+            ]
+          });
+
+          const { generateContractPDF } = require('../utils/generateContractPDF');
+          const pdfResult = await generateContractPDF(contractForPDF, true);
+          
+          // Actualizar URL del PDF regenerado
+          await contract.update({
+            contrato_pdf_url: pdfResult.relativePath
+          });
+          
+          pdfRegenerated = true;
+          console.log('✅ PDF regenerado exitosamente:', pdfResult.filename);
+          
+        } catch (pdfError) {
+          console.error('⚠️ Error regenerando PDF automáticamente:', pdfError);
+          // No fallar la actualización si el PDF falla
+        }
+      }
 
       const updatedContract = await Contract.findByPk(id, {
         include: [
@@ -341,7 +496,8 @@ getAllContracts : async (req, res) => {
 
       res.json({
         message: 'Contrato actualizado exitosamente',
-        contract: updatedContract
+        contract: updatedContract,
+        pdf_regenerated: pdfRegenerated // ✅ Informar si se regeneró el PDF
       });
 
     } catch (error) {

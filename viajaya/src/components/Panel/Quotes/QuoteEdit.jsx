@@ -97,6 +97,7 @@ const QuoteEdit = () => {
     fecha_ida: "",
     fecha_regreso: "",
     destino: "",
+    trip_type: "nacional", // ✅ CORREGIDO: Valor por defecto
     origen: "",
     acomodacion: "Doble",
     tipo_hotel: "3 Estrellas",
@@ -341,6 +342,25 @@ const QuoteEdit = () => {
     setContractLoading(true);
 
     try {
+      // ✅ PASO 0: PRIMERO guardar la cotización con los datos actuales del formulario
+      console.log("🔄 Guardando cotización antes de crear contrato...");
+      const quoteUpdateData = {
+        ...formData,
+        precio_total: formData.precio_total
+          ? parseFloat(formData.precio_total)
+          : null,
+        numero_personas: parseInt(formData.numero_personas),
+        ninos: parseInt(formData.ninos),
+        status: "approved", // Marcarla como aprobada para crear contrato
+      };
+
+      console.log("🔍 Datos de cotización a actualizar:", { 
+        trip_type: quoteUpdateData.trip_type,
+        destino: quoteUpdateData.destino 
+      });
+
+      await dispatch(updateQuote({ id: currentQuote.id, updates: quoteUpdateData })).unwrap();
+
       // ✅ PASO 1: Actualizar datos del cliente si existe
       if (currentQuote.Cliente?.id) {
         await dispatch(
@@ -373,6 +393,7 @@ const QuoteEdit = () => {
       const contractPayload = {
         quote_id: currentQuote.id,
         cliente_id: currentQuote.Cliente?.id,
+        trip_type: formData.trip_type, // ✅ AGREGADO: Enviar explícitamente el trip_type del formulario
         forma_pago: contractData.forma_pago,
         numero_cuotas:
           contractData.forma_pago === "cuotas"
@@ -395,17 +416,6 @@ const QuoteEdit = () => {
       console.log("🔍 Creando contrato con datos:", contractPayload);
 
       await dispatch(createContract(contractPayload)).unwrap();
-
-      // ✅ PASO 4: Actualizar estado de la cotización a convertida
-      await dispatch(
-        updateQuote({
-          id: currentQuote.id,
-          updates: {
-            status: QUOTE_STATUSES.APPROVED,
-            converted_at: new Date().toISOString(),
-          },
-        })
-      ).unwrap();
 
       alert("✅ Contrato creado exitosamente!");
       setShowContractModal(false);
@@ -438,6 +448,7 @@ const QuoteEdit = () => {
           ? new Date(currentQuote.fecha_regreso).toISOString().split("T")[0]
           : "",
         destino: currentQuote.destino || "",
+        trip_type: currentQuote.trip_type || "nacional", // ✅ NUEVO: Cargar tipo de viaje
         origen: currentQuote.origen || "",
         acomodacion: currentQuote.acomodacion || "Doble",
         tipo_hotel: currentQuote.tipo_hotel || "3 Estrellas",
@@ -524,6 +535,9 @@ const QuoteEdit = () => {
     }
     if (!formData.origen.trim()) {
       newErrors.origen = "El origen es requerido";
+    }
+    if (!formData.trip_type) {
+      newErrors.trip_type = "Debe seleccionar el tipo de viaje";
     }
     if (!formData.fecha_ida) {
       newErrors.fecha_ida = "La fecha de ida es requerida";
@@ -914,6 +928,29 @@ const QuoteEdit = () => {
                   {errors.destino && (
                     <p className="text-red-500 text-sm mt-1">
                       {errors.destino}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tipo de Viaje *
+                  </label>
+                  <select
+                    name="trip_type"
+                    value={formData.trip_type}
+                    onChange={handleInputChange}
+                    disabled={isReadOnly}
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      errors.trip_type ? "border-red-500" : "border-gray-300"
+                    } ${isReadOnly ? "bg-gray-100" : ""}`}
+                  >
+                    <option value="nacional">Nacional</option>
+                    <option value="internacional">Internacional</option>
+                  </select>
+                  {errors.trip_type && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.trip_type}
                     </p>
                   )}
                 </div>
