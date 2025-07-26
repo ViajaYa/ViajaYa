@@ -106,6 +106,7 @@ const QuoteEdit = () => {
     ninos: 0,
     edades_ninos: [],
     observaciones: "",
+    precio_por_persona: "", // ✅ AGREGADO: Campo para precio por persona
     precio_total: "",
   });
 
@@ -209,7 +210,7 @@ const QuoteEdit = () => {
 
   const handlePreviewPDF = async () => {
     if (!canGeneratePDF(currentQuote)) {
-      alert("La cotización debe tener un precio total para generar el PDF");
+      alert("La cotización debe tener un precio por persona para generar el PDF");
       return;
     }
 
@@ -238,7 +239,7 @@ const QuoteEdit = () => {
 
   const handleRegeneratePDF = async () => {
     if (!canGeneratePDF(currentQuote)) {
-      alert("La cotización debe tener un precio total para regenerar el PDF");
+      alert("La cotización debe tener un precio por persona para regenerar el PDF");
       return;
     }
 
@@ -439,6 +440,11 @@ const QuoteEdit = () => {
 
   useEffect(() => {
     if (currentQuote) {
+      // ✅ CALCULAR: precio por persona desde precio total existente
+      const precioPorPersona = currentQuote.precio_total && currentQuote.numero_personas 
+        ? (parseFloat(currentQuote.precio_total) / parseInt(currentQuote.numero_personas)).toFixed(2)
+        : "";
+
       setFormData({
         numero_personas: currentQuote.numero_personas || 1,
         fecha_ida: currentQuote.fecha_ida
@@ -457,6 +463,7 @@ const QuoteEdit = () => {
         ninos: currentQuote.ninos || 0,
         edades_ninos: currentQuote.edades_ninos || [],
         observaciones: currentQuote.observaciones || "",
+        precio_por_persona: precioPorPersona, // ✅ AGREGADO: Calcular precio por persona
         precio_total: currentQuote.precio_total || "",
       });
     }
@@ -486,6 +493,26 @@ const QuoteEdit = () => {
       setFormData((prev) => ({ ...prev, ninos: numNinos }));
     }
   }, [formData.edades_ninos, formData.ninos]);
+
+  // ✅ NUEVO: Calcular precio total automáticamente
+  useEffect(() => {
+    const precioPorPersona = parseFloat(formData.precio_por_persona);
+    const numeroPersonas = parseInt(formData.numero_personas);
+    
+    if (precioPorPersona > 0 && numeroPersonas > 0) {
+      const precioTotal = (precioPorPersona * numeroPersonas).toFixed(2);
+      setFormData(prev => ({
+        ...prev,
+        precio_total: precioTotal
+      }));
+    } else if (!formData.precio_por_persona) {
+      // Si se borra el precio por persona, limpiar precio total
+      setFormData(prev => ({
+        ...prev,
+        precio_total: ""
+      }));
+    }
+  }, [formData.precio_por_persona, formData.numero_personas]);
 
   useEffect(() => {
     return () => {
@@ -558,10 +585,10 @@ const QuoteEdit = () => {
     }
     if (
       canSendQuote() &&
-      (!formData.precio_total || formData.precio_total <= 0)
+      (!formData.precio_por_persona || formData.precio_por_persona <= 0)
     ) {
-      newErrors.precio_total =
-        "El precio total es requerido y debe ser mayor a 0";
+      newErrors.precio_por_persona =
+        "El precio por persona es requerido y debe ser mayor a 0";
     }
 
     setErrors(newErrors);
@@ -610,8 +637,8 @@ const QuoteEdit = () => {
       return;
     }
 
-    if (!formData.precio_total || formData.precio_total <= 0) {
-      alert("Debes establecer un precio total antes de enviar la cotización");
+    if (!formData.precio_por_persona || formData.precio_por_persona <= 0) {
+      alert("Debes establecer un precio por persona antes de enviar la cotización");
       return;
     }
 
@@ -1237,19 +1264,42 @@ const QuoteEdit = () => {
                     </label>
                     <input
                       type="number"
-                      name="precio_total"
-                      value={formData.precio_total}
+                      name="precio_por_persona"
+                      value={formData.precio_por_persona}
                       onChange={handleInputChange}
                       disabled={isReadOnly}
                       min="0"
                       step="0.01"
                       className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                        errors.precio_total
+                        errors.precio_por_persona
                           ? "border-red-500"
                           : "border-gray-300"
                       } ${isReadOnly ? "bg-gray-100" : ""}`}
                       placeholder="0.00"
                     />
+                    {errors.precio_por_persona && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {errors.precio_por_persona}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Precio Total ({formData.numero_personas || 0} personas)
+                    </label>
+                    <input
+                      type="number"
+                      name="precio_total"
+                      value={formData.precio_total}
+                      disabled={true} // ✅ SIEMPRE READONLY - se calcula automáticamente
+                      min="0"
+                      step="0.01"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+                      placeholder="Se calcula automáticamente"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Se calcula automáticamente: {formData.precio_por_persona || 0} × {formData.numero_personas || 0} personas
+                    </p>
                     {errors.precio_total && (
                       <p className="text-red-500 text-sm mt-1">
                         {errors.precio_total}

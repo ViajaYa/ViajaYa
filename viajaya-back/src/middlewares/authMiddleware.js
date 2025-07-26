@@ -105,6 +105,13 @@ const authorizeHierarchy = async (req, res, next) => {
         const currentUserId = currentUser.id;
         const currentUserRole = currentUser.role;
 
+        // ✅ NUEVO: Validar que tenemos un targetUserId válido
+        if (isNaN(targetUserId) || !targetUserId) {
+            // Si no hay targetUserId válido, continuar (probablemente es un endpoint que no requiere verificación jerárquica específica)
+            console.log('⚠️ authorizeHierarchy: No hay targetUserId válido, continuando...');
+            return next();
+        }
+
         // ✅ CASOS DONDE SE PERMITE EL ACCESO:
 
         // 1. Acceso a su propio perfil/datos

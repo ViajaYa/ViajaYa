@@ -35,14 +35,16 @@ const PassengerForm = () => {
       dispatch(fetchPassengersByQuote(quoteId))
         .unwrap()
         .then((response) => {
+          console.log('✅ Datos recibidos:', response); // Debug
           setQuoteInfo(response.quote);
           
           // Si ya hay pasajeros, cargarlos
           if (response.passengers && response.passengers.length > 0) {
             setFormPassengers(response.passengers);
           } else {
-            // Crear formulario vacío basado en número de personas
-            initializeEmptyForm(response.quote?.numero_personas || 1);
+            // ✅ MODIFICADO: Crear formulario vacío con datos del cliente precargados
+            console.log('✅ Precargando datos del cliente:', response.clientData); // Debug
+            initializeEmptyForm(response.quote?.numero_personas || 1, response.clientData);
           }
         })
         .catch((err) => {
@@ -51,17 +53,49 @@ const PassengerForm = () => {
     }
   }, [quoteId, dispatch]);
 
-  // Inicializar formulario vacío
-  const initializeEmptyForm = (numPersonas) => {
-    const emptyPassengers = Array.from({ length: numPersonas }, (_, index) => ({
-      id: `temp-${index}`,
-      nombre: '',
-      apellido: '',
-      documento_identidad: '',
-      tipo_documento: 'CC',
-      fecha_nacimiento: '',
-      titular: index === 0, // Primer pasajero como titular por defecto
-    }));
+  // ✅ MODIFICADO: Inicializar formulario vacío con datos del cliente precargados
+  const initializeEmptyForm = (numPersonas, clientData = null) => {
+    console.log('🚀 initializeEmptyForm llamada con:', { numPersonas, clientData });
+    console.log('🔍 clientData detallado:', {
+      existe: !!clientData,
+      nombre: clientData?.nombre,
+      apellido: clientData?.apellido,
+      email: clientData?.email,
+      telefono: clientData?.telefono
+    });
+    
+    const emptyPassengers = Array.from({ length: numPersonas }, (_, index) => {
+      const esTitular = index === 0;
+      const tieneClientData = esTitular && clientData;
+      
+      console.log(`🔍 Procesando pasajero ${index}:`, { esTitular, tieneClientData });
+      
+      const passengerData = {
+        id: `temp-${index}`,
+        nombre: tieneClientData ? clientData.nombre : '',
+        apellido: tieneClientData ? clientData.apellido : '',
+        documento_identidad: tieneClientData ? clientData.documento_identidad : '',
+        tipo_documento: tieneClientData ? clientData.tipo_documento : 'CC',
+        fecha_nacimiento: tieneClientData ? clientData.fecha_nacimiento : '',
+        titular: esTitular, // Primer pasajero como titular por defecto
+        // ✅ AGREGADO: Campos adicionales para el titular precargados
+        ...(tieneClientData ? {
+          email: clientData.email || '',
+          telefono: clientData.telefono || '',
+          direccion: clientData.direccion || '',
+          ciudad: clientData.ciudad || '',
+          pais: clientData.pais || 'Colombia'
+        } : {})
+      };
+      
+      if (index === 0) {
+        console.log(`✅ Pasajero titular creado:`, passengerData);
+      }
+      
+      return passengerData;
+    });
+    
+    console.log('✅ Array completo de pasajeros:', emptyPassengers);
     setFormPassengers(emptyPassengers);
   };
 
@@ -97,17 +131,43 @@ const PassengerForm = () => {
     }
     
     formPassengers.forEach((passenger, index) => {
-      if (!passenger.nombre?.trim()) {
-        errors.push(`Pasajero ${index + 1}: El nombre es obligatorio`);
-      }
-      if (!passenger.apellido?.trim()) {
-        errors.push(`Pasajero ${index + 1}: El apellido es obligatorio`);
-      }
-      if (!passenger.documento_identidad?.trim()) {
-        errors.push(`Pasajero ${index + 1}: El documento es obligatorio`);
-      }
-      if (!passenger.fecha_nacimiento) {
-        errors.push(`Pasajero ${index + 1}: La fecha de nacimiento es obligatoria`);
+      // ✅ MODIFICADO: Solo validar campos obligatorios para el titular
+      if (passenger.titular) {
+        // Validaciones obligatorias para TITULAR
+        if (!passenger.nombre?.trim()) {
+          errors.push(`Pasajero titular: El nombre es obligatorio`);
+        }
+        if (!passenger.apellido?.trim()) {
+          errors.push(`Pasajero titular: El apellido es obligatorio`);
+        }
+        if (!passenger.documento_identidad?.trim()) {
+          errors.push(`Pasajero titular: El documento es obligatorio`);
+        }
+        if (!passenger.fecha_nacimiento) {
+          errors.push(`Pasajero titular: La fecha de nacimiento es obligatoria`);
+        }
+        if (!passenger.email?.trim()) {
+          errors.push(`Pasajero titular: El email es obligatorio`);
+        } else if (!/\S+@\S+\.\S+/.test(passenger.email)) {
+          errors.push(`Pasajero titular: El email no es válido`);
+        }
+        if (!passenger.telefono?.trim()) {
+          errors.push(`Pasajero titular: El teléfono es obligatorio`);
+        }
+      } else {
+        // ✅ NUEVO: Para NO TITULARES, solo validar si hay datos parciales
+        const hasPartialData = passenger.nombre?.trim() || passenger.apellido?.trim() || 
+                               passenger.documento_identidad?.trim() || passenger.fecha_nacimiento;
+        
+        if (hasPartialData) {
+          // Si empezó a llenar datos, validar que al menos tenga nombre y apellido
+          if (!passenger.nombre?.trim()) {
+            errors.push(`Pasajero ${index + 1}: Si ingresa datos, el nombre es obligatorio`);
+          }
+          if (!passenger.apellido?.trim()) {
+            errors.push(`Pasajero ${index + 1}: Si ingresa datos, el apellido es obligatorio`);
+          }
+        }
       }
     });
     
@@ -136,6 +196,14 @@ const PassengerForm = () => {
         tipo_documento: p.tipo_documento,
         fecha_nacimiento: p.fecha_nacimiento,
         titular: p.titular || false,
+        // ✅ AGREGADO: Incluir datos adicionales para el titular
+        ...(p.titular ? {
+          email: p.email?.trim(),
+          telefono: p.telefono?.trim(),
+          direccion: p.direccion?.trim(),
+          ciudad: p.ciudad?.trim(),
+          pais: p.pais || 'Colombia'
+        } : {})
       }));
       
       await dispatch(createOrUpdatePassengers({
@@ -205,6 +273,22 @@ const PassengerForm = () => {
               <div>
                 <span className="font-medium text-gray-700">Pasajeros:</span>
                 <span className="ml-2 text-gray-900">{quoteInfo.numero_personas}</span>
+              </div>
+            </div>
+            
+            {/* ✅ AGREGADO: Mensaje informativo */}
+            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-start">
+                <div className="text-yellow-600 text-lg mr-2">💡</div>
+                <div className="text-sm text-yellow-800">
+                  <p className="font-medium mb-1">Información importante:</p>
+                  <ul className="list-disc list-inside space-y-1 text-xs">
+                    <li>Los datos del <strong>pasajero titular</strong> se han precargado con la información del solicitante</li>
+                    <li>Solo los datos del titular son obligatorios inicialmente</li>
+                    <li>Los datos de otros pasajeros pueden completarse después en la edición</li>
+                    <li>El titular se registrará automáticamente como usuario del sistema</li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>

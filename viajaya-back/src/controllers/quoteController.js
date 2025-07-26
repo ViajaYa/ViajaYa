@@ -51,6 +51,34 @@ const createClientUser = async (quoteData) => {
   }
 };
 
+// ✅ NUEVO: Función helper para validar que todos los pasajeros tengan datos completos (para generar contrato)
+const validatePassengersForContract = async (quoteId) => {
+  const passengers = await Passenger.findAll({
+    where: { quote_id: quoteId }
+  });
+
+  const errors = [];
+  
+  passengers.forEach((passenger, index) => {
+    const missingFields = [];
+    
+    if (!passenger.nombre?.trim()) missingFields.push('nombre');
+    if (!passenger.apellido?.trim()) missingFields.push('apellido');
+    if (!passenger.documento_identidad?.trim()) missingFields.push('documento_identidad');
+    if (!passenger.tipo_documento?.trim()) missingFields.push('tipo_documento');
+    if (!passenger.fecha_nacimiento) missingFields.push('fecha_nacimiento');
+    
+    if (missingFields.length > 0) {
+      errors.push(`Pasajero ${index + 1} (${passenger.nombre || 'Sin nombre'}): Faltan campos ${missingFields.join(', ')}`);
+    }
+  });
+
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+
 const quoteController = {
   // Crear nueva cotización
   createQuote: async (req, res) => {
@@ -837,6 +865,14 @@ getPassengersByQuote: async (req, res) => {
 
       // Verificar que la cotización existe
       const quote = await Quote.findByPk(quoteId);
+      
+      console.log('🔍 Quote encontrada:', quote ? 'SÍ' : 'NO');
+      console.log('🔍 Datos directos de quote:', {
+        nombre_cliente: quote?.nombre_cliente,
+        email_cliente: quote?.email_cliente,
+        telefono_cliente: quote?.telefono_cliente
+      });
+      
       if (!quote) {
         return res.status(404).json({
           success: false,
@@ -853,6 +889,46 @@ getPassengersByQuote: async (req, res) => {
         ]
       });
 
+      // ✅ CORREGIDO: Usar datos de la cotización para precarga (campos para frontend)
+      let clientData = null;
+      
+      if (quote.nombre_cliente || quote.email_cliente) {
+        // Separar nombre y apellido del nombre completo
+        const nombreCompleto = quote.nombre_cliente || '';
+        const partesNombre = nombreCompleto.trim().split(' ');
+        const nombre = partesNombre[0] || '';
+        const apellido = partesNombre.slice(1).join(' ') || '';
+
+        // ✅ AGREGADO: Si no hay apellido, usar el nombre completo como nombre
+        const nombreFinal = nombre || nombreCompleto;
+        const apellidoFinal = apellido || '';
+
+        clientData = {
+          nombre: nombreFinal,                    // Para frontend PassengerForm
+          apellido: apellidoFinal,                // Para frontend PassengerForm (puede estar vacío)
+          email: quote.email_cliente || '',
+          telefono: quote.telefono_cliente || '',  // Para frontend PassengerForm
+          documento_identidad: '',
+          tipo_documento: 'cc',              // ✅ CORREGIDO: Usar minúsculas para consistencia
+          fecha_nacimiento: '',
+          direccion: '',
+          ciudad: '',
+          pais: 'Colombia'
+        };
+
+        console.log('✅ Datos del cliente para precarga (frontend):', clientData);
+        console.log('🔍 Debug separación nombre:', { 
+          nombreCompleto, 
+          partesNombre, 
+          nombreOriginal: nombre, 
+          apellidoOriginal: apellido,
+          nombreFinal,
+          apellidoFinal
+        });
+      } else {
+        console.log('⚠️ No hay datos del cliente en la cotización');
+      }
+
       res.json({
         success: true,
         passengers,
@@ -863,7 +939,9 @@ getPassengersByQuote: async (req, res) => {
           quote_number: quote.quote_number,
           numero_personas: quote.numero_personas,
           status: quote.status
-        }
+        },
+        // ✅ AGREGADO: Datos del cliente para precargar
+        clientData
       });
 
     } catch (error) {
@@ -899,11 +977,11 @@ getPassengersByQuote: async (req, res) => {
         });
       }
 
-      // Validar que el número de pasajeros coincida
-      if (passengers.length !== quote.numero_personas) {
+      // ✅ MODIFICADO: Validar que el número de pasajeros no exceda el límite (puede ser menor si faltan datos)
+      if (passengers.length > quote.numero_personas) {
         return res.status(400).json({
           success: false,
-          message: `El número de pasajeros (${passengers.length}) no coincide con el número de personas de la cotización (${quote.numero_personas})`
+          message: `El número de pasajeros (${passengers.length}) no puede exceder el número de personas de la cotización (${quote.numero_personas})`
         });
       }
 
@@ -924,25 +1002,102 @@ getPassengersByQuote: async (req, res) => {
       // Crear nuevos pasajeros
       const newPassengers = await Promise.all(
         passengers.map(async (passengerData, index) => {
-          // Validar campos obligatorios
-          const requiredFields = ['nombre', 'apellido', 'documento_identidad', 'tipo_documento', 'fecha_nacimiento'];
-          for (const field of requiredFields) {
-            if (!passengerData[field]) {
-              throw new Error(`El campo '${field}' es obligatorio para el pasajero ${index + 1}`);
+          
+          // ✅ MODIFICADO: Validaciones flexibles según si es titular o no
+          if (passengerData.titular) {
+            // TITULAR: Validar todos los campos obligatorios
+            const requiredFields = ['nombre', 'apellido', 'documento_identidad', 'tipo_documento', 'fecha_nacimiento'];
+            for (const field of requiredFields) {
+              if (!passengerData[field]) {
+                throw new Error(`El campo '${field}' es obligatorio para el pasajero titular`);
+              }
+            }
+            
+            // Validar campos adicionales del titular
+            if (!passengerData.email || !passengerData.telefono) {
+              throw new Error('El email y teléfono son obligatorios para el pasajero titular');
+            }
+          } else {
+            // NO TITULAR: Permitir datos incompletos - Solo validar formato si hay datos
+            // Los datos se validarán completamente al generar el contrato
+            if (passengerData.email && !passengerData.email.includes('@')) {
+              throw new Error(`Pasajero ${index + 1}: Email inválido`);
+            }
+            
+            // No requerir campos obligatorios para no titulares en esta etapa
+            console.log(`✅ Pasajero no titular ${index + 1}: Permitiendo datos incompletos para completar después`);
+          }
+
+          // ✅ NUEVO: Si es titular, crear o actualizar usuario
+          if (passengerData.titular) {
+            // Buscar si ya existe un usuario con ese email
+            let user = await User.findOne({
+              where: { email: passengerData.email.toLowerCase() }
+            });
+
+            if (user) {
+              // ✅ Usuario existe - actualizar datos si es necesario
+              await user.update({
+                name: passengerData.nombre.trim(),
+                lastname: passengerData.apellido.trim(),
+                phone: passengerData.telefono.trim(),
+                documento_identidad: passengerData.documento_identidad.trim(),
+                tipo_documento: passengerData.tipo_documento.toLowerCase(), // ✅ CORREGIDO: Convertir a minúsculas para el ENUM
+                fecha_nacimiento: passengerData.fecha_nacimiento,
+                direccion: passengerData.direccion?.trim() || user.direccion,
+                ciudad: passengerData.ciudad?.trim() || user.ciudad,
+                pais: passengerData.pais || user.pais
+              });
+              console.log(`✅ Usuario actualizado: ${user.email}`);
+            } else {
+              // ✅ Usuario nuevo - crear
+              user = await User.create({
+                name: passengerData.nombre.trim(),
+                lastname: passengerData.apellido.trim(),
+                email: passengerData.email.toLowerCase(),
+                phone: passengerData.telefono.trim(),
+                documento_identidad: passengerData.documento_identidad.trim(),
+                tipo_documento: passengerData.tipo_documento.toLowerCase(), // ✅ CORREGIDO: Convertir a minúsculas para el ENUM
+                fecha_nacimiento: passengerData.fecha_nacimiento,
+                direccion: passengerData.direccion?.trim(),
+                ciudad: passengerData.ciudad?.trim(),
+                pais: passengerData.pais || 'Colombia',
+                role: 1, // ✅ CORREGIDO: Usar 1 para Cliente (no 'cliente')
+                password: 'temp123', // Temporal - se debe cambiar en primera sesión
+                email_verified: false, // ✅ CORREGIDO: Usar email_verified (no isEmailVerified)
+                // ✅ REMOVIDO: requirePasswordChange (campo no existe en modelo)
+              });
+              console.log(`✅ Usuario creado: ${user.email}`);
+            }
+
+            // Actualizar la cotización con el cliente_id si no lo tenía
+            if (!quote.cliente_id) {
+              await quote.update({ cliente_id: user.id });
             }
           }
 
-          return await Passenger.create({
-            quote_id: quoteId,
-            nombre: passengerData.nombre.trim(),
-            apellido: passengerData.apellido.trim(),
-            documento_identidad: passengerData.documento_identidad.trim(),
-            tipo_documento: passengerData.tipo_documento,
-            fecha_nacimiento: passengerData.fecha_nacimiento,
-            titular: passengerData.titular || false
-          });
+          // ✅ MODIFICADO: Crear pasajero con datos parciales permitidos para no titulares
+          const hasMinimumData = passengerData.titular || // Titular siempre se crea
+                                (passengerData.nombre?.trim()); // No titular: al menos el nombre
+          
+          if (hasMinimumData) {
+            return await Passenger.create({
+              quote_id: quoteId,
+              nombre: passengerData.nombre?.trim() || '',
+              apellido: passengerData.apellido?.trim() || '',
+              documento_identidad: passengerData.documento_identidad?.trim() || null,
+              tipo_documento: passengerData.tipo_documento?.toLowerCase() || 'cc', // ✅ CORREGIDO: Minúsculas y default 'cc'
+              fecha_nacimiento: passengerData.fecha_nacimiento || null,
+              titular: passengerData.titular || false
+            });
+          }
+          
+          return null; // No crear registro si no hay datos mínimos completos
         })
       );
+
+      // Filtrar nulls
+      const validPassengers = newPassengers.filter(p => p !== null);
 
       // Actualizar status de la cotización si estaba pendiente de pasajeros
       if (quote.status === 'pending_passengers') {
@@ -951,11 +1106,30 @@ getPassengersByQuote: async (req, res) => {
         });
       }
 
+      // ✅ AGREGADO: Obtener información del titular y usuario creado
+      const titular = passengers.find(p => p.titular);
+      let userInfo = null;
+      if (titular && titular.email) {
+        const user = await User.findOne({
+          where: { email: titular.email.toLowerCase() },
+          attributes: ['id', 'email', 'name', 'lastname', 'phone']
+        });
+        userInfo = user;
+      }
+
       res.status(201).json({
         success: true,
-        message: "Pasajeros guardados exitosamente",
-        passengers: newPassengers,
-        total: newPassengers.length
+        message: `Pasajeros guardados exitosamente. Se crearon ${validPassengers.length} de ${quote.numero_personas} pasajeros.`,
+        passengers: validPassengers,
+        total: validPassengers.length,
+        expected: quote.numero_personas,
+        // ✅ AGREGADO: Información del usuario creado/actualizado
+        userCreated: userInfo ? {
+          id: userInfo.id,
+          email: userInfo.email,
+          name: `${userInfo.name} ${userInfo.lastname}`,
+          phone: userInfo.phone
+        } : null
       });
 
     } catch (error) {

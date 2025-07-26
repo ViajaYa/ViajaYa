@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { createQuote } from '../../redux/slices/quoteSlice';
-import { fetchUserByEmail, clearEmailValidation, selectEmailValidation } from '../../redux/slices/userSlice';
+import { checkEmailExists, clearEmailValidation, selectEmailValidation } from '../../redux/slices/userSlice';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTimes, faUser, faCalendarAlt, faMapMarkerAlt, 
   faExclamationTriangle, faCheck, faSearch  } from '@fortawesome/free-solid-svg-icons';
@@ -40,7 +40,7 @@ const QuotePopup = ({ isOpen, onClose, prefilledData = {} }) => {
    useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (form.email_cliente && form.email_cliente.trim() && /\S+@\S+\.\S+/.test(form.email_cliente)) {
-        dispatch(fetchUserByEmail(form.email_cliente.trim().toLowerCase()));
+        dispatch(checkEmailExists(form.email_cliente.trim().toLowerCase()));
       } else {
         dispatch(clearEmailValidation());
       }

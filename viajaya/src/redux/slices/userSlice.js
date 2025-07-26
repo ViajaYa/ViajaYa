@@ -29,6 +29,7 @@ const initialState = {
   metricsLoading: false,
   dashboardLoading: false,
   commissionsLoading: false,
+  emailCheckResult: null, // ✅ NUEVO: Para almacenar resultado de verificación de email
   emailValidation: {
     isChecking: false,
     userData: null,
@@ -135,6 +136,21 @@ export const fetchUserById = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.message || 'Error al obtener usuario'
+      );
+    }
+  }
+);
+
+// ✅ NUEVO: Verificar email sin autenticación (para cotizaciones)
+export const checkEmailExists = createAsyncThunk(
+  'user/checkEmailExists',
+  async (email, { rejectWithValue }) => {
+    try {
+      const response = await axios.get(`${BASE_URL}/user/check-email/${encodeURIComponent(email)}`);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Error al verificar email'
       );
     }
   }
@@ -562,6 +578,31 @@ const userSlice = createSlice({
       .addCase(changeUserPassword.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+
+      // ✅ NUEVO: Check Email Exists (sin autenticación)
+      .addCase(checkEmailExists.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.emailValidation.isChecking = true;
+        state.emailValidation.error = null;
+      })
+      .addCase(checkEmailExists.fulfilled, (state, action) => {
+        state.loading = false;
+        state.emailCheckResult = action.payload;
+        // Mantener compatibilidad con emailValidation
+        state.emailValidation.isChecking = false;
+        state.emailValidation.exists = action.payload.exists;
+        state.emailValidation.userData = action.payload.exists ? action.payload.user : null;
+        state.emailValidation.error = null;
+      })
+      .addCase(checkEmailExists.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+        state.emailValidation.isChecking = false;
+        state.emailValidation.exists = false;
+        state.emailValidation.userData = null;
+        state.emailValidation.error = action.payload;
       })
 
       // Unlock User Account

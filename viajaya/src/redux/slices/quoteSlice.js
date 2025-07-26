@@ -418,7 +418,8 @@ export const fetchPassengersByQuote = createAsyncThunk(
         quoteId,
         passengers: data.passengers || [],
         total: data.total || 0,
-        quote: data.quote
+        quote: data.quote,
+        clientData: data.clientData || null  // ✅ AGREGADO: Incluir clientData del backend
       };
     } catch (error) {
       console.error('❌ fetchPassengersByQuote error:', error);
