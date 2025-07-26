@@ -1144,36 +1144,106 @@ const signatureToken = generateSignatureToken(contract.id);
   servePDF: async (req, res) => {
   try {
     const { id } = req.params;
+    const { t: timestamp } = req.query; // Detectar si viene con timestamp anti-cache
     
-    const contract = await Contract.findByPk(id);
+    const contract = await Contract.findByPk(id, {
+      include: [
+        { 
+          model: Quote,
+          as: 'Quote',
+          include: [
+            { model: User, as: 'Cliente', attributes: ['id', 'name', 'lastname', 'email', 'phone'] },
+            {
+              model: Passenger,
+              as: 'Passengers',
+              attributes: [
+                'id', 'nombre', 'apellido', 'documento_identidad', 
+                'tipo_documento', 'fecha_nacimiento', 'titular'
+              ]
+            }
+          ]
+        },
+        {
+          model: User,
+          as: 'Cliente',
+          attributes: ['id', 'name', 'lastname', 'email', 'phone', 'documento_identidad', 'tipo_documento']
+        }
+      ]
+    });
+    
     if (!contract) {
       return res.status(404).json({ message: 'Contrato no encontrado' });
     }
 
-    if (!contract.contrato_pdf_url) {
-      return res.status(404).json({ message: 'PDF no generado para este contrato' });
-    }
-
     const path = require('path');
     const fs = require('fs');
-    const filePath = path.join(__dirname, '../../', contract.contrato_pdf_url);
-    
-    // ✅ VERIFICAR si el archivo existe físicamente
+    let filePath = null;
+    let shouldGeneratePDF = false;
+
+    // ✅ VERIFICAR si existe PDF y archivo físico
+    if (contract.contrato_pdf_url) {
+      filePath = path.join(__dirname, '../../', contract.contrato_pdf_url);
+      if (!fs.existsSync(filePath)) {
+        console.log('⚠️ PDF referenciado no existe en disco, regenerando...');
+        shouldGeneratePDF = true;
+      }
+    } else {
+      console.log('⚠️ No hay PDF generado para este contrato, generando...');
+      shouldGeneratePDF = true;
+    }
+
+    // ✅ GENERAR PDF automáticamente si no existe
+    if (shouldGeneratePDF) {
+      try {
+        console.log('🔄 Generando PDF automáticamente para contrato:', contract.contract_number);
+        const { generateContractPDF } = require('../utils/generateContractPDF');
+        const pdfResult = await generateContractPDF(contract, true);
+        
+        // Actualizar contrato con nueva URL
+        await contract.update({
+          contrato_pdf_url: pdfResult.relativePath
+        });
+        
+        filePath = pdfResult.filepath;
+        console.log('✅ PDF generado automáticamente:', pdfResult.filename);
+        
+      } catch (pdfError) {
+        console.error('❌ Error generando PDF automáticamente:', pdfError);
+        return res.status(500).json({ 
+          message: 'Error generando PDF del contrato: ' + pdfError.message 
+        });
+      }
+    }
+
+    // ✅ VERIFICAR una vez más que el archivo existe
     if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ message: 'Archivo PDF no encontrado en el servidor' });
+      return res.status(500).json({ 
+        message: 'Error: PDF no se pudo generar correctamente' 
+      });
     }
 
     // ✅ ESTABLECER headers para PDF
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="contrato-${contract.contract_number}.pdf"`);
-    res.setHeader('Cache-Control', 'private, max-age=3600'); // Cache por 1 hora
+    
+    // ✅ MEJORAR: Headers anti-cache si viene con timestamp
+    if (timestamp) {
+      console.log('🔄 Sirviendo PDF con headers anti-cache (timestamp:', timestamp, ')');
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.setHeader('Last-Modified', new Date().toUTCString());
+      res.setHeader('ETag', `"${Date.now()}"`); // ETag único para forzar revalidación
+    } else {
+      res.setHeader('Cache-Control', 'private, max-age=3600'); // Cache por 1 hora solo si no hay timestamp
+    }
     
     // ✅ ENVIAR archivo
     res.sendFile(filePath);
     
   } catch (error) {
     console.error('Error sirviendo PDF:', error);
-    res.status(500).json({ message: 'Error interno del servidor' });
+    res.status(500).json({ message: 'Error interno del servidor: ' + error.message });
   }
 },
 

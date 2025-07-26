@@ -26,6 +26,7 @@ import {
   faCheckCircle,
   faCoins,
   faArrowLeft,
+  faFilePdf, // ✅ AGREGAR: Icono para generar PDF
 } from "@fortawesome/free-solid-svg-icons";
 import {
   fetchContractById,
@@ -103,8 +104,33 @@ const ContractsList = () => {
   const handleAction = async (action, contractId, contract = null) => {
     switch (action) {
       case "view": {
-        const pdfUrl = `${import.meta.env.VITE_API_URL}/contracts/pdf/${contractId}`;
-        window.open(pdfUrl, '_blank');
+        try {
+          // ✅ AGREGAR timestamp para evitar cache del navegador
+          const timestamp = new Date().getTime();
+          const pdfUrl = `${import.meta.env.VITE_API_URL}/contracts/pdf/${contractId}?t=${timestamp}`;
+          
+          // ✅ VERIFICAR si el PDF existe antes de abrir
+          const response = await fetch(pdfUrl, { method: 'HEAD' });
+          if (response.ok) {
+            window.open(pdfUrl, '_blank');
+          } else {
+            // ✅ Si el PDF no existe, preguntar si generar
+            if (confirm('El PDF no está disponible. ¿Desea generarlo ahora?')) {
+              console.log('🔄 Generando PDF automáticamente...');
+              await dispatch(generateContractPDF(contractId));
+              // Intentar abrir nuevamente después de generar
+              setTimeout(() => {
+                window.open(pdfUrl, '_blank');
+              }, 2000);
+            }
+          }
+        } catch (error) {
+          console.error('Error verificando PDF:', error);
+          // Si hay error en la verificación, intentar abrir directamente
+          const timestamp = new Date().getTime();
+          const pdfUrl = `${import.meta.env.VITE_API_URL}/contracts/pdf/${contractId}?t=${timestamp}`;
+          window.open(pdfUrl, '_blank');
+        }
         break;
       }
       case "edit":
@@ -117,18 +143,59 @@ const ContractsList = () => {
         setShowSendModal(true);
         break;
       case "download":
-        // ✅ MEJORAR: Acción de descarga
-        if (contract?.contrato_pdf_url) {
-          const pdfUrl = `${import.meta.env.VITE_API_URL}/${contract.contrato_pdf_url}`;
-          const link = document.createElement('a');
-          link.href = pdfUrl;
-          link.download = `contrato-${contract.contract_number}.pdf`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-        } else {
-          // Generar y descargar
-          dispatch(generateContractPDF(contractId));
+        // ✅ MEJORAR: Acción de descarga usando la misma ruta que la visualización
+        try {
+          const timestamp = new Date().getTime();
+          // ✅ USAR la misma ruta que funciona para visualizar PDF
+          const pdfUrl = `${import.meta.env.VITE_API_URL}/contracts/pdf/${contractId}?t=${timestamp}`;
+          
+          // ✅ VERIFICAR que el PDF existe
+          const response = await fetch(pdfUrl, { method: 'HEAD' });
+          if (response.ok) {
+            // ✅ DESCARGAR usando la URL válida
+            const link = document.createElement('a');
+            link.href = pdfUrl;
+            link.download = `contrato-${contract?.contract_number || contractId}.pdf`;
+            link.target = '_blank'; // Abrir en nueva pestaña como fallback
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          } else {
+            // ✅ Si no existe, preguntar si generar
+            if (confirm('El PDF no está disponible. ¿Desea generarlo para descarga?')) {
+              console.log('🔄 Generando PDF para descarga...');
+              await dispatch(generateContractPDF(contractId));
+              // Intentar descargar después de generar
+              setTimeout(() => {
+                const newLink = document.createElement('a');
+                newLink.href = pdfUrl;
+                newLink.download = `contrato-${contract?.contract_number || contractId}.pdf`;
+                document.body.appendChild(newLink);
+                newLink.click();
+                document.body.removeChild(newLink);
+              }, 2000);
+            }
+          }
+        } catch (error) {
+          console.error('Error en descarga:', error);
+          alert('Error al descargar el PDF: ' + error.message);
+        }
+        break;
+      case "generate_pdf":
+        // ✅ NUEVA ACCIÓN: Generar PDF manualmente
+        try {
+          console.log('🔄 Generando PDF manualmente para contrato:', contractId);
+          await dispatch(generateContractPDF(contractId));
+          alert('PDF generado exitosamente');
+          // Recargar la lista para actualizar el estado
+          dispatch(fetchContracts({
+            page: pagination.page,
+            limit: pagination.limit,
+            filters
+          }));
+        } catch (error) {
+          console.error('Error generando PDF:', error);
+          alert('Error al generar el PDF: ' + error.message);
         }
         break;
       case "approve":
@@ -544,6 +611,16 @@ const ContractsList = () => {
                     <div className="col-span-1">
                       <div className="flex items-center gap-1">
 
+                        {/* ✅ GENERAR PDF - Mostrar si no existe PDF */}
+                        {!contract.contrato_pdf_url && (
+                          <button
+                            onClick={() => handleAction("generate_pdf", contract.id)}
+                            className="p-2 text-orange-600 hover:bg-orange-50 rounded transition-colors"
+                            title="Generar PDF"
+                          >
+                            <FontAwesomeIcon icon={faFilePdf} size="sm" />
+                          </button>
+                        )}
 
                         {/* Editar */}
                         {contract.status === "draft" && (
@@ -559,8 +636,12 @@ const ContractsList = () => {
                         {/* Ver */}
                         <button
                           onClick={() => handleAction("view", contract.id)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                          title="Ver detalles"
+                          className={`p-2 hover:bg-blue-50 rounded transition-colors ${
+                            contract.contrato_pdf_url 
+                              ? "text-blue-600" 
+                              : "text-gray-400"
+                          }`}
+                          title={contract.contrato_pdf_url ? "Ver PDF" : "PDF no disponible - Click para generar"}
                         >
                           <FontAwesomeIcon icon={faEye} size="sm" />
                         </button>
@@ -607,11 +688,15 @@ const ContractsList = () => {
                             </button>
                           )}
 
-                        {/* Descargar */}
+                        {/* Descargar - Siempre disponible */}
                         <button
-                          onClick={() => handleAction("download", contract.id)}
-                          className="p-2 text-purple-600 hover:bg-purple-50 rounded transition-colors"
-                          title="Descargar PDF"
+                          onClick={() => handleAction("download", contract.id, contract)}
+                          className={`p-2 hover:bg-purple-50 rounded transition-colors ${
+                            contract.contrato_pdf_url 
+                              ? "text-purple-600" 
+                              : "text-gray-400"
+                          }`}
+                          title={contract.contrato_pdf_url ? "Descargar PDF" : "Generar y descargar PDF"}
                         >
                           <FontAwesomeIcon icon={faDownload} size="sm" />
                         </button>
