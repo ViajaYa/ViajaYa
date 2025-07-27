@@ -228,12 +228,20 @@ const commissionController = {
     }
   },
 
-  // ✅ MARCAR comisión como PAGADA
- payCommission: async (req, res) => {
+  // ✅ MARCAR comisión como PAGADA con comprobante obligatorio
+  payCommission: async (req, res) => {
     try {
       const { commissionId } = req.params;
       const { observaciones } = req.body;
       const userId = req.user.id;
+
+      // ✅ Verificar que se haya subido el comprobante de pago
+      if (!req.file) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'El comprobante de pago es obligatorio' 
+        });
+      }
 
       const commission = await Commission.findByPk(commissionId, {
         include: [
@@ -255,19 +263,27 @@ const commissionController = {
       });
 
       if (!commission) {
-        return res.status(404).json({ message: 'Comisión no encontrada' });
+        return res.status(404).json({ 
+          success: false,
+          message: 'Comisión no encontrada' 
+        });
       }
 
       // ✅ Verificar que esté en estado correcto
       if (commission.status !== 'approved') {
         return res.status(400).json({ 
+          success: false,
           message: `Solo se pueden pagar comisiones aprobadas. Estado actual: ${commission.status}` 
         });
       }
 
+      // ✅ Guardar la URL del comprobante de pago
+      const comprobanteUrl = req.file.path || req.file.filename;
+
       await commission.update({
         status: 'paid',
         fecha_pago: new Date(),
+        comprobante_pago_url: comprobanteUrl,
         observaciones: observaciones || commission.observaciones,
         pagado_por: userId
       });

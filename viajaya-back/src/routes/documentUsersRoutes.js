@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const upload = require('../config/multerConfig'); // Importar configuración de Multer
+const { upload } = require('../config/multerConfig'); // Importar configuración de Multer
 const documentUsersController = require('../controllers/documentUsersController');
 
 // ✅ Subir archivo directamente con Multer + Cloudinary

@@ -95,6 +95,15 @@ module.exports = (sequelize) => {
       type: DataTypes.ENUM('ahorros', 'corriente'),
       allowNull: true,
     },
+    // Campos adicionales para datos bancarios
+    nombre_titular: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    documento_titular: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     // Estado del vendedor
     is_active_seller: {
       type: DataTypes.BOOLEAN,

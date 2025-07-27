@@ -113,8 +113,10 @@ const ContractSignature = () => {
         signatureData
       })).unwrap();
 
-      // Redirigir directamente a página de confirmación (sin alert)
-      navigate(`/signature-success/${contractId}`, { 
+      alert('✅ ¡Contrato firmado exitosamente!');
+      
+      // Redirigir a página de confirmación
+      navigate(`/contract-signed/${contractId}`, { 
         state: { success: true, contract: result } 
       });
 

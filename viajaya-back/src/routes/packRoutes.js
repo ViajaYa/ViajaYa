@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const upload = require('../config/multerConfig'); // Importar configuración de multer
+const { upload } = require('../config/multerConfig'); // Importar configuración de multer
 const { getPacks, getChars, getPackById, putPack, postPack, deletePack } = require('../controllers/packController');
 
 // Obtener todos los packs

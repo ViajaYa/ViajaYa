@@ -1,5 +1,4 @@
 const {Router} = require("express")
-const { User } = require("../db"); // ✅ AGREGADO: Import del modelo User para el endpoint check-email
 const {
     getUsers, 
     putUser, 
@@ -14,7 +13,10 @@ const {
     resetPassword,
     unlockAccount,
     getOrganizationStructure,
-    getTeamMetrics
+    getTeamMetrics,
+    checkEmailExists,
+    getBankingData,
+    updateBankingData
 } = require("../controllers/userController")
 const sendMail = require("../helpers/sendMailContact")
 const Recovery = require("../helpers/Recovery")
@@ -88,6 +90,9 @@ userRoutes.get("/recovery/:email", async (req,res) => {
         res.status(500).json({message: "Error en recuperación de contraseña"});
     }
 });
+
+// ✅ Verificar si un email existe (ruta pública para el flujo de cotización)
+userRoutes.get("/check-email/:email", checkEmailExists);
 
 // Rutas protegidas (requieren autenticación)
 userRoutes.get("/verify/token", authenticateToken, async (req,res) => {
@@ -294,54 +299,6 @@ userRoutes.put("/update/:id", authenticateToken, authorizeHierarchy, async (req,
     }
 });
 
-// ✅ NUEVO: Endpoint público para verificar si un email existe (para cotizaciones)
-userRoutes.get('/check-email/:email', async (req, res) => {
-    try {
-        const { email } = req.params;
-        
-        // Decodificar el email si viene URL-encoded
-        const decodedEmail = decodeURIComponent(email);
-        
-        console.log('🔍 Verificando email:', decodedEmail);
-        
-        const user = await User.findOne({
-            where: { 
-                email: decodedEmail.toLowerCase(),
-                is_active: true
-            },
-            attributes: ['id', 'name', 'lastname', 'email', 'phone', 'role']
-        });
-
-        if (user) {
-            res.json({
-                success: true,
-                exists: true,
-                user: {
-                    id: user.id,
-                    name: user.name,
-                    lastname: user.lastname,
-                    email: user.email,
-                    phone: user.phone,
-                    role: user.role
-                }
-            });
-        } else {
-            res.json({
-                success: true,
-                exists: false,
-                message: 'Usuario no encontrado'
-            });
-        }
-    } catch (error) {
-        console.error('Error checking email:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error al verificar email',
-            error: error.message
-        });
-    }
-});
-
 userRoutes.get('/email/:email', authenticateToken, authorizeHierarchy, async (req,res) => {
     try {
         const { email } = req.params;
@@ -436,6 +393,8 @@ userRoutes.delete("/:id", authenticateToken, authorizeRoles(5, 6, 7), async (req
     }
 });
 
-
+// ✅ RUTAS PARA DATOS BANCARIOS (para comisiones)
+userRoutes.get("/banking-data/:userId", authenticateToken, getBankingData);
+userRoutes.put("/banking-data/:userId", authenticateToken, updateBankingData);
 
 module.exports = userRoutes

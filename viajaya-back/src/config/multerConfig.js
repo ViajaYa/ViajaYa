@@ -43,6 +43,7 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
+// Configuración base para uploads generales
 const upload = multer({ 
   storage,
   fileFilter,
@@ -52,4 +53,37 @@ const upload = multer({
   }
 });
 
-module.exports = upload;
+// Configuración específica para comprobantes de pago
+const paymentProofStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'viajaya/comprobantes-pago',
+    allowedFormats: ['jpg', 'jpeg', 'png', 'pdf'],
+    resource_type: (req, file) => {
+      return file.mimetype === 'application/pdf' ? 'raw' : 'image';
+    },
+    transformation: (req, file) => {
+      if (file.mimetype.startsWith('image/')) {
+        return [
+          { quality: 'auto' },
+          { fetch_format: 'auto' }
+        ];
+      }
+      return [];
+    }
+  },
+});
+
+const uploadPaymentProof = multer({
+  storage: paymentProofStorage,
+  fileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB máximo
+  }
+});
+
+// Exportar ambas configuraciones
+module.exports = {
+  upload,
+  uploadPaymentProof
+};

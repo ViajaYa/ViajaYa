@@ -22,7 +22,8 @@ import {
     faFilePdf,
     faExclamationTriangle,
     faFileAlt,
-    faBan
+    faBan,
+    faMoneyBillWave
 } from '@fortawesome/free-solid-svg-icons';
 import {
     fetchCommissions,
@@ -36,6 +37,7 @@ import {
 import api from '../../../utils/api';
 import { toast } from 'react-hot-toast';
 import NavBar from '../../layout/NavBar/NavBar';
+import PayCommissionModal from './PayCommissionModal';
 
 const CommissionsList = () => {
     const dispatch = useDispatch();
@@ -54,6 +56,8 @@ const CommissionsList = () => {
     });
     const [showFilters, setShowFilters] = useState(false);
     const [actionLoading, setActionLoading] = useState(null);
+    const [payModalOpen, setPayModalOpen] = useState(false);
+    const [selectedCommissionToPay, setSelectedCommissionToPay] = useState(null);
 
     useEffect(() => {
         loadCommissions();
@@ -219,26 +223,17 @@ const CommissionsList = () => {
         }
     };
 
-    // 💳 Marcar como pagada
-    const handlePayCommission = async (commissionId) => {
-        if (!window.confirm('¿Está seguro de marcar esta comisión como pagada?')) {
-            return;
-        }
+    // 💳 Abrir modal para marcar como pagada con comprobante
+    const handlePayCommission = (commission) => {
+        setSelectedCommissionToPay(commission);
+        setPayModalOpen(true);
+    };
 
-        setActionLoading(commissionId);
-        try {
-            await dispatch(payCommission({
-                id: commissionId,
-                observaciones: 'Comisión marcada como pagada desde el panel administrativo'
-            })).unwrap();
-
-            toast.success('Comisión marcada como pagada exitosamente');
-            loadCommissions(); // Recargar lista
-        } catch (error) {
-            toast.error('Error al marcar la comisión como pagada: ' + error);
-        } finally {
-            setActionLoading(null);
-        }
+    // ✅ Callback cuando se completa el pago
+    const handlePaymentSuccess = () => {
+        setPayModalOpen(false);
+        setSelectedCommissionToPay(null);
+        loadCommissions(); // Recargar lista
     };
 
     // 📄 Ver detalles de la comisión
@@ -642,7 +637,7 @@ const CommissionsList = () => {
                                                     {/* Marcar como pagada - solo para approved */}
                                                     {canPay(commission) && (
                                                         <button
-                                                            onClick={() => handlePayCommission(commission.id)}
+                                                            onClick={() => handlePayCommission(commission)}
                                                             disabled={actionLoading === commission.id}
                                                             className="p-2 text-emerald-600 hover:bg-emerald-50 rounded transition-colors disabled:opacity-50"
                                                             title="Marcar como pagada"
@@ -650,7 +645,7 @@ const CommissionsList = () => {
                                                             {actionLoading === commission.id ? (
                                                                 <FontAwesomeIcon icon={faSpinner} spin size="sm" />
                                                             ) : (
-                                                                <FontAwesomeIcon icon={faCreditCard} size="sm" />
+                                                                <FontAwesomeIcon icon={faMoneyBillWave} size="sm" />
                                                             )}
                                                         </button>
                                                     )}
@@ -724,7 +719,7 @@ const CommissionsList = () => {
                                                     {/* Marcar como pagada (solo para approved) */}
                                                     {commission.status === 'approved' && (
                                                         <button
-                                                            onClick={() => handlePayCommission(commission.id)}
+                                                            onClick={() => handlePayCommission(commission)}
                                                             disabled={actionLoading === commission.id}
                                                             className="p-2 text-emerald-600 hover:bg-emerald-50 rounded transition-colors disabled:opacity-50"
                                                             title="Marcar como pagada"
@@ -732,7 +727,7 @@ const CommissionsList = () => {
                                                             {actionLoading === commission.id ? (
                                                                 <FontAwesomeIcon icon={faSpinner} spin size="sm" />
                                                             ) : (
-                                                                <FontAwesomeIcon icon={faCreditCard} size="sm" />
+                                                                <FontAwesomeIcon icon={faMoneyBillWave} size="sm" />
                                                             )}
                                                         </button>
                                                     )}
@@ -783,6 +778,15 @@ const CommissionsList = () => {
                     )}
                 </div>
             </div>
+
+            {/* Modal para marcar como pagada */}
+            {payModalOpen && selectedCommissionToPay && (
+                <PayCommissionModal
+                    commission={selectedCommissionToPay}
+                    onClose={() => setPayModalOpen(false)}
+                    onSuccess={handlePaymentSuccess}
+                />
+            )}
         </div>
     );
 };

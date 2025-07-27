@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const commissionController = require('../controllers/commissionController');
 const { authenticateToken, authorizeRoles } = require('../middlewares/authMiddleware');
+const { uploadPaymentProof } = require('../config/multerConfig'); // ✅ Configuración para comprobantes de pago
 
 
 // ✅ RUTAS PARA COMISIONES
@@ -53,10 +54,11 @@ router.put('/:commissionId/approve',
   commissionController.approveCommission
 );
 
-// Marcar comisión como pagada (solo roles 5+)
+// Marcar comisión como pagada con comprobante (solo roles 5+)
 router.put('/:commissionId/pay', 
   authenticateToken,
-  authorizeRoles(5, 6, 7), 
+  authorizeRoles(5, 6, 7),
+  uploadPaymentProof.single('comprobante'), // ✅ Middleware para archivo
   commissionController.payCommission
 );
 

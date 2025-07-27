@@ -644,6 +644,94 @@ getUserByEmail: async (email) => {
                 error: error.message
             });
         }
+    },
+
+    // ✅ Nuevo método para obtener datos bancarios del usuario autenticado
+    getBankingData: async (req, res) => {
+        try {
+            const userId = req.user.id; // Viene del token JWT
+
+            const user = await User.findByPk(userId, {
+                attributes: [
+                    'id', 'name', 'lastname', 'email', 'phone', 
+                    'documento_identidad', 'tipo_documento',
+                    'banco', 'numero_cuenta', 'tipo_cuenta', 
+                    'nombre_titular', 'documento_titular'
+                ]
+            });
+
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Usuario no encontrado'
+                });
+            }
+
+            // Mapear los datos existentes a los campos del formulario
+            const bankingData = {
+                banco: user.banco || '',
+                numero_cuenta: user.numero_cuenta || '',
+                tipo_cuenta: user.tipo_cuenta || 'ahorros',
+                nombre_titular: user.nombre_titular || `${user.name || ''} ${user.lastname || ''}`.trim(),
+                documento_titular: user.documento_titular || user.documento_identidad || '',
+                telefono: user.phone || '',
+                observaciones: ''
+            };
+
+            return res.json({
+                success: true,
+                data: bankingData
+            });
+
+        } catch (error) {
+            console.error('Error obteniendo datos bancarios:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Error interno del servidor',
+                error: error.message
+            });
+        }
+    },
+
+    // ✅ Nuevo método para actualizar datos bancarios del usuario
+    updateBankingData: async (req, res) => {
+        try {
+            const userId = req.user.id;
+            const { banco, numero_cuenta, tipo_cuenta, nombre_titular, documento_titular, telefono } = req.body;
+
+            const user = await User.findByPk(userId);
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Usuario no encontrado'
+                });
+            }
+
+            // Actualizar los datos bancarios
+            await User.update({
+                banco,
+                numero_cuenta,
+                tipo_cuenta,
+                nombre_titular,
+                documento_titular,
+                phone: telefono || user.phone // Solo actualizar teléfono si se proporciona
+            }, {
+                where: { id: userId }
+            });
+
+            return res.json({
+                success: true,
+                message: 'Datos bancarios actualizados correctamente'
+            });
+
+        } catch (error) {
+            console.error('Error actualizando datos bancarios:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Error interno del servidor',
+                error: error.message
+            });
+        }
     }
 };
 
@@ -791,4 +879,5 @@ const calculateCommissionSummary = async (userId, period) => {
         return null;
     }
 
-}
+};
+

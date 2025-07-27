@@ -51,7 +51,6 @@ const AllTeamsView = lazy(() => import("./pages/Organization/AllTeamsView"));
 const PassengerForm = lazy(() => import("./Panel/Quotes/PassengerForm"));
 const PassengerSuccess = lazy(() => import("./Panel/Quotes/PassengerSuccess"));
 const ContractSignature = lazy(() => import("./Panel/Contracts/ContractSignature"));
-const SignatureSuccess = lazy(() => import("./Panel/Contracts/SignatureSuccess")); // ✅ NUEVO: Página de éxito para firma de contrato
 const MyCommissions = lazy(() => import("./Panel/Commissions/MyCommissions"));
 
 const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
@@ -114,7 +113,6 @@ const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
         <Route path="/passenger-form/:quoteId" element={<PassengerForm />} />
         <Route path="/passenger-success" element={<PassengerSuccess />} />
       <Route path="/contract-signature/:contractId" element={<ContractSignature />} />
-      <Route path="/signature-success/:contractId" element={<SignatureSuccess />} /> {/* ✅ NUEVO: Ruta para éxito de firma */}
       <Route path="/" element={
         <Suspense fallback={<LoadingSpinner />}>
           <Landing />
