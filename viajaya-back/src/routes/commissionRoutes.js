@@ -54,10 +54,10 @@ router.put('/:commissionId/approve',
   commissionController.approveCommission
 );
 
-// Marcar comisión como pagada con comprobante (solo roles 5+)
+// Marcar comisión como pagada con comprobante (solo roles 4+)
 router.put('/:commissionId/pay', 
   authenticateToken,
-  authorizeRoles(5, 6, 7),
+  authorizeRoles(4, 5, 6, 7), // ✅ Incluir gerentes (rol 4) para pruebas
   uploadPaymentProof.single('comprobante'), // ✅ Middleware para archivo
   commissionController.payCommission
 );

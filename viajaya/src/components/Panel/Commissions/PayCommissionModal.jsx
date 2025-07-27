@@ -79,7 +79,7 @@ const PayCommissionModal = ({ commission, onClose, onSuccess }) => {
       formData.append('observaciones', observaciones);
 
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/commissions/${commission.id}/pay`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/commissions/${commission.id}/pay`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -155,7 +155,7 @@ const PayCommissionModal = ({ commission, onClose, onSuccess }) => {
               <DollarSign className="mr-2 text-green-500" size={16} />
               <span className="text-gray-600">Monto:</span>
               <span className="ml-2 font-medium text-green-600">
-                {formatCurrency(commission.comision_amount)}
+                {formatCurrency(commission.monto_comision)}
               </span>
             </div>
             

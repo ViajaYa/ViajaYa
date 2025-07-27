@@ -732,6 +732,55 @@ getUserByEmail: async (email) => {
                 error: error.message
             });
         }
+    },
+
+    // ✅ VERIFICAR si un email ya existe en el sistema
+    checkEmailExists: async (req, res) => {
+        try {
+            const { email } = req.params;
+            
+            if (!email) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Email es requerido'
+                });
+            }
+
+            const user = await User.findOne({
+                where: { email: email.toLowerCase() },
+                attributes: ['id', 'name', 'lastname', 'email', 'phone', 'documento_identidad', 'fecha_nacimiento']
+            });
+
+            if (user) {
+                return res.json({
+                    success: true,
+                    exists: true,
+                    user: {
+                        id: user.id,
+                        name: user.name,
+                        lastname: user.lastname,
+                        email: user.email,
+                        phone: user.phone,
+                        documento_identidad: user.documento_identidad,
+                        fecha_nacimiento: user.fecha_nacimiento
+                    }
+                });
+            } else {
+                return res.json({
+                    success: true,
+                    exists: false,
+                    user: null
+                });
+            }
+
+        } catch (error) {
+            console.error('Error verificando email:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error interno del servidor',
+                error: error.message
+            });
+        }
     }
 };
 
