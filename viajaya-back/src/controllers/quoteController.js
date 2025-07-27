@@ -861,100 +861,118 @@ const quoteController = {
     }
   },
 
-  getPassengersByQuote: async (req, res) => {
-    try {
-      const { quoteId } = req.params;
+ getPassengersByQuote: async (req, res) => {
+  try {
+    const { quoteId } = req.params;
 
-      // Verificar que la cotización existe
-      const quote = await Quote.findByPk(quoteId);
+    // Verificar que la cotización existe
+    const quote = await Quote.findByPk(quoteId);
 
-      console.log('🔍 Quote encontrada:', quote ? 'SÍ' : 'NO');
-      console.log('🔍 Datos directos de quote:', {
-        nombre_cliente: quote?.nombre_cliente,
-        email_cliente: quote?.email_cliente,
-        telefono_cliente: quote?.telefono_cliente
-      });
+    console.log('🔍 Quote encontrada:', quote ? 'SÍ' : 'NO');
+    console.log('🔍 Datos directos de quote:', {
+      nombre_cliente: quote?.nombre_cliente,
+      email_cliente: quote?.email_cliente,
+      telefono_cliente: quote?.telefono_cliente,
+      cliente_id: quote?.cliente_id
+    });
 
-      if (!quote) {
-        return res.status(404).json({
-          success: false,
-          message: "Cotización no encontrada"
-        });
-      }
-
-      // Obtener pasajeros
-      const passengers = await Passenger.findAll({
-        where: { quote_id: quoteId },
-        order: [
-          ['titular', 'DESC'], // Titular primero
-          ['nombre', 'ASC']    // Luego por nombre
-        ]
-      });
-
-      // ✅ CORREGIDO: Usar datos de la cotización para precarga (campos para frontend)
-      let clientData = null;
-
-      if (quote.nombre_cliente || quote.email_cliente) {
-        // Separar nombre y apellido del nombre completo
-        const nombreCompleto = quote.nombre_cliente || '';
-        const partesNombre = nombreCompleto.trim().split(' ');
-        const nombre = partesNombre[0] || '';
-        const apellido = partesNombre.slice(1).join(' ') || '';
-
-        // ✅ AGREGADO: Si no hay apellido, usar el nombre completo como nombre
-        const nombreFinal = nombre || nombreCompleto;
-        const apellidoFinal = apellido || '';
-
-        clientData = {
-          nombre: nombreFinal,                    // Para frontend PassengerForm
-          apellido: apellidoFinal,                // Para frontend PassengerForm (puede estar vacío)
-          email: quote.email_cliente || '',
-          telefono: quote.telefono_cliente || '',  // Para frontend PassengerForm
-          documento_identidad: '',
-          tipo_documento: 'cc',              // ✅ CORREGIDO: Usar minúsculas para consistencia
-          fecha_nacimiento: '',
-          direccion: '',
-          ciudad: '',
-          pais: 'Colombia'
-        };
-
-        console.log('✅ Datos del cliente para precarga (frontend):', clientData);
-        console.log('🔍 Debug separación nombre:', {
-          nombreCompleto,
-          partesNombre,
-          nombreOriginal: nombre,
-          apellidoOriginal: apellido,
-          nombreFinal,
-          apellidoFinal
-        });
-      } else {
-        console.log('⚠️ No hay datos del cliente en la cotización');
-      }
-
-      res.json({
-        success: true,
-        passengers,
-        total: passengers.length,
-        quote: {
-          id: quote.id,
-          destino: quote.destino,
-          quote_number: quote.quote_number,
-          numero_personas: quote.numero_personas,
-          status: quote.status
-        },
-        // ✅ AGREGADO: Datos del cliente para precargar
-        clientData
-      });
-
-    } catch (error) {
-      console.error("Error fetching passengers:", error);
-      res.status(500).json({
+    if (!quote) {
+      return res.status(404).json({
         success: false,
-        message: "Error al obtener los pasajeros",
-        error: error.message
+        message: "Cotización no encontrada"
       });
     }
-  },
+
+    // Obtener pasajeros
+    const passengers = await Passenger.findAll({
+      where: { quote_id: quoteId },
+      order: [
+        ['titular', 'DESC'], // Titular primero
+        ['nombre', 'ASC']    // Luego por nombre
+      ]
+    });
+
+    // Precarga de datos del cliente/titular
+    let clientData = null;
+
+    if (quote.cliente_id) {
+      // Buscar usuario cliente en la base
+      const user = await User.findByPk(quote.cliente_id, {
+        attributes: [
+          'name', 'lastname', 'email', 'phone',
+          'documento_identidad', 'tipo_documento',
+          'fecha_nacimiento', 'direccion', 'ciudad', 'pais'
+        ]
+      });
+      if (user) {
+        clientData = {
+          nombre: user.name || '',
+          apellido: user.lastname || '',
+          email: user.email || '',
+          telefono: user.phone || '',
+          documento_identidad: user.documento_identidad || '',
+          tipo_documento: user.tipo_documento || 'cc',
+          fecha_nacimiento: user.fecha_nacimiento || '',
+          direccion: user.direccion || '',
+          ciudad: user.ciudad || '',
+          pais: user.pais || 'Colombia'
+        };
+        console.log('✅ Datos del cliente desde User:', clientData);
+      }
+    }
+
+    // Si no hay usuario, usar datos de la cotización como antes
+    if (!clientData && (quote.nombre_cliente || quote.email_cliente)) {
+      const nombreCompleto = quote.nombre_cliente || '';
+      const partesNombre = nombreCompleto.trim().split(' ');
+      const nombre = partesNombre[0] || '';
+      const apellido = partesNombre.slice(1).join(' ') || '';
+
+      const nombreFinal = nombre || nombreCompleto;
+      const apellidoFinal = apellido || '';
+
+      clientData = {
+        nombre: nombreFinal,
+        apellido: apellidoFinal,
+        email: quote.email_cliente || '',
+        telefono: quote.telefono_cliente || '',
+        documento_identidad: '',
+        tipo_documento: 'cc',
+        fecha_nacimiento: '',
+        direccion: '',
+        ciudad: '',
+        pais: 'Colombia'
+      };
+      console.log('✅ Datos del cliente para precarga (cotización):', clientData);
+    }
+
+    if (!clientData) {
+      console.log('⚠️ No hay datos del cliente en la cotización ni usuario asociado');
+    }
+
+    res.json({
+      success: true,
+      passengers,
+      total: passengers.length,
+      quote: {
+        id: quote.id,
+        destino: quote.destino,
+        quote_number: quote.quote_number,
+        numero_personas: quote.numero_personas,
+        status: quote.status
+      },
+      clientData
+    });
+
+  } catch (error) {
+    console.error("Error fetching passengers:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error al obtener los pasajeros",
+      error: error.message
+    });
+  }
+},
 
   // ✅ NUEVO: Crear o actualizar pasajeros de una cotización
   createOrUpdatePassengers: async (req, res) => {
