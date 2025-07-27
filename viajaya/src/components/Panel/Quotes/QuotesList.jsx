@@ -810,7 +810,7 @@ const QuotesList = () => {
         {/* Convertir a contrato - Gerentes y superiores */}
         {canPerformAction("convert", quote) && (
           <button
-            onClick={() => handleAction("convert", quote.id, {})}
+           onClick={() => navigate("/contractsList")}
             disabled={isLoading}
             className="p-2 text-purple-600 hover:bg-purple-50 rounded transition-colors disabled:opacity-50"
             title="Convertir a contrato"
@@ -895,13 +895,23 @@ const QuotesList = () => {
             USER_ROLES.ADMIN,
             USER_ROLES.OWNER,
           ]) && (
-            <button
-              onClick={() => setShowCreateQuote(true)}
-              className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 text-base font-medium"
-            >
-              <FontAwesomeIcon icon={faPlus} />
-              Nueva Cotización
-            </button>
+           <>
+        <button
+          onClick={() => setShowCreateQuote(true)}
+          className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 text-base font-medium"
+        >
+          <FontAwesomeIcon icon={faPlus} />
+          Nueva Cotización
+        </button>
+        <button
+          onClick={() => navigate("/contractsList")}
+          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 text-base font-medium"
+        >
+          <FontAwesomeIcon icon={faFileContract} />
+          Ir a Contratos
+        </button>
+      </>
+            
           )}
         </div>
       </div>
