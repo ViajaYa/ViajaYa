@@ -19,7 +19,8 @@ const {
     getTeamMetrics,
     checkEmailExists,
     getBankingData,
-    updateBankingData
+    updateBankingData,
+    resendActivationLink
 } = require("../controllers/userController")
 const sendMail = require("../helpers/sendMailContact")
 const Recovery = require("../helpers/Recovery")
@@ -96,7 +97,7 @@ userRoutes.get("/recovery/:email", async (req,res) => {
 
 // ✅ Verificar si un email existe (ruta pública para el flujo de cotización)
 userRoutes.get("/check-email/:email", checkEmailExists);
-
+userRoutes.post("/resend-activation-link", resendActivationLink);
 // Rutas protegidas (requieren autenticación)
 userRoutes.get("/verify/token", authenticateToken, async (req,res) => {
     try {

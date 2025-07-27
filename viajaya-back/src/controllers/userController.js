@@ -3,6 +3,9 @@ const jwt = require("jsonwebtoken")
 const bcrypt = require("bcrypt")
 const { Op } = require("sequelize")
 require('dotenv').config()
+const { sendEmail } = require("../utils/emailService");
+
+const crypto = require("crypto");
 
 module.exports = {
     getUsers: async () => {
@@ -781,7 +784,41 @@ getUserByEmail: async (email) => {
                 error: error.message
             });
         }
+    },
+    resendActivationLink: async (req, res) => {
+    const { email } = req.body;
+    try {
+        const user = await User.findOne({ where: { email: email.toLowerCase() } });
+        if (!user) {
+            return res.status(404).json({ success: false, message: "Usuario no encontrado" });
+        }
+        // Generar nuevo token y expiración
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        const resetExpires = new Date(Date.now() + 1000 * 60 * 60 * 24); // 24 horas
+
+        user.password_reset_token = resetToken;
+        user.password_reset_expires = resetExpires;
+        await user.save();
+
+        // Enviar email
+        const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+        await sendEmail({
+            to: user.email,
+            subject: "Activa tu cuenta en ViajaYa",
+            html: `
+                <p>¡Bienvenido/a a ViajaYa!</p>
+                <p>Para activar tu cuenta y definir tu contraseña, haz clic en el siguiente enlace:</p>
+                <a href="${resetLink}">Establecer contraseña</a>
+                <p>Este enlace es válido por 24 horas.</p>
+            `
+        });
+
+        res.json({ success: true, message: "Enlace de activación reenviado correctamente" });
+    } catch (error) {
+        console.error("Error al reenviar link de activación:", error);
+        res.status(500).json({ success: false, message: "Error al reenviar el enlace" });
     }
+},
 };
 
 // ✅ FUNCIONES AUXILIARES
@@ -927,6 +964,7 @@ const calculateCommissionSummary = async (userId, period) => {
         console.error('Error calculando resumen de comisiones:', error);
         return null;
     }
-
 };
+
+
 
