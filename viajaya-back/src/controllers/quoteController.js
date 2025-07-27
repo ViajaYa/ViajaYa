@@ -3,6 +3,8 @@ const { Op } = require("sequelize");
 const { sendEmail } = require("../utils/emailService");
 const { generateQuotePDF } = require("../utils/generateQuotePDF");
 const path = require("path");
+const crypto = require('crypto'); 
+
 
 const createClientUser = async (quoteData) => {
   try {
@@ -58,16 +60,16 @@ const validatePassengersForContract = async (quoteId) => {
   });
 
   const errors = [];
-  
+
   passengers.forEach((passenger, index) => {
     const missingFields = [];
-    
+
     if (!passenger.nombre?.trim()) missingFields.push('nombre');
     if (!passenger.apellido?.trim()) missingFields.push('apellido');
     if (!passenger.documento_identidad?.trim()) missingFields.push('documento_identidad');
     if (!passenger.tipo_documento?.trim()) missingFields.push('tipo_documento');
     if (!passenger.fecha_nacimiento) missingFields.push('fecha_nacimiento');
-    
+
     if (missingFields.length > 0) {
       errors.push(`Pasajero ${index + 1} (${passenger.nombre || 'Sin nombre'}): Faltan campos ${missingFields.join(', ')}`);
     }
@@ -566,14 +568,14 @@ const quoteController = {
           },
 
           {
-          model: Passenger,
-          as: "Passengers",
-          required: false,
-          order: [
-            ['titular', 'DESC'],
-            ['nombre', 'ASC']
-          ]
-        }
+            model: Passenger,
+            as: "Passengers",
+            required: false,
+            order: [
+              ['titular', 'DESC'],
+              ['nombre', 'ASC']
+            ]
+          }
         ],
       });
 
@@ -859,20 +861,20 @@ const quoteController = {
     }
   },
 
-getPassengersByQuote: async (req, res) => {
+  getPassengersByQuote: async (req, res) => {
     try {
       const { quoteId } = req.params;
 
       // Verificar que la cotización existe
       const quote = await Quote.findByPk(quoteId);
-      
+
       console.log('🔍 Quote encontrada:', quote ? 'SÍ' : 'NO');
       console.log('🔍 Datos directos de quote:', {
         nombre_cliente: quote?.nombre_cliente,
         email_cliente: quote?.email_cliente,
         telefono_cliente: quote?.telefono_cliente
       });
-      
+
       if (!quote) {
         return res.status(404).json({
           success: false,
@@ -891,7 +893,7 @@ getPassengersByQuote: async (req, res) => {
 
       // ✅ CORREGIDO: Usar datos de la cotización para precarga (campos para frontend)
       let clientData = null;
-      
+
       if (quote.nombre_cliente || quote.email_cliente) {
         // Separar nombre y apellido del nombre completo
         const nombreCompleto = quote.nombre_cliente || '';
@@ -917,10 +919,10 @@ getPassengersByQuote: async (req, res) => {
         };
 
         console.log('✅ Datos del cliente para precarga (frontend):', clientData);
-        console.log('🔍 Debug separación nombre:', { 
-          nombreCompleto, 
-          partesNombre, 
-          nombreOriginal: nombre, 
+        console.log('🔍 Debug separación nombre:', {
+          nombreCompleto,
+          partesNombre,
+          nombreOriginal: nombre,
           apellidoOriginal: apellido,
           nombreFinal,
           apellidoFinal
@@ -1002,7 +1004,7 @@ getPassengersByQuote: async (req, res) => {
       // Crear nuevos pasajeros
       const newPassengers = await Promise.all(
         passengers.map(async (passengerData, index) => {
-          
+
           // ✅ MODIFICADO: Validaciones flexibles según si es titular o no
           if (passengerData.titular) {
             // TITULAR: Validar todos los campos obligatorios
@@ -1012,7 +1014,7 @@ getPassengersByQuote: async (req, res) => {
                 throw new Error(`El campo '${field}' es obligatorio para el pasajero titular`);
               }
             }
-            
+
             // Validar campos adicionales del titular
             if (!passengerData.email || !passengerData.telefono) {
               throw new Error('El email y teléfono son obligatorios para el pasajero titular');
@@ -1023,7 +1025,7 @@ getPassengersByQuote: async (req, res) => {
             if (passengerData.email && !passengerData.email.includes('@')) {
               throw new Error(`Pasajero ${index + 1}: Email inválido`);
             }
-            
+
             // No requerir campos obligatorios para no titulares en esta etapa
             console.log(`✅ Pasajero no titular ${index + 1}: Permitiendo datos incompletos para completar después`);
           }
@@ -1051,23 +1053,42 @@ getPassengersByQuote: async (req, res) => {
               console.log(`✅ Usuario actualizado: ${user.email}`);
             } else {
               // ✅ Usuario nuevo - crear
+
+
+              const resetToken = crypto.randomBytes(32).toString('hex');
+              const resetExpires = new Date(Date.now() + 1000 * 60 * 60 * 24); // 24 horas
+
               user = await User.create({
                 name: passengerData.nombre.trim(),
                 lastname: passengerData.apellido.trim(),
                 email: passengerData.email.toLowerCase(),
                 phone: passengerData.telefono.trim(),
                 documento_identidad: passengerData.documento_identidad.trim(),
-                tipo_documento: passengerData.tipo_documento.toLowerCase(), // ✅ CORREGIDO: Convertir a minúsculas para el ENUM
+                tipo_documento: passengerData.tipo_documento.toLowerCase(),
                 fecha_nacimiento: passengerData.fecha_nacimiento,
                 direccion: passengerData.direccion?.trim(),
                 ciudad: passengerData.ciudad?.trim(),
                 pais: passengerData.pais || 'Colombia',
-                role: 1, // ✅ CORREGIDO: Usar 1 para Cliente (no 'cliente')
-                password: 'temp123', // Temporal - se debe cambiar en primera sesión
-                email_verified: false, // ✅ CORREGIDO: Usar email_verified (no isEmailVerified)
-                // ✅ REMOVIDO: requirePasswordChange (campo no existe en modelo)
+                role: 1,
+                password: 'temp123', // Hasheada por el modelo/hook, pero no la uses en el email
+                email_verified: false,
+                password_reset_token: resetToken,
+                password_reset_expires: resetExpires,
               });
               console.log(`✅ Usuario creado: ${user.email}`);
+
+              // ✅ Enviar email con link para establecer contraseña
+              const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+              await sendEmail({
+                to: user.email,
+                subject: "Activa tu cuenta en ViajaYa",
+                html: `
+      <p>¡Bienvenido/a a ViajaYa!</p>
+      <p>Para activar tu cuenta y definir tu contraseña, haz clic en el siguiente enlace:</p>
+      <a href="${resetLink}">Establecer contraseña</a>
+      <p>Este enlace es válido por 24 horas.</p>
+    `
+              });
             }
 
             // Actualizar la cotización con el cliente_id si no lo tenía
@@ -1078,8 +1099,8 @@ getPassengersByQuote: async (req, res) => {
 
           // ✅ MODIFICADO: Crear pasajero con datos parciales permitidos para no titulares
           const hasMinimumData = passengerData.titular || // Titular siempre se crea
-                                (passengerData.nombre?.trim()); // No titular: al menos el nombre
-          
+            (passengerData.nombre?.trim()); // No titular: al menos el nombre
+
           if (hasMinimumData) {
             return await Passenger.create({
               quote_id: quoteId,
@@ -1091,7 +1112,7 @@ getPassengersByQuote: async (req, res) => {
               titular: passengerData.titular || false
             });
           }
-          
+
           return null; // No crear registro si no hay datos mínimos completos
         })
       );
@@ -1180,9 +1201,9 @@ getPassengersByQuote: async (req, res) => {
       // Si es titular, verificar que no haya otro titular
       if (titular) {
         const existingTitular = await Passenger.findOne({
-          where: { 
+          where: {
             quote_id: quoteId,
-            titular: true 
+            titular: true
           }
         });
 
@@ -1237,7 +1258,7 @@ getPassengersByQuote: async (req, res) => {
       // Si se está cambiando a titular, verificar que no haya otro titular
       if (titular && !passenger.titular) {
         const existingTitular = await Passenger.findOne({
-          where: { 
+          where: {
             quote_id: passenger.quote_id,
             titular: true,
             id: { [Op.ne]: passengerId } // Excluir el pasajero actual
@@ -1444,9 +1465,8 @@ getPassengersByQuote: async (req, res) => {
       });
 
       // ✅ PASO 4: Preparar el email
-      const emailSubject = `Cotización de Viaje - ${quote.destino} | ${
-        quote.quote_number || quote.id
-      }`;
+      const emailSubject = `Cotización de Viaje - ${quote.destino} | ${quote.quote_number || quote.id
+        }`;
 
       const emailHTML = `
         <!DOCTYPE html>
@@ -1472,9 +1492,8 @@ getPassengersByQuote: async (req, res) => {
           <div class="content">
             <h2>Estimado/a ${quote.nombre_cliente || "Cliente"},</h2>
             
-            <p>Nos complace presentarle la cotización solicitada para su viaje a <strong>${
-              quote.destino
-            }</strong>.</p>
+            <p>Nos complace presentarle la cotización solicitada para su viaje a <strong>${quote.destino
+        }</strong>.</p>
             
             <div class="quote-details">
               <h3>📋 Detalles del Viaje:</h3>
@@ -1482,35 +1501,29 @@ getPassengersByQuote: async (req, res) => {
                 <li><strong>🏖️ Destino:</strong> ${quote.destino}</li>
                 <li><strong>📍 Origen:</strong> ${quote.origen}</li>
                 <li><strong>📅 Fecha de ida:</strong> ${new Date(
-                  quote.fecha_ida
-                ).toLocaleDateString("es-ES")}</li>
+          quote.fecha_ida
+        ).toLocaleDateString("es-ES")}</li>
                 <li><strong>📅 Fecha de regreso:</strong> ${new Date(
-                  quote.fecha_regreso
-                ).toLocaleDateString("es-ES")}</li>
-                <li><strong>👥 Número de personas:</strong> ${
-                  quote.numero_personas
-                }</li>
-                ${
-                  quote.ninos > 0
-                    ? `<li><strong>👶 Niños:</strong> ${
-                        quote.ninos
-                      } (Edades: ${quote.edades_ninos.join(", ")})</li>`
-                    : ""
-                }
-                <li><strong>🏨 Tipo de acomodación:</strong> ${
-                  quote.acomodacion
-                }</li>
+          quote.fecha_regreso
+        ).toLocaleDateString("es-ES")}</li>
+                <li><strong>👥 Número de personas:</strong> ${quote.numero_personas
+        }</li>
+                ${quote.ninos > 0
+          ? `<li><strong>👶 Niños:</strong> ${quote.ninos
+          } (Edades: ${quote.edades_ninos.join(", ")})</li>`
+          : ""
+        }
+                <li><strong>🏨 Tipo de acomodación:</strong> ${quote.acomodacion
+        }</li>
                 <li><strong>⭐ Tipo de hotel:</strong> ${quote.tipo_hotel}</li>
-                ${
-                  quote.traslado
-                    ? "<li><strong>🚗 Traslados:</strong> Incluidos</li>"
-                    : ""
-                }
-                ${
-                  quote.alimentacion
-                    ? `<li><strong>🍽️ Alimentación:</strong> ${quote.alimentacion}</li>`
-                    : ""
-                }
+                ${quote.traslado
+          ? "<li><strong>🚗 Traslados:</strong> Incluidos</li>"
+          : ""
+        }
+                ${quote.alimentacion
+          ? `<li><strong>🍽️ Alimentación:</strong> ${quote.alimentacion}</li>`
+          : ""
+        }
               </ul>
             </div>
             
@@ -1532,16 +1545,15 @@ getPassengersByQuote: async (req, res) => {
               </p>
             </div>
 
-            ${
-              quote.observaciones
-                ? `
+            ${quote.observaciones
+          ? `
               <div class="quote-details">
                 <h3>📝 Observaciones importantes:</h3>
                 <p>${quote.observaciones}</p>
               </div>
             `
-                : ""
-            }
+          : ""
+        }
             
             <div class="highlight">
               <p><strong>⏰ Esta cotización es válida por 48 Hs </strong> a partir de la fecha de emisión.</p>
@@ -1554,23 +1566,20 @@ getPassengersByQuote: async (req, res) => {
             <div class="quote-details">
               <h3>👨‍💼 Su asesor de confianza:</h3>
               <ul>
-                <li><strong>Nombre:</strong> ${
-                  quote.Asesor?.name ||
-                  quote.Lider?.name ||
-                  quote.Gerente?.name ||
-                  quote.Admin?.name
-                } ${
-        quote.Asesor?.lastname ||
+                <li><strong>Nombre:</strong> ${quote.Asesor?.name ||
+        quote.Lider?.name ||
+        quote.Gerente?.name ||
+        quote.Admin?.name
+        } ${quote.Asesor?.lastname ||
         quote.Lider?.lastname ||
         quote.Gerente?.lastname ||
         quote.Admin?.lastname
-      }</li>
-                <li><strong>📧 Email:</strong> ${
-                  quote.Asesor?.email ||
-                  quote.Lider?.email ||
-                  quote.Gerente?.email ||
-                  quote.Admin?.email
-                }</li>
+        }</li>
+                <li><strong>📧 Email:</strong> ${quote.Asesor?.email ||
+        quote.Lider?.email ||
+        quote.Gerente?.email ||
+        quote.Admin?.email
+        }</li>
                 <li><strong>📞 Teléfono general:</strong> +54 123 456 7890</li>
               </ul>
             </div>
@@ -1648,7 +1657,7 @@ getPassengersByQuote: async (req, res) => {
           email_sent_to: quote.email_cliente,
           pdf_generated: true,
           pdf_filename: pdfInfo.filename,
-            passenger_form_link: passengerFormLink,
+          passenger_form_link: passengerFormLink,
           sent_at: sentAt.toISOString(),
           expires_at: expiresAt.toISOString(),
         },
@@ -1886,17 +1895,17 @@ getPassengersByQuote: async (req, res) => {
       const { id } = req.params;
 
       const quote = await Quote.findByPk(id, {
-      include: [
-        {
-          model: Passenger,
-          as: 'Passengers',
-          attributes: [
-            'id', 'nombre', 'apellido', 'documento_identidad', 
-            'tipo_documento', 'fecha_nacimiento', 'titular'
-          ]
-        }
-      ]
-    });
+        include: [
+          {
+            model: Passenger,
+            as: 'Passengers',
+            attributes: [
+              'id', 'nombre', 'apellido', 'documento_identidad',
+              'tipo_documento', 'fecha_nacimiento', 'titular'
+            ]
+          }
+        ]
+      });
 
       if (!quote) {
         return res.status(404).json({ message: "Cotización no encontrada" });
@@ -1910,41 +1919,41 @@ getPassengersByQuote: async (req, res) => {
           required_status: "completed o sent",
         });
       }
- if (!quote.Passengers || quote.Passengers.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "No se puede aprobar: La cotización no tiene datos de pasajeros registrados",
-        missing_data: "passengers"
-      });
-    }
+      if (!quote.Passengers || quote.Passengers.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "No se puede aprobar: La cotización no tiene datos de pasajeros registrados",
+          missing_data: "passengers"
+        });
+      }
 
-    if (quote.Passengers.length !== quote.numero_personas) {
-      return res.status(400).json({
-        success: false,
-        message: `No se puede aprobar: Faltan datos de pasajeros. Se esperan ${quote.numero_personas} pero solo hay ${quote.Passengers.length}`,
-        expected: quote.numero_personas,
-        actual: quote.Passengers.length,
-        missing_data: "passengers"
-      });
-    }
+      if (quote.Passengers.length !== quote.numero_personas) {
+        return res.status(400).json({
+          success: false,
+          message: `No se puede aprobar: Faltan datos de pasajeros. Se esperan ${quote.numero_personas} pero solo hay ${quote.Passengers.length}`,
+          expected: quote.numero_personas,
+          actual: quote.Passengers.length,
+          missing_data: "passengers"
+        });
+      }
 
-    // ✅ AGREGAR: Verificar que hay un pasajero titular
-    const titularPassenger = quote.Passengers.find(p => p.titular === true);
-    if (!titularPassenger) {
-      return res.status(400).json({
-        success: false,
-        message: "No se puede aprobar: Debe haber un pasajero titular designado",
-        missing_data: "titular_passenger"
-      });
-    }
+      // ✅ AGREGAR: Verificar que hay un pasajero titular
+      const titularPassenger = quote.Passengers.find(p => p.titular === true);
+      if (!titularPassenger) {
+        return res.status(400).json({
+          success: false,
+          message: "No se puede aprobar: Debe haber un pasajero titular designado",
+          missing_data: "titular_passenger"
+        });
+      }
 
 
       console.log("✅ Aprobando cotización:", {
         id: quote.id,
         current_status: quote.status,
         quote_number: quote.quote_number,
-         passengers_count: quote.Passengers.length,
-      titular: `${titularPassenger.nombre} ${titularPassenger.apellido}`
+        passengers_count: quote.Passengers.length,
+        titular: `${titularPassenger.nombre} ${titularPassenger.apellido}`
       });
 
       // Crear usuario cliente automáticamente si corresponde
@@ -1981,10 +1990,10 @@ getPassengersByQuote: async (req, res) => {
         const contractNumber = `CON-${Date.now()}-${Math.floor(
           Math.random() * 1000
         )}`;
-        
+
         // ✅ DEBUG: Verificar trip_type de la cotización
         console.log('🔍 DEBUG - approveQuote creando contrato con trip_type:', quote.trip_type);
-        
+
         newContract = await Contract.create({
           contract_number: contractNumber,
           quote_id: quote.id,
@@ -2002,17 +2011,17 @@ getPassengersByQuote: async (req, res) => {
           fecha_fin_viaje: quote.fecha_regreso,
           saldo_pendiente: quote.precio_total || 0,
           numero_pasajeros: quote.Passengers.length,
-        pasajero_titular: `${titularPassenger.nombre} ${titularPassenger.apellido}`,
-        documento_titular: `${titularPassenger.tipo_documento}: ${titularPassenger.documento_identidad}`,
-        status: 'draft'
+          pasajero_titular: `${titularPassenger.nombre} ${titularPassenger.apellido}`,
+          documento_titular: `${titularPassenger.tipo_documento}: ${titularPassenger.documento_identidad}`,
+          status: 'draft'
         });
         console.log("✅ Contrato creado automáticamente al aprobar cotización:", {
-        contract_id: newContract.id,
-        contract_number: newContract.contract_number,
-        passengers: quote.Passengers.length,
-        titular: newContract.pasajero_titular
-      });
-    }
+          contract_id: newContract.id,
+          contract_number: newContract.contract_number,
+          passengers: quote.Passengers.length,
+          titular: newContract.pasajero_titular
+        });
+      }
 
       // Obtener la cotización actualizada con relaciones
       const updatedQuote = await Quote.findByPk(id, {
@@ -2044,59 +2053,59 @@ getPassengersByQuote: async (req, res) => {
             required: false,
           },
           {
-          model: Passenger,
-          as: 'Passengers',
-          attributes: [
-            'id', 'nombre', 'apellido', 'documento_identidad', 
-            'tipo_documento', 'fecha_nacimiento', 'titular'
-          ]
-        },
-        // ✅ AGREGAR: Incluir el contrato creado si existe
-        {
-          model: Contract,
-          as: 'Contract',
-          attributes: [
-            'id', 'contract_number', 'status', 'precio_total', 
-            'forma_pago', 'numero_pasajeros', 'pasajero_titular', 'documento_titular'
-          ],
-          required: false
-        }
-      ],
-    });
+            model: Passenger,
+            as: 'Passengers',
+            attributes: [
+              'id', 'nombre', 'apellido', 'documento_identidad',
+              'tipo_documento', 'fecha_nacimiento', 'titular'
+            ]
+          },
+          // ✅ AGREGAR: Incluir el contrato creado si existe
+          {
+            model: Contract,
+            as: 'Contract',
+            attributes: [
+              'id', 'contract_number', 'status', 'precio_total',
+              'forma_pago', 'numero_pasajeros', 'pasajero_titular', 'documento_titular'
+            ],
+            required: false
+          }
+        ],
+      });
 
-    res.json({
-      success: true,
-      message: "Cotización aprobada exitosamente",
-      quote: updatedQuote,
-      contract: newContract,
-      // ✅ AGREGAR: Resumen de pasajeros en la respuesta
-      passengers_summary: {
-        total: quote.Passengers.length,
-        expected: quote.numero_personas,
-        complete: quote.Passengers.length === quote.numero_personas,
-        titular: titularPassenger ? {
-          nombre: `${titularPassenger.nombre} ${titularPassenger.apellido}`,
-          documento: `${titularPassenger.tipo_documento}: ${titularPassenger.documento_identidad}`
-        } : null,
-        all_passengers: quote.Passengers
-      },
-      clientUser: clientUser
-        ? {
+      res.json({
+        success: true,
+        message: "Cotización aprobada exitosamente",
+        quote: updatedQuote,
+        contract: newContract,
+        // ✅ AGREGAR: Resumen de pasajeros en la respuesta
+        passengers_summary: {
+          total: quote.Passengers.length,
+          expected: quote.numero_personas,
+          complete: quote.Passengers.length === quote.numero_personas,
+          titular: titularPassenger ? {
+            nombre: `${titularPassenger.nombre} ${titularPassenger.apellido}`,
+            documento: `${titularPassenger.tipo_documento}: ${titularPassenger.documento_identidad}`
+          } : null,
+          all_passengers: quote.Passengers
+        },
+        clientUser: clientUser
+          ? {
             id: clientUser.id,
             email: clientUser.email,
             created: !clientUser.password_changed_at,
           }
-        : null,
-    });
-  } catch (error) {
-    console.error("Error approving quote:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error al aprobar la cotización",
-      error: error.message,
-    });
-  }
-},
+          : null,
+      });
+    } catch (error) {
+      console.error("Error approving quote:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al aprobar la cotización",
+        error: error.message,
+      });
+    }
+  },
 
   rejectQuote: async (req, res) => {
     try {

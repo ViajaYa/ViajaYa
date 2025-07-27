@@ -1,4 +1,7 @@
 const {Router} = require("express")
+const { Op } = require("sequelize");
+const { User } = require("../db")
+const bcrypt = require("bcrypt");
 const {
     getUsers, 
     putUser, 
@@ -390,6 +393,30 @@ userRoutes.delete("/:id", authenticateToken, authorizeRoles(5, 6, 7), async (req
             success: false,
             message: "Error al eliminar el usuario"
         });
+    }
+});
+
+userRoutes.post("/reset-password-link", async (req, res) => {
+    const { token, newPassword } = req.body;
+    try {
+        const user = await User.findOne({
+            where: {
+                password_reset_token: token,
+                password_reset_expires: { [Op.gt]: new Date() }
+            }
+        });
+        if (!user) {
+            return res.status(400).json({ success: false, message: "Token inválido o expirado" });
+        }
+        // Hashear la nueva contraseña antes de guardar
+        const saltRounds = 12;
+        user.password = await bcrypt.hash(newPassword, saltRounds);
+        user.password_reset_token = null;
+        user.password_reset_expires = null;
+        await user.save();
+        res.json({ success: true, message: "Contraseña actualizada correctamente" });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Error al actualizar contraseña" });
     }
 });
 

@@ -53,6 +53,8 @@ const PassengerSuccess = lazy(() => import("./Panel/Quotes/PassengerSuccess"));
 const ContractSignature = lazy(() => import("./Panel/Contracts/ContractSignature"));
 const SignatureSuccess = lazy(() => import("./Panel/Contracts/SignatureSuccess"));
 const MyCommissions = lazy(() => import("./Panel/Commissions/MyCommissions"));
+const ResetPassword = lazy(() => import("./pages/Login/ResetPassword"));
+
 
 const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
   return (
@@ -115,6 +117,7 @@ const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
         <Route path="/passenger-success" element={<PassengerSuccess />} />
       <Route path="/contract-signature/:contractId" element={<ContractSignature />} />
       <Route path="/signature-success/:contractId" element={<SignatureSuccess />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/" element={
         <Suspense fallback={<LoadingSpinner />}>
           <Landing />
