@@ -16,6 +16,16 @@ const PassengerCard = ({ passenger, index, onUpdate, isFirst }) => {
     { value: 'cedula_diplomatica', label: 'Cédula Diplomática' },
   ];
 
+  const getDateInputValue = (date) => {
+  if (!date) return '';
+  // Si ya está en formato YYYY-MM-DD, úsalo directo
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
+  // Si viene en formato ISO, conviértelo
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
+  return d.toISOString().split('T')[0];
+};
+
   const handleInputChange = (field, value) => {
     onUpdate(index, field, value);
   };
@@ -112,17 +122,17 @@ const PassengerCard = ({ passenger, index, onUpdate, isFirst }) => {
 
         {/* Fecha de nacimiento */}
         <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Fecha de Nacimiento {passenger.titular ? '*' : ''}
-          </label>
-          <input
-            type="date"
-            value={passenger.fecha_nacimiento || ''}
-            onChange={(e) => handleInputChange('fecha_nacimiento', e.target.value)}
-            className="w-full md:w-1/2 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-            required={passenger.titular}
-          />
-        </div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        Fecha de Nacimiento {passenger.titular ? '*' : ''}
+      </label>
+      <input
+        type="date"
+        value={getDateInputValue(passenger.fecha_nacimiento)}
+        onChange={(e) => handleInputChange('fecha_nacimiento', e.target.value)}
+        className="w-full md:w-1/2 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+        required={passenger.titular}
+      />
+      </div>
 
         {/* ✅ CAMPOS ADICIONALES PARA TITULAR */}
         {passenger.titular && (

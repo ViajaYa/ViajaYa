@@ -230,21 +230,60 @@ const ContractSet = () => {
   }, [contract]);
 
   // ✅ FUNCIÓN: Generar fechas de vencimiento de cuotas
-  const generatePaymentDates = (numCuotas) => {
+const generatePaymentDates = (numCuotas) => {
+  const fechaInicioViaje = contract?.contract?.fecha_inicio_viaje;
+  if (!fechaInicioViaje || numCuotas < 1) {
+    // fallback a la lógica anterior
     const fechas = [];
     const fechaBase = new Date();
-
     for (let i = 1; i <= numCuotas; i++) {
       const fecha = new Date(fechaBase);
       fecha.setMonth(fecha.getMonth() + i);
       fechas.push(fecha.toISOString().split("T")[0]);
     }
-
     setFormData((prev) => ({
       ...prev,
       fechas_vencimiento_cuotas: fechas,
+      numero_cuotas_restantes: numCuotas,
     }));
-  };
+    return;
+  }
+
+  const fechas = [];
+  const fechaUltimaCuota = new Date(fechaInicioViaje);
+  fechaUltimaCuota.setDate(fechaUltimaCuota.getDate() - 30);
+
+  const fechaHoy = new Date();
+  fechaHoy.setHours(0, 0, 0, 0); // Solo fecha, sin hora
+
+  const fechaLimite = fechaUltimaCuota < fechaHoy ? fechaHoy : fechaUltimaCuota;
+
+  const fechaPrimeraCuota = fechaHoy;
+  const diffTime = fechaUltimaCuota.getTime() - fechaPrimeraCuota.getTime();
+  const diasDisponibles = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+  let cuotas = numCuotas;
+  if (cuotas > 1 && diasDisponibles < cuotas - 1) {
+    cuotas = Math.max(1, diasDisponibles + 1);
+  }
+
+  if (cuotas <= 1) {
+    // Si la fecha límite ya pasó, usa hoy
+    fechas.push(fechaLimite.toISOString().split("T")[0]);
+  } else {
+    const intervalo = diffTime / (cuotas - 1);
+    for (let i = 0; i < cuotas; i++) {
+      const fecha = new Date(fechaPrimeraCuota.getTime() + intervalo * i);
+      fechas.push(fecha.toISOString().split("T")[0]);
+    }
+  }
+
+  setFormData((prev) => ({
+    ...prev,
+    fechas_vencimiento_cuotas: fechas,
+    numero_cuotas_restantes: cuotas,
+  }));
+};
 
   // ✅ FUNCIÓN: Actualizar fecha de cuota específica
   const updatePaymentDate = (index, newDate) => {
