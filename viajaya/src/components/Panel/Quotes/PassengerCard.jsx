@@ -1,11 +1,19 @@
 import React from 'react';
 
 const PassengerCard = ({ passenger, index, onUpdate, isFirst }) => {
-  const tiposDocumento = [
-    { value: 'CC', label: 'Cédula de Ciudadanía' },
-    { value: 'CE', label: 'Cédula de Extranjería' },
-    { value: 'PS', label: 'Pasaporte' },
-    { value: 'TI', label: 'Tarjeta de Identidad' },
+ const tiposDocumento = [
+    { value: 'cc', label: 'Cédula de Ciudadanía' },
+    { value: 'ce', label: 'Cédula de Extranjería' },
+    { value: 'ti', label: 'Tarjeta de Identidad' },
+    { value: 'rc', label: 'Registro Civil' },
+    { value: 'passport', label: 'Pasaporte' },
+    { value: 'pep', label: 'Permiso Especial de Permanencia' },
+    { value: 'ppt', label: 'Permiso por Protección Temporal' },
+    { value: 'nit', label: 'NIT' },
+    { value: 'nuip', label: 'NUIP' },
+    { value: 'dni', label: 'DNI' },
+    { value: 'salvoconducto', label: 'Salvoconducto' },
+    { value: 'cedula_diplomatica', label: 'Cédula Diplomática' },
   ];
 
   const handleInputChange = (field, value) => {
@@ -68,12 +76,12 @@ const PassengerCard = ({ passenger, index, onUpdate, isFirst }) => {
         </div>
 
         {/* Tipo de documento */}
-        <div>
+       <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Tipo de Documento {passenger.titular ? '*' : ''}
           </label>
           <select
-            value={passenger.tipo_documento || 'CC'}
+            value={passenger.tipo_documento || 'cc'}
             onChange={(e) => handleInputChange('tipo_documento', e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
             required={passenger.titular}
@@ -85,6 +93,7 @@ const PassengerCard = ({ passenger, index, onUpdate, isFirst }) => {
             ))}
           </select>
         </div>
+
 
         {/* Número de documento */}
         <div>

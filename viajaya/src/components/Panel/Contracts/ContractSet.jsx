@@ -86,17 +86,17 @@ const ContractSet = () => {
   const [saving, setSaving] = useState(false);
 
   const cleanDate = (date) => {
-  if (!date) return null;
-  const d = new Date(date);
-  return isNaN(d.getTime()) ? null : d.toISOString();
-};
+    if (!date) return null;
+    const d = new Date(date);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  };
 
-const getDateInputValue = (date) => {
-  const cleaned = cleanDate(date);
-  return cleaned ? cleaned.split("T")[0] : "";
-};
+  const getDateInputValue = (date) => {
+    const cleaned = cleanDate(date);
+    return cleaned ? cleaned.split("T")[0] : "";
+  };
 
-const getPassengers = () => {
+  const getPassengers = () => {
     if (contract?.passengers_summary?.all_passengers) {
       return contract.passengers_summary.all_passengers;
     }
@@ -172,7 +172,7 @@ const getPassengers = () => {
     );
   };
 
- 
+
   useEffect(() => {
     if (id) {
       dispatch(fetchContractById(id));
@@ -185,14 +185,17 @@ const getPassengers = () => {
       const contractData = contract.contract;
       console.log(
         "🔍 Inicializando formulario con contractData:",
-       
+
       );
 
       setFormData((prev) => ({
         ...prev,
         // ✅ DATOS DEL CLIENTE
-         cliente_fecha_nacimiento: getDateInputValue(contractData.Cliente?.fecha_nacimiento),
-        cliente_documento_identidad: contractData.Cliente?.documento_identidad || "",
+        cliente_fecha_nacimiento: getDateInputValue(contractData.Cliente?.fecha_nacimiento),
+        cliente_documento_identidad:
+          contractData.Cliente?.documento_identidad ||
+          (contractData.Quote?.Passengers?.find(p => p.titular)?.documento_identidad) ||
+          "",
         cliente_tipo_documento: contractData.Cliente?.tipo_documento || "cc",
         cliente_direccion: contractData.Cliente?.direccion || "",
         cliente_ciudad: contractData.Cliente?.ciudad || "",
@@ -218,9 +221,9 @@ const getPassengers = () => {
           contractData.valor_cuota_restante ||
           parseFloat(contractData.precio_total) / 3,
         fechas_vencimiento_cuotas: Array.isArray(contractData.fechas_vencimiento_cuotas)
-    ? contractData.fechas_vencimiento_cuotas.map(getDateInputValue)
-    : [],
-}));
+          ? contractData.fechas_vencimiento_cuotas.map(getDateInputValue)
+          : [],
+      }));
 
       console.log("✅ FormData inicializado con datos reales");
     }
@@ -409,7 +412,7 @@ const getPassengers = () => {
   const validateForm = () => {
     const newErrors = {};
 
-       
+
     if (formData.forma_pago === "cuotas") {
       if (formData.tiene_cuota_inicial && !formData.fecha_vencimiento_inicial) {
         newErrors.fecha_vencimiento_inicial =
@@ -436,47 +439,47 @@ const getPassengers = () => {
 
   // ✅ CORREGIR: Función para guardar el contrato
   const handleSave = async () => {
-  if (!validateForm()) {
-    return;
-  }
-
-  setSaving(true);
-  try {
-    // ✅ PASO 1: Actualizar contrato
-    console.log('📝 Actualizando contrato...');
-    const updatedContract = await dispatch(
-      updateContract({
-        id: contract.contract.id,
-        updates: formData,
-      })
-    ).unwrap();
-
-    console.log('✅ Contrato actualizado exitosamente');
-
-    // ✅ PASO 2: Generar PDF automáticamente
-    console.log('📄 Generando PDF del contrato...');
-    try {
-      const pdfResult = await dispatch(
-        generateContractPDF(contract.contract.id)
-      ).unwrap();
-      
-      console.log('✅ PDF generado exitosamente:', pdfResult);
-      alert("✅ Contrato actualizado y PDF generado exitosamente");
-    } catch (pdfError) {
-      console.error('⚠️ Error generando PDF:', pdfError);
-      alert("✅ Contrato actualizado, pero hubo un error generando el PDF. Puede generarlo manualmente.");
+    if (!validateForm()) {
+      return;
     }
 
-    // ✅ PASO 3: Navegar de vuelta
-    navigate(`/contractsList`);
-    
-  } catch (error) {
-    console.error("❌ Error saving contract:", error);
-    alert(`❌ Error al guardar: ${error.message || error}`);
-  } finally {
-    setSaving(false);
-  }
-};
+    setSaving(true);
+    try {
+      // ✅ PASO 1: Actualizar contrato
+      console.log('📝 Actualizando contrato...');
+      const updatedContract = await dispatch(
+        updateContract({
+          id: contract.contract.id,
+          updates: formData,
+        })
+      ).unwrap();
+
+      console.log('✅ Contrato actualizado exitosamente');
+
+      // ✅ PASO 2: Generar PDF automáticamente
+      console.log('📄 Generando PDF del contrato...');
+      try {
+        const pdfResult = await dispatch(
+          generateContractPDF(contract.contract.id)
+        ).unwrap();
+
+        console.log('✅ PDF generado exitosamente:', pdfResult);
+        alert("✅ Contrato actualizado y PDF generado exitosamente");
+      } catch (pdfError) {
+        console.error('⚠️ Error generando PDF:', pdfError);
+        alert("✅ Contrato actualizado, pero hubo un error generando el PDF. Puede generarlo manualmente.");
+      }
+
+      // ✅ PASO 3: Navegar de vuelta
+      navigate(`/contractsList`);
+
+    } catch (error) {
+      console.error("❌ Error saving contract:", error);
+      alert(`❌ Error al guardar: ${error.message || error}`);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (loading && !contract) {
     return (
@@ -697,43 +700,45 @@ const getPassengers = () => {
                 Datos del Cliente
               </h3>
 
-              {/* ✅ AGREGAR: Información actual del cliente */}
-              <div className="bg-blue-50 p-4 rounded-lg mb-4">
-                <h4 className="font-semibold text-blue-900 mb-2">
-                  Información actual del cliente:
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                  <p>
-                    <strong>Nombre:</strong> {contract.contract?.Cliente?.name}{" "}
-                    {contract.contract?.Cliente?.lastname}
-                  </p>
-                  <p>
-                    <strong>Email:</strong> {contract.contract?.Cliente?.email}
-                  </p>
-                  <p>
-                    <strong>Teléfono:</strong>{" "}
-                    {contract.contract?.Cliente?.phone}
-                  </p>
-                  <p>
-                    <strong>Documento:</strong>{" "}
-                    {contract.contract?.Cliente?.tipo_documento?.toUpperCase()}{" "}
-                    {contract.contract?.Cliente?.documento_identidad}
-                  </p>
-                </div>
-                
-              </div>
+             {/* ✅ AGREGAR: Información actual del cliente y documento del titular */}
+<div className="bg-blue-50 p-4 rounded-lg mb-4">
+  <h4 className="font-semibold text-blue-900 mb-2">
+    Información actual del cliente:
+  </h4>
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+    <p>
+      <strong>Nombre:</strong> {contract.contract?.Cliente?.name}{" "}
+      {contract.contract?.Cliente?.lastname}
+    </p>
+    <p>
+      <strong>Email:</strong> {contract.contract?.Cliente?.email}
+    </p>
+    <p>
+      <strong>Teléfono:</strong>{" "}
+      {contract.contract?.Cliente?.phone}
+    </p>
+    <p>
+      <strong>Documento titular:</strong>{" "}
+      {(contract.contract?.Quote?.Passengers?.find(p => p.titular) ?
+        `${contract.contract.Quote.Passengers.find(p => p.titular).tipo_documento?.toUpperCase() || ""} ${contract.contract.Quote.Passengers.find(p => p.titular).documento_identidad || ""}`
+        :
+        `${contract.contract?.Cliente?.tipo_documento?.toUpperCase() || ""} ${contract.contract?.Cliente?.documento_identidad || ""}`
+      )}
+    </p>
+  </div>
+</div>
 
-              
+
             </div>
 
             {formData.contractItem.map((item, idx) => (
               <div key={idx} className="mb-6 border-b pb-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <FontAwesomeIcon icon={faUser} className="text-blue-500" />
-                Item del contrato
-              </h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <FontAwesomeIcon icon={faUser} className="text-blue-500" />
+                  Item del contrato
+                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Tipo *
@@ -785,7 +790,7 @@ const getPassengers = () => {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                     />
                   </div>
-                 
+
                 </div>
                 {/* Botón para eliminar el item si hay más de uno */}
                 {formData.contractItem.length > 1 && (
@@ -959,11 +964,10 @@ const getPassengers = () => {
                                 e.target.value
                               )
                             }
-                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                              errors.fecha_vencimiento_inicial
+                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.fecha_vencimiento_inicial
                                 ? "border-red-500"
                                 : "border-gray-300"
-                            }`}
+                              }`}
                           />
                           {errors.fecha_vencimiento_inicial && (
                             <p className="text-red-500 text-sm mt-1">
@@ -1014,11 +1018,10 @@ const getPassengers = () => {
                               e.target.value
                             )
                           }
-                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                            errors.numero_cuotas_restantes
+                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.numero_cuotas_restantes
                               ? "border-red-500"
                               : "border-gray-300"
-                          }`}
+                            }`}
                         />
                         {errors.numero_cuotas_restantes && (
                           <p className="text-red-500 text-sm mt-1">
