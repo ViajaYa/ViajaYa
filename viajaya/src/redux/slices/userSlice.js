@@ -20,6 +20,7 @@ const initialState = {
   loading: false,
   error: null,
   searchTerm: '',
+  bankingData: null,
   // ✅ NUEVOS estados para funcionalidades organizacionales
   organizationStructure: null,
   teamMetrics: null,
@@ -262,6 +263,24 @@ export const fetchPendingCommissions = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.message || 'Error al obtener comisiones pendientes'
+      );
+    }
+  }
+);
+
+export const fetchBankingData = createAsyncThunk(
+  'user/fetchBankingData',
+  async (userId, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(
+        `${BASE_URL}/user/banking-data/${userId}`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      return response.data.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Error al obtener datos bancarios'
       );
     }
   }
@@ -682,6 +701,9 @@ const userSlice = createSlice({
     state.emailValidation.error = action.payload;
   }
 })
+.addCase(fetchBankingData.fulfilled, (state, action) => {
+  state.bankingData = action.payload;
+})
   },
 });
 
@@ -717,5 +739,6 @@ export const selectDashboardLoading = (state) => state.user.dashboardLoading;
 export const selectCommissionsLoading = (state) => state.user.commissionsLoading;
 export const selectEmailValidation = (state) => state.user.emailValidation;
 
+export const selectBankingData = (state) => state.user.bankingData;
 
 export default userSlice.reducer;

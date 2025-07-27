@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { useSelector } from "react-redux";
+import { useState, useEffect} from "react";
+import {useDispatch, useSelector } from "react-redux";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { fetchBankingData, selectBankingData } from "../../../redux/slices/userSlice";
 import {
   faTimes,
   faBank,
@@ -14,7 +15,10 @@ import { toast } from "react-hot-toast";
 import api from "../../../utils/api";
 
 const PaymentRequestModal = ({ commission, onClose, onSuccess }) => {
+  const dispatch = useDispatch();
   const { user } = useSelector(state => state.auth);
+  const bankingData = useSelector(selectBankingData);
+
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     banco: '',
@@ -25,6 +29,21 @@ const PaymentRequestModal = ({ commission, onClose, onSuccess }) => {
     telefono: '',
     observaciones: ''
   });
+
+  useEffect(() => {
+    if (user?.id) {
+      dispatch(fetchBankingData(user.id));
+    }
+  }, [user, dispatch]);
+
+  useEffect(() => {
+    if (bankingData) {
+      setFormData(prev => ({
+        ...prev,
+        ...bankingData
+      }));
+    }
+  }, [bankingData]);
 
   const bancos = [
     'Bancolombia',
