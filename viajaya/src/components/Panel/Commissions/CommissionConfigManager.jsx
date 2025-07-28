@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { FaPlus, FaEdit, FaTrash, FaSave, FaTimes, FaEye } from 'react-icons/fa';
-import api from '../../utils/api';
-import { selectUser } from '../../redux/slices/authSlice';
+import api from '../../../utils/api';
+import { selectUser } from '../../../redux/slices/authSlice';
+import NavBar from '../../layout/NavBar/NavBar';
+import { Link } from 'react-router-dom';
 
 const CommissionConfigManager = () => {
   const dispatch = useDispatch();
   const currentUser = useSelector(selectUser);
-  
+
   const [configs, setConfigs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -59,7 +61,7 @@ const CommissionConfigManager = () => {
       console.log('🔄 Cargando configuraciones...');
       const response = await api.get('/commission-configs/configs');
       console.log('📡 Respuesta del servidor:', response.data);
-      
+
       // La respuesta viene como { success: true, configs: [...] }
       if (response.data && response.data.success && Array.isArray(response.data.configs)) {
         setConfigs(response.data.configs);
@@ -123,9 +125,9 @@ const CommissionConfigManager = () => {
       errors.max_amount = 'El monto máximo no puede ser negativo';
     }
 
-    if (formData.min_amount && formData.max_amount && 
-        formData.min_amount !== '' && formData.max_amount !== '' &&
-        parseFloat(formData.min_amount) > parseFloat(formData.max_amount)) {
+    if (formData.min_amount && formData.max_amount &&
+      formData.min_amount !== '' && formData.max_amount !== '' &&
+      parseFloat(formData.min_amount) > parseFloat(formData.max_amount)) {
       errors.max_amount = 'El monto máximo debe ser mayor al mínimo';
     }
 
@@ -134,7 +136,7 @@ const CommissionConfigManager = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     const errors = validateForm();
     if (Object.keys(errors).length > 0) {
       setError('Por favor corrige los errores en el formulario');
@@ -143,7 +145,7 @@ const CommissionConfigManager = () => {
 
     try {
       setLoading(true);
-      
+
       // ✅ Limpiar y preparar datos para envío
       const cleanData = {
         role: formData.role,
@@ -156,26 +158,26 @@ const CommissionConfigManager = () => {
       if (formData.amount_per_person && formData.amount_per_person !== '') {
         cleanData.amount_per_person = parseFloat(formData.amount_per_person);
       }
-      
+
       if (formData.percentage && formData.percentage !== '') {
         cleanData.percentage = parseFloat(formData.percentage);
       }
-      
+
       if (formData.fixed_amount && formData.fixed_amount !== '') {
         cleanData.fixed_amount = parseFloat(formData.fixed_amount);
       }
-      
+
       if (formData.min_amount && formData.min_amount !== '') {
         cleanData.min_amount = parseFloat(formData.min_amount);
       }
-      
+
       if (formData.max_amount && formData.max_amount !== '') {
         cleanData.max_amount = parseFloat(formData.max_amount);
       }
 
       console.log('🔄 Enviando configuración limpia:', cleanData);
       console.log('👤 Usuario actual:', currentUser);
-      
+
       if (editingConfig) {
         console.log('✏️ Actualizando configuración ID:', editingConfig.id);
         await api.put(`/commission-configs/configs/${editingConfig.id}`, cleanData);
@@ -185,10 +187,10 @@ const CommissionConfigManager = () => {
         await api.post('/commission-configs/configs', cleanData);
         setSuccess('Configuración creada exitosamente');
       }
-      
+
       resetForm();
       await loadConfigs();
-      
+
     } catch (error) {
       console.error('❌ Error guardando configuración:', error);
       console.error('📄 Respuesta del error:', error.response?.data);
@@ -268,9 +270,11 @@ const CommissionConfigManager = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
-      {/* Header */}
-      <div className="mb-8">
+    <div className="min-h-screen bg-gray-50 font-nunito">
+      <div className='fixed top-0 left-0 z-50 w-full'>
+        <NavBar />
+      </div>
+      <div className="mb-8 pt-20 p-8">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">
@@ -280,12 +284,21 @@ const CommissionConfigManager = () => {
               Configura los montos de comisión por rol y tipo de viaje
             </p>
           </div>
+          <>
+            <Link
+              to="/panel"
+              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+            >
+              Volver al Panel
+            </Link>
+          
           <button
             onClick={() => setShowForm(true)}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
           >
             <FaPlus /> Nueva Configuración
           </button>
+          </>
         </div>
       </div>
 
@@ -293,7 +306,7 @@ const CommissionConfigManager = () => {
       {error && (
         <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
           {error}
-          <button 
+          <button
             onClick={() => setError('')}
             className="float-right text-red-500 hover:text-red-700"
           >
@@ -305,7 +318,7 @@ const CommissionConfigManager = () => {
       {success && (
         <div className="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
           {success}
-          <button 
+          <button
             onClick={() => setSuccess('')}
             className="float-right text-green-500 hover:text-green-700"
           >
@@ -320,7 +333,7 @@ const CommissionConfigManager = () => {
           <h2 className="text-xl font-semibold mb-4">
             {editingConfig ? 'Editar Configuración' : 'Nueva Configuración'}
           </h2>
-          
+
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Rol */}
             <div>
@@ -503,7 +516,7 @@ const CommissionConfigManager = () => {
             Configuraciones Activas
           </h2>
         </div>
-        
+
         {configs.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
             <p>No hay configuraciones registradas</p>
@@ -540,7 +553,7 @@ const CommissionConfigManager = () => {
                 {configs.map((config) => {
                   const roleInfo = getRoleInfo(config.role);
                   const tripTypeInfo = getTripTypeInfo(config.trip_type);
-                  
+
                   return (
                     <tr key={config.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">

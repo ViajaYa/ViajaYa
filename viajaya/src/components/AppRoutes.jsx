@@ -44,7 +44,7 @@ const ContractsList = lazy(() => import("./Panel/Contracts/ContractsList"));
 const ContractSet = lazy(() => import("./Panel/Contracts/ContractSet"));
 const CommissionsList = lazy(() => import("./Panel/Commissions/CommissionsList"));
 const ContractCommissions = lazy(() => import("./Panel/Contracts/ContractCommissions"));
-const CommissionConfigManager = lazy(() => import("./Panel/CommissionConfigManager"));
+const CommissionConfigManager = lazy(() => import("./Panel/Commissions/CommissionConfigManager"));
 const DocumentsReview = lazy(() => import("./Panel/DocumentsReview"));
 const OrganizationView = lazy(() => import("./pages/Organization/OrganizationView"));
 const AllTeamsView = lazy(() => import("./pages/Organization/AllTeamsView"));

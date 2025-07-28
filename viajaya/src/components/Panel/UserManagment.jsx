@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrash } from '@fortawesome/free-solid-svg-icons';
 import EditUserModal from './EditUserModal';
+import { Link } from 'react-router-dom';
+
 // ✅ Importar desde userSlice
 import {
   fetchAllUsers,
@@ -226,19 +228,19 @@ const UserManagment = () => {
         <NavBar />
       </div>
 
-      {/* Debug info */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="bg-yellow-100 p-2 mb-4 mt-20 rounded text-sm">
-          <strong>Debug:</strong> Users: {safeUsers.length}, Loading: {loading.toString()}, HasLoaded: {hasLoadedUsers.toString()}, Error: {error || 'none'}
-        </div>
-      )}
 
       {/* Header */}
       <div className="bg-ColorMorado text-2xl font-bold font-nunito p-4 text-gray-200 mb-8 mt-28 rounded-lg">
         <div className="flex justify-between items-center">
           <h2>Gestión de Usuarios</h2>
+          <Link
+            to="/panel"
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+          >
+            Volver al Panel
+          </Link>
           <div className="text-sm">
-            <span>Administrador: {user?.name || 'Admin'}</span>
+
           </div>
         </div>
       </div>
@@ -357,8 +359,8 @@ const UserManagment = () => {
                       </select>
                     ) : (
                       <span className={`px-2 py-1 rounded-full text-sm ${userItem.role >= 7 ? 'bg-red-100 text-red-800' :
-                          userItem.role >= 2 ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-green-100 text-green-800'
+                        userItem.role >= 2 ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-green-100 text-green-800'
                         }`}>
                         {getRoleText(userItem.role)}
                       </span>

@@ -297,9 +297,6 @@ const CommissionsList = () => {
     if (error) {
         return (
             <div className="min-h-screen pt-20 p-8">
-                <div className='fixed top-0 left-0 z-50 w-full'>
-                    <NavBar />
-                </div>
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                     <p className="text-red-600">Error al cargar las comisiones: {error}</p>
                     <button
