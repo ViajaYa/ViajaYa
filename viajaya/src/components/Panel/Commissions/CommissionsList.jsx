@@ -146,7 +146,7 @@ const CommissionsList = () => {
             case 'pending':
                 return 'bg-gray-100 text-gray-800 border-gray-200';
             case 'generated':
-                return hasDocument 
+                return hasDocument
                     ? 'bg-blue-100 text-blue-800 border-blue-200'
                     : 'bg-yellow-100 text-yellow-800 border-yellow-200';
             case 'approved':
@@ -270,7 +270,7 @@ const CommissionsList = () => {
     };
 
     // 📊 Calcular estadísticas dinámicas
-     const stats = {
+    const stats = {
         pending: commissions.filter(c => c.status === 'pending').length,
         generatedWithoutDoc: commissions.filter(c => c.status === 'generated' && !c.DocumentoSoporte).length,
         generatedWithDoc: commissions.filter(c => c.status === 'generated' && c.DocumentoSoporte).length,
@@ -302,7 +302,7 @@ const CommissionsList = () => {
                 </div>
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                     <p className="text-red-600">Error al cargar las comisiones: {error}</p>
-                    <button 
+                    <button
                         onClick={loadCommissions}
                         className="mt-2 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
                     >
@@ -338,8 +338,8 @@ const CommissionsList = () => {
                         <button
                             onClick={() => setShowFilters(!showFilters)}
                             className={`px-4 py-2 rounded-lg border transition-colors ${showFilters
-                                    ? 'bg-blue-50 text-blue-600 border-blue-200'
-                                    : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                                ? 'bg-blue-50 text-blue-600 border-blue-200'
+                                : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
                                 }`}
                         >
                             <FontAwesomeIcon icon={faFilter} className="mr-2" />
@@ -356,7 +356,7 @@ const CommissionsList = () => {
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Estado
                                 </label>
-                               <select
+                                <select
                                     value={filters.status}
                                     onChange={(e) => handleFilterChange('status', e.target.value)}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -425,7 +425,7 @@ const CommissionsList = () => {
                     </div>
                 )}
 
-             {/* Estadísticas actualizadas para el nuevo flujo */}
+                {/* Estadísticas actualizadas para el nuevo flujo */}
                 <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                         <div className="flex items-center justify-between">
@@ -543,6 +543,7 @@ const CommissionsList = () => {
                                 ) : (
                                     commissions.map((commission) => (
                                         <tr key={commission.id} className={getCommissionRowColor(commission)}>
+                                            {/* Contrato */}
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="flex items-center">
                                                     <FontAwesomeIcon icon={faFileContract} className="text-gray-400 mr-2" />
@@ -556,7 +557,7 @@ const CommissionsList = () => {
                                                     </div>
                                                 </div>
                                             </td>
-
+                                            {/* Vendedor */}
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="flex items-center">
                                                     <FontAwesomeIcon icon={faUser} className="text-gray-400 mr-2" />
@@ -570,13 +571,13 @@ const CommissionsList = () => {
                                                     </div>
                                                 </div>
                                             </td>
-
+                                            {/* Tipo */}
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 capitalize">
                                                     {commission.tipo_vendedor}
                                                 </span>
                                             </td>
-
+                                            {/* Comisión */}
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="text-sm font-semibold text-green-600">
                                                     {formatCurrency(commission.monto_comision)}
@@ -585,7 +586,7 @@ const CommissionsList = () => {
                                                     {commission.porcentaje}% de {formatCurrency(commission.monto_base)}
                                                 </div>
                                             </td>
-
+                                            {/* Estado */}
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(commission.status, !!commission.DocumentoSoporte)}`}>
                                                     <FontAwesomeIcon
@@ -595,7 +596,14 @@ const CommissionsList = () => {
                                                     {getStatusText(commission.status, !!commission.DocumentoSoporte)}
                                                 </span>
                                             </td>
-
+                                            {/* Fecha */}
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="flex items-center text-sm text-gray-900">
+                                                    <FontAwesomeIcon icon={faCalendarAlt} className="text-gray-400 mr-2" />
+                                                    {new Date(commission.fecha_generacion || commission.created_at).toLocaleDateString('es-CO')}
+                                                </div>
+                                            </td>
+                                            {/* Acciones */}
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                 <div className="flex space-x-1">
                                                     {/* Vista previa del documento - solo si existe */}
@@ -652,7 +660,7 @@ const CommissionsList = () => {
 
                                                     {/* Indicadores visuales */}
                                                     {commission.status === 'generated' && !commission.DocumentoSoporte && (
-                                                        <span 
+                                                        <span
                                                             className="p-2 text-orange-500"
                                                             title="Esperando que el vendedor suba su cuenta-cobro"
                                                         >
@@ -661,75 +669,12 @@ const CommissionsList = () => {
                                                     )}
 
                                                     {commission.status === 'pending' && (
-                                                        <span 
+                                                        <span
                                                             className="p-2 text-gray-500"
                                                             title="Esperando primer pago del contrato"
                                                         >
                                                             <FontAwesomeIcon icon={faClock} size="sm" />
                                                         </span>
-                                                    )}
-                                                </div>
-                                            </td>
-
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="flex items-center text-sm text-gray-900">
-                                                    <FontAwesomeIcon icon={faCalendarAlt} className="text-gray-400 mr-2" />
-                                                    {new Date(commission.fecha_generacion || commission.created_at).toLocaleDateString('es-CO')}
-                                                </div>
-                                            </td>
-
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                <div className="flex space-x-1">
-                                                    {/* Vista previa del documento */}
-                                                    {commission.DocumentoSoporte && (
-                                                        <button
-                                                            onClick={() => handlePreviewDocument(commission)}
-                                                            className="p-2 text-purple-600 hover:bg-purple-50 rounded transition-colors"
-                                                            title="Vista previa del documento"
-                                                        >
-                                                            <FontAwesomeIcon icon={faFilePdf} size="sm" />
-                                                        </button>
-                                                    )}
-
-                                                    {/* Ver detalles */}
-                                                    <button
-                                                        onClick={() => handleViewDetails(commission.id)}
-                                                        className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                                                        title="Ver detalles"
-                                                    >
-                                                        <FontAwesomeIcon icon={faEye} size="sm" />
-                                                    </button>
-
-                                                    {/* Aprobar (solo para generated) */}
-                                                    {commission.status === 'generated' && (
-                                                        <button
-                                                            onClick={() => handleApproveCommission(commission.id)}
-                                                            disabled={actionLoading === commission.id}
-                                                            className="p-2 text-green-600 hover:bg-green-50 rounded transition-colors disabled:opacity-50"
-                                                            title="Aprobar comisión"
-                                                        >
-                                                            {actionLoading === commission.id ? (
-                                                                <FontAwesomeIcon icon={faSpinner} spin size="sm" />
-                                                            ) : (
-                                                                <FontAwesomeIcon icon={faCheck} size="sm" />
-                                                            )}
-                                                        </button>
-                                                    )}
-
-                                                    {/* Marcar como pagada (solo para approved) */}
-                                                    {commission.status === 'approved' && (
-                                                        <button
-                                                            onClick={() => handlePayCommission(commission)}
-                                                            disabled={actionLoading === commission.id}
-                                                            className="p-2 text-emerald-600 hover:bg-emerald-50 rounded transition-colors disabled:opacity-50"
-                                                            title="Marcar como pagada"
-                                                        >
-                                                            {actionLoading === commission.id ? (
-                                                                <FontAwesomeIcon icon={faSpinner} spin size="sm" />
-                                                            ) : (
-                                                                <FontAwesomeIcon icon={faMoneyBillWave} size="sm" />
-                                                            )}
-                                                        </button>
                                                     )}
                                                 </div>
                                             </td>
