@@ -381,9 +381,9 @@ export const selectDocumentPagination = (state) => state.document.pagination;
 
 // ✅ Documentos requeridos por rol
 export const REQUIRED_DOCUMENTS_BY_ROLE = {
-  2: ['Firma Digital', 'RUT', 'Cédula Escaneada', 'Certificado Bancario'], // Asesor
-  3: ['Firma Digital', 'RUT', 'Cédula Escaneada', 'Certificado Bancario', 'Autorización Líder'], // Líder
-  4: ['Firma Digital', 'RUT', 'Cédula Escaneada', 'Certificado Bancario', 'Autorización Gerente', 'Referencias Comerciales'], // Gerente
+  2: ['Firma Digital', 'RUT', 'Cédula Escaneada', 'Certificado Bancario', 'Hoja de Vida'],
+  3: ['Firma Digital', 'RUT', 'Cédula Escaneada', 'Certificado Bancario', 'Hoja de Vida'],
+  4: ['Firma Digital', 'RUT', 'Cédula Escaneada', 'Certificado Bancario', 'Hoja de Vida'], 
 };
 
 // ✅ Selector de documentos requeridos por rol

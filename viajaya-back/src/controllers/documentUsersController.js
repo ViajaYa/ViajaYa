@@ -131,9 +131,9 @@ const documentUsersController = {
 
       // Documentos requeridos por rol
       const REQUIRED_DOCUMENTS_BY_ROLE = {
-        2: ['Firma Digital', 'RUT', 'Cédula Escaneada', 'Certificado Bancario'], // Asesor
-        3: ['Firma Digital', 'RUT', 'Cédula Escaneada', 'Certificado Bancario', 'Autorización Líder'], // Líder
-        4: ['Firma Digital', 'RUT', 'Cédula Escaneada', 'Certificado Bancario', 'Autorización Gerente', 'Referencias Comerciales'], // Gerente
+        2: ['Firma Digital', 'RUT', 'Cédula Escaneada', 'Certificado Bancario', 'Hoja de Vida'], // Asesor
+        3: ['Firma Digital', 'RUT', 'Cédula Escaneada', 'Certificado Bancario', 'Hoja de Vida'], // Líder
+        4: ['Firma Digital', 'RUT', 'Cédula Escaneada', 'Certificado Bancario', 'Hoja de Vida'], // Gerente
       };
 
       const userRole = user.role;
