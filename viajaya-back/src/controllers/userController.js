@@ -1,4 +1,4 @@
-const {User} = require("../db")
+const {User, SupportDocument, UserDocument} = require("../db")
 const jwt = require("jsonwebtoken")
 const bcrypt = require("bcrypt")
 const { Op } = require("sequelize")
@@ -698,45 +698,55 @@ getUserByEmail: async (email) => {
 
     // ✅ Nuevo método para actualizar datos bancarios del usuario
     updateBankingData: async (req, res) => {
-        try {
-            const userId = req.user.id;
-            const { banco, numero_cuenta, tipo_cuenta, nombre_titular, documento_titular, telefono } = req.body;
+    try {
+        const userId = req.user.id;
+        const { banco, numero_cuenta, tipo_cuenta, nombre_titular, documento_titular, telefono } = req.body;
 
-            const user = await User.findByPk(userId);
-            if (!user) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'Usuario no encontrado'
-                });
-            }
-
-            // Actualizar los datos bancarios
-            await User.update({
-                banco,
-                numero_cuenta,
-                tipo_cuenta,
-                nombre_titular,
-                documento_titular,
-                phone: telefono || user.phone // Solo actualizar teléfono si se proporciona
-            }, {
-                where: { id: userId }
-            });
-
-            return res.json({
-                success: true,
-                message: 'Datos bancarios actualizados correctamente'
-            });
-
-        } catch (error) {
-            console.error('Error actualizando datos bancarios:', error);
-            return res.status(500).json({
+        const user = await User.findByPk(userId);
+        if (!user) {
+            return res.status(404).json({
                 success: false,
-                message: 'Error interno del servidor',
-                error: error.message
+                message: 'Usuario no encontrado'
             });
         }
-    },
 
+        // Buscar la firma digital aprobada
+        const firmaDigital = await UserDocument.findOne({
+            where: {
+                user_id: userId,
+                document_name: 'Firma Digital',
+                status: 'approved'
+            }
+        });
+
+        // Actualizar los datos bancarios
+        await User.update({
+            banco,
+            numero_cuenta,
+            tipo_cuenta,
+            nombre_titular,
+            documento_titular,
+            phone: telefono || user.phone // Solo actualizar teléfono si se proporciona
+        }, {
+            where: { id: userId }
+        });
+
+        // Responder incluyendo la URL de la firma si existe
+        return res.json({
+            success: true,
+            message: 'Datos bancarios actualizados correctamente',
+            firma_digital_url: firmaDigital ? firmaDigital.file_url : null
+        });
+
+    } catch (error) {
+        console.error('Error actualizando datos bancarios:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: error.message
+        });
+    }
+},
     // ✅ VERIFICAR si un email ya existe en el sistema
     checkEmailExists: async (req, res) => {
         try {

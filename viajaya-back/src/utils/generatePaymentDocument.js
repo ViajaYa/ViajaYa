@@ -1,6 +1,7 @@
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
+const https = require('https');
 
 // ✅ Función para verificar si necesitamos comprimir espaciado
 const needsCompression = (yPosition, pageHeight) => {
@@ -11,6 +12,15 @@ const needsCompression = (yPosition, pageHeight) => {
 const getDynamicSpacing = (yPosition, pageHeight, normalSpacing, compressedSpacing) => {
   return needsCompression(yPosition, pageHeight) ? compressedSpacing : normalSpacing;
 };
+
+const getImageBuffer = (url) => new Promise((resolve, reject) => {
+  https.get(url, (res) => {
+    const data = [];
+    res.on('data', chunk => data.push(chunk));
+    res.on('end', () => resolve(Buffer.concat(data)));
+    res.on('error', reject);
+  });
+});
 
 const generatePaymentDocument = async (supportDocument, commission) => {
   return new Promise((resolve, reject) => {
@@ -192,16 +202,34 @@ const generatePaymentDocument = async (supportDocument, commission) => {
          .text(`Documento No: ${supportDocument.numero_documento}`, 80, footerY)
          .text(`Generado el ${new Date().toLocaleString('es-CO')}`, 400, footerY);
 
-      // ✅ Finalizar documento
-      doc.end();
+
+         
+        if (supportDocument.firma_digital_url) {
+          console.log('🔍 URL de firma recibida en generatePaymentDocument:', supportDocument.firma_digital_url);
+        getImageBuffer(supportDocument.firma_digital_url)
+          .then(firmaBuffer => {
+            console.log('✅ Firma digital descargada, tamaño:', firmaBuffer.length);
+            const firmaWidth = 120;
+            const firmaHeight = 60;
+            const x = doc.page.width - doc.page.margins.right - firmaWidth;
+            const y = doc.page.height - doc.page.margins.bottom - firmaHeight - 10;
+            doc.image(firmaBuffer, x, y, { width: firmaWidth, height: firmaHeight });
+            doc.end();
+          })
+          .catch(err => {
+            console.error('❌ Error descargando la firma digital:', err);
+            console.error('No se pudo cargar la firma digital:', err);
+            doc.end();
+          });
+      } else {
+        doc.end();
+      }
 
       stream.on('finish', () => {
-        // ✅ Verificar que el archivo se creó correctamente
         if (fs.existsSync(filePath)) {
           const stats = fs.statSync(filePath);
           console.log('✅ PDF creado exitosamente:', filePath);
           console.log('📊 Tamaño:', stats.size, 'bytes');
-          
           const relativePath = `/uploads/payment-documents/${fileName}`;
           resolve(relativePath);
         } else {

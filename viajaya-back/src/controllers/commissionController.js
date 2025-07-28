@@ -571,34 +571,27 @@ getCommissionStats: async (req, res) => {
       });
     }
   },
-requestPayment: async (req, res) => {
+ requestPayment: async (req, res) => {
     try {
-      console.log('🔍 Datos recibidos en requestPayment:', req.body); // ✅ Debug log
-      console.log('🔍 Usuario autenticado:', req.user?.id); // ✅ Debug log
+      console.log('🔍 Datos recibidos en requestPayment:', req.body);
+      console.log('🔍 Usuario autenticado:', req.user?.id);
       
-      const { commissionId, paymentData } = req.body;
+      const { commissionId, paymentData, firma_digital_url } = req.body;
       const userId = req.user.id;
 
-      // ✅ Validar datos requeridos
+      // Validar datos requeridos
       if (!commissionId) {
-        console.log('❌ commissionId faltante');
         return res.status(400).json({ message: 'ID de comisión requerido' });
       }
-
       if (!paymentData) {
-        console.log('❌ paymentData faltante');
         return res.status(400).json({ message: 'Datos de pago requeridos' });
       }
-
       if (!paymentData.banco || !paymentData.numero_cuenta || !paymentData.nombre_titular) {
-        console.log('❌ Datos bancarios incompletos:', paymentData);
         return res.status(400).json({ 
           message: 'Datos bancarios incompletos', 
           required: ['banco', 'numero_cuenta', 'nombre_titular'] 
         });
       }
-
-      console.log('✅ Buscando comisión:', commissionId);
 
       const commission = await Commission.findByPk(commissionId, {
         include: [
@@ -623,28 +616,18 @@ requestPayment: async (req, res) => {
       });
 
       if (!commission) {
-        console.log('❌ Comisión no encontrada:', commissionId);
         return res.status(404).json({ message: 'Comisión no encontrada' });
       }
 
-      console.log('✅ Comisión encontrada:', {
-        id: commission.id,
-        vendedor_id: commission.vendedor_id,
-        status: commission.status
-      });
-
       if (commission.vendedor_id !== userId) {
-        console.log('❌ Usuario sin permisos:', { commission_vendedor: commission.vendedor_id, user: userId });
         return res.status(403).json({ message: 'No tienes permisos para esta comisión' });
       }
 
       if (commission.status !== 'pending') {
-        console.log('❌ Estado inválido:', commission.status);
         return res.status(400).json({ message: 'Esta comisión ya fue procesada' });
       }
-   const numeroDocumento = `SOL-${Date.now()}-${commission.id.substring(0, 8)}`;
 
-      console.log('✅ Creando documento de soporte:', numeroDocumento);
+      const numeroDocumento = `SOL-${Date.now()}-${commission.id.substring(0, 8)}`;
 
       // Crear documento de soporte
       const supportDocument = await SupportDocument.create({
@@ -660,25 +643,25 @@ requestPayment: async (req, res) => {
         observaciones: `Solicitud de pago - ${paymentData.nombre_titular}\nCC: ${paymentData.documento_titular || 'No especificado'}\nTel: ${paymentData.telefono || 'No especificado'}\n\n${paymentData.observaciones || ''}`
       });
 
-      console.log('✅ Documento creado:', supportDocument.id);
-
       // Actualizar comisión
       await commission.update({
         status: 'generated',
         documento_soporte_id: supportDocument.id,
-        observaciones: `Cuenta de cobro generada: ${numeroDocumento}` // ✅ CAMBIAR aquí también
+        observaciones: `Cuenta de cobro generada: ${numeroDocumento}`
       });
 
-      console.log('✅ Comisión actualizada');
+      // --- Cambios clave: pasar la firma digital al generador de PDF ---
+      const supportDocumentData = {
+        ...supportDocument.toJSON(),
+        firma_digital_url: firma_digital_url || null
+      };
 
-      // ✅ VERSIÓN TEMPORAL SIN PDF para debuggear
-      const pdfUrl = `/uploads/payment-documents/cuenta-cobro-${numeroDocumento}.pdf`;
-      
+      // Generar el PDF con la firma digital si existe
+      const pdfUrl = await generatePaymentDocument(supportDocumentData, commission);
+
       await supportDocument.update({
         documento_pdf_url: pdfUrl
       });
-
-      console.log('✅ Documento actualizado con PDF URL');
 
       const updatedCommission = await Commission.findByPk(commissionId, {
         include: [
@@ -686,8 +669,6 @@ requestPayment: async (req, res) => {
           { model: User, as: 'Vendedor', attributes: ['id', 'name', 'lastname'] }
         ]
       });
-
-      console.log('✅ Respuesta exitosa preparada');
 
       res.json({
         success: true,
@@ -707,7 +688,6 @@ requestPayment: async (req, res) => {
       });
     }
   },
-
   downloadDocument: async (req, res) => {
     try {
       const { documentId } = req.params;

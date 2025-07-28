@@ -24,15 +24,15 @@ const documentUsersController = {
       // Verificar que el usuario existe
       const user = await User.findByPk(user_id);
       if (!user) {
-        return res.status(404).json({ 
-          success: false, 
-          message: 'Usuario no encontrado' 
+        return res.status(404).json({
+          success: false,
+          message: 'Usuario no encontrado'
         });
       }
 
       // Determinar el tipo de archivo
-      const file_type = req.file.mimetype === 'application/pdf' ? 'pdf' : 
-                       req.file.mimetype.includes('word') ? 'document' : 'image';
+      const file_type = req.file.mimetype === 'application/pdf' ? 'pdf' :
+        req.file.mimetype.includes('word') ? 'document' : 'image';
 
       // Crear o actualizar documento
       const [document, created] = await UserDocument.upsert({
@@ -69,7 +69,7 @@ const documentUsersController = {
       });
     }
   },
-  
+
   // ✅ Obtener documentos de un usuario específico
   getUserDocuments: async (req, res) => {
     try {
@@ -77,17 +77,18 @@ const documentUsersController = {
 
       // Primero verificar si el usuario existe
       const user = await User.findByPk(userId);
-      
+
       if (!user) {
-        return res.status(404).json({ 
-          success: false, 
-          message: 'Usuario no encontrado' 
+        return res.status(404).json({
+          success: false,
+          message: 'Usuario no encontrado'
         });
       }
 
       // Buscar documentos del usuario
       const documents = await UserDocument.findAll({
         where: { user_id: userId },
+        attributes: ['document_name', 'status', 'createdAt', 'file_url'], // <-- AGREGA ESTO
         order: [['createdAt', 'DESC']]
       });
 
@@ -107,9 +108,9 @@ const documentUsersController = {
 
     } catch (error) {
       console.error('Error al obtener documentos:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: 'Error interno del servidor' 
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
       });
     }
   },
@@ -122,9 +123,9 @@ const documentUsersController = {
       // Verificar que el usuario existe
       const user = await User.findByPk(userId);
       if (!user) {
-        return res.status(404).json({ 
-          success: false, 
-          message: 'Usuario no encontrado' 
+        return res.status(404).json({
+          success: false,
+          message: 'Usuario no encontrado'
         });
       }
 
@@ -137,7 +138,7 @@ const documentUsersController = {
 
       const userRole = user.role;
       const requiredDocuments = REQUIRED_DOCUMENTS_BY_ROLE[userRole] || [];
-      
+
       // Si el rol no requiere documentos, devolver que está completo
       if (requiredDocuments.length === 0) {
         return res.json({
@@ -156,14 +157,14 @@ const documentUsersController = {
       // Obtener documentos actuales del usuario
       const userDocuments = await UserDocument.findAll({
         where: { user_id: userId },
-        attributes: ['document_name', 'status', 'createdAt']
+        attributes: ['document_name', 'status', 'createdAt', 'file_url']
       });
 
       // Verificar qué documentos tiene y cuáles faltan
       const uploadedDocuments = userDocuments.map(doc => doc.document_name);
       const approvedDocuments = userDocuments.filter(doc => doc.status === 'approved').length;
       const missingDocuments = requiredDocuments.filter(doc => !uploadedDocuments.includes(doc));
-      
+
       const isComplete = missingDocuments.length === 0 && approvedDocuments === requiredDocuments.length;
 
       res.json({
@@ -180,9 +181,9 @@ const documentUsersController = {
 
     } catch (error) {
       console.error('Error al verificar documentación:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: 'Error interno del servidor' 
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
       });
     }
   },
@@ -193,11 +194,11 @@ const documentUsersController = {
       const { documentId } = req.params;
 
       const document = await UserDocument.findByPk(documentId);
-      
+
       if (!document) {
-        return res.status(404).json({ 
-          success: false, 
-          message: 'Documento no encontrado' 
+        return res.status(404).json({
+          success: false,
+          message: 'Documento no encontrado'
         });
       }
 
@@ -210,9 +211,9 @@ const documentUsersController = {
 
     } catch (error) {
       console.error('Error al eliminar documento:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: 'Error interno del servidor' 
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
       });
     }
   },
@@ -236,9 +237,9 @@ const documentUsersController = {
 
     } catch (error) {
       console.error('Error al obtener documentos pendientes:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: 'Error interno del servidor' 
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
       });
     }
   },
@@ -250,11 +251,11 @@ const documentUsersController = {
       const { reviewerId, comments } = req.body;
 
       const document = await UserDocument.findByPk(documentId);
-      
+
       if (!document) {
-        return res.status(404).json({ 
-          success: false, 
-          message: 'Documento no encontrado' 
+        return res.status(404).json({
+          success: false,
+          message: 'Documento no encontrado'
         });
       }
 
@@ -274,9 +275,9 @@ const documentUsersController = {
 
     } catch (error) {
       console.error('Error al aprobar documento:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: 'Error interno del servidor' 
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
       });
     }
   },
@@ -295,11 +296,11 @@ const documentUsersController = {
       }
 
       const document = await UserDocument.findByPk(documentId);
-      
+
       if (!document) {
-        return res.status(404).json({ 
-          success: false, 
-          message: 'Documento no encontrado' 
+        return res.status(404).json({
+          success: false,
+          message: 'Documento no encontrado'
         });
       }
 
@@ -320,9 +321,9 @@ const documentUsersController = {
 
     } catch (error) {
       console.error('Error al rechazar documento:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: 'Error interno del servidor' 
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
       });
     }
   },
@@ -366,9 +367,9 @@ const documentUsersController = {
 
     } catch (error) {
       console.error('Error al obtener estadísticas:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: 'Error interno del servidor' 
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
       });
     }
   },
@@ -396,9 +397,9 @@ const documentUsersController = {
 
     } catch (error) {
       console.error('Error al obtener documentos pendientes:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: 'Error interno del servidor' 
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
       });
     }
   },
@@ -410,11 +411,11 @@ const documentUsersController = {
       const { comments } = req.body;
 
       const document = await UserDocument.findByPk(documentId);
-      
+
       if (!document) {
-        return res.status(404).json({ 
-          success: false, 
-          message: 'Documento no encontrado' 
+        return res.status(404).json({
+          success: false,
+          message: 'Documento no encontrado'
         });
       }
 
@@ -432,9 +433,9 @@ const documentUsersController = {
 
     } catch (error) {
       console.error('Error al aprobar documento:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: 'Error interno del servidor' 
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
       });
     }
   },
@@ -453,11 +454,11 @@ const documentUsersController = {
       }
 
       const document = await UserDocument.findByPk(documentId);
-      
+
       if (!document) {
-        return res.status(404).json({ 
-          success: false, 
-          message: 'Documento no encontrado' 
+        return res.status(404).json({
+          success: false,
+          message: 'Documento no encontrado'
         });
       }
 
@@ -475,9 +476,9 @@ const documentUsersController = {
 
     } catch (error) {
       console.error('Error al rechazar documento:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: 'Error interno del servidor' 
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
       });
     }
   },
@@ -513,9 +514,9 @@ const documentUsersController = {
 
     } catch (error) {
       console.error('Error al obtener estadísticas:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: 'Error interno del servidor' 
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
       });
     }
   },
@@ -524,7 +525,7 @@ const documentUsersController = {
   getAllDocuments: async (req, res) => {
     try {
       const { status, role, page = 1, limit = 10 } = req.query;
-      
+
       // Construir condiciones de filtro
       const whereConditions = {};
       if (status && status !== 'all') {
@@ -569,9 +570,9 @@ const documentUsersController = {
 
     } catch (error) {
       console.error('Error al obtener todos los documentos:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: 'Error interno del servidor' 
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
       });
     }
   }

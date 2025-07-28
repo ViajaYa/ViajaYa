@@ -1,5 +1,5 @@
-import { useState, useEffect} from "react";
-import {useDispatch, useSelector } from "react-redux";
+import { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { fetchBankingData, selectBankingData } from "../../../redux/slices/userSlice";
 import {
@@ -11,6 +11,7 @@ import {
   faPhone,
   faIdCard
 } from "@fortawesome/free-solid-svg-icons";
+import { selectDocumentationStatus } from "../../../redux/slices/documentSlice";
 import { toast } from "react-hot-toast";
 import api from "../../../utils/api";
 
@@ -18,7 +19,7 @@ const PaymentRequestModal = ({ commission, onClose, onSuccess }) => {
   const dispatch = useDispatch();
   const { user } = useSelector(state => state.auth);
   const bankingData = useSelector(selectBankingData);
-
+  const documentationStatus = useSelector(selectDocumentationStatus);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     banco: '',
@@ -29,6 +30,14 @@ const PaymentRequestModal = ({ commission, onClose, onSuccess }) => {
     telefono: '',
     observaciones: ''
   });
+
+  const firmaDigital = documentationStatus?.documents?.find(
+    doc => doc.document_name === "Firma Digital" && doc.status === "approved"
+  );
+
+  useEffect(() => {
+    console.log("Firma Digital encontrada:", firmaDigital);
+  }, [firmaDigital]);
 
   useEffect(() => {
     if (user?.id) {
@@ -68,36 +77,38 @@ const PaymentRequestModal = ({ commission, onClose, onSuccess }) => {
     }));
   };
 
- const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+  const handleSubmit = async (e) => {
+  e.preventDefault();
+  setLoading(true);
 
-    try {
-      // ✅ Debug logs
-      console.log('🔍 Datos a enviar:', {
-        commissionId: commission.id,
-        paymentData: formData
-      });
+  try {
+    // ✅ Debug logs
+    console.log('🔍 Datos a enviar:', {
+      commissionId: commission.id,
+      paymentData: formData,
+      firma_digital_url: firmaDigital?.file_url || null // <-- Agrega esto al log
+    });
 
-      const response = await api.post('/commissions/request-payment', {
-        commissionId: commission.id,
-        paymentData: formData
-      });
+    const response = await api.post('/commissions/request-payment', {
+      commissionId: commission.id,
+      paymentData: formData,
+      firma_digital_url: firmaDigital?.file_url || null // <-- Agrega esto al payload
+    });
 
-      console.log('✅ Respuesta del servidor:', response.data);
-      
-      if (response.data.success) {
-        toast.success('Solicitud de pago enviada exitosamente');
-        onSuccess();
-      }
-    } catch (error) {
-      console.error('❌ Error requesting payment:', error);
-      console.error('❌ Error response:', error.response?.data);
-      toast.error(error.response?.data?.message || 'Error al enviar solicitud');
-    } finally {
-      setLoading(false);
+    console.log('✅ Respuesta del servidor:', response.data);
+
+    if (response.data.success) {
+      toast.success('Solicitud de pago enviada exitosamente');
+      onSuccess();
     }
-  };
+  } catch (error) {
+    console.error('❌ Error requesting payment:', error);
+    console.error('❌ Error response:', error.response?.data);
+    toast.error(error.response?.data?.message || 'Error al enviar solicitud');
+  } finally {
+    setLoading(false);
+  }
+};
 
 
   const formatCurrency = (amount) => {
@@ -156,7 +167,7 @@ const PaymentRequestModal = ({ commission, onClose, onSuccess }) => {
               <FontAwesomeIcon icon={faBank} className="mr-2" />
               Datos Bancarios
             </h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -215,7 +226,7 @@ const PaymentRequestModal = ({ commission, onClose, onSuccess }) => {
               <FontAwesomeIcon icon={faUser} className="mr-2" />
               Datos del Titular
             </h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -260,6 +271,15 @@ const PaymentRequestModal = ({ commission, onClose, onSuccess }) => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
+              {firmaDigital && firmaDigital.file_url && (
+                <div className="my-4 flex justify-end">
+                  <img
+                    src={firmaDigital.file_url}
+                    alt="Firma Digital"
+                    style={{ width: 120, height: 60, objectFit: "contain", border: "1px solid #eee" }}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
