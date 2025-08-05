@@ -6,6 +6,7 @@ const initialState = {
   commissions: [],
   userCommissions: [],
   contractCommissions: [], // Nueva propiedad para comisiones por contrato
+  configuredCommissions: {}, // ✅ NUEVO: Para comisiones configuradas por trip_type
   totalCommissions: 0,
   currentCommission: null,
   loading: false,
@@ -157,6 +158,21 @@ export const fetchCommissionsByContract = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.message || 'Error obteniendo comisiones del contrato'
+      );
+    }
+  }
+);
+
+// ✅ NUEVO: Obtener comisiones configuradas por tipo de viaje
+export const fetchCommissionsByTripType = createAsyncThunk(
+  'commission/fetchCommissionsByTripType',
+  async ({ quoteId, tripType }, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/quote-calculations/commissions/${quoteId}/${tripType}`);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Error obteniendo comisiones por tipo de viaje'
       );
     }
   }
@@ -362,6 +378,19 @@ const commissionSlice = createSlice({
       .addCase(fetchCommissionsByContract.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+      // ✅ NUEVO: Fetch Commissions by Trip Type
+      .addCase(fetchCommissionsByTripType.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchCommissionsByTripType.fulfilled, (state, action) => {
+        state.loading = false;
+        state.configuredCommissions = action.payload.comisiones || {};
+      })
+      .addCase(fetchCommissionsByTripType.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       });
   },
 });
@@ -381,6 +410,7 @@ export const {
 export const selectCommissions = (state) => state.commission.commissions;
 export const selectUserCommissions = (state) => state.commission.userCommissions;
 export const selectCommissionsByContract = (state) => state.commission.contractCommissions;
+export const selectConfiguredCommissions = (state) => state.commission.configuredCommissions; // ✅ NUEVO
 export const selectTotalCommissions = (state) => state.commission.totalCommissions;
 export const selectCurrentCommission = (state) => state.commission.currentCommission;
 export const selectCommissionLoading = (state) => state.commission.loading;

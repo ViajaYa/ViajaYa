@@ -60,7 +60,8 @@ const {
   Purchase,
   UserDocument,
   Passenger,
-  CommissionConfig
+  CommissionConfig,
+  QuoteCalculation
 } = sequelize.models;
 
 // ===== RELACIONES ORGANIZADAS POR SECCIONES =====
@@ -486,6 +487,14 @@ Quote.hasMany(Passenger, {
   as: 'Passengers',
   foreignKey: 'quote_id'
 });
+
+// Un usuario puede tener muchos cálculos de cotización
+User.hasMany(QuoteCalculation, { as: 'QuoteCalculations', foreignKey: 'user_id' });
+QuoteCalculation.belongsTo(User, { as: 'User', foreignKey: 'user_id' });
+
+// Un cálculo puede asociarse a una cotización final
+Quote.hasOne(QuoteCalculation, { as: 'Calculation', foreignKey: 'quote_id' });
+QuoteCalculation.belongsTo(Quote, { as: 'Quote', foreignKey: 'quote_id' });
 
 module.exports = {
   ...sequelize.models, // para poder importar los modelos así: const { Product, User } = require('./db.js');

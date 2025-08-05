@@ -1,7 +1,12 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
+
+// React y hooks
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+
+// FontAwesome
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faSave,
   faArrowLeft,
@@ -9,12 +14,9 @@ import {
   faCalendarAlt,
   faMapMarkerAlt,
   faUsers,
-  faFileContract,
   faChild,
-  faBed,
   faHotel,
   faCar,
-  faUtensils,
   faDollarSign,
   faStickyNote,
   faSpinner,
@@ -25,10 +27,14 @@ import {
   faSync,
   faFilePdf,
   faCheck,
-  faTimes,
-} from "@fortawesome/free-solid-svg-icons";
+  faFileAlt,
+  faBuilding,
+  faBed,
+  faStar,
+  faInfoCircle
+} from '@fortawesome/free-solid-svg-icons';
 
-// ✅ Importar acciones del slice
+// Redux slices y acciones
 import {
   fetchQuoteById,
   updateQuote,
@@ -47,24 +53,43 @@ import {
   selectPDFLoading,
   selectPDFError,
   selectLastPreviewUrl,
-  selectPDFRegenerating,
-} from "../../../redux/slices/quoteSlice";
+  selectPDFRegenerating
+} from '../../../redux/slices/quoteSlice';
+import { createContract } from '../../../redux/slices/contractSlice';
+import { updateUser, selectUser } from '../../../redux/slices/authSlice';
 
-import { createContract } from "../../../redux/slices/contractSlice";
+import {
+  createQuoteCalculation,
+  upsertQuoteCalculation,
+  fetchCalculationBaseData,
+  confirmQuoteCalculation,
+  fetchQuoteCalculationByQuoteId,
+  selectCalculation,
+  selectCalculationLoading,
+  selectCalculationError,
+  selectBaseData
+} from '../../../redux/slices/quoteCalculationSlice';
 
-import { updateUser } from "../../../redux/slices/userSlice";
+// Importar thunk de comisiones del slice correcto
+import { 
+  fetchCommissionsByTripType,
+  selectConfiguredCommissions 
+} from '../../../redux/slices/commissionSlice';
 
-// ✅ Importar selectores de auth y permisos
-import { selectUser } from "../../../redux/slices/authSlice";
+// Permisos y hooks
 import { useRolePermissions } from "../../../redux/hooks/hooks";
 
-// ✅ Importar componentes
+
+// Componentes UI
 import NavBar from "../../layout/NavBar/NavBar";
+import AdvancedQuoteCalculator from './AdvancedQuoteCalculator_Fixed';
+
+// Utils
 import {
   openPDFPreview,
   canGeneratePDF,
-  hasGeneratedPDF,
-} from "../../../utils/pdfPreview";
+  hasGeneratedPDF
+} from '../../../utils/pdfPreview';
 
 const QuoteEdit = () => {
   const { id } = useParams();
@@ -83,6 +108,15 @@ const QuoteEdit = () => {
   const pdfError = useSelector(selectPDFError);
   const lastPreviewUrl = useSelector(selectLastPreviewUrl);
   const pdfRegenerating = useSelector(selectPDFRegenerating);
+
+  // ✅ Selectores para calculation
+  const calculation = useSelector(selectCalculation);
+  const calculationLoading = useSelector(selectCalculationLoading);
+  const calculationError = useSelector(selectCalculationError);
+  const baseData = useSelector(selectBaseData);
+  
+  // ✅ Selectores para comisiones configuradas
+  const configuredCommissions = useSelector(selectConfiguredCommissions);
 
   // ✅ Hook de permisos - CORREGIDO
   const {
@@ -108,6 +142,7 @@ const QuoteEdit = () => {
     observaciones: "",
     precio_por_persona: "", // ✅ AGREGADO: Campo para precio por persona
     precio_total: "",
+    servicios_detalle: "", // ✅ NUEVO: Campo para detalles de servicios (JSON string)
   });
 
   const [saveLoading, setSaveLoading] = useState(false);
@@ -432,42 +467,70 @@ const QuoteEdit = () => {
   };
 
   // ✅ TODOS LOS useEffect DESPUÉS DE LAS FUNCIONES
+
+  // Al montar, cargar la cotización y el cálculo asociado si existe
+  // Al montar, cargar la cotización y el cálculo asociado si existe
   useEffect(() => {
     if (id) {
       dispatch(fetchQuoteById(id));
+      // Buscar cálculo asociado a la cotización usando el quote_id (UUID)
+      dispatch(fetchQuoteCalculationByQuoteId(id));
     }
   }, [dispatch, id]);
 
+
+  // Cuando se carga la cotización o el cálculo, hidratar el formulario y el resumen
+  // Cuando se carga la cotización o el cálculo, hidratar el formulario y el resumen
   useEffect(() => {
     if (currentQuote) {
-      // ✅ CALCULAR: precio por persona desde precio total existente
-      const precioPorPersona = currentQuote.precio_total && currentQuote.numero_personas 
-        ? (parseFloat(currentQuote.precio_total) / parseInt(currentQuote.numero_personas)).toFixed(2)
-        : "";
-
-      setFormData({
-        numero_personas: currentQuote.numero_personas || 1,
-        fecha_ida: currentQuote.fecha_ida
-          ? new Date(currentQuote.fecha_ida).toISOString().split("T")[0]
-          : "",
-        fecha_regreso: currentQuote.fecha_regreso
-          ? new Date(currentQuote.fecha_regreso).toISOString().split("T")[0]
-          : "",
-        destino: currentQuote.destino || "",
-        trip_type: currentQuote.trip_type || "nacional", // ✅ NUEVO: Cargar tipo de viaje
-        origen: currentQuote.origen || "",
-        acomodacion: currentQuote.acomodacion || "Doble",
-        tipo_hotel: currentQuote.tipo_hotel || "3 Estrellas",
-        traslado: currentQuote.traslado || false,
-        alimentacion: currentQuote.alimentacion || "",
-        ninos: currentQuote.ninos || 0,
-        edades_ninos: currentQuote.edades_ninos || [],
-        observaciones: currentQuote.observaciones || "",
-        precio_por_persona: precioPorPersona, // ✅ AGREGADO: Calcular precio por persona
-        precio_total: currentQuote.precio_total || "",
-      });
+      // Si hay cálculo asociado, usarlo para hidratar el formulario y el resumen
+      if (calculation && calculation.quote_id === currentQuote.id) {
+        setFormData(prev => ({
+          ...prev,
+          numero_personas: calculation.num_personas || currentQuote.numero_personas || 1,
+          fecha_ida: currentQuote.fecha_ida ? new Date(currentQuote.fecha_ida).toISOString().split("T")[0] : "",
+          fecha_regreso: currentQuote.fecha_regreso ? new Date(currentQuote.fecha_regreso).toISOString().split("T")[0] : "",
+          destino: currentQuote.destino || "",
+          trip_type: currentQuote.trip_type || "nacional",
+          origen: currentQuote.origen || "",
+          acomodacion: currentQuote.acomodacion || "Doble",
+          tipo_hotel: currentQuote.tipo_hotel || "3 Estrellas",
+          traslado: currentQuote.traslado || false,
+          alimentacion: currentQuote.alimentacion || "",
+          ninos: currentQuote.ninos || 0,
+          edades_ninos: currentQuote.edades_ninos || [],
+          observaciones: calculation.observaciones_generales || currentQuote.observaciones || "",
+          precio_por_persona: calculation.precio_final_por_persona || "",
+          precio_total: calculation.precio_final_total || "",
+          servicios_detalle: currentQuote.servicios_detalle || ""
+        }));
+        // Calculation comes from Redux, no need to set it locally
+      } else {
+        // Si no hay cálculo, hidratar solo con datos de la cotización
+        const precioPorPersona = currentQuote.precio_total && currentQuote.numero_personas 
+          ? (parseFloat(currentQuote.precio_total) / parseInt(currentQuote.numero_personas)).toFixed(2)
+          : "";
+        setFormData({
+          numero_personas: currentQuote.numero_personas || 1,
+          fecha_ida: currentQuote.fecha_ida ? new Date(currentQuote.fecha_ida).toISOString().split("T")[0] : "",
+          fecha_regreso: currentQuote.fecha_regreso ? new Date(currentQuote.fecha_regreso).toISOString().split("T")[0] : "",
+          destino: currentQuote.destino || "",
+          trip_type: currentQuote.trip_type || "nacional",
+          origen: currentQuote.origen || "",
+          acomodacion: currentQuote.acomodacion || "Doble",
+          tipo_hotel: currentQuote.tipo_hotel || "3 Estrellas",
+          traslado: currentQuote.traslado || false,
+          alimentacion: currentQuote.alimentacion || "",
+          ninos: currentQuote.ninos || 0,
+          edades_ninos: currentQuote.edades_ninos || [],
+          observaciones: currentQuote.observaciones || "",
+          precio_por_persona: precioPorPersona,
+          precio_total: currentQuote.precio_total || "",
+          servicios_detalle: currentQuote.servicios_detalle || ""
+        });
+      }
     }
-  }, [currentQuote]);
+  }, [currentQuote, calculation]);
 
   useEffect(() => {
     if (error) {
@@ -613,14 +676,26 @@ const QuoteEdit = () => {
           formData.precio_total && formData.precio_total > 0
             ? "completed"
             : "pending",
+        // ✅ Incluir servicios detallados
+        servicios_detalle: formData.servicios_detalle || null,
+        // ✅ Asegurar que trip_type se incluya explícitamente
+        trip_type: formData.trip_type
       };
 
+      console.log('💾 Guardando cotización con datos (incluyendo trip_type):', {
+        trip_type: updateData.trip_type,
+        destino: updateData.destino,
+        precio_total: updateData.precio_total
+      });
       await dispatch(updateQuote({ id, updates: updateData })).unwrap();
 
-      alert("Cotización guardada exitosamente");
+      // ✅ Recargar para sincronizar
+      await dispatch(fetchQuoteById(id));
+
+      alert("✅ Cotización guardada exitosamente");
     } catch (error) {
-      console.error("Error guardando cotización:", error);
-      alert("Error al guardar la cotización: " + error);
+      console.error("❌ Error guardando cotización:", error);
+      alert("Error al guardar la cotización: " + (error.message || error));
     } finally {
       setSaveLoading(false);
     }
@@ -649,28 +724,44 @@ const QuoteEdit = () => {
 
     if (
       window.confirm(
-        "¿Estás seguro de enviar esta cotización al cliente? Una vez enviada no podrás editarla."
+        "¿Estás seguro de enviar esta cotización al cliente? Podrás editarla posteriormente si el cliente solicita cambios."
       )
     ) {
       setSendLoading(true);
       try {
+        // ✅ PASO 1: Actualizar todos los datos de la cotización
         const updateData = {
           ...formData,
           precio_total: parseFloat(formData.precio_total),
           numero_personas: parseInt(formData.numero_personas),
           ninos: parseInt(formData.ninos),
           status: "completed",
+          // Asegurar que los servicios detallados se incluyan
+          servicios_detalle: formData.servicios_detalle || null,
+          // ✅ Asegurar que trip_type se incluya explícitamente
+          trip_type: formData.trip_type
         };
 
+        console.log('💾 Actualizando cotización antes de enviar (incluyendo trip_type):', {
+          trip_type: updateData.trip_type,
+          destino: updateData.destino,
+          status: updateData.status
+        });
         await dispatch(updateQuote({ id, updates: updateData })).unwrap();
 
+        // ✅ PASO 2: Enviar al cliente
+        console.log('📧 Enviando cotización al cliente...');
         await dispatch(sendQuoteToClient(id)).unwrap();
 
-        alert("Cotización enviada exitosamente al cliente");
+        // ✅ PASO 3: Recargar para sincronizar
+        console.log('🔄 Recargando datos actualizados...');
+        await dispatch(fetchQuoteById(id));
+
+        alert("✅ Cotización enviada exitosamente al cliente");
         navigate("/panel");
       } catch (error) {
-        console.error("Error enviando cotización:", error);
-        alert("Error al enviar la cotización: " + error);
+        console.error("❌ Error enviando cotización:", error);
+        alert("Error al enviar la cotización: " + (error.message || error));
       } finally {
         setSendLoading(false);
       }
@@ -757,13 +848,199 @@ const QuoteEdit = () => {
   }
 
   // Verificar si la cotización puede ser editada por estado
+  // ✅ CAMBIO: Permitir editar cotizaciones enviadas para modificaciones del cliente
   const isReadOnly =
-    currentQuote?.status === QUOTE_STATUSES.SENT ||
     currentQuote?.status === QUOTE_STATUSES.APPROVED ||
     currentQuote?.status === QUOTE_STATUSES.REJECTED;
 
-  // ✅ RENDER PRINCIPAL
-  // ✅ RENDER PRINCIPAL COMPLETO
+  // ✅ Función para manejar el guardado desde la calculadora
+  const handleCalculationSave = async (calculationData) => {
+    try {
+      console.log('💾 Guardando cálculo desde calculadora:', calculationData);
+      
+      // Actualizar el precio por persona en el formulario usando los campos correctos
+      if (calculationData.precio_final_por_persona && calculationData.precio_final_total) {
+        console.log('💰 Actualizando precios desde calculadora:', {
+          precio_final_por_persona: calculationData.precio_final_por_persona,
+          precio_final_total: calculationData.precio_final_total,
+          num_personas: calculationData.num_personas
+        });
+        
+        // ✅ NUEVO: Extraer detalles de servicios para el cliente (SIN precios de costo)
+        const serviciosDetalle = [];
+        
+        // Tiquetes
+        if (calculationData.tiquetes && calculationData.tiquetes.costo_total > 0) {
+          serviciosDetalle.push({
+            categoria: 'Transporte',
+            descripcion: `${calculationData.tiquetes.tipo === 'ida_vuelta' ? 'Tiquetes ida y vuelta' : 'Tiquete ida'} - ${calculationData.tiquetes.origen} ↔ ${calculationData.tiquetes.destino}`,
+            proveedor: calculationData.tiquetes.proveedor || '',
+            fechas: `${calculationData.tiquetes.fecha_ida || ''} ${calculationData.tiquetes.fecha_vuelta ? '- ' + calculationData.tiquetes.fecha_vuelta : ''}`,
+            observaciones: calculationData.tiquetes.observaciones || ''
+          });
+        }
+        
+        // Hotel
+        if (calculationData.hotel && calculationData.hotel.costo_total > 0) {
+          serviciosDetalle.push({
+            categoria: 'Alojamiento',
+            descripcion: `${calculationData.hotel.nombre || 'Hotel'} - ${calculationData.hotel.categoria || ''} (${calculationData.hotel.noches || 0} noches)`,
+            proveedor: calculationData.hotel.proveedor || '',
+            ubicacion: calculationData.hotel.ubicacion || '',
+            acomodacion: calculationData.hotel.acomodacion || '',
+            observaciones: calculationData.hotel.observaciones || ''
+          });
+        }
+        
+        // Traslados
+        if (calculationData.traslados && calculationData.traslados.costo_total > 0) {
+          const trasladosIncluidos = [];
+          if (calculationData.traslados.aeropuerto_hotel_ida?.incluido) {
+            trasladosIncluidos.push('Aeropuerto → Hotel');
+          }
+          if (calculationData.traslados.hotel_aeropuerto_vuelta?.incluido) {
+            trasladosIncluidos.push('Hotel → Aeropuerto');
+          }
+          if (trasladosIncluidos.length > 0) {
+            serviciosDetalle.push({
+              categoria: 'Traslados',
+              descripcion: trasladosIncluidos.join(', '),
+              observaciones: 'Traslados incluidos en el paquete'
+            });
+          }
+        }
+        
+        // Alimentación
+        if (calculationData.alimentacion && calculationData.alimentacion.costo_total > 0) {
+          serviciosDetalle.push({
+            categoria: 'Alimentación',
+            descripcion: calculationData.alimentacion.tipo || 'Plan alimentario',
+            proveedor: calculationData.alimentacion.proveedor || '',
+            observaciones: calculationData.alimentacion.observaciones || ''
+          });
+        }
+        
+        // Equipaje
+        if (calculationData.equipaje && calculationData.equipaje.costo_total > 0) {
+          const equipajeIncluido = [];
+          if (calculationData.equipaje.cabina?.incluido) {
+            equipajeIncluido.push('Equipaje de cabina');
+          }
+          if (calculationData.equipaje.bodega?.incluido) {
+            equipajeIncluido.push('Equipaje de bodega');
+          }
+          if (calculationData.equipaje.equipaje_extra?.incluido) {
+            equipajeIncluido.push('Equipaje extra');
+          }
+          if (equipajeIncluido.length > 0) {
+            serviciosDetalle.push({
+              categoria: 'Equipaje',
+              descripcion: equipajeIncluido.join(', '),
+              observaciones: 'Equipaje incluido en el paquete'
+            });
+          }
+        }
+        
+        // Seguros
+        if (calculationData.seguros && calculationData.seguros.costo_total > 0) {
+          const segurosIncluidos = [];
+          if (calculationData.seguros.asistencia_medica?.incluido) {
+            segurosIncluidos.push(`Asistencia médica ${calculationData.seguros.asistencia_medica.tipo || ''}`);
+          }
+          if (calculationData.seguros.cancelacion?.incluido) {
+            segurosIncluidos.push('Seguro de cancelación');
+          }
+          if (segurosIncluidos.length > 0) {
+            serviciosDetalle.push({
+              categoria: 'Seguros',
+              descripcion: segurosIncluidos.join(', '),
+              observaciones: 'Seguros incluidos en el paquete'
+            });
+          }
+        }
+        
+        // Excursiones
+        if (Array.isArray(calculationData.excursiones) && calculationData.excursiones.length > 0) {
+          calculationData.excursiones.forEach(excursion => {
+            serviciosDetalle.push({
+              categoria: 'Excursiones',
+              descripcion: excursion.nombre || 'Excursión',
+              observaciones: excursion.descripcion || ''
+            });
+          });
+        }
+        
+        // Extras
+        if (Array.isArray(calculationData.extras) && calculationData.extras.length > 0) {
+          calculationData.extras.forEach(extra => {
+            serviciosDetalle.push({
+              categoria: 'Servicios Adicionales',
+              descripcion: extra.nombre || 'Servicio adicional',
+              observaciones: extra.descripcion || ''
+            });
+          });
+        }
+        
+        console.log('📋 Servicios extraídos para el cliente:', serviciosDetalle);
+        
+        // ✅ PASO 1: Actualizar formData local
+        setFormData(prev => ({
+          ...prev,
+          precio_por_persona: calculationData.precio_final_por_persona.toString(),
+          precio_total: calculationData.precio_final_total.toString(),
+          numero_personas: calculationData.num_personas.toString(),
+          servicios_detalle: JSON.stringify(serviciosDetalle)
+        }));
+
+        // ✅ PASO 2: Guardar el cálculo en la base de datos usando upsert
+        console.log('💾 Guardando cálculo en base de datos con upsert...');
+        await dispatch(upsertQuoteCalculation(calculationData)).unwrap();
+        
+        // ✅ PASO 3: Actualizar la cotización con los nuevos precios y servicios
+        console.log('💾 Actualizando cotización con nuevos datos...');
+        const updateData = {
+          precio_total: parseFloat(calculationData.precio_final_total),
+          numero_personas: parseInt(calculationData.num_personas),
+          servicios_detalle: JSON.stringify(serviciosDetalle),
+          status: calculationData.precio_final_total > 0 ? "completed" : "pending",
+          // ✅ CRÍTICO: Incluir el trip_type actual del formulario
+          trip_type: formData.trip_type,
+          // ✅ También incluir otros campos importantes del formulario que podrían haberse cambiado
+          destino: formData.destino,
+          origen: formData.origen,
+          fecha_ida: formData.fecha_ida,
+          fecha_regreso: formData.fecha_regreso,
+          acomodacion: formData.acomodacion,
+          tipo_hotel: formData.tipo_hotel,
+          traslado: formData.traslado,
+          alimentacion: formData.alimentacion,
+          ninos: parseInt(formData.ninos),
+          edades_ninos: formData.edades_ninos,
+          observaciones: formData.observaciones
+        };
+        
+        console.log('🔍 Datos de actualización que se van a enviar:', {
+          trip_type: updateData.trip_type,
+          destino: updateData.destino,
+          precio_total: updateData.precio_total
+        });
+        
+        await dispatch(updateQuote({ id: currentQuote.id, updates: updateData })).unwrap();
+        
+        // ✅ PASO 4: Recargar los datos para sincronizar
+        console.log('🔄 Recargando datos actualizados...');
+        await dispatch(fetchQuoteById(currentQuote.id));
+        await dispatch(fetchQuoteCalculationByQuoteId(currentQuote.id));
+        
+        console.log('✅ Guardado completado exitosamente');
+        alert('Cálculo guardado exitosamente. La cotización ha sido actualizada.');
+      }
+      
+    } catch (error) {
+      console.error('❌ Error en handleCalculationSave:', error);
+      alert(`Error al guardar el cálculo: ${error.message || error}`);
+    }
+  };
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="fixed top-0 left-0 z-50 w-full">
@@ -910,6 +1187,105 @@ const QuoteEdit = () => {
             </div>
           )}
         </div>
+
+        {/* ✅ NUEVO: Resumen Visual de la Cotización */}
+        {currentQuote && (
+          <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg shadow-lg p-6 mb-6 text-white">
+            <h2 className="text-xl font-bold mb-4 flex items-center">
+              <FontAwesomeIcon icon={faFileAlt} className="mr-3" />
+              Resumen de la Cotización
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Información del Viaje */}
+              <div className="bg-white/10 rounded-lg p-4">
+                <h3 className="font-semibold mb-2 flex items-center">
+                  <FontAwesomeIcon icon={faMapMarkerAlt} className="mr-2" />
+                  Destino & Fechas
+                </h3>
+                <div className="space-y-1 text-sm">
+                  <div><strong>Destino:</strong> {formData.destino || 'Por definir'}</div>
+                  <div><strong>Origen:</strong> {formData.origen || 'Por definir'}</div>
+                  <div><strong>Tipo:</strong> {formData.trip_type === 'nacional' ? 'Nacional' : 'Internacional'}</div>
+                  {formData.fecha_ida && (
+                    <div><strong>Ida:</strong> {new Date(formData.fecha_ida).toLocaleDateString('es-ES')}</div>
+                  )}
+                  {formData.fecha_regreso && (
+                    <div><strong>Regreso:</strong> {new Date(formData.fecha_regreso).toLocaleDateString('es-ES')}</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Información de Personas */}
+              <div className="bg-white/10 rounded-lg p-4">
+                <h3 className="font-semibold mb-2 flex items-center">
+                  <FontAwesomeIcon icon={faUsers} className="mr-2" />
+                  Viajeros
+                </h3>
+                <div className="space-y-1 text-sm">
+                  <div><strong>Personas:</strong> {formData.numero_personas || 1}</div>
+                  <div><strong>Niños:</strong> {formData.ninos || 0}</div>
+                  <div><strong>Acomodación:</strong> {formData.acomodacion}</div>
+                  <div><strong>Hotel:</strong> {formData.tipo_hotel}</div>
+                  {formData.traslado && (
+                    <div className="text-green-300">✓ Incluye traslados</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Información de Precios */}
+              <div className="bg-white/10 rounded-lg p-4">
+                <h3 className="font-semibold mb-2 flex items-center">
+                  <FontAwesomeIcon icon={faDollarSign} className="mr-2" />
+                  Precios
+                </h3>
+                <div className="space-y-1 text-sm">
+                  {formData.precio_por_persona && (
+                    <div><strong>Por persona:</strong> ${parseFloat(formData.precio_por_persona).toLocaleString('es-CO')}</div>
+                  )}
+                  {formData.precio_total && (
+                    <div className="text-lg font-bold text-yellow-300">
+                      <strong>Total:</strong> ${parseFloat(formData.precio_total).toLocaleString('es-CO')}
+                    </div>
+                  )}
+                  <div className={`text-sm px-2 py-1 rounded ${
+                    currentQuote.status === 'pending' ? 'bg-yellow-500' :
+                    currentQuote.status === 'completed' ? 'bg-blue-500' :
+                    currentQuote.status === 'sent' ? 'bg-green-500' :
+                    currentQuote.status === 'approved' ? 'bg-green-600' :
+                    'bg-gray-500'
+                  }`}>
+                    Estado: {
+                      currentQuote.status === 'pending' ? 'Pendiente' :
+                      currentQuote.status === 'completed' ? 'Completada' :
+                      currentQuote.status === 'sent' ? 'Enviada' :
+                      currentQuote.status === 'approved' ? 'Aprobada' :
+                      currentQuote.status
+                    }
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Cliente */}
+            <div className="mt-4 p-3 bg-white/10 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <strong>Cliente:</strong> {currentQuote.nombre_cliente}
+                  <span className="ml-4"><strong>Email:</strong> {currentQuote.email_cliente}</span>
+                  {currentQuote.telefono_cliente && (
+                    <span className="ml-4"><strong>Tel:</strong> {currentQuote.telefono_cliente}</span>
+                  )}
+                </div>
+                {currentQuote.sent_at && (
+                  <div className="text-sm">
+                    Enviada: {new Date(currentQuote.sent_at).toLocaleDateString('es-ES')}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Mensajes de error */}
         {error && (
@@ -1256,7 +1632,30 @@ const QuoteEdit = () => {
                     className="mr-2 text-green-500"
                   />
                   Información de Precio
+                  {formData.precio_por_persona && (
+                    <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                      ✓ Precio calculado
+                    </span>
+                  )}
                 </h3>
+                
+                {/* Nota informativa para usuarios internos */}
+                {hasAnyRole([
+                  USER_ROLES.ASESOR,
+                  USER_ROLES.LIDER,
+                  USER_ROLES.GERENTE,
+                  USER_ROLES.ADMIN,
+                  USER_ROLES.OWNER
+                ]) && formData.precio_por_persona && (
+                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-700">
+                      <FontAwesomeIcon icon={faEye} className="mr-1" />
+                      <strong>Información interna:</strong> Los precios mostrados aquí son lo que verá el cliente. 
+                      El desglose detallado de costos, comisiones y ganancia se mantiene privado en el sistema.
+                    </p>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1334,6 +1733,231 @@ const QuoteEdit = () => {
           </form>
         </div>
 
+        {/* ✅ MEJORADO: Mostrar servicios detallados que verá el cliente */}
+        {formData.servicios_detalle && (
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 mt-6 shadow-sm">
+            <h3 className="text-xl font-bold text-blue-800 mb-4 flex items-center">
+              <FontAwesomeIcon icon={faFileAlt} className="mr-3 text-blue-600" />
+              Servicios Incluidos en el Paquete
+            </h3>
+            <div className="bg-blue-100 border-l-4 border-blue-500 p-3 mb-4 rounded">
+              <div className="text-sm text-blue-700 font-medium">
+                💡 Esta información se comparte con el cliente y aparece en el PDF de la cotización
+              </div>
+            </div>
+            {(() => {
+              try {
+                const servicios = JSON.parse(formData.servicios_detalle);
+                return (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {servicios.map((servicio, idx) => (
+                      <div key={idx} className="bg-white p-4 rounded-lg border border-blue-100 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-center mb-3">
+                          <div className="w-3 h-3 bg-blue-500 rounded-full mr-3"></div>
+                          <h4 className="font-bold text-blue-900 text-lg">{servicio.categoria}</h4>
+                        </div>
+                        
+                        <div className="text-gray-700 mb-3 text-sm leading-relaxed">
+                          {servicio.descripcion}
+                        </div>
+                        
+                        <div className="space-y-2">
+                          {servicio.proveedor && (
+                            <div className="flex items-center text-sm text-gray-600">
+                              <FontAwesomeIcon icon={faBuilding} className="mr-2 text-gray-400 w-4" />
+                              <span className="font-medium">Proveedor:</span>
+                              <span className="ml-1">{servicio.proveedor}</span>
+                            </div>
+                          )}
+                          
+                          {servicio.fechas && (
+                            <div className="flex items-center text-sm text-gray-600">
+                              <FontAwesomeIcon icon={faCalendarAlt} className="mr-2 text-gray-400 w-4" />
+                              <span className="font-medium">Fechas:</span>
+                              <span className="ml-1">{servicio.fechas}</span>
+                            </div>
+                          )}
+                          
+                          {servicio.ubicacion && (
+                            <div className="flex items-center text-sm text-gray-600">
+                              <FontAwesomeIcon icon={faMapMarkerAlt} className="mr-2 text-gray-400 w-4" />
+                              <span className="font-medium">Ubicación:</span>
+                              <span className="ml-1">{servicio.ubicacion}</span>
+                            </div>
+                          )}
+                          
+                          {servicio.acomodacion && (
+                            <div className="flex items-center text-sm text-gray-600">
+                              <FontAwesomeIcon icon={faBed} className="mr-2 text-gray-400 w-4" />
+                              <span className="font-medium">Acomodación:</span>
+                              <span className="ml-1">{servicio.acomodacion}</span>
+                            </div>
+                          )}
+                          
+                          {servicio.categoria === 'Hotel' && servicio.categoria_hotel && (
+                            <div className="flex items-center text-sm text-gray-600">
+                              <FontAwesomeIcon icon={faStar} className="mr-2 text-yellow-400 w-4" />
+                              <span className="font-medium">Categoría:</span>
+                              <span className="ml-1">{servicio.categoria_hotel}</span>
+                            </div>
+                          )}
+                          
+                          {servicio.observaciones && (
+                            <div className="mt-2 p-2 bg-gray-50 rounded text-sm text-gray-600">
+                              <FontAwesomeIcon icon={faInfoCircle} className="mr-2 text-gray-400 w-4" />
+                              <span className="font-medium">Detalles:</span>
+                              <div className="mt-1">{servicio.observaciones}</div>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Indicador visual del tipo de servicio */}
+                        <div className="mt-3 pt-2 border-t border-gray-100">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            servicio.categoria === 'Hotel' ? 'bg-blue-100 text-blue-800' :
+                            servicio.categoria === 'Tiquetes' ? 'bg-green-100 text-green-800' :
+                            servicio.categoria === 'Traslados' ? 'bg-yellow-100 text-yellow-800' :
+                            servicio.categoria === 'Seguros' ? 'bg-purple-100 text-purple-800' :
+                            servicio.categoria === 'Excursiones' ? 'bg-orange-100 text-orange-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {servicio.categoria}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              } catch (e) {
+                return (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div className="flex items-center text-red-600">
+                      <FontAwesomeIcon icon={faExclamationTriangle} className="mr-2" />
+                      <span>Error al mostrar servicios detallados. Verifica el formato de datos.</span>
+                    </div>
+                  </div>
+                );
+              }
+            })()}
+          </div>
+        )}
+
+        {/* Mostrar calculadora solo para usuarios internos */}
+        {hasAnyRole([
+          USER_ROLES.ASESOR,
+          USER_ROLES.LIDER,
+          USER_ROLES.GERENTE,
+          USER_ROLES.ADMIN,
+          USER_ROLES.OWNER
+        ]) && (
+          <div className="bg-white rounded-lg shadow-md p-6 mt-6">
+            <h3 className="text-lg font-bold mb-4">Calculadora de Costos Interna</h3>
+            <div className="flex flex-col lg:flex-row gap-6">
+              {/* Panel de resumen de la cotización */}
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 w-full lg:w-1/3">
+                <h4 className="font-semibold text-gray-700 mb-3 flex items-center">
+                  <FontAwesomeIcon icon={faFileAlt} className="mr-2" />
+                  Resumen de Cotización
+                </h4>
+                <div className="space-y-2 text-sm">
+                  <div><strong>Cliente:</strong> {currentQuote?.nombre_cliente || currentQuote?.Cliente?.nombre || '-'}</div>
+                  <div><strong>Email:</strong> {currentQuote?.email_cliente || currentQuote?.Cliente?.email || '-'}</div>
+                  <div><strong>Destino:</strong> {currentQuote?.destino || '-'}</div>
+                  <div><strong>Origen:</strong> {currentQuote?.origen || '-'}</div>
+                  <div><strong>Tipo de viaje:</strong> {currentQuote?.trip_type || '-'}</div>
+                  <div><strong>Fecha ida:</strong> {currentQuote?.fecha_ida ? new Date(currentQuote.fecha_ida).toLocaleDateString() : '-'}</div>
+                  <div><strong>Fecha regreso:</strong> {currentQuote?.fecha_regreso ? new Date(currentQuote.fecha_regreso).toLocaleDateString() : '-'}</div>
+                  <div><strong>Número de personas:</strong> {currentQuote?.numero_personas || '-'}</div>
+                  <div><strong>Estado:</strong> {currentQuote?.status || '-'}</div>
+                </div>
+              </div>
+              {/* Calculadora */}
+              <div className="w-full lg:w-2/3">
+                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="text-sm text-green-700">
+                    <FontAwesomeIcon icon={faInfoCircle} className="mr-2" />
+                    <strong>Importante:</strong> Al usar el botón "Confirmar Cálculo" de la calculadora, 
+                    se guardará automáticamente tanto el cálculo interno como se actualizará la cotización con 
+                    los precios finales y servicios detallados para el cliente.
+                  </div>
+                </div>
+                <AdvancedQuoteCalculator
+                  quote_id={currentQuote?.id}
+                  onContinue={handleCalculationSave}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Mostrar resumen del cálculo si existe */}
+        {calculation && (
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-6 mt-6 rounded-lg">
+            <h3 className="text-lg font-semibold text-yellow-700 mb-3 flex items-center">
+              <FontAwesomeIcon icon={faEye} className="mr-2" />
+              Resumen de Cálculo Interno (Solo visible para el equipo)
+            </h3>
+            <div className="text-sm text-yellow-600 mb-4">
+              Esta información NO se comparte con el cliente. El cliente solo ve el precio final.
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div><strong>Costo base:</strong> ${Number(calculation.costo_base || 0).toLocaleString()}</div>
+              <div><strong>Total comisiones:</strong> ${Number(calculation.total_comisiones || 0).toLocaleString()}</div>
+              <div><strong>Total ganancia:</strong> ${Number(calculation.total_ganancia || 0).toLocaleString()}</div>
+              <div><strong>Margen de ganancia:</strong> {calculation.ganancia?.porcentaje || 0}%</div>
+              <div><strong>Precio final total:</strong> ${Number(calculation.precio_final_total || 0).toLocaleString()}</div>
+              <div className="md:col-span-2">
+                <strong>Precio final por persona:</strong> $
+                {Number(calculation.precio_final_por_persona || 0).toLocaleString()}
+              </div>
+            </div>
+            {/* Mostrar desglose de comisiones */}
+            {calculation.comisiones && (
+              <div className="mb-4">
+                <strong>Desglose de Comisiones:</strong>
+                <ul className="list-disc ml-6 mt-2">
+                  {calculation.comisiones.asesor?.total > 0 && (
+                    <li>Asesor: ${Number(calculation.comisiones.asesor.total).toLocaleString()}</li>
+                  )}
+                  {calculation.comisiones.lider?.total > 0 && (
+                    <li>Líder: ${Number(calculation.comisiones.lider.total).toLocaleString()}</li>
+                  )}
+                  {calculation.comisiones.gerente?.total > 0 && (
+                    <li>Gerente: ${Number(calculation.comisiones.gerente.total).toLocaleString()}</li>
+                  )}
+                  {calculation.comisiones.admin?.total > 0 && (
+                    <li>Admin: ${Number(calculation.comisiones.admin.total).toLocaleString()}</li>
+                  )}
+                </ul>
+              </div>
+            )}
+            {/* Mostrar servicios principales */}
+            <div className="mb-4">
+              <strong>Servicios Incluidos:</strong>
+              <ul className="list-disc ml-6 mt-2">
+                {calculation.tiquetes && (
+                  <li>Tiquetes ({calculation.tiquetes.tipo}): ${Number(calculation.tiquetes.costo_total || 0).toLocaleString()}</li>
+                )}
+                {calculation.hotel && (
+                  <li>Hotel ({calculation.hotel.noches} noches): ${Number(calculation.hotel.costo_total || 0).toLocaleString()}</li>
+                )}
+                {calculation.traslados && (
+                  <li>Traslados: ${Number(calculation.traslados.costo_total || 0).toLocaleString()}</li>
+                )}
+                {calculation.alimentacion && (
+                  <li>Alimentación ({calculation.alimentacion.tipo}): ${Number(calculation.alimentacion.costo_total || 0).toLocaleString()}</li>
+                )}
+                {calculation.equipaje && calculation.equipaje.costo_total > 0 && (
+                  <li>Equipaje: ${Number(calculation.equipaje.costo_total || 0).toLocaleString()}</li>
+                )}
+                {calculation.seguros && calculation.seguros.costo_total > 0 && (
+                  <li>Seguros: ${Number(calculation.seguros.costo_total || 0).toLocaleString()}</li>
+                )}
+              </ul>
+            </div>
+          </div>
+        )}
+
         {/* Botones de acción fijos en la parte inferior */}
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-40">
           <div className="container mx-auto flex justify-end gap-3">
@@ -1385,5 +2009,5 @@ const QuoteEdit = () => {
       {/* ✅ MODAL DE CREACIÓN DE CONTRATO */}
     </div>
   );
-};
+}
 export default QuoteEdit;

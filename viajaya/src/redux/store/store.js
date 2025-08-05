@@ -12,6 +12,7 @@ import notificationReducer from '../slices/notificationSlice';
 import documentReducer from '../slices/documentSlice';
 import toastMiddleware from '../../utils/toastMiddleware';
 import reservationReducer from '../slices/reservationSlice'; 
+import quoteCalculationReducer from '../slices/quoteCalculationSlice'; // Importar el slice de quoteCalculation
 
 export const store = configureStore({
   reducer: {
@@ -27,6 +28,7 @@ export const store = configureStore({
     notification: notificationReducer,
     document: documentReducer,
     reservation: reservationReducer,
+    quoteCalculation: quoteCalculationReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
