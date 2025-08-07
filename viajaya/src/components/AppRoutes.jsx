@@ -54,7 +54,10 @@ const ContractSignature = lazy(() => import("./Panel/Contracts/ContractSignature
 const SignatureSuccess = lazy(() => import("./Panel/Contracts/SignatureSuccess"));
 const MyCommissions = lazy(() => import("./Panel/Commissions/MyCommissions"));
 const ResetPassword = lazy(() => import("./pages/Login/ResetPassword"));
-
+const ContractPurchaseManager = lazy(() => import("./Panel/Contracts/ContractPurchaseManager"));
+// const ItemCard = lazy(() => import("./Panel/Contracts/ItemCard"));
+// const PurchaseUploadModal = lazy(() => import("./Panel/Contracts/PurchaseUploadModal"));
+// const DeadlineUpdateModal = lazy(() => import("./Panel/Contracts/DeadlineUpdateModal"));
 
 const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
   return (
@@ -260,6 +263,22 @@ const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
           </Suspense>
         </RoleRoute>
       } />
+
+      <Route path="/contracts/:contractId/purchase-management" element={
+  <RoleRoute allowedRoles={[USER_ROLES.OWNER]}>
+    <Suspense fallback={<LoadingSpinner />}>
+      <ContractPurchaseManager />
+    </Suspense>
+  </RoleRoute>
+} />
+
+<Route path="/contracts/:contractId/purchases" element={
+  <RoleRoute allowedRoles={[USER_ROLES.OWNER]}>
+    <Suspense fallback={<LoadingSpinner />}>
+      <ContractPurchaseManager />
+    </Suspense>
+  </RoleRoute>
+} />
       
       <Route path="/panel/newPack" element={
         <RoleRoute allowedRoles={[USER_ROLES.ADMIN, USER_ROLES.OWNER]}>

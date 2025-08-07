@@ -13,7 +13,7 @@ import {
   faSpinner,
   faExclamationTriangle,
   faUsers,
-  faCrown
+  faCrown,
 } from "@fortawesome/free-solid-svg-icons";
 
 import {
@@ -22,6 +22,12 @@ import {
   selectCurrentContract,
   selectContractLoading,
   generateContractPDF,
+  selectQuoteCalculationAnalysis, // ✅ NUEVO
+  selectConversionStatus, // ✅ NUEVO
+  selectCanConvertQuote, // ✅ NUEVO
+  selectFinancialSummary, // ✅ NUEVO
+  selectItemsRequireingPurchase, // ✅ NUEVO
+  convertQuoteToContractItems, // ✅ NUEVO - acción
 } from "../../../redux/slices/contractSlice";
 
 const ContractSet = () => {
@@ -31,6 +37,11 @@ const ContractSet = () => {
 
   const contract = useSelector(selectCurrentContract);
   const loading = useSelector(selectContractLoading);
+  const calculationAnalysis = useSelector(selectQuoteCalculationAnalysis); // ✅ NUEVO
+  const conversionStatus = useSelector(selectConversionStatus); // ✅ NUEVO
+  const canConvert = useSelector(selectCanConvertQuote); // ✅ NUEVO
+  const financialSummary = useSelector(selectFinancialSummary); // ✅ NUEVO
+  const itemsRequiringPurchase = useSelector(selectItemsRequireingPurchase); // ✅ NUEVO
   console.log("🔍 Contract data:", contract);
 
   const CONTRACT_ITEM_TYPES = [
@@ -84,6 +95,42 @@ const ContractSet = () => {
 
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [convertingItems, setConvertingItems] = useState(false);
+  const [showCalculationDetails, setShowCalculationDetails] = useState(true);
+  const handleConvertQuoteToItems = async () => {
+    console.log("🔄 INICIANDO conversión de cotización a items...");
+    console.log("📋 canConvert:", canConvert);
+    console.log("📋 contract.contract.id:", contract.contract?.id);
+
+    if (!canConvert) {
+      console.log("❌ No se puede convertir - canConvert es false");
+      return;
+    }
+
+    setConvertingItems(true);
+    try {
+      console.log("📤 Enviando dispatch para convertir items...");
+      const result = await dispatch(
+        convertQuoteToContractItems(contract.contract.id)
+      ).unwrap();
+      console.log("✅ Resultado de conversión:", result);
+
+      // Recargar el contrato para ver los items generados
+      console.log("🔄 Recargando contrato después de conversión...");
+      const reloadedContract = await dispatch(fetchContractById(id));
+      console.log("📋 Contrato recargado:", reloadedContract);
+
+      alert("✅ Items del contrato generados exitosamente desde la cotización");
+    } catch (error) {
+      console.error("❌ Error completo convirtiendo cotización:", error);
+      console.error("❌ Error message:", error.message);
+      console.error("❌ Error stack:", error.stack);
+      alert(`❌ Error: ${error.message || error}`);
+    } finally {
+      setConvertingItems(false);
+      console.log("🏁 Proceso de conversión finalizado");
+    }
+  };
 
   const cleanDate = (date) => {
     if (!date) return null;
@@ -119,8 +166,8 @@ const ContractSet = () => {
       );
     }
 
-    const titularPassenger = passengers.find(p => p.titular === true);
-    const nonTitularPassengers = passengers.filter(p => !p.titular);
+    const titularPassenger = passengers.find((p) => p.titular === true);
+    const nonTitularPassengers = passengers.filter((p) => !p.titular);
 
     return (
       <div className="mt-4 space-y-3">
@@ -128,7 +175,10 @@ const ContractSet = () => {
         {titularPassenger && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <div className="flex items-center gap-2 mb-2">
-              <FontAwesomeIcon icon={faCrown} className="text-blue-600 text-sm" />
+              <FontAwesomeIcon
+                icon={faCrown}
+                className="text-blue-600 text-sm"
+              />
               <span className="font-medium text-blue-900 text-sm">Titular</span>
             </div>
             <div className="text-sm">
@@ -136,10 +186,13 @@ const ContractSet = () => {
                 {titularPassenger.nombre} {titularPassenger.apellido}
               </p>
               <p className="text-gray-600">
-                {titularPassenger.tipo_documento?.toUpperCase()}: {titularPassenger.documento_identidad}
+                {titularPassenger.tipo_documento?.toUpperCase()}:{" "}
+                {titularPassenger.documento_identidad}
               </p>
               <p className="text-gray-600">
-                {new Date(titularPassenger.fecha_nacimiento).toLocaleDateString('es-ES')}
+                {new Date(titularPassenger.fecha_nacimiento).toLocaleDateString(
+                  "es-ES"
+                )}
               </p>
             </div>
           </div>
@@ -152,16 +205,22 @@ const ContractSet = () => {
               Acompañantes ({nonTitularPassengers.length})
             </p>
             {nonTitularPassengers.map((passenger, index) => (
-              <div key={passenger.id} className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+              <div
+                key={passenger.id}
+                className="bg-gray-50 border border-gray-200 rounded-lg p-3"
+              >
                 <div className="text-sm">
                   <p className="font-medium text-gray-900">
                     {passenger.nombre} {passenger.apellido}
                   </p>
                   <p className="text-gray-600">
-                    {passenger.tipo_documento?.toUpperCase()}: {passenger.documento_identidad}
+                    {passenger.tipo_documento?.toUpperCase()}:{" "}
+                    {passenger.documento_identidad}
                   </p>
                   <p className="text-gray-600">
-                    {new Date(passenger.fecha_nacimiento).toLocaleDateString('es-ES')}
+                    {new Date(passenger.fecha_nacimiento).toLocaleDateString(
+                      "es-ES"
+                    )}
                   </p>
                 </div>
               </div>
@@ -171,7 +230,6 @@ const ContractSet = () => {
       </div>
     );
   };
-
 
   useEffect(() => {
     if (id) {
@@ -183,18 +241,18 @@ const ContractSet = () => {
   useEffect(() => {
     if (contract && contract.contract) {
       const contractData = contract.contract;
-      console.log(
-        "🔍 Inicializando formulario con contractData:",
-
-      );
+      console.log("🔍 Inicializando formulario con contractData:");
 
       setFormData((prev) => ({
         ...prev,
         // ✅ DATOS DEL CLIENTE
-        cliente_fecha_nacimiento: getDateInputValue(contractData.Cliente?.fecha_nacimiento),
+        cliente_fecha_nacimiento: getDateInputValue(
+          contractData.Cliente?.fecha_nacimiento
+        ),
         cliente_documento_identidad:
           contractData.Cliente?.documento_identidad ||
-          (contractData.Quote?.Passengers?.find(p => p.titular)?.documento_identidad) ||
+          contractData.Quote?.Passengers?.find((p) => p.titular)
+            ?.documento_identidad ||
           "",
         cliente_tipo_documento: contractData.Cliente?.tipo_documento || "cc",
         cliente_direccion: contractData.Cliente?.direccion || "",
@@ -213,14 +271,18 @@ const ContractSet = () => {
         tiene_cuota_inicial: contractData.tiene_cuota_inicial,
         cuota_inicial_porcentaje: contractData.cuota_inicial_porcentaje || 0,
         cuota_inicial_monto: contractData.cuota_inicial_monto || 0,
-        fecha_vencimiento_inicial: getDateInputValue(contractData.fecha_vencimiento_inicial),
+        fecha_vencimiento_inicial: getDateInputValue(
+          contractData.fecha_vencimiento_inicial
+        ),
         numero_cuotas_restantes: contractData.numero_cuotas_restantes || 3,
         monto_restante:
           contractData.monto_restante || parseFloat(contractData.precio_total),
         valor_cuota_restante:
           contractData.valor_cuota_restante ||
           parseFloat(contractData.precio_total) / 3,
-        fechas_vencimiento_cuotas: Array.isArray(contractData.fechas_vencimiento_cuotas)
+        fechas_vencimiento_cuotas: Array.isArray(
+          contractData.fechas_vencimiento_cuotas
+        )
           ? contractData.fechas_vencimiento_cuotas.map(getDateInputValue)
           : [],
       }));
@@ -230,60 +292,61 @@ const ContractSet = () => {
   }, [contract]);
 
   // ✅ FUNCIÓN: Generar fechas de vencimiento de cuotas
-const generatePaymentDates = (numCuotas) => {
-  const fechaInicioViaje = contract?.contract?.fecha_inicio_viaje;
-  if (!fechaInicioViaje || numCuotas < 1) {
-    // fallback a la lógica anterior
-    const fechas = [];
-    const fechaBase = new Date();
-    for (let i = 1; i <= numCuotas; i++) {
-      const fecha = new Date(fechaBase);
-      fecha.setMonth(fecha.getMonth() + i);
-      fechas.push(fecha.toISOString().split("T")[0]);
+  const generatePaymentDates = (numCuotas) => {
+    const fechaInicioViaje = contract?.contract?.fecha_inicio_viaje;
+    if (!fechaInicioViaje || numCuotas < 1) {
+      // fallback a la lógica anterior
+      const fechas = [];
+      const fechaBase = new Date();
+      for (let i = 1; i <= numCuotas; i++) {
+        const fecha = new Date(fechaBase);
+        fecha.setMonth(fecha.getMonth() + i);
+        fechas.push(fecha.toISOString().split("T")[0]);
+      }
+      setFormData((prev) => ({
+        ...prev,
+        fechas_vencimiento_cuotas: fechas,
+        numero_cuotas_restantes: numCuotas,
+      }));
+      return;
     }
+
+    const fechas = [];
+    const fechaUltimaCuota = new Date(fechaInicioViaje);
+    fechaUltimaCuota.setDate(fechaUltimaCuota.getDate() - 30);
+
+    const fechaHoy = new Date();
+    fechaHoy.setHours(0, 0, 0, 0); // Solo fecha, sin hora
+
+    const fechaLimite =
+      fechaUltimaCuota < fechaHoy ? fechaHoy : fechaUltimaCuota;
+
+    const fechaPrimeraCuota = fechaHoy;
+    const diffTime = fechaUltimaCuota.getTime() - fechaPrimeraCuota.getTime();
+    const diasDisponibles = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    let cuotas = numCuotas;
+    if (cuotas > 1 && diasDisponibles < cuotas - 1) {
+      cuotas = Math.max(1, diasDisponibles + 1);
+    }
+
+    if (cuotas <= 1) {
+      // Si la fecha límite ya pasó, usa hoy
+      fechas.push(fechaLimite.toISOString().split("T")[0]);
+    } else {
+      const intervalo = diffTime / (cuotas - 1);
+      for (let i = 0; i < cuotas; i++) {
+        const fecha = new Date(fechaPrimeraCuota.getTime() + intervalo * i);
+        fechas.push(fecha.toISOString().split("T")[0]);
+      }
+    }
+
     setFormData((prev) => ({
       ...prev,
       fechas_vencimiento_cuotas: fechas,
-      numero_cuotas_restantes: numCuotas,
+      numero_cuotas_restantes: cuotas,
     }));
-    return;
-  }
-
-  const fechas = [];
-  const fechaUltimaCuota = new Date(fechaInicioViaje);
-  fechaUltimaCuota.setDate(fechaUltimaCuota.getDate() - 30);
-
-  const fechaHoy = new Date();
-  fechaHoy.setHours(0, 0, 0, 0); // Solo fecha, sin hora
-
-  const fechaLimite = fechaUltimaCuota < fechaHoy ? fechaHoy : fechaUltimaCuota;
-
-  const fechaPrimeraCuota = fechaHoy;
-  const diffTime = fechaUltimaCuota.getTime() - fechaPrimeraCuota.getTime();
-  const diasDisponibles = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-  let cuotas = numCuotas;
-  if (cuotas > 1 && diasDisponibles < cuotas - 1) {
-    cuotas = Math.max(1, diasDisponibles + 1);
-  }
-
-  if (cuotas <= 1) {
-    // Si la fecha límite ya pasó, usa hoy
-    fechas.push(fechaLimite.toISOString().split("T")[0]);
-  } else {
-    const intervalo = diffTime / (cuotas - 1);
-    for (let i = 0; i < cuotas; i++) {
-      const fecha = new Date(fechaPrimeraCuota.getTime() + intervalo * i);
-      fechas.push(fecha.toISOString().split("T")[0]);
-    }
-  }
-
-  setFormData((prev) => ({
-    ...prev,
-    fechas_vencimiento_cuotas: fechas,
-    numero_cuotas_restantes: cuotas,
-  }));
-};
+  };
 
   // ✅ FUNCIÓN: Actualizar fecha de cuota específica
   const updatePaymentDate = (index, newDate) => {
@@ -451,7 +514,6 @@ const generatePaymentDates = (numCuotas) => {
   const validateForm = () => {
     const newErrors = {};
 
-
     if (formData.forma_pago === "cuotas") {
       if (formData.tiene_cuota_inicial && !formData.fecha_vencimiento_inicial) {
         newErrors.fecha_vencimiento_inicial =
@@ -477,49 +539,52 @@ const generatePaymentDates = (numCuotas) => {
   };
 
   // ✅ CORREGIR: Función para guardar el contrato
-  const handleSave = async () => {
-    if (!validateForm()) {
-      return;
-    }
+  // ✅ CORREGIR: Función para guardar el contrato
+const handleSave = async () => {
+  if (!validateForm()) {
+    return;
+  }
 
-    setSaving(true);
+  setSaving(true);
+  try {
+    // ✅ PASO 1: Actualizar contrato
+    console.log("📝 Actualizando contrato...");
+    console.log("📋 FormData a enviar:", formData);
+    
+    await dispatch(
+      updateContract({
+        id: contract.contract.id,
+        updates: formData,
+      })
+    ).unwrap();
+
+    console.log("✅ Contrato actualizado exitosamente");
+
+    // ✅ PASO 2: Generar PDF automáticamente
+    console.log("📄 Generando PDF del contrato...");
     try {
-      // ✅ PASO 1: Actualizar contrato
-      console.log('📝 Actualizando contrato...');
-      const updatedContract = await dispatch(
-        updateContract({
-          id: contract.contract.id,
-          updates: formData,
-        })
+      const pdfResult = await dispatch(
+        generateContractPDF(contract.contract.id)
       ).unwrap();
 
-      console.log('✅ Contrato actualizado exitosamente');
-
-      // ✅ PASO 2: Generar PDF automáticamente
-      console.log('📄 Generando PDF del contrato...');
-      try {
-        const pdfResult = await dispatch(
-          generateContractPDF(contract.contract.id)
-        ).unwrap();
-
-        console.log('✅ PDF generado exitosamente:', pdfResult);
-        alert("✅ Contrato actualizado y PDF generado exitosamente");
-      } catch (pdfError) {
-        console.error('⚠️ Error generando PDF:', pdfError);
-        alert("✅ Contrato actualizado, pero hubo un error generando el PDF. Puede generarlo manualmente.");
-      }
-
-      // ✅ PASO 3: Navegar de vuelta
-      navigate(`/contractsList`);
-
-    } catch (error) {
-      console.error("❌ Error saving contract:", error);
-      alert(`❌ Error al guardar: ${error.message || error}`);
-    } finally {
-      setSaving(false);
+      console.log("✅ PDF generado exitosamente:", pdfResult);
+      alert("✅ Contrato actualizado y PDF generado exitosamente");
+    } catch (pdfError) {
+      console.error("⚠️ Error generando PDF:", pdfError);
+      alert(
+        "✅ Contrato actualizado, pero hubo un error generando el PDF. Puede generarlo manualmente."
+      );
     }
-  };
 
+    // ✅ PASO 3: Navegar de vuelta
+    navigate(`/contractsList`);
+  } catch (error) {
+    console.error("❌ Error saving contract:", error);
+    alert(`❌ Error al guardar: ${error.message || error}`);
+  } finally {
+    setSaving(false);
+  }
+};
   if (loading && !contract) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -556,7 +621,7 @@ const generatePaymentDates = (numCuotas) => {
 
   return (
     <div className="container mx-auto p-6 max-w-6xl">
-      {/* Header */}
+      {/* ✅ 1. HEADER - Debe ir PRIMERO */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <button
@@ -589,8 +654,327 @@ const generatePaymentDates = (numCuotas) => {
         </button>
       </div>
 
+      {/* ✅ 2. DASHBOARD DE COTIZACIÓN - Después del header */}
+      {calculationAnalysis && (
+        <div className="mb-6">
+          <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white mb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold mb-2">
+                  📊 Análisis de Cotización
+                </h2>
+                <p className="text-blue-100">
+                  {calculationAnalysis.total_items_potenciales} items
+                  disponibles •{calculationAnalysis.items_requieren_compra}{" "}
+                  requieren compra • Valor total: $
+                  {calculationAnalysis.valor_total_compras.toLocaleString()}
+                </p>
+              </div>
+              <button
+                onClick={() =>
+                  setShowCalculationDetails(!showCalculationDetails)
+                }
+                className="bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg transition-colors"
+              >
+                {showCalculationDetails ? "🔽 Ocultar" : "🔼 Mostrar"} Detalles
+              </button>
+            </div>
+          </div>
+
+          {/* Detalles expandibles */}
+          {showCalculationDetails && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+              {/* Items que requieren compra */}
+              <div className="bg-white rounded-lg shadow-md p-4">
+                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  🛒 Items que requieren compra (
+                  {calculationAnalysis.items_requieren_compra})
+                </h3>
+                <div className="space-y-2">
+                  {calculationAnalysis.items_detallados
+                    .filter((item) => item.requiere_compra)
+                    .map((item, index) => (
+                      <div
+                        key={index}
+                        className="flex justify-between items-center p-2 bg-gray-50 rounded"
+                      >
+                        <div>
+                          <span className="font-medium">
+                            {item.descripcion}
+                          </span>
+                          <span
+                            className={`ml-2 px-2 py-1 rounded text-xs ${
+                              item.prioridad === "critica"
+                                ? "bg-red-100 text-red-800"
+                                : item.prioridad === "alta"
+                                ? "bg-orange-100 text-orange-800"
+                                : item.prioridad === "media"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {item.prioridad}
+                          </span>
+                        </div>
+                        <span className="font-semibold text-green-600">
+                          ${item.valor.toLocaleString()}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+              {/* Resumen financiero */}
+              <div className="bg-white rounded-lg shadow-md p-4">
+                <h3 className="font-semibold text-gray-900 mb-3">
+                  💰 Resumen Financiero
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Precio final cotizado:</span>
+                    <span className="font-semibold">
+                      $
+                      {calculationAnalysis.financials.precio_final_total.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Costo base productos:</span>
+                    <span>
+                      $
+                      {calculationAnalysis.valor_total_compras.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Total comisiones:</span>
+                    <span>
+                      $
+                      {calculationAnalysis.financials.total_comisiones.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Ganancia empresa:</span>
+                    <span>
+                      $
+                      {calculationAnalysis.financials.total_ganancia.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="border-t pt-2">
+                    <div className="flex justify-between font-semibold">
+                      <span>Margen bruto:</span>
+                      <span className="text-green-600">
+                        {financialSummary?.margen_bruto}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Botón de conversión */}
+          {conversionStatus &&
+            !conversionStatus.items_generated &&
+            canConvert && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-semibold text-yellow-800 mb-1">
+                      🔄 Convertir cotización a items del contrato
+                    </h4>
+                    <p className="text-yellow-700 text-sm">
+                      Los items de la cotización aún no se han convertido a
+                      items del contrato. Esto generará{" "}
+                      {calculationAnalysis.items_requieren_compra} items que
+                      requieren compra.
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleConvertQuoteToItems}
+                    disabled={convertingItems}
+                    className="bg-yellow-500 hover:bg-yellow-600 disabled:bg-yellow-300 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    {convertingItems ? (
+                      <>
+                        <FontAwesomeIcon icon={faSpinner} spin />
+                        Convirtiendo...
+                      </>
+                    ) : (
+                      <>🔄 Convertir Items</>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+          {/* Estado de items generados */}
+          {conversionStatus?.items_generated && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+              <h4 className="font-semibold text-green-800 mb-1 flex items-center gap-2">
+                ✅ Items del contrato generados
+              </h4>
+              <p className="text-green-700 text-sm">
+                Se han generado {contract.contract_items_analysis?.total || 0}{" "}
+                items del contrato. Ahora puedes gestionar las compras de cada
+                item.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ✅ 3. SECCIÓN DE ITEMS DEL CONTRATO - Independiente */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <FontAwesomeIcon icon={faFileContract} className="text-blue-500" />
+          Items del Contrato
+          {contract.contract_items_analysis && (
+            <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm">
+              {contract.contract_items_analysis.total} items
+            </span>
+          )}
+        </h3>
+
+        {/* Si hay items generados desde cotización */}
+        {contract.contract_items_analysis?.total > 0 ? (
+          <div className="space-y-4">
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <h4 className="font-semibold text-blue-900 mb-2">
+                📋 Items generados desde cotización:
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div>
+                  <span className="text-blue-700">Total items:</span>
+                  <span className="font-semibold ml-1">
+                    {contract.contract_items_analysis.total}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-blue-700">Requieren compra:</span>
+                  <span className="font-semibold ml-1">
+                    {contract.contract_items_analysis.requieren_compra}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-blue-700">Valor cotizado:</span>
+                  <span className="font-semibold ml-1">
+                    $
+                    {contract.contract_items_analysis.valor_total_cotizado.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-sm text-gray-600">
+              💡 Los items del contrato han sido generados automáticamente desde
+              la cotización. Puedes gestionarlos desde el módulo de gestión de
+              compras.
+            </p>
+          </div>
+        ) : (
+          /* Items manuales como backup */
+          <>
+            {formData.contractItem.map((item, idx) => (
+              <div key={idx} className="mb-6 border-b pb-4">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <FontAwesomeIcon
+                    icon={faFileContract}
+                    className="text-blue-500"
+                  />
+                  Item del contrato #{idx + 1}
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Tipo *
+                    </label>
+                    <select
+                      value={item.tipo}
+                      onChange={(e) => {
+                        const newItems = [...formData.contractItem];
+                        newItems[idx].tipo = e.target.value;
+                        setFormData({ ...formData, contractItem: newItems });
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    >
+                      <option value="">Seleccione tipo</option>
+                      {CONTRACT_ITEM_TYPES.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Descripción *
+                    </label>
+                    <input
+                      type="text"
+                      value={item.descripcion}
+                      onChange={(e) => {
+                        const newItems = [...formData.contractItem];
+                        newItems[idx].descripcion = e.target.value;
+                        setFormData({ ...formData, contractItem: newItems });
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Detalle
+                    </label>
+                    <input
+                      type="text"
+                      value={item.detalle}
+                      onChange={(e) => {
+                        const newItems = [...formData.contractItem];
+                        newItems[idx].detalle = e.target.value;
+                        setFormData({ ...formData, contractItem: newItems });
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    />
+                  </div>
+                </div>
+                {formData.contractItem.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newItems = formData.contractItem.filter(
+                        (_, i) => i !== idx
+                      );
+                      setFormData({ ...formData, contractItem: newItems });
+                    }}
+                    className="mt-2 text-red-500 text-sm"
+                  >
+                    Eliminar ítem
+                  </button>
+                )}
+              </div>
+            ))}
+
+            {/* Botón para agregar item manual */}
+            <button
+              type="button"
+              onClick={() =>
+                setFormData({
+                  ...formData,
+                  contractItem: [
+                    ...formData.contractItem,
+                    { tipo: "", descripcion: "", detalle: "" },
+                  ],
+                })
+              }
+              className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            >
+              ➕ Agregar ítem manual
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* ✅ 4. GRID PRINCIPAL - Información del viaje + Formulario */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Información del viaje con pasajeros */}
+        {/* Columna izquierda - Información del viaje */}
         <div className="lg:col-span-1">
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -672,7 +1056,7 @@ const generatePaymentDates = (numCuotas) => {
             </div>
           </div>
 
-          {/* ✅ AGREGAR: Resumen de pagos */}
+          {/* Resumen de pagos */}
           {formData.forma_pago === "cuotas" && (
             <div className="bg-blue-50 rounded-lg shadow-md p-6">
               <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
@@ -729,7 +1113,7 @@ const generatePaymentDates = (numCuotas) => {
           )}
         </div>
 
-        {/* Formulario principal */}
+        {/* Columna derecha - Formulario principal */}
         <div className="lg:col-span-2">
           <div className="space-y-6">
             {/* Datos del cliente */}
@@ -739,136 +1123,47 @@ const generatePaymentDates = (numCuotas) => {
                 Datos del Cliente
               </h3>
 
-             {/* ✅ AGREGAR: Información actual del cliente y documento del titular */}
-<div className="bg-blue-50 p-4 rounded-lg mb-4">
-  <h4 className="font-semibold text-blue-900 mb-2">
-    Información actual del cliente:
-  </h4>
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-    <p>
-      <strong>Nombre:</strong> {contract.contract?.Cliente?.name}{" "}
-      {contract.contract?.Cliente?.lastname}
-    </p>
-    <p>
-      <strong>Email:</strong> {contract.contract?.Cliente?.email}
-    </p>
-    <p>
-      <strong>Teléfono:</strong>{" "}
-      {contract.contract?.Cliente?.phone}
-    </p>
-    <p>
-      <strong>Documento titular:</strong>{" "}
-      {(contract.contract?.Quote?.Passengers?.find(p => p.titular) ?
-        `${contract.contract.Quote.Passengers.find(p => p.titular).tipo_documento?.toUpperCase() || ""} ${contract.contract.Quote.Passengers.find(p => p.titular).documento_identidad || ""}`
-        :
-        `${contract.contract?.Cliente?.tipo_documento?.toUpperCase() || ""} ${contract.contract?.Cliente?.documento_identidad || ""}`
-      )}
-    </p>
-  </div>
-</div>
-
-
-            </div>
-
-            {formData.contractItem.map((item, idx) => (
-              <div key={idx} className="mb-6 border-b pb-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <FontAwesomeIcon icon={faUser} className="text-blue-500" />
-                  Item del contrato
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Tipo *
-                    </label>
-                    <select
-                      value={item.tipo}
-                      onChange={(e) => {
-                        const newItems = [...formData.contractItem];
-                        newItems[idx].tipo = e.target.value;
-                        setFormData({ ...formData, contractItem: newItems });
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                    >
-                      <option value="">Seleccione tipo</option>
-                      {CONTRACT_ITEM_TYPES.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Descripción *
-                    </label>
-                    <input
-                      type="text"
-                      value={item.descripcion}
-                      onChange={(e) => {
-                        const newItems = [...formData.contractItem];
-                        newItems[idx].descripcion = e.target.value;
-                        setFormData({ ...formData, contractItem: newItems });
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Detalle
-                    </label>
-                    <input
-                      type="text"
-                      value={item.detalle}
-                      onChange={(e) => {
-                        const newItems = [...formData.contractItem];
-                        newItems[idx].detalle = e.target.value;
-                        setFormData({ ...formData, contractItem: newItems });
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                    />
-                  </div>
-
+              {/* Información actual del cliente */}
+              <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                <h4 className="font-semibold text-blue-900 mb-2">
+                  Información actual del cliente:
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                  <p>
+                    <strong>Nombre:</strong> {contract.contract?.Cliente?.name}{" "}
+                    {contract.contract?.Cliente?.lastname}
+                  </p>
+                  <p>
+                    <strong>Email:</strong> {contract.contract?.Cliente?.email}
+                  </p>
+                  <p>
+                    <strong>Teléfono:</strong>{" "}
+                    {contract.contract?.Cliente?.phone}
+                  </p>
+                  <p>
+                    <strong>Documento titular:</strong>{" "}
+                    {contract.contract?.Quote?.Passengers?.find(
+                      (p) => p.titular
+                    )
+                      ? `${
+                          contract.contract.Quote.Passengers.find(
+                            (p) => p.titular
+                          ).tipo_documento?.toUpperCase() || ""
+                        } ${
+                          contract.contract.Quote.Passengers.find(
+                            (p) => p.titular
+                          ).documento_identidad || ""
+                        }`
+                      : `${
+                          contract.contract?.Cliente?.tipo_documento?.toUpperCase() ||
+                          ""
+                        } ${
+                          contract.contract?.Cliente?.documento_identidad || ""
+                        }`}
+                  </p>
                 </div>
-                {/* Botón para eliminar el item si hay más de uno */}
-                {formData.contractItem.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const newItems = formData.contractItem.filter(
-                        (_, i) => i !== idx
-                      );
-                      setFormData({ ...formData, contractItem: newItems });
-                    }}
-                    className="mt-2 text-red-500 text-sm"
-                  >
-                    Eliminar ítem
-                  </button>
-                )}
               </div>
-            ))}
-
-            {/* Botón para agregar un nuevo item */}
-            <button
-              type="button"
-              onClick={() =>
-                setFormData({
-                  ...formData,
-                  contractItem: [
-                    ...formData.contractItem,
-                    {
-                      tipo: "",
-                      descripcion: "",
-                      detalle: "",
-                    },
-                  ],
-                })
-              }
-              className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg"
-            >
-              Agregar ítem
-            </button>
+            </div>
 
             {/* Forma de pago */}
             <div className="bg-white rounded-lg shadow-md p-6">
@@ -970,7 +1265,6 @@ const generatePaymentDates = (numCuotas) => {
                           />
                         </div>
 
-                        {/* ✅ MONTO - AHORA EDITABLE */}
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             Monto ($)
@@ -1003,10 +1297,11 @@ const generatePaymentDates = (numCuotas) => {
                                 e.target.value
                               )
                             }
-                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.fecha_vencimiento_inicial
+                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                              errors.fecha_vencimiento_inicial
                                 ? "border-red-500"
                                 : "border-gray-300"
-                              }`}
+                            }`}
                           />
                           {errors.fecha_vencimiento_inicial && (
                             <p className="text-red-500 text-sm mt-1">
@@ -1015,7 +1310,6 @@ const generatePaymentDates = (numCuotas) => {
                           )}
                         </div>
 
-                        {/* ✅ RESUMEN */}
                         <div className="bg-gray-50 p-3 rounded-lg">
                           <div className="text-xs text-gray-600">
                             <div>
@@ -1057,10 +1351,11 @@ const generatePaymentDates = (numCuotas) => {
                               e.target.value
                             )
                           }
-                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.numero_cuotas_restantes
+                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                            errors.numero_cuotas_restantes
                               ? "border-red-500"
                               : "border-gray-300"
-                            }`}
+                          }`}
                         />
                         {errors.numero_cuotas_restantes && (
                           <p className="text-red-500 text-sm mt-1">
@@ -1083,7 +1378,6 @@ const generatePaymentDates = (numCuotas) => {
                         />
                       </div>
 
-                      {/* ✅ VALOR POR CUOTA - AHORA EDITABLE */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Valor por cuota ($)
@@ -1105,7 +1399,6 @@ const generatePaymentDates = (numCuotas) => {
                         />
                       </div>
 
-                      {/* ✅ BOTÓN PARA REGENERAR FECHAS */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Acciones
@@ -1227,7 +1520,7 @@ const generatePaymentDates = (numCuotas) => {
         </div>
       </div>
 
-      {/* Botones de acción fijos */}
+      {/* ✅ 5. BOTONES DE ACCIÓN FIJOS - Al final */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-10">
         <div className="container mx-auto max-w-6xl flex justify-end gap-4">
           <button
@@ -1257,5 +1550,4 @@ const generatePaymentDates = (numCuotas) => {
     </div>
   );
 };
-
 export default ContractSet;

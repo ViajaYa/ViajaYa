@@ -24,6 +24,27 @@ sequelize.define('purchase', {
       type: DataTypes.DATE,
       allowNull: true
     },
+       cloudinary_public_id: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: 'ID del archivo en Cloudinary'
+    },
+    
+    tipo_comprobante: {
+      type: DataTypes.ENUM('factura', 'recibo', 'confirmacion', 'voucher', 'ticket'),
+      defaultValue: 'factura'
+    },
+    
+    moneda: {
+      type: DataTypes.ENUM('COP', 'USD', 'EUR'),
+      defaultValue: 'COP'
+    },
+    
+    diferencia_precio: {
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: true,
+      comment: 'Diferencia entre precio cotizado y precio real (puede ser negativa)'
+    },
     comprobante_url: {
       type: DataTypes.STRING,
       allowNull: true
@@ -38,6 +59,5 @@ sequelize.define('purchase', {
       allowNull: true
     }
   });
-
 
 };

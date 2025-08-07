@@ -1,12 +1,10 @@
-
-
 // React y hooks
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 
 // FontAwesome
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faSave,
   faArrowLeft,
@@ -23,6 +21,7 @@ import {
   faExclamationTriangle,
   faShieldAlt,
   faEye,
+  faEdit,
   faDownload,
   faSync,
   faFilePdf,
@@ -31,8 +30,8 @@ import {
   faBuilding,
   faBed,
   faStar,
-  faInfoCircle
-} from '@fortawesome/free-solid-svg-icons';
+  faInfoCircle,
+} from "@fortawesome/free-solid-svg-icons";
 
 // Redux slices y acciones
 import {
@@ -53,10 +52,10 @@ import {
   selectPDFLoading,
   selectPDFError,
   selectLastPreviewUrl,
-  selectPDFRegenerating
-} from '../../../redux/slices/quoteSlice';
-import { createContract } from '../../../redux/slices/contractSlice';
-import { updateUser, selectUser } from '../../../redux/slices/authSlice';
+  selectPDFRegenerating,
+} from "../../../redux/slices/quoteSlice";
+import { createContract } from "../../../redux/slices/contractSlice";
+import { updateUser, selectUser } from "../../../redux/slices/authSlice";
 
 import {
   createQuoteCalculation,
@@ -67,29 +66,28 @@ import {
   selectCalculation,
   selectCalculationLoading,
   selectCalculationError,
-  selectBaseData
-} from '../../../redux/slices/quoteCalculationSlice';
+  selectBaseData,
+} from "../../../redux/slices/quoteCalculationSlice";
 
 // Importar thunk de comisiones del slice correcto
-import { 
+import {
   fetchCommissionsByTripType,
-  selectConfiguredCommissions 
-} from '../../../redux/slices/commissionSlice';
+  selectConfiguredCommissions,
+} from "../../../redux/slices/commissionSlice";
 
 // Permisos y hooks
 import { useRolePermissions } from "../../../redux/hooks/hooks";
 
-
 // Componentes UI
 import NavBar from "../../layout/NavBar/NavBar";
-import AdvancedQuoteCalculator from './AdvancedQuoteCalculator_Fixed';
+import AdvancedQuoteCalculator from "./AdvancedQuoteCalculator_Fixed";
 
 // Utils
 import {
   openPDFPreview,
   canGeneratePDF,
-  hasGeneratedPDF
-} from '../../../utils/pdfPreview';
+  hasGeneratedPDF,
+} from "../../../utils/pdfPreview";
 
 const QuoteEdit = () => {
   const { id } = useParams();
@@ -114,7 +112,7 @@ const QuoteEdit = () => {
   const calculationLoading = useSelector(selectCalculationLoading);
   const calculationError = useSelector(selectCalculationError);
   const baseData = useSelector(selectBaseData);
-  
+
   // ✅ Selectores para comisiones configuradas
   const configuredCommissions = useSelector(selectConfiguredCommissions);
 
@@ -148,7 +146,8 @@ const QuoteEdit = () => {
   const [saveLoading, setSaveLoading] = useState(false);
   const [sendLoading, setSendLoading] = useState(false);
   const [errors, setErrors] = useState({});
-
+  const [hasCalculatorData, setHasCalculatorData] = useState(false);
+const [showRequoteInfo, setShowRequoteInfo] = useState(false);
   const [showContractModal, setShowContractModal] = useState(false);
   const [contractData, setContractData] = useState({
     numero_personas: "",
@@ -245,7 +244,9 @@ const QuoteEdit = () => {
 
   const handlePreviewPDF = async () => {
     if (!canGeneratePDF(currentQuote)) {
-      alert("La cotización debe tener un precio por persona para generar el PDF");
+      alert(
+        "La cotización debe tener un precio por persona para generar el PDF"
+      );
       return;
     }
 
@@ -274,7 +275,9 @@ const QuoteEdit = () => {
 
   const handleRegeneratePDF = async () => {
     if (!canGeneratePDF(currentQuote)) {
-      alert("La cotización debe tener un precio por persona para regenerar el PDF");
+      alert(
+        "La cotización debe tener un precio por persona para regenerar el PDF"
+      );
       return;
     }
 
@@ -390,12 +393,14 @@ const QuoteEdit = () => {
         status: "approved", // Marcarla como aprobada para crear contrato
       };
 
-      console.log("🔍 Datos de cotización a actualizar:", { 
+      console.log("🔍 Datos de cotización a actualizar:", {
         trip_type: quoteUpdateData.trip_type,
-        destino: quoteUpdateData.destino 
+        destino: quoteUpdateData.destino,
       });
 
-      await dispatch(updateQuote({ id: currentQuote.id, updates: quoteUpdateData })).unwrap();
+      await dispatch(
+        updateQuote({ id: currentQuote.id, updates: quoteUpdateData })
+      ).unwrap();
 
       // ✅ PASO 1: Actualizar datos del cliente si existe
       if (currentQuote.Cliente?.id) {
@@ -468,7 +473,21 @@ const QuoteEdit = () => {
 
   // ✅ TODOS LOS useEffect DESPUÉS DE LAS FUNCIONES
 
-  // Al montar, cargar la cotización y el cálculo asociado si existe
+useEffect(() => {
+  console.log('🔍 COMPONENTE: Verificando datos de calculadora existentes');
+  console.log('📋 COMPONENTE: calculation:', calculation);
+  console.log('📋 COMPONENTE: currentQuote status:', currentQuote?.status);
+  
+  // ✅ CONDICIÓN EXPANDIDA: Permitir usar calculadora en más estados
+  if (calculation && calculation.precio_final_total > 0) {
+    console.log('✅ COMPONENTE: Se encontró cálculo existente, habilitando recotización');
+    setHasCalculatorData(true);
+  } else {
+    console.log('❌ COMPONENTE: No hay datos de calculadora o precio es 0');
+    setHasCalculatorData(false);
+  }
+}, [calculation, currentQuote?.status]);
+
   // Al montar, cargar la cotización y el cálculo asociado si existe
   useEffect(() => {
     if (id) {
@@ -478,18 +497,22 @@ const QuoteEdit = () => {
     }
   }, [dispatch, id]);
 
-
   // Cuando se carga la cotización o el cálculo, hidratar el formulario y el resumen
   // Cuando se carga la cotización o el cálculo, hidratar el formulario y el resumen
   useEffect(() => {
     if (currentQuote) {
       // Si hay cálculo asociado, usarlo para hidratar el formulario y el resumen
       if (calculation && calculation.quote_id === currentQuote.id) {
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
-          numero_personas: calculation.num_personas || currentQuote.numero_personas || 1,
-          fecha_ida: currentQuote.fecha_ida ? new Date(currentQuote.fecha_ida).toISOString().split("T")[0] : "",
-          fecha_regreso: currentQuote.fecha_regreso ? new Date(currentQuote.fecha_regreso).toISOString().split("T")[0] : "",
+          numero_personas:
+            calculation.num_personas || currentQuote.numero_personas || 1,
+          fecha_ida: currentQuote.fecha_ida
+            ? new Date(currentQuote.fecha_ida).toISOString().split("T")[0]
+            : "",
+          fecha_regreso: currentQuote.fecha_regreso
+            ? new Date(currentQuote.fecha_regreso).toISOString().split("T")[0]
+            : "",
           destino: currentQuote.destino || "",
           trip_type: currentQuote.trip_type || "nacional",
           origen: currentQuote.origen || "",
@@ -499,21 +522,32 @@ const QuoteEdit = () => {
           alimentacion: currentQuote.alimentacion || "",
           ninos: currentQuote.ninos || 0,
           edades_ninos: currentQuote.edades_ninos || [],
-          observaciones: calculation.observaciones_generales || currentQuote.observaciones || "",
+          observaciones:
+            calculation.observaciones_generales ||
+            currentQuote.observaciones ||
+            "",
           precio_por_persona: calculation.precio_final_por_persona || "",
           precio_total: calculation.precio_final_total || "",
-          servicios_detalle: currentQuote.servicios_detalle || ""
+          servicios_detalle: currentQuote.servicios_detalle || "",
         }));
         // Calculation comes from Redux, no need to set it locally
       } else {
         // Si no hay cálculo, hidratar solo con datos de la cotización
-        const precioPorPersona = currentQuote.precio_total && currentQuote.numero_personas 
-          ? (parseFloat(currentQuote.precio_total) / parseInt(currentQuote.numero_personas)).toFixed(2)
-          : "";
+        const precioPorPersona =
+          currentQuote.precio_total && currentQuote.numero_personas
+            ? (
+                parseFloat(currentQuote.precio_total) /
+                parseInt(currentQuote.numero_personas)
+              ).toFixed(2)
+            : "";
         setFormData({
           numero_personas: currentQuote.numero_personas || 1,
-          fecha_ida: currentQuote.fecha_ida ? new Date(currentQuote.fecha_ida).toISOString().split("T")[0] : "",
-          fecha_regreso: currentQuote.fecha_regreso ? new Date(currentQuote.fecha_regreso).toISOString().split("T")[0] : "",
+          fecha_ida: currentQuote.fecha_ida
+            ? new Date(currentQuote.fecha_ida).toISOString().split("T")[0]
+            : "",
+          fecha_regreso: currentQuote.fecha_regreso
+            ? new Date(currentQuote.fecha_regreso).toISOString().split("T")[0]
+            : "",
           destino: currentQuote.destino || "",
           trip_type: currentQuote.trip_type || "nacional",
           origen: currentQuote.origen || "",
@@ -526,7 +560,7 @@ const QuoteEdit = () => {
           observaciones: currentQuote.observaciones || "",
           precio_por_persona: precioPorPersona,
           precio_total: currentQuote.precio_total || "",
-          servicios_detalle: currentQuote.servicios_detalle || ""
+          servicios_detalle: currentQuote.servicios_detalle || "",
         });
       }
     }
@@ -561,18 +595,18 @@ const QuoteEdit = () => {
   useEffect(() => {
     const precioPorPersona = parseFloat(formData.precio_por_persona);
     const numeroPersonas = parseInt(formData.numero_personas);
-    
+
     if (precioPorPersona > 0 && numeroPersonas > 0) {
       const precioTotal = (precioPorPersona * numeroPersonas).toFixed(2);
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        precio_total: precioTotal
+        precio_total: precioTotal,
       }));
     } else if (!formData.precio_por_persona) {
       // Si se borra el precio por persona, limpiar precio total
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        precio_total: ""
+        precio_total: "",
       }));
     }
   }, [formData.precio_por_persona, formData.numero_personas]);
@@ -658,54 +692,17 @@ const QuoteEdit = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSave = async () => {
-    if (!validateForm()) {
-      return;
-    }
-
-    setSaveLoading(true);
-    try {
-      const updateData = {
-        ...formData,
-        precio_total: formData.precio_total
-          ? parseFloat(formData.precio_total)
-          : null,
-        numero_personas: parseInt(formData.numero_personas),
-        ninos: parseInt(formData.ninos),
-        status:
-          formData.precio_total && formData.precio_total > 0
-            ? "completed"
-            : "pending",
-        // ✅ Incluir servicios detallados
-        servicios_detalle: formData.servicios_detalle || null,
-        // ✅ Asegurar que trip_type se incluya explícitamente
-        trip_type: formData.trip_type
-      };
-
-      console.log('💾 Guardando cotización con datos (incluyendo trip_type):', {
-        trip_type: updateData.trip_type,
-        destino: updateData.destino,
-        precio_total: updateData.precio_total
-      });
-      await dispatch(updateQuote({ id, updates: updateData })).unwrap();
-
-      // ✅ Recargar para sincronizar
-      await dispatch(fetchQuoteById(id));
-
-      alert("✅ Cotización guardada exitosamente");
-    } catch (error) {
-      console.error("❌ Error guardando cotización:", error);
-      alert("Error al guardar la cotización: " + (error.message || error));
-    } finally {
-      setSaveLoading(false);
-    }
-  };
+ 
 
   const handleSendToClient = async () => {
     if (!canSendQuote()) {
       alert("No tienes permisos para enviar cotizaciones");
       return;
     }
+    if (!hasCalculatorData) {
+    alert("Debe completar el cálculo en la calculadora antes de enviar la cotización");
+    return;
+  }
 
     if (!validateForm()) {
       alert("Por favor, completa todos los campos requeridos antes de enviar");
@@ -713,7 +710,9 @@ const QuoteEdit = () => {
     }
 
     if (!formData.precio_por_persona || formData.precio_por_persona <= 0) {
-      alert("Debes establecer un precio por persona antes de enviar la cotización");
+      alert(
+        "Debes establecer un precio por persona antes de enviar la cotización"
+      );
       return;
     }
 
@@ -739,22 +738,25 @@ const QuoteEdit = () => {
           // Asegurar que los servicios detallados se incluyan
           servicios_detalle: formData.servicios_detalle || null,
           // ✅ Asegurar que trip_type se incluya explícitamente
-          trip_type: formData.trip_type
+          trip_type: formData.trip_type,
         };
 
-        console.log('💾 Actualizando cotización antes de enviar (incluyendo trip_type):', {
-          trip_type: updateData.trip_type,
-          destino: updateData.destino,
-          status: updateData.status
-        });
+        console.log(
+          "💾 Actualizando cotización antes de enviar (incluyendo trip_type):",
+          {
+            trip_type: updateData.trip_type,
+            destino: updateData.destino,
+            status: updateData.status,
+          }
+        );
         await dispatch(updateQuote({ id, updates: updateData })).unwrap();
 
         // ✅ PASO 2: Enviar al cliente
-        console.log('📧 Enviando cotización al cliente...');
+        console.log("📧 Enviando cotización al cliente...");
         await dispatch(sendQuoteToClient(id)).unwrap();
 
         // ✅ PASO 3: Recargar para sincronizar
-        console.log('🔄 Recargando datos actualizados...');
+        console.log("🔄 Recargando datos actualizados...");
         await dispatch(fetchQuoteById(id));
 
         alert("✅ Cotización enviada exitosamente al cliente");
@@ -853,194 +855,292 @@ const QuoteEdit = () => {
     currentQuote?.status === QUOTE_STATUSES.APPROVED ||
     currentQuote?.status === QUOTE_STATUSES.REJECTED;
 
-  // ✅ Función para manejar el guardado desde la calculadora
-  const handleCalculationSave = async (calculationData) => {
-    try {
-      console.log('💾 Guardando cálculo desde calculadora:', calculationData);
-      
-      // Actualizar el precio por persona en el formulario usando los campos correctos
-      if (calculationData.precio_final_por_persona && calculationData.precio_final_total) {
-        console.log('💰 Actualizando precios desde calculadora:', {
-          precio_final_por_persona: calculationData.precio_final_por_persona,
-          precio_final_total: calculationData.precio_final_total,
-          num_personas: calculationData.num_personas
-        });
-        
-        // ✅ NUEVO: Extraer detalles de servicios para el cliente (SIN precios de costo)
-        const serviciosDetalle = [];
-        
-        // Tiquetes
-        if (calculationData.tiquetes && calculationData.tiquetes.costo_total > 0) {
-          serviciosDetalle.push({
-            categoria: 'Transporte',
-            descripcion: `${calculationData.tiquetes.tipo === 'ida_vuelta' ? 'Tiquetes ida y vuelta' : 'Tiquete ida'} - ${calculationData.tiquetes.origen} ↔ ${calculationData.tiquetes.destino}`,
-            proveedor: calculationData.tiquetes.proveedor || '',
-            fechas: `${calculationData.tiquetes.fecha_ida || ''} ${calculationData.tiquetes.fecha_vuelta ? '- ' + calculationData.tiquetes.fecha_vuelta : ''}`,
-            observaciones: calculationData.tiquetes.observaciones || ''
-          });
-        }
-        
-        // Hotel
-        if (calculationData.hotel && calculationData.hotel.costo_total > 0) {
-          serviciosDetalle.push({
-            categoria: 'Alojamiento',
-            descripcion: `${calculationData.hotel.nombre || 'Hotel'} - ${calculationData.hotel.categoria || ''} (${calculationData.hotel.noches || 0} noches)`,
-            proveedor: calculationData.hotel.proveedor || '',
-            ubicacion: calculationData.hotel.ubicacion || '',
-            acomodacion: calculationData.hotel.acomodacion || '',
-            observaciones: calculationData.hotel.observaciones || ''
-          });
-        }
-        
-        // Traslados
-        if (calculationData.traslados && calculationData.traslados.costo_total > 0) {
-          const trasladosIncluidos = [];
-          if (calculationData.traslados.aeropuerto_hotel_ida?.incluido) {
-            trasladosIncluidos.push('Aeropuerto → Hotel');
-          }
-          if (calculationData.traslados.hotel_aeropuerto_vuelta?.incluido) {
-            trasladosIncluidos.push('Hotel → Aeropuerto');
-          }
-          if (trasladosIncluidos.length > 0) {
-            serviciosDetalle.push({
-              categoria: 'Traslados',
-              descripcion: trasladosIncluidos.join(', '),
-              observaciones: 'Traslados incluidos en el paquete'
-            });
-          }
-        }
-        
-        // Alimentación
-        if (calculationData.alimentacion && calculationData.alimentacion.costo_total > 0) {
-          serviciosDetalle.push({
-            categoria: 'Alimentación',
-            descripcion: calculationData.alimentacion.tipo || 'Plan alimentario',
-            proveedor: calculationData.alimentacion.proveedor || '',
-            observaciones: calculationData.alimentacion.observaciones || ''
-          });
-        }
-        
-        // Equipaje
-        if (calculationData.equipaje && calculationData.equipaje.costo_total > 0) {
-          const equipajeIncluido = [];
-          if (calculationData.equipaje.cabina?.incluido) {
-            equipajeIncluido.push('Equipaje de cabina');
-          }
-          if (calculationData.equipaje.bodega?.incluido) {
-            equipajeIncluido.push('Equipaje de bodega');
-          }
-          if (calculationData.equipaje.equipaje_extra?.incluido) {
-            equipajeIncluido.push('Equipaje extra');
-          }
-          if (equipajeIncluido.length > 0) {
-            serviciosDetalle.push({
-              categoria: 'Equipaje',
-              descripcion: equipajeIncluido.join(', '),
-              observaciones: 'Equipaje incluido en el paquete'
-            });
-          }
-        }
-        
-        // Seguros
-        if (calculationData.seguros && calculationData.seguros.costo_total > 0) {
-          const segurosIncluidos = [];
-          if (calculationData.seguros.asistencia_medica?.incluido) {
-            segurosIncluidos.push(`Asistencia médica ${calculationData.seguros.asistencia_medica.tipo || ''}`);
-          }
-          if (calculationData.seguros.cancelacion?.incluido) {
-            segurosIncluidos.push('Seguro de cancelación');
-          }
-          if (segurosIncluidos.length > 0) {
-            serviciosDetalle.push({
-              categoria: 'Seguros',
-              descripcion: segurosIncluidos.join(', '),
-              observaciones: 'Seguros incluidos en el paquete'
-            });
-          }
-        }
-        
-        // Excursiones
-        if (Array.isArray(calculationData.excursiones) && calculationData.excursiones.length > 0) {
-          calculationData.excursiones.forEach(excursion => {
-            serviciosDetalle.push({
-              categoria: 'Excursiones',
-              descripcion: excursion.nombre || 'Excursión',
-              observaciones: excursion.descripcion || ''
-            });
-          });
-        }
-        
-        // Extras
-        if (Array.isArray(calculationData.extras) && calculationData.extras.length > 0) {
-          calculationData.extras.forEach(extra => {
-            serviciosDetalle.push({
-              categoria: 'Servicios Adicionales',
-              descripcion: extra.nombre || 'Servicio adicional',
-              observaciones: extra.descripcion || ''
-            });
-          });
-        }
-        
-        console.log('📋 Servicios extraídos para el cliente:', serviciosDetalle);
-        
-        // ✅ PASO 1: Actualizar formData local
-        setFormData(prev => ({
-          ...prev,
-          precio_por_persona: calculationData.precio_final_por_persona.toString(),
-          precio_total: calculationData.precio_final_total.toString(),
-          numero_personas: calculationData.num_personas.toString(),
-          servicios_detalle: JSON.stringify(serviciosDetalle)
-        }));
+    const canRequote = () => {
+  if (!user || !currentQuote || typeof hasAnyRole !== "function") return false;
+  
+  // ✅ Permitir recotización en estados: SENT y COMPLETED
+  const canRequoteStatuses = [QUOTE_STATUSES.SENT, QUOTE_STATUSES.COMPLETED];
+  
+  // Solo usuarios con permisos de envío pueden recotizar
+  return canRequoteStatuses.includes(currentQuote.status) && hasAnyRole([
+    USER_ROLES.LIDER,
+    USER_ROLES.GERENTE,
+    USER_ROLES.ADMIN,
+    USER_ROLES.CONTADOR,
+    USER_ROLES.OWNER,
+  ]);
+};
 
-        // ✅ PASO 2: Guardar el cálculo en la base de datos usando upsert
-        console.log('💾 Guardando cálculo en base de datos con upsert...');
-        await dispatch(upsertQuoteCalculation(calculationData)).unwrap();
-        
-        // ✅ PASO 3: Actualizar la cotización con los nuevos precios y servicios
-        console.log('💾 Actualizando cotización con nuevos datos...');
-        const updateData = {
-          precio_total: parseFloat(calculationData.precio_final_total),
-          numero_personas: parseInt(calculationData.num_personas),
-          servicios_detalle: JSON.stringify(serviciosDetalle),
-          status: calculationData.precio_final_total > 0 ? "completed" : "pending",
-          // ✅ CRÍTICO: Incluir el trip_type actual del formulario
-          trip_type: formData.trip_type,
-          // ✅ También incluir otros campos importantes del formulario que podrían haberse cambiado
-          destino: formData.destino,
-          origen: formData.origen,
-          fecha_ida: formData.fecha_ida,
-          fecha_regreso: formData.fecha_regreso,
-          acomodacion: formData.acomodacion,
-          tipo_hotel: formData.tipo_hotel,
-          traslado: formData.traslado,
-          alimentacion: formData.alimentacion,
-          ninos: parseInt(formData.ninos),
-          edades_ninos: formData.edades_ninos,
-          observaciones: formData.observaciones
-        };
-        
-        console.log('🔍 Datos de actualización que se van a enviar:', {
-          trip_type: updateData.trip_type,
-          destino: updateData.destino,
-          precio_total: updateData.precio_total
-        });
-        
-        await dispatch(updateQuote({ id: currentQuote.id, updates: updateData })).unwrap();
-        
-        // ✅ PASO 4: Recargar los datos para sincronizar
-        console.log('🔄 Recargando datos actualizados...');
-        await dispatch(fetchQuoteById(currentQuote.id));
-        await dispatch(fetchQuoteCalculationByQuoteId(currentQuote.id));
-        
-        console.log('✅ Guardado completado exitosamente');
-        alert('Cálculo guardado exitosamente. La cotización ha sido actualizada.');
-      }
-      
-    } catch (error) {
-      console.error('❌ Error en handleCalculationSave:', error);
-      alert(`Error al guardar el cálculo: ${error.message || error}`);
+  // ✅ Función para manejar el guardado desde la calculadora
+const handleCalculationSave = async (calculationData) => {
+  try {
+    console.log('💾 RECOTIZACIÓN: Guardando cálculo desde calculadora:', calculationData);
+    
+    // ✅ DETECTAR: Si es una recotización
+    const isRequoting = currentQuote?.status === QUOTE_STATUSES.SENT;
+    
+    if (isRequoting) {
+      console.log('🔄 RECOTIZACIÓN: Detectada recotización de cotización enviada');
     }
-  };
+
+    // Actualizar el precio por persona en el formulario usando los campos correctos
+    if (
+      calculationData.precio_final_por_persona &&
+      calculationData.precio_final_total
+    ) {
+      console.log("💰 Actualizando precios desde calculadora:", {
+        precio_final_por_persona: calculationData.precio_final_por_persona,
+        precio_final_total: calculationData.precio_final_total,
+        num_personas: calculationData.num_personas,
+      });
+
+      // ✅ EXTRAER: Detalles de servicios para el cliente (SIN precios de costo)
+      const serviciosDetalle = [];
+
+      // Tiquetes
+      if (
+        calculationData.tiquetes &&
+        calculationData.tiquetes.costo_total > 0
+      ) {
+        serviciosDetalle.push({
+          categoria: "Transporte",
+          descripcion: `${
+            calculationData.tiquetes.tipo === "ida_vuelta"
+              ? "Tiquetes ida y vuelta"
+              : "Tiquete ida"
+          } - ${calculationData.tiquetes.origen} ↔ ${
+            calculationData.tiquetes.destino
+          }`,
+          proveedor: calculationData.tiquetes.proveedor || "",
+          fechas: `${calculationData.tiquetes.fecha_ida || ""} ${
+            calculationData.tiquetes.fecha_vuelta
+              ? "- " + calculationData.tiquetes.fecha_vuelta
+              : ""
+          }`,
+          observaciones: calculationData.tiquetes.observaciones || "",
+        });
+      }
+
+      // Hotel
+      if (calculationData.hotel && calculationData.hotel.costo_total > 0) {
+        serviciosDetalle.push({
+          categoria: "Alojamiento",
+          descripcion: `${calculationData.hotel.nombre || "Hotel"} - ${
+            calculationData.hotel.categoria || ""
+          } (${calculationData.hotel.noches || 0} noches)`,
+          proveedor: calculationData.hotel.proveedor || "",
+          ubicacion: calculationData.hotel.ubicacion || "",
+          acomodacion: calculationData.hotel.acomodacion || "",
+          categoria_hotel: calculationData.hotel.categoria || "",
+          observaciones: calculationData.hotel.observaciones || "",
+        });
+      }
+
+      // Traslados
+      if (
+        calculationData.traslados &&
+        calculationData.traslados.costo_total > 0
+      ) {
+        const trasladosIncluidos = [];
+        if (calculationData.traslados.aeropuerto_hotel_ida?.incluido) {
+          trasladosIncluidos.push("Aeropuerto → Hotel");
+        }
+        if (calculationData.traslados.hotel_aeropuerto_vuelta?.incluido) {
+          trasladosIncluidos.push("Hotel → Aeropuerto");
+        }
+        if (trasladosIncluidos.length > 0) {
+          serviciosDetalle.push({
+            categoria: "Traslados",
+            descripcion: trasladosIncluidos.join(", "),
+            observaciones: "Traslados incluidos en el paquete",
+          });
+        }
+      }
+
+      // Alimentación
+      if (
+        calculationData.alimentacion &&
+        calculationData.alimentacion.costo_total > 0
+      ) {
+        serviciosDetalle.push({
+          categoria: "Alimentación",
+          descripcion:
+            calculationData.alimentacion.tipo || "Plan alimentario",
+          proveedor: calculationData.alimentacion.proveedor || "",
+          observaciones: calculationData.alimentacion.observaciones || "",
+        });
+      }
+
+      // Equipaje
+      if (
+        calculationData.equipaje &&
+        calculationData.equipaje.costo_total > 0
+      ) {
+        const equipajeIncluido = [];
+        if (calculationData.equipaje.cabina?.incluido) {
+          equipajeIncluido.push("Equipaje de cabina");
+        }
+        if (calculationData.equipaje.bodega?.incluido) {
+          equipajeIncluido.push("Equipaje de bodega");
+        }
+        if (calculationData.equipaje.equipaje_extra?.incluido) {
+          equipajeIncluido.push("Equipaje extra");
+        }
+        if (equipajeIncluido.length > 0) {
+          serviciosDetalle.push({
+            categoria: "Equipaje",
+            descripcion: equipajeIncluido.join(", "),
+            observaciones: "Equipaje incluido en el paquete",
+          });
+        }
+      }
+
+      // Seguros
+      if (
+        calculationData.seguros &&
+        calculationData.seguros.costo_total > 0
+      ) {
+        const segurosIncluidos = [];
+        if (calculationData.seguros.asistencia_medica?.incluido) {
+          segurosIncluidos.push(
+            `Asistencia médica ${
+              calculationData.seguros.asistencia_medica.tipo || ""
+            }`
+          );
+        }
+        if (calculationData.seguros.cancelacion?.incluido) {
+          segurosIncluidos.push("Seguro de cancelación");
+        }
+        if (segurosIncluidos.length > 0) {
+          serviciosDetalle.push({
+            categoria: "Seguros",
+            descripcion: segurosIncluidos.join(", "),
+            observaciones: "Seguros incluidos en el paquete",
+          });
+        }
+      }
+
+      // Asistencia médica (si está separada)
+      if (
+        calculationData.asistencia_medica &&
+        calculationData.asistencia_medica.costo_total > 0
+      ) {
+        serviciosDetalle.push({
+          categoria: "Asistencia Médica",
+          descripcion: calculationData.asistencia_medica.tipo || "Asistencia médica",
+          proveedor: calculationData.asistencia_medica.proveedor || "",
+          observaciones: calculationData.asistencia_medica.observaciones || "",
+        });
+      }
+
+      // Excursiones
+      if (
+        Array.isArray(calculationData.excursiones) &&
+        calculationData.excursiones.length > 0
+      ) {
+        calculationData.excursiones.forEach((excursion) => {
+          if (excursion.costo > 0) {
+            serviciosDetalle.push({
+              categoria: "Excursiones",
+              descripcion: excursion.nombre || "Excursión",
+              observaciones: excursion.descripcion || "",
+            });
+          }
+        });
+      }
+
+      // Extras
+      if (
+        Array.isArray(calculationData.extras) &&
+        calculationData.extras.length > 0
+      ) {
+        calculationData.extras.forEach((extra) => {
+          if (extra.costo > 0) {
+            serviciosDetalle.push({
+              categoria: "Servicios Adicionales",
+              descripcion: extra.nombre || "Servicio adicional",
+              observaciones: extra.descripcion || "",
+            });
+          }
+        });
+      }
+
+      console.log(
+        "📋 Servicios extraídos para el cliente:",
+        serviciosDetalle
+      );
+
+      // ✅ PASO 1: Actualizar formData local
+      setFormData((prev) => ({
+        ...prev,
+        precio_por_persona:
+          calculationData.precio_final_por_persona.toString(),
+        precio_total: calculationData.precio_final_total.toString(),
+        numero_personas: calculationData.num_personas.toString(),
+        servicios_detalle: JSON.stringify(serviciosDetalle),
+      }));
+
+      // ✅ PASO 2: Guardar/actualizar el cálculo usando upsert
+      console.log("💾 RECOTIZACIÓN: Guardando/actualizando cálculo...");
+      await dispatch(upsertQuoteCalculation(calculationData)).unwrap();
+
+      // ✅ PASO 3: Actualizar la cotización
+      console.log("💾 RECOTIZACIÓN: Actualizando cotización...");
+      const updateData = {
+        precio_total: parseFloat(calculationData.precio_final_total),
+        numero_personas: parseInt(calculationData.num_personas),
+        servicios_detalle: JSON.stringify(serviciosDetalle),
+        // ✅ IMPORTANTE: Cambiar status según el contexto
+        status: isRequoting ? "completed" : (calculationData.precio_final_total > 0 ? "completed" : "pending"),
+        // ✅ CRÍTICO: Incluir campos del formulario actual
+        trip_type: formData.trip_type,
+        destino: formData.destino,
+        origen: formData.origen,
+        fecha_ida: formData.fecha_ida,
+        fecha_regreso: formData.fecha_regreso,
+        acomodacion: formData.acomodacion,
+        tipo_hotel: formData.tipo_hotel,
+        traslado: formData.traslado,
+        alimentacion: formData.alimentacion,
+        ninos: parseInt(formData.ninos),
+        edades_ninos: formData.edades_ninos,
+        observaciones: formData.observaciones,
+      };
+
+      console.log("🔍 RECOTIZACIÓN: Datos de actualización que se van a enviar:", {
+        trip_type: updateData.trip_type,
+        destino: updateData.destino,
+        precio_total: updateData.precio_total,
+        status: updateData.status,
+        isRequoting: isRequoting
+      });
+
+      await dispatch(
+        updateQuote({ id: currentQuote.id, updates: updateData })
+      ).unwrap();
+
+      // ✅ PASO 4: Recargar datos para sincronizar
+      console.log("🔄 RECOTIZACIÓN: Recargando datos actualizados...");
+      await dispatch(fetchQuoteById(currentQuote.id));
+      await dispatch(fetchQuoteCalculationByQuoteId(currentQuote.id));
+
+      // ✅ PASO 5: Actualizar estado local
+      setHasCalculatorData(true);
+
+      // ✅ MENSAJE ESPECÍFICO según el contexto
+      const message = isRequoting 
+        ? '✅ Recotización guardada exitosamente. Puede reenviar los cambios al cliente.' 
+        : '✅ Cálculo guardado exitosamente. La cotización ha sido actualizada.';
+        
+      console.log('✅ RECOTIZACIÓN: Guardado completado');
+      alert(message);
+    }
+  } catch (error) {
+    console.error('❌ RECOTIZACIÓN: Error en handleCalculationSave:', error);
+    alert(`Error al guardar el cálculo: ${error.message || error}`);
+  }
+};
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="fixed top-0 left-0 z-50 w-full">
@@ -1136,37 +1236,23 @@ const QuoteEdit = () => {
                   </button>
                 )}
 
-              {!isReadOnly && (
-                <button
-                  onClick={handleSave}
-                  disabled={saveLoading}
-                  className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
-                >
-                  {saveLoading ? (
-                    <FontAwesomeIcon icon={faSpinner} spin />
-                  ) : (
-                    <FontAwesomeIcon icon={faSave} />
-                  )}
-                  Guardar
-                </button>
-              )}
-
               {canSendQuote() &&
-                !isReadOnly &&
-                currentQuote?.status !== QUOTE_STATUSES.SENT && (
-                  <button
-                    onClick={handleSendToClient}
-                    disabled={sendLoading}
-                    className="bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
-                  >
-                    {sendLoading ? (
-                      <FontAwesomeIcon icon={faSpinner} spin />
-                    ) : (
-                      <FontAwesomeIcon icon={faPaperPlane} />
-                    )}
-                    Enviar al Cliente
-                  </button>
-                )}
+    !isReadOnly &&
+    hasCalculatorData && // ✅ NUEVA CONDICIÓN: Solo si hay datos de calculadora
+    currentQuote?.status !== QUOTE_STATUSES.SENT && (
+      <button
+        onClick={handleSendToClient}
+        disabled={sendLoading}
+        className="bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+      >
+        {sendLoading ? (
+          <FontAwesomeIcon icon={faSpinner} spin />
+        ) : (
+          <FontAwesomeIcon icon={faPaperPlane} />
+        )}
+        Enviar al Cliente
+      </button>
+    )}
             </div>
           </div>
 
@@ -1195,7 +1281,7 @@ const QuoteEdit = () => {
               <FontAwesomeIcon icon={faFileAlt} className="mr-3" />
               Resumen de la Cotización
             </h2>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Información del Viaje */}
               <div className="bg-white/10 rounded-lg p-4">
@@ -1204,14 +1290,32 @@ const QuoteEdit = () => {
                   Destino & Fechas
                 </h3>
                 <div className="space-y-1 text-sm">
-                  <div><strong>Destino:</strong> {formData.destino || 'Por definir'}</div>
-                  <div><strong>Origen:</strong> {formData.origen || 'Por definir'}</div>
-                  <div><strong>Tipo:</strong> {formData.trip_type === 'nacional' ? 'Nacional' : 'Internacional'}</div>
+                  <div>
+                    <strong>Destino:</strong>{" "}
+                    {formData.destino || "Por definir"}
+                  </div>
+                  <div>
+                    <strong>Origen:</strong> {formData.origen || "Por definir"}
+                  </div>
+                  <div>
+                    <strong>Tipo:</strong>{" "}
+                    {formData.trip_type === "nacional"
+                      ? "Nacional"
+                      : "Internacional"}
+                  </div>
                   {formData.fecha_ida && (
-                    <div><strong>Ida:</strong> {new Date(formData.fecha_ida).toLocaleDateString('es-ES')}</div>
+                    <div>
+                      <strong>Ida:</strong>{" "}
+                      {new Date(formData.fecha_ida).toLocaleDateString("es-ES")}
+                    </div>
                   )}
                   {formData.fecha_regreso && (
-                    <div><strong>Regreso:</strong> {new Date(formData.fecha_regreso).toLocaleDateString('es-ES')}</div>
+                    <div>
+                      <strong>Regreso:</strong>{" "}
+                      {new Date(formData.fecha_regreso).toLocaleDateString(
+                        "es-ES"
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -1223,10 +1327,18 @@ const QuoteEdit = () => {
                   Viajeros
                 </h3>
                 <div className="space-y-1 text-sm">
-                  <div><strong>Personas:</strong> {formData.numero_personas || 1}</div>
-                  <div><strong>Niños:</strong> {formData.ninos || 0}</div>
-                  <div><strong>Acomodación:</strong> {formData.acomodacion}</div>
-                  <div><strong>Hotel:</strong> {formData.tipo_hotel}</div>
+                  <div>
+                    <strong>Personas:</strong> {formData.numero_personas || 1}
+                  </div>
+                  <div>
+                    <strong>Niños:</strong> {formData.ninos || 0}
+                  </div>
+                  <div>
+                    <strong>Acomodación:</strong> {formData.acomodacion}
+                  </div>
+                  <div>
+                    <strong>Hotel:</strong> {formData.tipo_hotel}
+                  </div>
                   {formData.traslado && (
                     <div className="text-green-300">✓ Incluye traslados</div>
                   )}
@@ -1241,45 +1353,67 @@ const QuoteEdit = () => {
                 </h3>
                 <div className="space-y-1 text-sm">
                   {formData.precio_por_persona && (
-                    <div><strong>Por persona:</strong> ${parseFloat(formData.precio_por_persona).toLocaleString('es-CO')}</div>
+                    <div>
+                      <strong>Por persona:</strong> $
+                      {parseFloat(formData.precio_por_persona).toLocaleString(
+                        "es-CO"
+                      )}
+                    </div>
                   )}
                   {formData.precio_total && (
                     <div className="text-lg font-bold text-yellow-300">
-                      <strong>Total:</strong> ${parseFloat(formData.precio_total).toLocaleString('es-CO')}
+                      <strong>Total:</strong> $
+                      {parseFloat(formData.precio_total).toLocaleString(
+                        "es-CO"
+                      )}
                     </div>
                   )}
-                  <div className={`text-sm px-2 py-1 rounded ${
-                    currentQuote.status === 'pending' ? 'bg-yellow-500' :
-                    currentQuote.status === 'completed' ? 'bg-blue-500' :
-                    currentQuote.status === 'sent' ? 'bg-green-500' :
-                    currentQuote.status === 'approved' ? 'bg-green-600' :
-                    'bg-gray-500'
-                  }`}>
-                    Estado: {
-                      currentQuote.status === 'pending' ? 'Pendiente' :
-                      currentQuote.status === 'completed' ? 'Completada' :
-                      currentQuote.status === 'sent' ? 'Enviada' :
-                      currentQuote.status === 'approved' ? 'Aprobada' :
-                      currentQuote.status
-                    }
+                  <div
+                    className={`text-sm px-2 py-1 rounded ${
+                      currentQuote.status === "pending"
+                        ? "bg-yellow-500"
+                        : currentQuote.status === "completed"
+                        ? "bg-blue-500"
+                        : currentQuote.status === "sent"
+                        ? "bg-green-500"
+                        : currentQuote.status === "approved"
+                        ? "bg-green-600"
+                        : "bg-gray-500"
+                    }`}
+                  >
+                    Estado:{" "}
+                    {currentQuote.status === "pending"
+                      ? "Pendiente"
+                      : currentQuote.status === "completed"
+                      ? "Completada"
+                      : currentQuote.status === "sent"
+                      ? "Enviada"
+                      : currentQuote.status === "approved"
+                      ? "Aprobada"
+                      : currentQuote.status}
                   </div>
                 </div>
               </div>
             </div>
-            
+
             {/* Cliente */}
             <div className="mt-4 p-3 bg-white/10 rounded-lg">
               <div className="flex items-center justify-between">
                 <div>
                   <strong>Cliente:</strong> {currentQuote.nombre_cliente}
-                  <span className="ml-4"><strong>Email:</strong> {currentQuote.email_cliente}</span>
+                  <span className="ml-4">
+                    <strong>Email:</strong> {currentQuote.email_cliente}
+                  </span>
                   {currentQuote.telefono_cliente && (
-                    <span className="ml-4"><strong>Tel:</strong> {currentQuote.telefono_cliente}</span>
+                    <span className="ml-4">
+                      <strong>Tel:</strong> {currentQuote.telefono_cliente}
+                    </span>
                   )}
                 </div>
                 {currentQuote.sent_at && (
                   <div className="text-sm">
-                    Enviada: {new Date(currentQuote.sent_at).toLocaleDateString('es-ES')}
+                    Enviada:{" "}
+                    {new Date(currentQuote.sent_at).toLocaleDateString("es-ES")}
                   </div>
                 )}
               </div>
@@ -1300,449 +1434,20 @@ const QuoteEdit = () => {
           </div>
         )}
 
-        {/* Formulario */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <form className="space-y-8">
-            {/* Información del Viaje */}
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <FontAwesomeIcon
-                  icon={faMapMarkerAlt}
-                  className="mr-2 text-blue-500"
-                />
-                Información del Viaje
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Destino *
-                  </label>
-                  <input
-                    type="text"
-                    name="destino"
-                    value={formData.destino}
-                    onChange={handleInputChange}
-                    disabled={isReadOnly}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.destino ? "border-red-500" : "border-gray-300"
-                    } ${isReadOnly ? "bg-gray-100" : ""}`}
-                    placeholder="Ej: París, Francia"
-                  />
-                  {errors.destino && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {errors.destino}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tipo de Viaje *
-                  </label>
-                  <select
-                    name="trip_type"
-                    value={formData.trip_type}
-                    onChange={handleInputChange}
-                    disabled={isReadOnly}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.trip_type ? "border-red-500" : "border-gray-300"
-                    } ${isReadOnly ? "bg-gray-100" : ""}`}
-                  >
-                    <option value="nacional">Nacional</option>
-                    <option value="internacional">Internacional</option>
-                  </select>
-                  {errors.trip_type && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {errors.trip_type}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Origen *
-                  </label>
-                  <input
-                    type="text"
-                    name="origen"
-                    value={formData.origen}
-                    onChange={handleInputChange}
-                    disabled={isReadOnly}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.origen ? "border-red-500" : "border-gray-300"
-                    } ${isReadOnly ? "bg-gray-100" : ""}`}
-                    placeholder="Ej: Buenos Aires, Argentina"
-                  />
-                  {errors.origen && (
-                    <p className="text-red-500 text-sm mt-1">{errors.origen}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Fechas */}
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <FontAwesomeIcon
-                  icon={faCalendarAlt}
-                  className="mr-2 text-green-500"
-                />
-                Fechas del Viaje
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Fecha de Ida *
-                  </label>
-                  <input
-                    type="date"
-                    name="fecha_ida"
-                    value={formData.fecha_ida}
-                    onChange={handleInputChange}
-                    disabled={isReadOnly}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.fecha_ida ? "border-red-500" : "border-gray-300"
-                    } ${isReadOnly ? "bg-gray-100" : ""}`}
-                  />
-                  {errors.fecha_ida && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {errors.fecha_ida}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Fecha de Regreso *
-                  </label>
-                  <input
-                    type="date"
-                    name="fecha_regreso"
-                    value={formData.fecha_regreso}
-                    onChange={handleInputChange}
-                    disabled={isReadOnly}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.fecha_regreso
-                        ? "border-red-500"
-                        : "border-gray-300"
-                    } ${isReadOnly ? "bg-gray-100" : ""}`}
-                  />
-                  {errors.fecha_regreso && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {errors.fecha_regreso}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Información de Pasajeros */}
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <FontAwesomeIcon
-                  icon={faUsers}
-                  className="mr-2 text-purple-500"
-                />
-                Información de Pasajeros
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Número de Personas *
-                  </label>
-                  <input
-                    type="number"
-                    name="numero_personas"
-                    value={formData.numero_personas}
-                    onChange={handleInputChange}
-                    disabled={isReadOnly}
-                    min="1"
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.numero_personas
-                        ? "border-red-500"
-                        : "border-gray-300"
-                    } ${isReadOnly ? "bg-gray-100" : ""}`}
-                  />
-                  {errors.numero_personas && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {errors.numero_personas}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tipo de Acomodación
-                  </label>
-                  <select
-                    name="acomodacion"
-                    value={formData.acomodacion}
-                    onChange={handleInputChange}
-                    disabled={isReadOnly}
-                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      isReadOnly ? "bg-gray-100" : ""
-                    }`}
-                  >
-                    {acomodacionOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Edades de niños */}
-              <div className="mt-6">
-                <div className="flex items-center justify-between mb-3">
-                  <label className="block text-sm font-medium text-gray-700">
-                    <FontAwesomeIcon
-                      icon={faChild}
-                      className="mr-2 text-yellow-500"
-                    />
-                    Edades de Niños ({formData.edades_ninos.length})
-                  </label>
-                  {!isReadOnly && (
-                    <button
-                      type="button"
-                      onClick={addEdadNino}
-                      className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm transition-colors"
-                    >
-                      Agregar Niño
-                    </button>
-                  )}
-                </div>
-                {formData.edades_ninos.length > 0 && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {formData.edades_ninos.map((edad, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          value={edad}
-                          onChange={(e) =>
-                            handleEdadNinoChange(index, e.target.value)
-                          }
-                          disabled={isReadOnly}
-                          min="0"
-                          max="17"
-                          className={`w-full px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                            isReadOnly ? "bg-gray-100" : ""
-                          }`}
-                          placeholder="Edad"
-                        />
-                        {!isReadOnly && (
-                          <button
-                            type="button"
-                            onClick={() => removeEdadNino(index)}
-                            className="text-red-500 hover:text-red-700 transition-colors"
-                          >
-                            ×
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Información del Hotel */}
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <FontAwesomeIcon
-                  icon={faHotel}
-                  className="mr-2 text-indigo-500"
-                />
-                Información del Alojamiento
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tipo de Hotel
-                  </label>
-                  <select
-                    name="tipo_hotel"
-                    value={formData.tipo_hotel}
-                    onChange={handleInputChange}
-                    disabled={isReadOnly}
-                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      isReadOnly ? "bg-gray-100" : ""
-                    }`}
-                  >
-                    {tipoHotelOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Alimentación
-                  </label>
-                  <input
-                    type="text"
-                    name="alimentacion"
-                    value={formData.alimentacion}
-                    onChange={handleInputChange}
-                    disabled={isReadOnly}
-                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      isReadOnly ? "bg-gray-100" : ""
-                    }`}
-                    placeholder="Ej: Desayuno incluido, Media pensión, etc."
-                  />
-                </div>
-              </div>
-
-              {/* Traslados */}
-              <div className="mt-6">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    name="traslado"
-                    checked={formData.traslado}
-                    onChange={handleInputChange}
-                    disabled={isReadOnly}
-                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                  />
-                  <span className="ml-2 text-sm font-medium text-gray-700">
-                    <FontAwesomeIcon
-                      icon={faCar}
-                      className="mr-2 text-blue-500"
-                    />
-                    Incluir traslados aeropuerto-hotel
-                  </span>
-                </label>
-              </div>
-            </div>
-
-            {/* Precio - Solo visible para Líder y superiores */}
-            {hasAnyRole([
-              USER_ROLES.LIDER,
-              USER_ROLES.GERENTE,
-              USER_ROLES.ADMIN,
-              USER_ROLES.CONTADOR,
-              USER_ROLES.OWNER,
-            ]) && (
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <FontAwesomeIcon
-                    icon={faDollarSign}
-                    className="mr-2 text-green-500"
-                  />
-                  Información de Precio
-                  {formData.precio_por_persona && (
-                    <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                      ✓ Precio calculado
-                    </span>
-                  )}
-                </h3>
-                
-                {/* Nota informativa para usuarios internos */}
-                {hasAnyRole([
-                  USER_ROLES.ASESOR,
-                  USER_ROLES.LIDER,
-                  USER_ROLES.GERENTE,
-                  USER_ROLES.ADMIN,
-                  USER_ROLES.OWNER
-                ]) && formData.precio_por_persona && (
-                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm text-blue-700">
-                      <FontAwesomeIcon icon={faEye} className="mr-1" />
-                      <strong>Información interna:</strong> Los precios mostrados aquí son lo que verá el cliente. 
-                      El desglose detallado de costos, comisiones y ganancia se mantiene privado en el sistema.
-                    </p>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Precio por Persona *
-                    </label>
-                    <input
-                      type="number"
-                      name="precio_por_persona"
-                      value={formData.precio_por_persona}
-                      onChange={handleInputChange}
-                      disabled={isReadOnly}
-                      min="0"
-                      step="0.01"
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                        errors.precio_por_persona
-                          ? "border-red-500"
-                          : "border-gray-300"
-                      } ${isReadOnly ? "bg-gray-100" : ""}`}
-                      placeholder="0.00"
-                    />
-                    {errors.precio_por_persona && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {errors.precio_por_persona}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Precio Total ({formData.numero_personas || 0} personas)
-                    </label>
-                    <input
-                      type="number"
-                      name="precio_total"
-                      value={formData.precio_total}
-                      disabled={true} // ✅ SIEMPRE READONLY - se calcula automáticamente
-                      min="0"
-                      step="0.01"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
-                      placeholder="Se calcula automáticamente"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Se calcula automáticamente: {formData.precio_por_persona || 0} × {formData.numero_personas || 0} personas
-                    </p>
-                    {errors.precio_total && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {errors.precio_total}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Observaciones */}
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <FontAwesomeIcon
-                  icon={faStickyNote}
-                  className="mr-2 text-orange-500"
-                />
-                Observaciones
-              </h3>
-              <textarea
-                name="observaciones"
-                value={formData.observaciones}
-                onChange={handleInputChange}
-                disabled={isReadOnly}
-                rows={4}
-                className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  isReadOnly ? "bg-gray-100" : ""
-                }`}
-                placeholder="Comentarios adicionales, solicitudes especiales, etc."
-              />
-            </div>
-          </form>
-        </div>
-
         {/* ✅ MEJORADO: Mostrar servicios detallados que verá el cliente */}
         {formData.servicios_detalle && (
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 mt-6 shadow-sm">
             <h3 className="text-xl font-bold text-blue-800 mb-4 flex items-center">
-              <FontAwesomeIcon icon={faFileAlt} className="mr-3 text-blue-600" />
+              <FontAwesomeIcon
+                icon={faFileAlt}
+                className="mr-3 text-blue-600"
+              />
               Servicios Incluidos en el Paquete
             </h3>
             <div className="bg-blue-100 border-l-4 border-blue-500 p-3 mb-4 rounded">
               <div className="text-sm text-blue-700 font-medium">
-                💡 Esta información se comparte con el cliente y aparece en el PDF de la cotización
+                💡 Esta información se comparte con el cliente y aparece en el
+                PDF de la cotización
               </div>
             </div>
             {(() => {
@@ -1751,76 +1456,113 @@ const QuoteEdit = () => {
                 return (
                   <div className="grid gap-4 md:grid-cols-2">
                     {servicios.map((servicio, idx) => (
-                      <div key={idx} className="bg-white p-4 rounded-lg border border-blue-100 shadow-sm hover:shadow-md transition-shadow">
+                      <div
+                        key={idx}
+                        className="bg-white p-4 rounded-lg border border-blue-100 shadow-sm hover:shadow-md transition-shadow"
+                      >
                         <div className="flex items-center mb-3">
                           <div className="w-3 h-3 bg-blue-500 rounded-full mr-3"></div>
-                          <h4 className="font-bold text-blue-900 text-lg">{servicio.categoria}</h4>
+                          <h4 className="font-bold text-blue-900 text-lg">
+                            {servicio.categoria}
+                          </h4>
                         </div>
-                        
+
                         <div className="text-gray-700 mb-3 text-sm leading-relaxed">
                           {servicio.descripcion}
                         </div>
-                        
+
                         <div className="space-y-2">
                           {servicio.proveedor && (
                             <div className="flex items-center text-sm text-gray-600">
-                              <FontAwesomeIcon icon={faBuilding} className="mr-2 text-gray-400 w-4" />
+                              <FontAwesomeIcon
+                                icon={faBuilding}
+                                className="mr-2 text-gray-400 w-4"
+                              />
                               <span className="font-medium">Proveedor:</span>
                               <span className="ml-1">{servicio.proveedor}</span>
                             </div>
                           )}
-                          
+
                           {servicio.fechas && (
                             <div className="flex items-center text-sm text-gray-600">
-                              <FontAwesomeIcon icon={faCalendarAlt} className="mr-2 text-gray-400 w-4" />
+                              <FontAwesomeIcon
+                                icon={faCalendarAlt}
+                                className="mr-2 text-gray-400 w-4"
+                              />
                               <span className="font-medium">Fechas:</span>
                               <span className="ml-1">{servicio.fechas}</span>
                             </div>
                           )}
-                          
+
                           {servicio.ubicacion && (
                             <div className="flex items-center text-sm text-gray-600">
-                              <FontAwesomeIcon icon={faMapMarkerAlt} className="mr-2 text-gray-400 w-4" />
+                              <FontAwesomeIcon
+                                icon={faMapMarkerAlt}
+                                className="mr-2 text-gray-400 w-4"
+                              />
                               <span className="font-medium">Ubicación:</span>
                               <span className="ml-1">{servicio.ubicacion}</span>
                             </div>
                           )}
-                          
+
                           {servicio.acomodacion && (
                             <div className="flex items-center text-sm text-gray-600">
-                              <FontAwesomeIcon icon={faBed} className="mr-2 text-gray-400 w-4" />
+                              <FontAwesomeIcon
+                                icon={faBed}
+                                className="mr-2 text-gray-400 w-4"
+                              />
                               <span className="font-medium">Acomodación:</span>
-                              <span className="ml-1">{servicio.acomodacion}</span>
+                              <span className="ml-1">
+                                {servicio.acomodacion}
+                              </span>
                             </div>
                           )}
-                          
-                          {servicio.categoria === 'Hotel' && servicio.categoria_hotel && (
-                            <div className="flex items-center text-sm text-gray-600">
-                              <FontAwesomeIcon icon={faStar} className="mr-2 text-yellow-400 w-4" />
-                              <span className="font-medium">Categoría:</span>
-                              <span className="ml-1">{servicio.categoria_hotel}</span>
-                            </div>
-                          )}
-                          
+
+                          {servicio.categoria === "Hotel" &&
+                            servicio.categoria_hotel && (
+                              <div className="flex items-center text-sm text-gray-600">
+                                <FontAwesomeIcon
+                                  icon={faStar}
+                                  className="mr-2 text-yellow-400 w-4"
+                                />
+                                <span className="font-medium">Categoría:</span>
+                                <span className="ml-1">
+                                  {servicio.categoria_hotel}
+                                </span>
+                              </div>
+                            )}
+
                           {servicio.observaciones && (
                             <div className="mt-2 p-2 bg-gray-50 rounded text-sm text-gray-600">
-                              <FontAwesomeIcon icon={faInfoCircle} className="mr-2 text-gray-400 w-4" />
+                              <FontAwesomeIcon
+                                icon={faInfoCircle}
+                                className="mr-2 text-gray-400 w-4"
+                              />
                               <span className="font-medium">Detalles:</span>
-                              <div className="mt-1">{servicio.observaciones}</div>
+                              <div className="mt-1">
+                                {servicio.observaciones}
+                              </div>
                             </div>
                           )}
                         </div>
-                        
+
                         {/* Indicador visual del tipo de servicio */}
                         <div className="mt-3 pt-2 border-t border-gray-100">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            servicio.categoria === 'Hotel' ? 'bg-blue-100 text-blue-800' :
-                            servicio.categoria === 'Tiquetes' ? 'bg-green-100 text-green-800' :
-                            servicio.categoria === 'Traslados' ? 'bg-yellow-100 text-yellow-800' :
-                            servicio.categoria === 'Seguros' ? 'bg-purple-100 text-purple-800' :
-                            servicio.categoria === 'Excursiones' ? 'bg-orange-100 text-orange-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              servicio.categoria === "Hotel"
+                                ? "bg-blue-100 text-blue-800"
+                                : servicio.categoria === "Tiquetes"
+                                ? "bg-green-100 text-green-800"
+                                : servicio.categoria === "Traslados"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : servicio.categoria === "Seguros"
+                                ? "bg-purple-100 text-purple-800"
+                                : servicio.categoria === "Excursiones"
+                                ? "bg-orange-100 text-orange-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
                             {servicio.categoria}
                           </span>
                         </div>
@@ -1832,8 +1574,14 @@ const QuoteEdit = () => {
                 return (
                   <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                     <div className="flex items-center text-red-600">
-                      <FontAwesomeIcon icon={faExclamationTriangle} className="mr-2" />
-                      <span>Error al mostrar servicios detallados. Verifica el formato de datos.</span>
+                      <FontAwesomeIcon
+                        icon={faExclamationTriangle}
+                        className="mr-2"
+                      />
+                      <span>
+                        Error al mostrar servicios detallados. Verifica el
+                        formato de datos.
+                      </span>
                     </div>
                   </div>
                 );
@@ -1848,10 +1596,12 @@ const QuoteEdit = () => {
           USER_ROLES.LIDER,
           USER_ROLES.GERENTE,
           USER_ROLES.ADMIN,
-          USER_ROLES.OWNER
+          USER_ROLES.OWNER,
         ]) && (
           <div className="bg-white rounded-lg shadow-md p-6 mt-6">
-            <h3 className="text-lg font-bold mb-4">Calculadora de Costos Interna</h3>
+            <h3 className="text-lg font-bold mb-4">
+              Calculadora de Costos Interna
+            </h3>
             <div className="flex flex-col lg:flex-row gap-6">
               {/* Panel de resumen de la cotización */}
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 w-full lg:w-1/3">
@@ -1860,32 +1610,81 @@ const QuoteEdit = () => {
                   Resumen de Cotización
                 </h4>
                 <div className="space-y-2 text-sm">
-                  <div><strong>Cliente:</strong> {currentQuote?.nombre_cliente || currentQuote?.Cliente?.nombre || '-'}</div>
-                  <div><strong>Email:</strong> {currentQuote?.email_cliente || currentQuote?.Cliente?.email || '-'}</div>
-                  <div><strong>Destino:</strong> {currentQuote?.destino || '-'}</div>
-                  <div><strong>Origen:</strong> {currentQuote?.origen || '-'}</div>
-                  <div><strong>Tipo de viaje:</strong> {currentQuote?.trip_type || '-'}</div>
-                  <div><strong>Fecha ida:</strong> {currentQuote?.fecha_ida ? new Date(currentQuote.fecha_ida).toLocaleDateString() : '-'}</div>
-                  <div><strong>Fecha regreso:</strong> {currentQuote?.fecha_regreso ? new Date(currentQuote.fecha_regreso).toLocaleDateString() : '-'}</div>
-                  <div><strong>Número de personas:</strong> {currentQuote?.numero_personas || '-'}</div>
-                  <div><strong>Estado:</strong> {currentQuote?.status || '-'}</div>
+                  <div>
+                    <strong>Cliente:</strong>{" "}
+                    {currentQuote?.nombre_cliente ||
+                      currentQuote?.Cliente?.nombre ||
+                      "-"}
+                  </div>
+                  <div>
+                    <strong>Email:</strong>{" "}
+                    {currentQuote?.email_cliente ||
+                      currentQuote?.Cliente?.email ||
+                      "-"}
+                  </div>
+                  <div>
+                    <strong>Destino:</strong> {currentQuote?.destino || "-"}
+                  </div>
+                  <div>
+                    <strong>Origen:</strong> {currentQuote?.origen || "-"}
+                  </div>
+                  <div>
+                    <strong>Tipo de viaje:</strong>{" "}
+                    {currentQuote?.trip_type || "-"}
+                  </div>
+                  <div>
+                    <strong>Fecha ida:</strong>{" "}
+                    {currentQuote?.fecha_ida
+                      ? new Date(currentQuote.fecha_ida).toLocaleDateString()
+                      : "-"}
+                  </div>
+                  <div>
+                    <strong>Fecha regreso:</strong>{" "}
+                    {currentQuote?.fecha_regreso
+                      ? new Date(
+                          currentQuote.fecha_regreso
+                        ).toLocaleDateString()
+                      : "-"}
+                  </div>
+                  <div>
+                    <strong>Número de personas:</strong>{" "}
+                    {currentQuote?.numero_personas || "-"}
+                  </div>
+                  <div>
+                    <strong>Estado:</strong> {currentQuote?.status || "-"}
+                  </div>
                 </div>
               </div>
               {/* Calculadora */}
-              <div className="w-full lg:w-2/3">
-                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <div className="text-sm text-green-700">
-                    <FontAwesomeIcon icon={faInfoCircle} className="mr-2" />
-                    <strong>Importante:</strong> Al usar el botón "Confirmar Cálculo" de la calculadora, 
-                    se guardará automáticamente tanto el cálculo interno como se actualizará la cotización con 
-                    los precios finales y servicios detallados para el cliente.
-                  </div>
-                </div>
-                <AdvancedQuoteCalculator
-                  quote_id={currentQuote?.id}
-                  onContinue={handleCalculationSave}
-                />
-              </div>
+             <div className="w-full lg:w-2/3">
+  <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+    <div className="text-sm text-green-700">
+      <FontAwesomeIcon icon={faInfoCircle} className="mr-2" />
+      <strong>Importante:</strong> Al usar el botón "Confirmar
+      Cálculo" de la calculadora, se guardará automáticamente
+      tanto el cálculo interno como se actualizará la cotización
+      con los precios finales y servicios detallados para el
+      cliente.
+    </div>
+  </div>
+  
+  {/* ✅ AGREGAR: Mensaje informativo si hay datos existentes */}
+  {calculation && (
+    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+      <div className="text-sm text-blue-700">
+        <FontAwesomeIcon icon={faInfoCircle} className="mr-2" />
+        <strong>Cálculo existente detectado:</strong> Los datos se cargarán automáticamente en la calculadora para su modificación.
+      </div>
+    </div>
+  )}
+  
+  <AdvancedQuoteCalculator
+    quote_id={currentQuote?.id}
+    onContinue={handleCalculationSave}
+    existingCalculation={calculation} // ✅ NUEVO: Pasar datos existentes
+    quoteData={currentQuote} // ✅ NUEVO: Pasar datos de la cotización
+  />
+</div>
             </div>
           </div>
         )}
@@ -1898,17 +1697,35 @@ const QuoteEdit = () => {
               Resumen de Cálculo Interno (Solo visible para el equipo)
             </h3>
             <div className="text-sm text-yellow-600 mb-4">
-              Esta información NO se comparte con el cliente. El cliente solo ve el precio final.
+              Esta información NO se comparte con el cliente. El cliente solo ve
+              el precio final.
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div><strong>Costo base:</strong> ${Number(calculation.costo_base || 0).toLocaleString()}</div>
-              <div><strong>Total comisiones:</strong> ${Number(calculation.total_comisiones || 0).toLocaleString()}</div>
-              <div><strong>Total ganancia:</strong> ${Number(calculation.total_ganancia || 0).toLocaleString()}</div>
-              <div><strong>Margen de ganancia:</strong> {calculation.ganancia?.porcentaje || 0}%</div>
-              <div><strong>Precio final total:</strong> ${Number(calculation.precio_final_total || 0).toLocaleString()}</div>
+              <div>
+                <strong>Costo base:</strong> $
+                {Number(calculation.costo_base || 0).toLocaleString()}
+              </div>
+              <div>
+                <strong>Total comisiones:</strong> $
+                {Number(calculation.total_comisiones || 0).toLocaleString()}
+              </div>
+              <div>
+                <strong>Total ganancia:</strong> $
+                {Number(calculation.total_ganancia || 0).toLocaleString()}
+              </div>
+              <div>
+                <strong>Margen de ganancia:</strong>{" "}
+                {calculation.ganancia?.porcentaje || 0}%
+              </div>
+              <div>
+                <strong>Precio final total:</strong> $
+                {Number(calculation.precio_final_total || 0).toLocaleString()}
+              </div>
               <div className="md:col-span-2">
                 <strong>Precio final por persona:</strong> $
-                {Number(calculation.precio_final_por_persona || 0).toLocaleString()}
+                {Number(
+                  calculation.precio_final_por_persona || 0
+                ).toLocaleString()}
               </div>
             </div>
             {/* Mostrar desglose de comisiones */}
@@ -1917,16 +1734,36 @@ const QuoteEdit = () => {
                 <strong>Desglose de Comisiones:</strong>
                 <ul className="list-disc ml-6 mt-2">
                   {calculation.comisiones.asesor?.total > 0 && (
-                    <li>Asesor: ${Number(calculation.comisiones.asesor.total).toLocaleString()}</li>
+                    <li>
+                      Asesor: $
+                      {Number(
+                        calculation.comisiones.asesor.total
+                      ).toLocaleString()}
+                    </li>
                   )}
                   {calculation.comisiones.lider?.total > 0 && (
-                    <li>Líder: ${Number(calculation.comisiones.lider.total).toLocaleString()}</li>
+                    <li>
+                      Líder: $
+                      {Number(
+                        calculation.comisiones.lider.total
+                      ).toLocaleString()}
+                    </li>
                   )}
                   {calculation.comisiones.gerente?.total > 0 && (
-                    <li>Gerente: ${Number(calculation.comisiones.gerente.total).toLocaleString()}</li>
+                    <li>
+                      Gerente: $
+                      {Number(
+                        calculation.comisiones.gerente.total
+                      ).toLocaleString()}
+                    </li>
                   )}
                   {calculation.comisiones.admin?.total > 0 && (
-                    <li>Admin: ${Number(calculation.comisiones.admin.total).toLocaleString()}</li>
+                    <li>
+                      Admin: $
+                      {Number(
+                        calculation.comisiones.admin.total
+                      ).toLocaleString()}
+                    </li>
                   )}
                 </ul>
               </div>
@@ -1936,22 +1773,53 @@ const QuoteEdit = () => {
               <strong>Servicios Incluidos:</strong>
               <ul className="list-disc ml-6 mt-2">
                 {calculation.tiquetes && (
-                  <li>Tiquetes ({calculation.tiquetes.tipo}): ${Number(calculation.tiquetes.costo_total || 0).toLocaleString()}</li>
+                  <li>
+                    Tiquetes ({calculation.tiquetes.tipo}): $
+                    {Number(
+                      calculation.tiquetes.costo_total || 0
+                    ).toLocaleString()}
+                  </li>
                 )}
                 {calculation.hotel && (
-                  <li>Hotel ({calculation.hotel.noches} noches): ${Number(calculation.hotel.costo_total || 0).toLocaleString()}</li>
+                  <li>
+                    Hotel ({calculation.hotel.noches} noches): $
+                    {Number(
+                      calculation.hotel.costo_total || 0
+                    ).toLocaleString()}
+                  </li>
                 )}
                 {calculation.traslados && (
-                  <li>Traslados: ${Number(calculation.traslados.costo_total || 0).toLocaleString()}</li>
+                  <li>
+                    Traslados: $
+                    {Number(
+                      calculation.traslados.costo_total || 0
+                    ).toLocaleString()}
+                  </li>
                 )}
                 {calculation.alimentacion && (
-                  <li>Alimentación ({calculation.alimentacion.tipo}): ${Number(calculation.alimentacion.costo_total || 0).toLocaleString()}</li>
+                  <li>
+                    Alimentación ({calculation.alimentacion.tipo}): $
+                    {Number(
+                      calculation.alimentacion.costo_total || 0
+                    ).toLocaleString()}
+                  </li>
                 )}
-                {calculation.equipaje && calculation.equipaje.costo_total > 0 && (
-                  <li>Equipaje: ${Number(calculation.equipaje.costo_total || 0).toLocaleString()}</li>
-                )}
+                {calculation.equipaje &&
+                  calculation.equipaje.costo_total > 0 && (
+                    <li>
+                      Equipaje: $
+                      {Number(
+                        calculation.equipaje.costo_total || 0
+                      ).toLocaleString()}
+                    </li>
+                  )}
                 {calculation.seguros && calculation.seguros.costo_total > 0 && (
-                  <li>Seguros: ${Number(calculation.seguros.costo_total || 0).toLocaleString()}</li>
+                  <li>
+                    Seguros: $
+                    {Number(
+                      calculation.seguros.costo_total || 0
+                    ).toLocaleString()}
+                  </li>
                 )}
               </ul>
             </div>
@@ -1960,45 +1828,44 @@ const QuoteEdit = () => {
 
         {/* Botones de acción fijos en la parte inferior */}
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-40">
-          <div className="container mx-auto flex justify-end gap-3">
-            <button
-              onClick={() => navigate("/quotesList")}
-              className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors"
-            >
-              {isReadOnly ? "Volver" : "Cancelar"}
-            </button>
-
-            {!isReadOnly && (
-              <button
-                onClick={handleSave}
-                disabled={saveLoading}
-                className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2"
-              >
-                {saveLoading ? (
-                  <FontAwesomeIcon icon={faSpinner} spin />
-                ) : (
-                  <FontAwesomeIcon icon={faSave} />
-                )}
-                Guardar
-              </button>
-            )}
-
-            {canSendQuote() &&
-              !isReadOnly &&
-              currentQuote?.status !== QUOTE_STATUSES.SENT && (
-                <button
-                  onClick={handleSendToClient}
-                  disabled={sendLoading}
-                  className="bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2"
-                >
-                  {sendLoading ? (
-                    <FontAwesomeIcon icon={faSpinner} spin />
-                  ) : (
-                    <FontAwesomeIcon icon={faPaperPlane} />
-                  )}
-                  Enviar al Cliente
-                </button>
-              )}
+  <div className="container mx-auto flex justify-end gap-3">
+    <button
+      onClick={() => navigate("/quotesList")}
+      className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors"
+    >
+      {isReadOnly ? "Volver" : "Cancelar"}
+    </button>
+  {canRequote() && (
+    <button
+      onClick={() => setShowRequoteInfo(true)}
+      className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+      title="Recotizar - Modificar precios y servicios"
+    >
+      <FontAwesomeIcon icon={faEdit} />
+      Recotizar
+    </button>
+  )}
+           {canSendQuote() &&
+    !isReadOnly &&
+    hasCalculatorData &&
+    (currentQuote?.status !== QUOTE_STATUSES.SENT || canRequote()) && (
+      <button
+        onClick={handleSendToClient}
+        disabled={sendLoading}
+        className={`${
+          currentQuote?.status === QUOTE_STATUSES.SENT 
+            ? 'bg-orange-500 hover:bg-orange-600' 
+            : 'bg-green-500 hover:bg-green-600'
+        } disabled:opacity-50 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2`}
+      >
+        {sendLoading ? (
+          <FontAwesomeIcon icon={faSpinner} spin />
+        ) : (
+          <FontAwesomeIcon icon={faPaperPlane} />
+        )}
+        {currentQuote?.status === QUOTE_STATUSES.SENT ? 'Reenviar Cambios' : 'Enviar al Cliente'}
+      </button>
+    )}
           </div>
         </div>
 
@@ -2006,8 +1873,62 @@ const QuoteEdit = () => {
         <div className="h-20"></div>
       </div>
 
-      {/* ✅ MODAL DE CREACIÓN DE CONTRATO */}
+    {showRequoteInfo && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="bg-white rounded-lg shadow-xl p-6 m-4 max-w-md">
+      <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+        <FontAwesomeIcon icon={faEdit} className="mr-2 text-yellow-500" />
+        Recotizar Cotización
+      </h3>
+      
+      <div className="space-y-3 text-sm text-gray-700 mb-6">
+        <p>
+          <strong>Esta cotización ya fue enviada al cliente.</strong>
+        </p>
+        <p>
+          Para realizar cambios:
+        </p>
+        <ul className="list-disc ml-5 space-y-1">
+          <li>Use la calculadora de costos para ajustar precios y servicios</li>
+          <li>Los datos existentes se cargarán automáticamente</li>
+          <li>Modifique lo que necesite y guarde</li>
+          <li>Use "Reenviar Cambios" para notificar al cliente</li>
+        </ul>
+        <div className="bg-blue-50 border border-blue-200 rounded p-3 mt-3">
+          <div className="flex items-center text-blue-700">
+            <FontAwesomeIcon icon={faInfoCircle} className="mr-2" />
+            <span className="text-xs">
+              El cliente recibirá la cotización actualizada con los nuevos precios
+            </span>
+          </div>
+        </div>
+      </div>
+      
+      <div className="flex justify-end gap-3">
+        <button
+          onClick={() => setShowRequoteInfo(false)}
+          className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+        >
+          Entendido
+        </button>
+        <button
+          onClick={() => {
+            setShowRequoteInfo(false);
+            // Scroll hacia la calculadora
+            const calculator = document.querySelector('.bg-white.rounded-lg.shadow-md.p-6.mt-6');
+            if (calculator) {
+              calculator.scrollIntoView({ behavior: 'smooth' });
+            }
+          }}
+          className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg transition-colors"
+        >
+          Ir a Calculadora
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
-}
+};
 export default QuoteEdit;

@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { createQuoteCalculation, fetchCalculationBaseData } from '../../../redux/slices/quoteCalculationSlice';
+import { createQuoteCalculation, upsertQuoteCalculation, fetchCalculationBaseData } from '../../../redux/slices/quoteCalculationSlice';
 import { selectUser } from '../../../redux/slices/authSlice';
 import { fetchCommissionsByTripType, selectConfiguredCommissions } from '../../../redux/slices/commissionSlice';
 
-const AdvancedQuoteCalculator = ({ quote_id, onContinue }) => {
+const AdvancedQuoteCalculator = ({ quote_id, 
+  onContinue, 
+  existingCalculation, 
+  quoteData }) => {
   const dispatch = useDispatch();
   const { loading, error, baseData, baseDataLoading } = useSelector(state => state.quoteCalculation || {});
   const user = useSelector(selectUser);
@@ -106,6 +109,87 @@ const AdvancedQuoteCalculator = ({ quote_id, onContinue }) => {
       dispatch(fetchCalculationBaseData(quote_id));
     }
   }, [dispatch, quote_id]);
+
+  useEffect(() => {
+    console.log('🔄 CALCULADORA: Verificando datos existentes...');
+    console.log('📋 CALCULADORA: existingCalculation:', existingCalculation);
+    console.log('📋 CALCULADORA: quoteData:', quoteData);
+    
+    if (existingCalculation && Object.keys(existingCalculation).length > 0) {
+      console.log('✅ CALCULADORA: Cargando datos existentes en formulario');
+      
+      // ✅ CARGAR: Datos básicos
+      setForm(prevForm => ({
+        ...prevForm,
+        quote_id: existingCalculation.quote_id || quote_id,
+        user_id: existingCalculation.user_id || prevForm.user_id,
+        num_personas: existingCalculation.num_personas || quoteData?.numero_personas || 1,
+        trip_type: existingCalculation.trip_type || quoteData?.trip_type || 'nacional',
+        
+        // ✅ CARGAR: Tiquetes
+        tiquetes: existingCalculation.tiquetes || prevForm.tiquetes,
+        
+        // ✅ CARGAR: Hotel
+        hotel: existingCalculation.hotel || prevForm.hotel,
+        
+        // ✅ CARGAR: Traslados
+        traslados: existingCalculation.traslados || prevForm.traslados,
+        
+        // ✅ CARGAR: Alimentación
+        alimentacion: existingCalculation.alimentacion || prevForm.alimentacion,
+        
+        // ✅ CARGAR: Equipaje
+        equipaje: existingCalculation.equipaje || prevForm.equipaje,
+        
+        // ✅ CARGAR: Seguros
+        seguros: existingCalculation.seguros || prevForm.seguros,
+        
+        // ✅ CARGAR: Asistencia médica
+        asistencia_medica: existingCalculation.asistencia_medica || prevForm.asistencia_medica,
+        
+        // ✅ CARGAR: Excursiones
+        excursiones: Array.isArray(existingCalculation.excursiones) 
+          ? existingCalculation.excursiones 
+          : prevForm.excursiones,
+        
+        // ✅ CARGAR: Extras
+        extras: Array.isArray(existingCalculation.extras) 
+          ? existingCalculation.extras 
+          : prevForm.extras,
+        
+        // ✅ CARGAR: Comisiones
+        comisiones: existingCalculation.comisiones || prevForm.comisiones,
+        
+        // ✅ CARGAR: Ganancia
+        ganancia: existingCalculation.ganancia || prevForm.ganancia,
+        
+        // ✅ CARGAR: Totales calculados
+        costo_base: existingCalculation.costo_base || 0,
+        total_comisiones: existingCalculation.total_comisiones || 0,
+        total_ganancia: existingCalculation.total_ganancia || 0,
+        precio_final_total: existingCalculation.precio_final_total || 0,
+        precio_final_por_persona: existingCalculation.precio_final_por_persona || 0,
+        
+        // ✅ CARGAR: Estados y observaciones
+        estado: existingCalculation.estado || 'draft',
+        observaciones_generales: existingCalculation.observaciones_generales || ''
+      }));
+      
+      console.log('✅ CALCULADORA: Datos cargados exitosamente');
+    } else {
+      console.log('ℹ️ CALCULADORA: No hay datos existentes, usando valores por defecto');
+      
+      // ✅ CARGAR: Al menos datos básicos de la cotización
+      if (quoteData) {
+        setForm(prevForm => ({
+          ...prevForm,
+          quote_id: quote_id,
+          num_personas: quoteData.numero_personas || 1,
+          trip_type: quoteData.trip_type || 'nacional',
+        }));
+      }
+    }
+  }, [existingCalculation, quoteData, quote_id]);
 
   // Sincronizar número de personas y tipo de viaje desde backend al cargar datos base
   useEffect(() => {
@@ -409,13 +493,83 @@ const AdvancedQuoteCalculator = ({ quote_id, onContinue }) => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
+  
+  console.log("📤 COMPONENTE: Iniciando envío de datos al backend");
+  console.log("📋 COMPONENTE: Datos del formulario completo:", form);
+  
+  // ✅ AGREGAR: Log detallado de cada sección
+  console.log("✈️ COMPONENTE: Tiquetes:", form.tiquetes);
+  console.log("🏨 COMPONENTE: Hotel:", form.hotel);
+  console.log("🚗 COMPONENTE: Traslados:", form.traslados);
+  console.log("🍽️ COMPONENTE: Alimentación:", form.alimentacion);
+  console.log("🛡️ COMPONENTE: Seguros:", form.seguros);
+  console.log("🎒 COMPONENTE: Equipaje:", form.equipaje);
+  console.log("🏥 COMPONENTE: Asistencia médica:", form.asistencia_medica);
+  console.log("🎯 COMPONENTE: Excursiones:", form.excursiones);
+  console.log("➕ COMPONENTE: Extras:", form.extras);
+  
+  // ✅ AGREGAR: Log de comisiones y totales
+  console.log("💼 COMPONENTE: Comisiones:", form.comisiones);
+  console.log("💰 COMPONENTE: Ganancia:", form.ganancia);
+  
+  // ✅ AGREGAR: Log de totales calculados
+  console.log("📊 COMPONENTE: Totales calculados:");
+  console.log("  - Costo base:", form.costo_base);
+  console.log("  - Total comisiones:", form.total_comisiones);
+  console.log("  - Total ganancia:", form.total_ganancia);
+  console.log("  - Precio final total:", form.precio_final_total);
+  console.log("  - Precio final por persona:", form.precio_final_por_persona);
+  
+  // ✅ AGREGAR: Log de configuración
+  console.log("⚙️ COMPONENTE: Configuración:");
+  console.log("  - Quote ID:", form.quote_id);
+  console.log("  - User ID:", form.user_id);
+  console.log("  - Número de personas:", form.num_personas);
+  console.log("  - Tipo de viaje:", form.trip_type);
+  console.log("  - Estado:", form.estado);
+  
+  // ✅ AGREGAR: Validaciones básicas antes de enviar
+  if (!form.quote_id) {
+    console.error("❌ COMPONENTE: Error - No hay quote_id");
+    alert("Error: No se encontró el ID de la cotización");
+    return;
+  }
+  
+  if (!form.user_id) {
+    console.error("❌ COMPONENTE: Error - No hay user_id");
+    alert("Error: No se encontró el ID del usuario");
+    return;
+  }
+  
+  if (form.precio_final_total <= 0) {
+    console.warn("⚠️ COMPONENTE: Advertencia - El precio final es 0 o negativo");
+  }
+  
+  console.log("📤 COMPONENTE: Enviando datos vía dispatch...");
+  
+  try {
+   console.log("💾 CALCULADORA: Usando upsertQuoteCalculation para guardar/actualizar");
+      const result = await dispatch(upsertQuoteCalculation(form));
+      console.log("📨 CALCULADORA: Resultado del dispatch:", result);
+      
     
-    const result = await dispatch(createQuoteCalculation(form));
-    if (result.meta.requestStatus === 'fulfilled' && onContinue) {
-      onContinue(result.payload);
+    if (result.meta.requestStatus === 'fulfilled') {
+      console.log("✅ COMPONENTE: Cálculo guardado exitosamente");
+      console.log("✅ COMPONENTE: Payload de respuesta:", result.payload);
+      
+      if (onContinue) {
+        console.log("🔄 COMPONENTE: Ejecutando callback onContinue...");
+        onContinue(result.payload);
+      }
+    } else {
+      console.error("❌ COMPONENTE: El dispatch fue rechazado:", result.error);
     }
-  };
+  } catch (error) {
+    console.error("❌ COMPONENTE: Error en try-catch del handleSubmit:", error);
+    console.error("❌ COMPONENTE: Error stack:", error.stack);
+  }
+};
 
   const tabs = [
     { id: 'transporte', label: 'Transporte', icon: '✈️' },

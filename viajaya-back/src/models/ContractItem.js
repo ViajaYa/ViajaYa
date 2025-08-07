@@ -25,6 +25,7 @@ module.exports = (sequelize) => {
       }
     },
     
+    
     tipo: {
       type: DataTypes.ENUM(
         'tickets',
@@ -36,7 +37,9 @@ module.exports = (sequelize) => {
         'excursiones',
         'seguro',
         'contacto de urgencia',
-        'otros'
+        'extras',
+        'comisiones', 
+        'ganancia_empresa'
       ),
       allowNull: false,
     },
@@ -94,12 +97,14 @@ module.exports = (sequelize) => {
     },
     status: {
       type: DataTypes.ENUM(
-        'pendiente',
-        'confirmado', 
-        'pagado',
+        'pendiente_compra',
+        'comprado_pendiente',  
+        'comprado_pagado',     
+        'vencido',            
+        'no_requiere',        
         'cancelado'
       ),
-      defaultValue: 'pendiente',
+      defaultValue: 'pendiente_compra',
     },
     observaciones: {
       type: DataTypes.TEXT,

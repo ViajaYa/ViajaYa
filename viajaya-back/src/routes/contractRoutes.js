@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const contractController = require('../controllers/contractController');
 const purchaseController = require('../controllers/purchaseController');
+const { uploadComprobante } = require('../config/multerConfig');
+
 // ================== CONTRATOS ==================
 
 // Crear nuevo contrato
@@ -42,7 +44,10 @@ router.patch('/:id/complete', contractController.completeContract);
 router.get('/cliente/:cliente_id', contractController.getContractsByCliente);
 
 // ================== ITEMS DEL CONTRATO ==================
+router.post('/:contractId/convert-quote-items', contractController.convertQuoteToContractItems);
 
+router.get('/:contractId/purchase-stats', purchaseController.getContractPurchaseStats);
+router.get('/:contractId/items-with-purchases', purchaseController.getContractItemsWithPurchases);
 // Crear item para un contrato
 router.post('/:contractId/items', contractController.createContractItem);
 
@@ -51,7 +56,7 @@ router.get('/:contractId/items', contractController.getContractItems);
 
 // Actualizar un item
 router.put('/items/:itemId', contractController.updateContractItem);
-
+router.patch('/items/:itemId/deadline', purchaseController.updateItemDeadline);
 // Eliminar un item
 router.delete('/items/:itemId', contractController.deleteContractItem);
 
@@ -62,7 +67,7 @@ router.get('/items/:itemId/purchases', purchaseController.getPurchasesByItem);
 
 // Actualizar compra
 router.put('/purchases/:purchaseId', purchaseController.updatePurchase);
-
+router.patch('/purchases/:purchaseId/mark-paid', purchaseController.markPaymentCompleted);
 // Eliminar compra
 router.delete('/purchases/:purchaseId', purchaseController.deletePurchase);
 

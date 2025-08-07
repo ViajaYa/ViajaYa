@@ -26,7 +26,8 @@ import {
   faCheckCircle,
   faCoins,
   faArrowLeft,
-  faFilePdf, // ✅ AGREGAR: Icono para generar PDF
+  faFilePdf, 
+   faShoppingCart,
 } from "@fortawesome/free-solid-svg-icons";
 import {
   fetchContractById,
@@ -204,6 +205,11 @@ const ContractsList = () => {
         break;
       default:
         break;
+
+        case "purchase_management":
+      // ✅ NUEVA ACCIÓN: Navegar a gestión de compras
+      navigate(`/contracts/${contractId}/purchase-management`);
+      break;
     }
   };
 
@@ -646,47 +652,60 @@ const ContractsList = () => {
                           <FontAwesomeIcon icon={faEye} size="sm" />
                         </button>
 
+                        {/* ✅ NUEVO BOTÓN: Gestión de Compras */}
+                        {(contract.status === "active" || 
+                          contract.status === "signed" || 
+                          contract.status === "completed") && (
+                          <button
+                            onClick={() => handleAction("purchase_management", contract.id)}
+                            className="p-2 text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                            title="Gestión de Compras"
+                          >
+                            <FontAwesomeIcon icon={faShoppingCart} size="sm" />
+                          </button>
+                        )}
+
                         {/* Enviar */}
                         {(contract.status === "draft" ||
                           contract.status === "active") && (
-                            <button
-                              onClick={() =>
-                                handleAction("send", contract.id, contract)
-                              }
-                              className="p-2 text-green-600 hover:bg-green-50 rounded transition-colors"
-                              title="Enviar al cliente"
-                            >
-                              <FontAwesomeIcon icon={faPaperPlane} size="sm" />
-                            </button>
-                          )}
+                          <button
+                            onClick={() =>
+                              handleAction("send", contract.id, contract)
+                            }
+                            className="p-2 text-green-600 hover:bg-green-50 rounded transition-colors"
+                            title="Enviar al cliente"
+                          >
+                            <FontAwesomeIcon icon={faPaperPlane} size="sm" />
+                          </button>
+                        )}
 
                         {/* ✅ NUEVO BOTÓN: Aprobar y generar comisiones */}
                         {(contract.status === "signed" ||
                           contract.status === "draft") && (
-                            <button
-                              onClick={() => handleAction("approve", contract.id)}
-                              className="p-2 text-orange-600 hover:bg-orange-50 rounded transition-colors"
-                              title="Aprobar contrato y generar comisiones"
-                            >
-                              <FontAwesomeIcon icon={faCheckCircle} size="sm" />
-                            </button>
-                          )}
+                          <button
+                            onClick={() => handleAction("approve", contract.id)}
+                            className="p-2 text-orange-600 hover:bg-orange-50 rounded transition-colors"
+                            title="Aprobar contrato y generar comisiones"
+                          >
+                            <FontAwesomeIcon icon={faCheckCircle} size="sm" />
+                          </button>
+                        )}
 
                         {/* Ver comisiones */}
                         {(contract.status === "completed" ||
                           contract.status === "active") && (
-                            <button
-                              onClick={() =>
-                                navigate(
-                                  `/contracts/${contract.id}/commissions`
-                                )
-                              }
-                              className="p-2 text-teal-600 hover:bg-teal-50 rounded transition-colors"
-                              title="Ver comisiones generadas"
-                            >
-                              <FontAwesomeIcon icon={faCoins} size="sm" />
-                            </button>
-                          )}
+                          <button
+                            onClick={() =>
+                              navigate(
+                                `/contracts/${contract.id}/commissions`
+                              )
+                            }
+                            className="p-2 text-teal-600 hover:bg-teal-50 rounded transition-colors"
+                            title="Ver comisiones generadas"
+                          >
+                            <FontAwesomeIcon icon={faCoins} size="sm" />
+                          </button>
+                        )}
 
                         {/* Descargar - Siempre disponible */}
                         <button

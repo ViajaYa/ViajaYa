@@ -82,8 +82,38 @@ const uploadPaymentProof = multer({
   }
 });
 
-// Exportar ambas configuraciones
+// ✅ NUEVA CONFIGURACIÓN: Para comprobantes de compras
+const comprobantesStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'viajaya/comprobantes-compras', // Carpeta específica para comprobantes de compra
+    allowedFormats: ['jpg', 'jpeg', 'png', 'pdf'],
+    resource_type: (req, file) => {
+      return file.mimetype === 'application/pdf' ? 'raw' : 'image';
+    },
+    transformation: (req, file) => {
+      if (file.mimetype.startsWith('image/')) {
+        return [
+          { quality: 'auto' },
+          { fetch_format: 'auto' }
+        ];
+      }
+      return [];
+    }
+  },
+});
+
+const uploadComprobante = multer({
+  storage: comprobantesStorage,
+  fileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB máximo
+  }
+});
+
+// ✅ ACTUALIZAR: Exportar todas las configuraciones
 module.exports = {
   upload,
-  uploadPaymentProof
+  uploadPaymentProof,
+  uploadComprobante  // ✅ AGREGAR ESTA NUEVA EXPORTACIÓN
 };

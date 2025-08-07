@@ -496,6 +496,18 @@ QuoteCalculation.belongsTo(User, { as: 'User', foreignKey: 'user_id' });
 Quote.hasOne(QuoteCalculation, { as: 'Calculation', foreignKey: 'quote_id' });
 QuoteCalculation.belongsTo(Quote, { as: 'Quote', foreignKey: 'quote_id' });
 
+QuoteCalculation.hasMany(ContractItem, { 
+  foreignKey: 'quote_calculation_id', 
+  as: 'GeneratedItems' 
+});
+
+ContractItem.belongsTo(QuoteCalculation, { 
+  foreignKey: 'quote_calculation_id', 
+  as: 'QuoteCalculation' 
+});
+
+
+
 module.exports = {
   ...sequelize.models, // para poder importar los modelos así: const { Product, User } = require('./db.js');
   conn: sequelize,     // para importart la conexión { conn } = require('./db.js');
