@@ -529,69 +529,120 @@ const quoteController = {
   },
 
   // ✅ ACTUALIZAR: getQuoteById con nuevos includes
-  getQuoteById: async (req, res) => {
-    try {
-      const { id } = req.params;
+getQuoteById: async (req, res) => {
+  try {
+    const { id } = req.params;
 
-      const quote = await Quote.findByPk(id, {
-        include: [
-          {
-            model: User,
-            as: "Asesor",
-            attributes: ["id", "name", "lastname", "email", "role"],
-          },
-          {
-            model: User,
-            as: "Lider",
-            attributes: ["id", "name", "lastname", "email", "role"],
-          },
-          {
-            model: User,
-            as: "Gerente",
-            attributes: ["id", "name", "lastname", "email", "role"],
-          },
-          {
-            model: User,
-            as: "Admin",
-            attributes: ["id", "name", "lastname", "email", "role"],
-          },
-          {
-            model: User,
-            as: "Cliente",
-            attributes: ["id", "name", "lastname", "email", "phone"],
-          },
-          // ✅ CORREGIR: Especificar el alias para Contract
-          {
-            model: Contract,
-            as: "Contract", // o el alias que hayas definido en las asociaciones
-            required: false, // hacer que sea opcional
-          },
+    const quote = await Quote.findByPk(id, {
+      include: [
+        {
+          model: User,
+          as: "Asesor",
+          attributes: ["id", "name", "lastname", "email", "role"],
+        },
+        {
+          model: User,
+          as: "Lider",
+          attributes: ["id", "name", "lastname", "email", "role"],
+        },
+        {
+          model: User,
+          as: "Gerente",
+          attributes: ["id", "name", "lastname", "email", "role"],
+        },
+        {
+          model: User,
+          as: "Admin",
+          attributes: ["id", "name", "lastname", "email", "role"],
+        },
+        {
+          model: User,
+          as: "Cliente",
+          attributes: ["id", "name", "lastname", "email", "phone"],
+        },
+        {
+          model: Contract,
+          as: "Contract",
+          required: false,
+        },
+        {
+          model: Passenger,
+          as: "Passengers",
+          required: false,
+          order: [
+            ['titular', 'DESC'],
+            ['nombre', 'ASC']
+          ]
+        }
+      ],
+    });
 
-          {
-            model: Passenger,
-            as: "Passengers",
-            required: false,
-            order: [
-              ['titular', 'DESC'],
-              ['nombre', 'ASC']
-            ]
-          }
-        ],
-      });
+    if (!quote) {
+      return res.status(404).json({ message: "Cotización no encontrada" });
+    }
 
-      if (!quote) {
-        return res.status(404).json({ message: "Cotización no encontrada" });
-      }
-
-      res.json(quote);
-    } catch (error) {
-      console.error("Error fetching quote:", error);
-      res.status(500).json({
-        message: "Error al obtener la cotización",
-        error: error.message,
+    // ✅ NUEVO: Calcular precio por persona
+    let precio_por_persona = 0;
+    if (quote.precio_total && quote.numero_personas && quote.numero_personas > 0) {
+      precio_por_persona = parseFloat(quote.precio_total) / parseInt(quote.numero_personas);
+      
+      console.log('💰 CÁLCULO DE PRECIO POR PERSONA:', {
+        precio_total: quote.precio_total,
+        numero_personas: quote.numero_personas,
+        precio_por_persona: precio_por_persona,
+        precio_por_persona_formateado: precio_por_persona.toFixed(2)
       });
     }
-  },
+
+    // ✅ NUEVO: Enriquecer la respuesta con campos calculados
+    const quoteResponse = {
+      ...quote.toJSON(), // Convertir a objeto plano para poder agregar propiedades
+      
+      // ✅ AGREGADO: Campo calculado
+      precio_por_persona: precio_por_persona,
+      precio_por_persona_formateado: precio_por_persona.toFixed(2),
+      
+      // ✅ AGREGADO: Metadatos útiles para el frontend
+      calculation_metadata: {
+        has_price: !!quote.precio_total,
+        has_passengers: quote.numero_personas > 0,
+        price_per_person_available: !!(quote.precio_total && quote.numero_personas > 0),
+        total_passengers_registered: quote.Passengers ? quote.Passengers.length : 0,
+        passengers_complete: quote.Passengers ? quote.Passengers.length === quote.numero_personas : false,
+      },
+
+      // ✅ AGREGADO: Información de formato para PDF
+      pdf_data: {
+        precio_total_cop: quote.precio_total ? `$${parseFloat(quote.precio_total).toLocaleString('es-CO')}` : null,
+        precio_por_persona_cop: precio_por_persona > 0 ? `$${precio_por_persona.toLocaleString('es-CO')}` : null,
+        fecha_ida_formatted: quote.fecha_ida ? new Date(quote.fecha_ida).toLocaleDateString('es-ES') : null,
+        fecha_regreso_formatted: quote.fecha_regreso ? new Date(quote.fecha_regreso).toLocaleDateString('es-ES') : null,
+        trip_type_label: quote.trip_type === 'nacional' ? 'Nacional' : 'Internacional',
+      },
+
+      // ✅ AGREGADO: Información del asesor responsable (para PDF)
+      asesor_info: {
+        nombre_completo: quote.Asesor ? `${quote.Asesor.name} ${quote.Asesor.lastname}` : 
+                        quote.Lider ? `${quote.Lider.name} ${quote.Lider.lastname}` :
+                        quote.Gerente ? `${quote.Gerente.name} ${quote.Gerente.lastname}` :
+                        quote.Admin ? `${quote.Admin.name} ${quote.Admin.lastname}` : 'No asignado',
+        email: quote.Asesor?.email || quote.Lider?.email || quote.Gerente?.email || quote.Admin?.email || null,
+        rol: quote.Asesor ? 'Asesor' : 
+             quote.Lider ? 'Líder' : 
+             quote.Gerente ? 'Gerente' : 
+             quote.Admin ? 'Administrador' : 'No asignado'
+      }
+    };
+
+    res.json(quoteResponse);
+  } catch (error) {
+    console.error("Error fetching quote:", error);
+    res.status(500).json({
+      message: "Error al obtener la cotización",
+      error: error.message,
+    });
+  }
+},
 
   getExternalQuotes: async (req, res) => {
     try {
@@ -1389,310 +1440,331 @@ const quoteController = {
 
   // ✅ REEMPLAZAR sendQuote con esta versión mejorada
   sendQuote: async (req, res) => {
-    try {
-      const { id } = req.params;
-      const userId = req.user?.id;
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
 
-      console.log("🚀 Iniciando envío de cotización al cliente:", {
-        quoteId: id,
-        userId,
-      });
+    console.log("🚀 Iniciando envío de cotización al cliente:", {
+      quoteId: id,
+      userId,
+    });
 
-      // ✅ Buscar la cotización con todas las relaciones
-      const quote = await Quote.findByPk(id, {
-        include: [
-          {
-            model: User,
-            as: "Asesor",
-            attributes: ["id", "name", "lastname", "email"],
-          },
-          {
-            model: User,
-            as: "Lider",
-            attributes: ["id", "name", "lastname", "email"],
-          },
-          {
-            model: User,
-            as: "Gerente",
-            attributes: ["id", "name", "lastname", "email"],
-          },
-          {
-            model: User,
-            as: "Admin",
-            attributes: ["id", "name", "lastname", "email"],
-          },
-        ],
-      });
-
-      if (!quote) {
-        return res.status(404).json({
-          success: false,
-          message: "Cotización no encontrada",
-        });
-      }
-
-      // ✅ Validaciones mejoradas
-      if (quote.status !== "completed") {
-        return res.status(400).json({
-          success: false,
-          message: "La cotización debe estar completada antes de ser enviada",
-        });
-      }
-
-      if (!quote.precio_total || quote.precio_total <= 0) {
-        return res.status(400).json({
-          success: false,
-          message: "La cotización debe tener un precio total antes de enviarla",
-        });
-      }
-
-      if (!quote.email_cliente || !quote.email_cliente.includes("@")) {
-        return res.status(400).json({
-          success: false,
-          message: "La cotización debe tener un email de cliente válido",
-        });
-      }
-
-      // ✅ Validar que no se haya enviado ya
-      if (quote.status === "sent") {
-        return res.status(400).json({
-          success: false,
-          message: "Esta cotización ya fue enviada al cliente",
-        });
-      }
-
-      // ✅ PASO 1: Generar PDF
-      console.log("📄 Generando PDF de la cotización...");
-      const pdfInfo = await generateQuotePDF(quote);
-
-      // ✅ PASO 2: Preparar fechas
-      const sentAt = new Date();
-      const expiresAt = new Date(sentAt.getTime() + 48 * 60 * 60 * 1000);
-
-      const passengerFormLink = `${process.env.FRONTEND_URL}/passenger-form/${quote.id}`;
-
-      // ✅ PASO 3: Actualizar la cotización con PDF y estado
-      await quote.update({
-        status: "sent",
-        sent_at: sentAt,
-        expires_at: expiresAt,
-        pdf_path: pdfInfo.filepath,
-        pdf_filename: pdfInfo.filename,
-        pdf_generated_at: new Date(),
-        email_sent_to: quote.email_cliente,
-      });
-
-      // ✅ PASO 4: Preparar el email
-      const emailSubject = `Cotización de Viaje - ${quote.destino} | ${quote.quote_number || quote.id
-        }`;
-
-      const emailHTML = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .header { background-color: #2563eb; color: white; padding: 20px; text-align: center; }
-            .content { padding: 20px; }
-            .quote-details { background-color: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0; }
-            .price { background-color: #059669; color: white; padding: 15px; text-align: center; border-radius: 8px; margin: 20px 0; }
-            .footer { background-color: #f1f5f9; padding: 15px; text-align: center; font-size: 12px; color: #64748b; }
-            .highlight { background-color: #fef3c7; padding: 10px; border-radius: 5px; margin: 15px 0; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>¡Tu cotización está lista! ✈️</h1>
-            <p>Viaja Ya - Hacemos realidad tus sueños de viaje</p>
-          </div>
-          
-          <div class="content">
-            <h2>Estimado/a ${quote.nombre_cliente || "Cliente"},</h2>
-            
-            <p>Nos complace presentarle la cotización solicitada para su viaje a <strong>${quote.destino
-        }</strong>.</p>
-            
-            <div class="quote-details">
-              <h3>📋 Detalles del Viaje:</h3>
-              <ul>
-                <li><strong>🏖️ Destino:</strong> ${quote.destino}</li>
-                <li><strong>📍 Origen:</strong> ${quote.origen}</li>
-                <li><strong>📅 Fecha de ida:</strong> ${new Date(
-          quote.fecha_ida
-        ).toLocaleDateString("es-ES")}</li>
-                <li><strong>📅 Fecha de regreso:</strong> ${new Date(
-          quote.fecha_regreso
-        ).toLocaleDateString("es-ES")}</li>
-                <li><strong>👥 Número de personas:</strong> ${quote.numero_personas
-        }</li>
-                ${quote.ninos > 0
-          ? `<li><strong>👶 Niños:</strong> ${quote.ninos
-          } (Edades: ${quote.edades_ninos.join(", ")})</li>`
-          : ""
-        }
-                <li><strong>🏨 Tipo de acomodación:</strong> ${quote.acomodacion
-        }</li>
-                <li><strong>⭐ Tipo de hotel:</strong> ${quote.tipo_hotel}</li>
-                ${quote.traslado
-          ? "<li><strong>🚗 Traslados:</strong> Incluidos</li>"
-          : ""
-        }
-                ${quote.alimentacion
-          ? `<li><strong>🍽️ Alimentación:</strong> ${quote.alimentacion}</li>`
-          : ""
-        }
-              </ul>
-            </div>
-            
-            <div class="price">
-              <h2>💰 Precio Total: COP $${quote.precio_total.toLocaleString()}</h2>
-            </div>
-             <div class="passenger-section">
-              <h3>👥 ¡IMPORTANTE! - Datos de Pasajeros</h3>
-              <p>Para procesar su reserva, necesitamos que complete los datos de todos los pasajeros que viajarán.</p>
-              <p><strong>Número de pasajeros a registrar: ${quote.numero_personas}</strong></p>
-              
-              <a href="${passengerFormLink}" class="btn-passenger" target="_blank">
-                📝 COMPLETAR DATOS DE PASAJEROS
-              </a>
-              
-              <p style="font-size: 14px; color: #666; margin-top: 15px;">
-                ⚠️ <strong>Este paso es obligatorio</strong> para confirmar su reserva. 
-                El enlace estará disponible hasta que complete todos los datos requeridos.
-              </p>
-            </div>
-
-            ${quote.observaciones
-          ? `
-              <div class="quote-details">
-                <h3>📝 Observaciones importantes:</h3>
-                <p>${quote.observaciones}</p>
-              </div>
-            `
-          : ""
-        }
-            
-            <div class="highlight">
-              <p><strong>⏰ Esta cotización es válida por 48 Hs </strong> a partir de la fecha de emisión.</p>
-            </div>
-            
-            <p>📎 En el archivo PDF adjunto encontrará todos los detalles completos de su cotización.</p>
-            
-            <p>Para confirmar su reserva o si tiene alguna consulta, no dude en contactarnos:</p>
-            
-            <div class="quote-details">
-              <h3>👨‍💼 Su asesor de confianza:</h3>
-              <ul>
-                <li><strong>Nombre:</strong> ${quote.Asesor?.name ||
-        quote.Lider?.name ||
-        quote.Gerente?.name ||
-        quote.Admin?.name
-        } ${quote.Asesor?.lastname ||
-        quote.Lider?.lastname ||
-        quote.Gerente?.lastname ||
-        quote.Admin?.lastname
-        }</li>
-                <li><strong>📧 Email:</strong> ${quote.Asesor?.email ||
-        quote.Lider?.email ||
-        quote.Gerente?.email ||
-        quote.Admin?.email
-        }</li>
-                <li><strong>📞 Teléfono general:</strong> +54 123 456 7890</li>
-              </ul>
-            </div>
-            
-            <p>¡Esperamos poder hacer realidad su viaje soñado! 🌟</p>
-            
-            <p>Saludos cordiales,<br>
-            <strong>Equipo Viaja Ya</strong></p>
-          </div>
-          
-          <div class="footer">
-            <p>Viaja Ya | 📧 info@viajaya.com | 📞 +54 123 456 7890</p>
-            <p>Este email fue enviado automáticamente, por favor responda al email de su asesor.</p>
-          </div>
-        </body>
-        </html>
-      `;
-
-      // ✅ PASO 5: Enviar email con PDF adjunto
-      console.log("📧 Enviando email al cliente...");
-
-      const mailOptions = {
-        to: quote.email_cliente,
-        subject: emailSubject,
-        html: emailHTML,
-        attachments: [
-          {
-            filename: pdfInfo.filename,
-            path: pdfInfo.filepath,
-            contentType: "application/pdf",
-          },
-        ],
-      };
-
-      const emailResult = await sendEmail(mailOptions);
-      console.log("✅ Email enviado exitosamente:", emailResult.messageId);
-
-      // ✅ PASO 6: Actualizar fecha de envío del email
-      await quote.update({
-        sent_at: new Date(),
-      });
-
-      // ✅ Obtener cotización actualizada con relaciones
-      const updatedQuote = await Quote.findByPk(id, {
-        include: [
-          {
-            model: User,
-            as: "Asesor",
-            attributes: ["id", "name", "lastname", "email"],
-          },
-          {
-            model: User,
-            as: "Lider",
-            attributes: ["id", "name", "lastname", "email"],
-          },
-          {
-            model: User,
-            as: "Gerente",
-            attributes: ["id", "name", "lastname", "email"],
-          },
-          {
-            model: User,
-            as: "Admin",
-            attributes: ["id", "name", "lastname", "email"],
-          },
-        ],
-      });
-
-      // ✅ Respuesta exitosa
-      res.json({
-        success: true,
-        message: "Cotización enviada exitosamente al cliente",
-        quote: updatedQuote,
-        email_info: {
-          email_sent_to: quote.email_cliente,
-          pdf_generated: true,
-          pdf_filename: pdfInfo.filename,
-          passenger_form_link: passengerFormLink,
-          sent_at: sentAt.toISOString(),
-          expires_at: expiresAt.toISOString(),
+    // ✅ Buscar la cotización con todas las relaciones (IGUAL QUE ANTES)
+    const quote = await Quote.findByPk(id, {
+      include: [
+        {
+          model: User,
+          as: "Asesor",
+          attributes: ["id", "name", "lastname", "email"],
         },
-      });
-    } catch (error) {
-      console.error("❌ Error enviando cotización al cliente:", error);
+        {
+          model: User,
+          as: "Lider",
+          attributes: ["id", "name", "lastname", "email"],
+        },
+        {
+          model: User,
+          as: "Gerente",
+          attributes: ["id", "name", "lastname", "email"],
+        },
+        {
+          model: User,
+          as: "Admin",
+          attributes: ["id", "name", "lastname", "email"],
+        },
+      ],
+    });
 
-      res.status(500).json({
+    if (!quote) {
+      return res.status(404).json({
         success: false,
-        message: "Error interno del servidor al enviar la cotización",
-        error:
-          process.env.NODE_ENV === "development"
-            ? error.message
-            : "Error interno",
+        message: "Cotización no encontrada",
       });
     }
-  },
+
+    // ✅ Validaciones mejoradas (IGUAL QUE ANTES)
+    if (quote.status !== "completed") {
+      return res.status(400).json({
+        success: false,
+        message: "La cotización debe estar completada antes de ser enviada",
+      });
+    }
+
+    if (!quote.precio_total || quote.precio_total <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "La cotización debe tener un precio total antes de enviarla",
+      });
+    }
+
+    if (!quote.email_cliente || !quote.email_cliente.includes("@")) {
+      return res.status(400).json({
+        success: false,
+        message: "La cotización debe tener un email de cliente válido",
+      });
+    }
+
+    // ✅ Validar que no se haya enviado ya
+    if (quote.status === "sent") {
+      return res.status(400).json({
+        success: false,
+        message: "Esta cotización ya fue enviada al cliente",
+      });
+    }
+
+    // ✅ NUEVO: Enriquecer cotización con cálculos (IGUAL QUE EN getQuoteById)
+    let precio_por_persona = 0;
+    if (quote.precio_total && quote.numero_personas && quote.numero_personas > 0) {
+      precio_por_persona = parseFloat(quote.precio_total) / parseInt(quote.numero_personas);
+      
+      console.log('💰 SENDQUOTE - CÁLCULO DE PRECIO POR PERSONA:', {
+        precio_total: quote.precio_total,
+        numero_personas: quote.numero_personas,
+        precio_por_persona: precio_por_persona,
+        precio_por_persona_formateado: precio_por_persona.toFixed(2)
+      });
+    }
+
+    // ✅ NUEVO: Crear versión enriquecida de la cotización
+    const enrichedQuote = {
+      ...quote.toJSON(), // Convertir a objeto plano
+      
+      // ✅ AGREGAR: Campos calculados
+      precio_por_persona: precio_por_persona,
+      precio_por_persona_formateado: precio_por_persona.toFixed(2),
+      
+      // ✅ AGREGAR: Metadatos útiles
+      calculation_metadata: {
+        has_price: !!quote.precio_total,
+        has_passengers: quote.numero_personas > 0,
+        price_per_person_available: !!(quote.precio_total && quote.numero_personas > 0),
+      },
+
+      // ✅ AGREGAR: Datos formateados para PDF
+      pdf_data: {
+        precio_total_cop: quote.precio_total ? `$${parseFloat(quote.precio_total).toLocaleString('es-CO')}` : null,
+        precio_por_persona_cop: precio_por_persona > 0 ? `$${precio_por_persona.toLocaleString('es-CO')}` : null,
+        fecha_ida_formatted: quote.fecha_ida ? new Date(quote.fecha_ida).toLocaleDateString('es-ES') : null,
+        fecha_regreso_formatted: quote.fecha_regreso ? new Date(quote.fecha_regreso).toLocaleDateString('es-ES') : null,
+        trip_type_label: quote.trip_type === 'nacional' ? 'Nacional' : 'Internacional',
+      },
+
+      // ✅ AGREGAR: Información del asesor responsable
+      asesor_info: {
+        nombre_completo: quote.Asesor ? `${quote.Asesor.name} ${quote.Asesor.lastname}` : 
+                        quote.Lider ? `${quote.Lider.name} ${quote.Lider.lastname}` :
+                        quote.Gerente ? `${quote.Gerente.name} ${quote.Gerente.lastname}` :
+                        quote.Admin ? `${quote.Admin.name} ${quote.Admin.lastname}` : 'No asignado',
+        email: quote.Asesor?.email || quote.Lider?.email || quote.Gerente?.email || quote.Admin?.email || null,
+        rol: quote.Asesor ? 'Asesor' : 
+             quote.Lider ? 'Líder' : 
+             quote.Gerente ? 'Gerente' : 
+             quote.Admin ? 'Administrador' : 'No asignado'
+      }
+    };
+
+    console.log('📋 SENDQUOTE - Datos enriquecidos para PDF:', {
+      precio_por_persona: enrichedQuote.precio_por_persona,
+      precio_por_persona_formateado: enrichedQuote.precio_por_persona_formateado,
+      pdf_data_precio_cop: enrichedQuote.pdf_data?.precio_por_persona_cop
+    });
+
+    // ✅ PASO 1: Generar PDF (USAR enrichedQuote en lugar de quote)
+    console.log("📄 Generando PDF de la cotización...");
+    const pdfInfo = await generateQuotePDF(enrichedQuote); // ✅ CAMBIO CLAVE
+
+    // ✅ PASO 2: Preparar fechas (IGUAL QUE ANTES)
+    const sentAt = new Date();
+    const expiresAt = new Date(sentAt.getTime() + 48 * 60 * 60 * 1000);
+    const passengerFormLink = `${process.env.FRONTEND_URL}/passenger-form/${quote.id}`;
+
+    // ✅ PASO 3: Actualizar la cotización con PDF y estado (IGUAL QUE ANTES)
+    await quote.update({
+      status: "sent",
+      sent_at: sentAt,
+      expires_at: expiresAt,
+      pdf_path: pdfInfo.filepath,
+      pdf_filename: pdfInfo.filename,
+      pdf_generated_at: new Date(),
+      email_sent_to: quote.email_cliente,
+    });
+
+    // ✅ PASO 4: Preparar el email (IGUAL QUE ANTES)
+    const emailSubject = `Cotización de Viaje - ${quote.destino} | ${quote.quote_number || quote.id}`;
+
+    const emailHTML = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .header { background-color: #2563eb; color: white; padding: 20px; text-align: center; }
+          .content { padding: 20px; }
+          .quote-details { background-color: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0; }
+          .price { background-color: #059669; color: white; padding: 15px; text-align: center; border-radius: 8px; margin: 20px 0; }
+          .footer { background-color: #f1f5f9; padding: 15px; text-align: center; font-size: 12px; color: #64748b; }
+          .highlight { background-color: #fef3c7; padding: 10px; border-radius: 5px; margin: 15px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>¡Tu cotización está lista! ✈️</h1>
+          <p>Viaja Ya - Hacemos realidad tus sueños de viaje</p>
+        </div>
+        
+        <div class="content">
+          <h2>Estimado/a ${quote.nombre_cliente || "Cliente"},</h2>
+          
+          <p>Nos complace presentarle la cotización solicitada para su viaje a <strong>${quote.destino}</strong>.</p>
+          
+          <div class="quote-details">
+            <h3>📋 Detalles del Viaje:</h3>
+            <ul>
+              <li><strong>🏖️ Destino:</strong> ${quote.destino}</li>
+              <li><strong>📍 Origen:</strong> ${quote.origen}</li>
+              <li><strong>📅 Fecha de ida:</strong> ${new Date(quote.fecha_ida).toLocaleDateString("es-ES")}</li>
+              <li><strong>📅 Fecha de regreso:</strong> ${new Date(quote.fecha_regreso).toLocaleDateString("es-ES")}</li>
+              <li><strong>👥 Número de personas:</strong> ${quote.numero_personas}</li>
+              ${quote.ninos > 0 ? `<li><strong>👶 Niños:</strong> ${quote.ninos} (Edades: ${quote.edades_ninos.join(", ")})</li>` : ""}
+              <li><strong>🏨 Tipo de acomodación:</strong> ${quote.acomodacion}</li>
+              <li><strong>⭐ Tipo de hotel:</strong> ${quote.tipo_hotel}</li>
+              ${quote.traslado ? "<li><strong>🚗 Traslados:</strong> Incluidos</li>" : ""}
+              ${quote.alimentacion ? `<li><strong>🍽️ Alimentación:</strong> ${quote.alimentacion}</li>` : ""}
+            </ul>
+          </div>
+          
+          <div class="price">
+           <h2>💰 Precio por persona: ${enrichedQuote.pdf_data?.precio_por_persona_cop || `COP $${Number(enrichedQuote.precio_por_persona || 0).toLocaleString('es-CO')}`}</h2>
+          </div>
+          
+          <div class="passenger-section">
+            <h3>👥 ¡IMPORTANTE! - Datos de Pasajeros</h3>
+            <p>Para procesar su reserva, necesitamos que complete los datos de todos los pasajeros que viajarán.</p>
+            <p><strong>Número de pasajeros a registrar: ${quote.numero_personas}</strong></p>
+            
+            <a href="${passengerFormLink}" class="btn-passenger" target="_blank">
+              📝 COMPLETAR DATOS DE PASAJEROS
+            </a>
+            
+            <p style="font-size: 14px; color: #666; margin-top: 15px;">
+              ⚠️ <strong>Este paso es obligatorio</strong> para confirmar su reserva. 
+              El enlace estará disponible hasta que complete todos los datos requeridos.
+            </p>
+          </div>
+
+          ${quote.observaciones ? `
+            <div class="quote-details">
+              <h3>📝 Observaciones importantes:</h3>
+              <p>${quote.observaciones}</p>
+            </div>
+          ` : ""}
+          
+          <div class="highlight">
+            <p><strong>⏰ Esta cotización es válida por 48 Hs </strong> a partir de la fecha de emisión.</p>
+          </div>
+          
+          <p>📎 En el archivo PDF adjunto encontrará todos los detalles completos de su cotización.</p>
+          
+          <p>Para confirmar su reserva o si tiene alguna consulta, no dude en contactarnos:</p>
+          
+          <div class="quote-details">
+            <h3>👨‍💼 Su asesor de confianza:</h3>
+            <ul>
+              <li><strong>Nombre:</strong> ${quote.Asesor?.name || quote.Lider?.name || quote.Gerente?.name || quote.Admin?.name} ${quote.Asesor?.lastname || quote.Lider?.lastname || quote.Gerente?.lastname || quote.Admin?.lastname}</li>
+              <li><strong>📧 Email:</strong> ${quote.Asesor?.email || quote.Lider?.email || quote.Gerente?.email || quote.Admin?.email}</li>
+              <li><strong>📞 Teléfono general:</strong> +54 123 456 7890</li>
+            </ul>
+          </div>
+          
+          <p>¡Esperamos poder hacer realidad su viaje soñado! 🌟</p>
+          
+          <p>Saludos cordiales,<br>
+          <strong>Equipo Viaja Ya</strong></p>
+        </div>
+        
+        <div class="footer">
+          <p>Viaja Ya | 📧 info@viajaya.com | 📞 +54 123 456 7890</p>
+          <p>Este email fue enviado automáticamente, por favor responda al email de su asesor.</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    // ✅ PASO 5: Enviar email con PDF adjunto (IGUAL QUE ANTES)
+    console.log("📧 Enviando email al cliente...");
+
+    const mailOptions = {
+      to: quote.email_cliente,
+      subject: emailSubject,
+      html: emailHTML,
+      attachments: [
+        {
+          filename: pdfInfo.filename,
+          path: pdfInfo.filepath,
+          contentType: "application/pdf",
+        },
+      ],
+    };
+
+    const emailResult = await sendEmail(mailOptions);
+    console.log("✅ Email enviado exitosamente:", emailResult.messageId);
+
+    // ✅ PASO 6: Actualizar fecha de envío del email (IGUAL QUE ANTES)
+    await quote.update({
+      sent_at: new Date(),
+    });
+
+    // ✅ Obtener cotización actualizada con relaciones (IGUAL QUE ANTES)
+    const updatedQuote = await Quote.findByPk(id, {
+      include: [
+        {
+          model: User,
+          as: "Asesor",
+          attributes: ["id", "name", "lastname", "email"],
+        },
+        {
+          model: User,
+          as: "Lider",
+          attributes: ["id", "name", "lastname", "email"],
+        },
+        {
+          model: User,
+          as: "Gerente",
+          attributes: ["id", "name", "lastname", "email"],
+        },
+        {
+          model: User,
+          as: "Admin",
+          attributes: ["id", "name", "lastname", "email"],
+        },
+      ],
+    });
+
+    // ✅ Respuesta exitosa (IGUAL QUE ANTES)
+    res.json({
+      success: true,
+      message: "Cotización enviada exitosamente al cliente",
+      quote: updatedQuote,
+      email_info: {
+        email_sent_to: quote.email_cliente,
+        pdf_generated: true,
+        pdf_filename: pdfInfo.filename,
+        passenger_form_link: passengerFormLink,
+        sent_at: sentAt.toISOString(),
+        expires_at: expiresAt.toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error("❌ Error enviando cotización al cliente:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Error interno del servidor al enviar la cotización",
+      error: process.env.NODE_ENV === "development" ? error.message : "Error interno",
+    });
+  }
+},
 
 
 
@@ -1746,75 +1818,109 @@ const quoteController = {
 
   // ✅ NUEVO MÉTODO: Regenerar PDF de cotización
   regenerateQuotePDF: async (req, res) => {
-    try {
-      const { id } = req.params;
+  try {
+    const { id } = req.params;
 
-      const quote = await Quote.findByPk(id, {
-        include: [
-          {
-            model: User,
-            as: "Asesor",
-            attributes: ["id", "name", "lastname", "email"],
-          },
-          {
-            model: User,
-            as: "Lider",
-            attributes: ["id", "name", "lastname", "email"],
-          },
-          {
-            model: User,
-            as: "Gerente",
-            attributes: ["id", "name", "lastname", "email"],
-          },
-          {
-            model: User,
-            as: "Admin",
-            attributes: ["id", "name", "lastname", "email"],
-          },
-        ],
-      });
-
-      if (!quote) {
-        return res.status(404).json({
-          success: false,
-          message: "Cotización no encontrada",
-        });
-      }
-
-      if (!quote.precio_total) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "La cotización debe tener un precio total para generar el PDF",
-        });
-      }
-
-      // Regenerar PDF
-      const pdfInfo = await generateQuotePDF(quote);
-
-      // Actualizar información del PDF en la base de datos
-      await quote.update({
-        pdf_path: pdfInfo.filepath,
-        pdf_filename: pdfInfo.filename,
-        pdf_generated_at: new Date(),
-      });
-
-      res.json({
-        success: true,
-        message: "PDF regenerado exitosamente",
-        pdf_info: {
-          filename: pdfInfo.filename,
-          generated_at: new Date().toISOString(),
+    const quote = await Quote.findByPk(id, {
+      include: [
+        {
+          model: User,
+          as: "Asesor",
+          attributes: ["id", "name", "lastname", "email"],
         },
-      });
-    } catch (error) {
-      console.error("❌ Error regenerando PDF:", error);
-      res.status(500).json({
+        {
+          model: User,
+          as: "Lider",
+          attributes: ["id", "name", "lastname", "email"],
+        },
+        {
+          model: User,
+          as: "Gerente",
+          attributes: ["id", "name", "lastname", "email"],
+        },
+        {
+          model: User,
+          as: "Admin",
+          attributes: ["id", "name", "lastname", "email"],
+        },
+      ],
+    });
+
+    if (!quote) {
+      return res.status(404).json({
         success: false,
-        message: "Error interno del servidor",
+        message: "Cotización no encontrada",
       });
     }
-  },
+
+    if (!quote.precio_total) {
+      return res.status(400).json({
+        success: false,
+        message: "La cotización debe tener un precio total para generar el PDF",
+      });
+    }
+
+    // ✅ NUEVO: Enriquecer cotización (IGUAL QUE EN sendQuote)
+    let precio_por_persona = 0;
+    if (quote.precio_total && quote.numero_personas && quote.numero_personas > 0) {
+      precio_por_persona = parseFloat(quote.precio_total) / parseInt(quote.numero_personas);
+    }
+
+    const enrichedQuote = {
+      ...quote.toJSON(),
+      precio_por_persona: precio_por_persona,
+      precio_por_persona_formateado: precio_por_persona.toFixed(2),
+      calculation_metadata: {
+        has_price: !!quote.precio_total,
+        has_passengers: quote.numero_personas > 0,
+        price_per_person_available: !!(quote.precio_total && quote.numero_personas > 0),
+      },
+      pdf_data: {
+        precio_total_cop: quote.precio_total ? `$${parseFloat(quote.precio_total).toLocaleString('es-CO')}` : null,
+        precio_por_persona_cop: precio_por_persona > 0 ? `$${precio_por_persona.toLocaleString('es-CO')}` : null,
+        fecha_ida_formatted: quote.fecha_ida ? new Date(quote.fecha_ida).toLocaleDateString('es-ES') : null,
+        fecha_regreso_formatted: quote.fecha_regreso ? new Date(quote.fecha_regreso).toLocaleDateString('es-ES') : null,
+        trip_type_label: quote.trip_type === 'nacional' ? 'Nacional' : 'Internacional',
+      },
+      asesor_info: {
+        nombre_completo: quote.Asesor ? `${quote.Asesor.name} ${quote.Asesor.lastname}` : 
+                        quote.Lider ? `${quote.Lider.name} ${quote.Lider.lastname}` :
+                        quote.Gerente ? `${quote.Gerente.name} ${quote.Gerente.lastname}` :
+                        quote.Admin ? `${quote.Admin.name} ${quote.Admin.lastname}` : 'No asignado',
+        email: quote.Asesor?.email || quote.Lider?.email || quote.Gerente?.email || quote.Admin?.email || null,
+        rol: quote.Asesor ? 'Asesor' : 
+             quote.Lider ? 'Líder' : 
+             quote.Gerente ? 'Gerente' : 
+             quote.Admin ? 'Administrador' : 'No asignado'
+      }
+    };
+
+    // ✅ Regenerar PDF con datos enriquecidos
+    const pdfInfo = await generateQuotePDF(enrichedQuote); // ✅ CAMBIO CLAVE
+
+    // Actualizar información del PDF en la base de datos
+    await quote.update({
+      pdf_path: pdfInfo.filepath,
+      pdf_filename: pdfInfo.filename,
+      pdf_generated_at: new Date(),
+    });
+
+    res.json({
+      success: true,
+      message: "PDF regenerado exitosamente",
+      pdf_info: {
+        filename: pdfInfo.filename,
+        generated_at: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error("❌ Error regenerando PDF:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error interno del servidor",
+    });
+  }
+},
 
   updateQuote: async (req, res) => {
     try {

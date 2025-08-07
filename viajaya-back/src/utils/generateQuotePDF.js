@@ -193,17 +193,27 @@ const generateQuotePDF = async (quote, saveToFile = true) => {
     yPosition += 25;
 
     // Precio destacado (más compacto)
-    doc.rect(margin, yPosition, contentWidth, 30)
-       .fillColor(COLORS.ColorAzul)
-       .fill();
-    
-    doc.fontSize(16)
-       .fillColor('white')
-       .font('Helvetica-Bold')
-       .text(`$${quote.precio_total ? quote.precio_total.toLocaleString('es-CO') : 'Por confirmar'}`, margin + 10, yPosition + 6, { align: 'center', width: contentWidth - 20 })
-       .fontSize(8)
-       .font('Helvetica')
-       .text('Valor por persona', margin + 10, yPosition + 20, { align: 'center', width: contentWidth - 20 });
+    console.log('🔍 PDF DEBUG - Datos de precio recibidos:', {
+  precio_total: quote.precio_total,
+  precio_por_persona: quote.precio_por_persona,
+  precio_por_persona_formateado: quote.precio_por_persona_formateado,
+  pdf_data: quote.pdf_data,
+  tipo_precio_por_persona: typeof quote.precio_por_persona,
+});
+
+// Precio destacado (más compacto)
+doc.rect(margin, yPosition, contentWidth, 30)
+   .fillColor(COLORS.ColorAzul)
+   .fill();
+
+// ✅ OPCIÓN 1: Usar el valor numérico (RECOMENDADA)
+doc.fontSize(16)
+   .fillColor('white')
+   .font('Helvetica-Bold')
+   .text(`$${quote.precio_por_persona ? Number(quote.precio_por_persona).toLocaleString('es-CO') : 'Por confirmar'}`, margin + 10, yPosition + 6, { align: 'center', width: contentWidth - 20 })
+   .fontSize(8)
+   .font('Helvetica')
+   .text('Valor por persona', margin + 10, yPosition + 20, { align: 'center', width: contentWidth - 20 });
     
     yPosition += 38;
 
