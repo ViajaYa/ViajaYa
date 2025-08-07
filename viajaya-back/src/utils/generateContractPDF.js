@@ -186,6 +186,257 @@ const createDataTable = (doc, data, yPos, columns = 2) => {
   return currentY + 10;
 };
 
+const procesarServiciosCalculation = (calculation) => {
+  const serviciosIncluidos = [];
+  
+  if (!calculation) return serviciosIncluidos;
+
+  // ✅ TICKETS - Solo información, sin precios
+  if (calculation.tiquetes && typeof calculation.tiquetes === 'object') {
+    const tiquetesCosto = parseFloat(calculation.tiquetes.costo_total || 0);
+    if (tiquetesCosto > 0) {
+      serviciosIncluidos.push({
+        icono: '✈️',
+        titulo: 'Tickets Aéreos',
+        descripcion: `${calculation.tiquetes.origen || 'Origen'} → ${calculation.tiquetes.destino || 'Destino'}`,
+        detalles: [
+          `Tipo: ${calculation.tiquetes.tipo === 'ida_vuelta' ? 'Ida y Vuelta' : 'Solo Ida'}`,
+          `Aerolínea: ${calculation.tiquetes.proveedor || 'Por confirmar'}`,
+          `Ida: ${calculation.tiquetes.fecha_ida ? formatearFecha(calculation.tiquetes.fecha_ida) : 'Por confirmar'}`,
+          ...(calculation.tiquetes.fecha_vuelta ? [`Regreso: ${formatearFecha(calculation.tiquetes.fecha_vuelta)}`] : [])
+        ]
+      });
+    }
+  }
+
+  // ✅ HOTEL - Solo información, sin precios
+  if (calculation.hotel && typeof calculation.hotel === 'object') {
+    const hotelCosto = parseFloat(calculation.hotel.costo_total || 0);
+    if (hotelCosto > 0) {
+      serviciosIncluidos.push({
+        icono: '🏨',
+        titulo: 'Alojamiento',
+        descripcion: `${calculation.hotel.categoria || calculation.hotel.nombre || 'Hotel confirmado'}`,
+        detalles: [
+          `Hotel: ${calculation.hotel.nombre || 'Por confirmar'}`,
+          `Categoría: ${calculation.hotel.categoria}`,
+          `Acomodación: ${calculation.hotel.acomodacion}`,
+          `Noches: ${calculation.hotel.noches}`,
+          ...(calculation.hotel.ubicacion ? [`Ubicación: ${calculation.hotel.ubicacion}`] : [])
+        ]
+      });
+    }
+  }
+
+  // ✅ TRASLADOS - Solo información, sin precios
+  if (calculation.traslados && typeof calculation.traslados === 'object') {
+    const trasladosCosto = parseFloat(calculation.traslados.costo_total || 0);
+    if (trasladosCosto > 0) {
+      const trasladosDetalles = [];
+      
+      if (calculation.traslados.aeropuerto_hotel_ida?.incluido) {
+        trasladosDetalles.push('Aeropuerto → Hotel');
+      }
+      if (calculation.traslados.hotel_aeropuerto_vuelta?.incluido) {
+        trasladosDetalles.push('Hotel → Aeropuerto');
+      }
+      if (calculation.traslados.otros && calculation.traslados.otros.length > 0) {
+        calculation.traslados.otros.forEach(traslado => {
+          trasladosDetalles.push(traslado.descripcion);
+        });
+      }
+      
+      if (trasladosDetalles.length > 0) {
+        serviciosIncluidos.push({
+          icono: '🚐',
+          titulo: 'Traslados',
+          descripcion: 'Transporte incluido',
+          detalles: trasladosDetalles
+        });
+      }
+    }
+  }
+
+  // ✅ SEGUROS - Solo información, sin precios
+  if (calculation.seguros && typeof calculation.seguros === 'object') {
+    const segurosCosto = parseFloat(calculation.seguros.costo_total || 0);
+    if (segurosCosto > 0) {
+      const segurosDetalles = [];
+      
+      if (calculation.seguros.asistencia_medica?.tipo) {
+        segurosDetalles.push(`Asistencia médica: ${calculation.seguros.asistencia_medica.tipo}`);
+      }
+      if (calculation.seguros.cancelacion?.incluido) {
+        segurosDetalles.push('Seguro de cancelación incluido');
+      }
+      if (calculation.seguros.otros && calculation.seguros.otros.length > 0) {
+        calculation.seguros.otros.forEach(seguro => {
+          segurosDetalles.push(seguro.descripcion);
+        });
+      }
+      
+      if (segurosDetalles.length > 0) {
+        serviciosIncluidos.push({
+          icono: '🛡️',
+          titulo: 'Seguros de Viaje',
+          descripcion: 'Protección incluida',
+          detalles: segurosDetalles
+        });
+      }
+    }
+  }
+
+  // ✅ ALIMENTACIÓN - Solo información, sin precios
+  if (calculation.alimentacion && typeof calculation.alimentacion === 'object') {
+    const alimentacionCosto = parseFloat(calculation.alimentacion.costo_total || 0);
+    if (alimentacionCosto > 0) {
+      serviciosIncluidos.push({
+        icono: '🍽️',
+        titulo: 'Alimentación',
+        descripcion: `${calculation.alimentacion.tipo || 'Comidas incluidas'}`,
+        detalles: [
+          `Tipo: ${calculation.alimentacion.tipo}`,
+          ...(calculation.alimentacion.proveedor ? [`Proveedor: ${calculation.alimentacion.proveedor}`] : []),
+          ...(calculation.alimentacion.observaciones ? [`Observaciones: ${calculation.alimentacion.observaciones}`] : [])
+        ]
+      });
+    } else if (calculation.alimentacion.tipo === 'ninguna') {
+      serviciosIncluidos.push({
+        icono: '❌',
+        titulo: 'Alimentación',
+        descripcion: 'No incluida en este paquete',
+        detalles: ['La alimentación no está incluida'],
+        noIncluido: true
+      });
+    }
+  }
+
+  // ✅ EQUIPAJE - Solo información, sin precios
+  if (calculation.equipaje && typeof calculation.equipaje === 'object') {
+    const equipajeDetalles = [];
+    
+    if (calculation.equipaje.cabina?.incluido) {
+      equipajeDetalles.push('Equipaje de cabina incluido');
+    }
+    if (calculation.equipaje.bodega?.incluido) {
+      equipajeDetalles.push('Equipaje de bodega incluido');
+    }
+    if (calculation.equipaje.equipaje_extra?.incluido) {
+      equipajeDetalles.push('Equipaje extra incluido');
+    }
+    
+    if (equipajeDetalles.length > 0) {
+      serviciosIncluidos.push({
+        icono: '🧳',
+        titulo: 'Equipaje',
+        descripcion: 'Equipaje incluido',
+        detalles: equipajeDetalles
+      });
+    }
+  }
+
+  // ✅ EXCURSIONES - Solo información, sin precios
+  if (calculation.excursiones && Array.isArray(calculation.excursiones)) {
+    calculation.excursiones.forEach((excursion, index) => {
+      const excursionCosto = parseFloat(excursion.costo || 0);
+      if (excursionCosto > 0) {
+        serviciosIncluidos.push({
+          icono: '🎯',
+          titulo: excursion.nombre || `Excursión ${index + 1}`,
+          descripcion: excursion.descripcion || 'Excursión incluida',
+          detalles: [
+            ...(excursion.duracion ? [`Duración: ${excursion.duracion}`] : []),
+            ...(excursion.incluye ? [`Incluye: ${excursion.incluye}`] : [])
+          ]
+        });
+      }
+    });
+  }
+
+  // ✅ EXTRAS - Solo información, sin precios
+  if (calculation.extras && Array.isArray(calculation.extras)) {
+    calculation.extras.forEach((extra, index) => {
+      const extraCosto = parseFloat(extra.costo || 0);
+      if (extraCosto > 0) {
+        serviciosIncluidos.push({
+          icono: '⭐',
+          titulo: extra.nombre || `Extra ${index + 1}`,
+          descripcion: extra.descripcion || 'Servicio adicional incluido',
+          detalles: [
+            ...(extra.observaciones ? [`Observaciones: ${extra.observaciones}`] : [])
+          ]
+        });
+      }
+    });
+  }
+
+  return serviciosIncluidos;
+};
+
+// ✅ AGREGAR: Función para crear sección de servicios incluidos
+const createServiciosIncluidos = (doc, servicios, yPos) => {
+  if (!servicios || servicios.length === 0) return yPos;
+
+  const margin = 40;
+  const pageWidth = doc.page.width;
+  const pageHeight = doc.page.height;
+  const contentWidth = pageWidth - 2 * margin;
+  
+  let currentY = yPos;
+
+  servicios.forEach((servicio, index) => {
+    // Verificar si necesitamos nueva página
+    if (currentY > pageHeight - 120) {
+      doc.addPage();
+      currentY = margin;
+    }
+
+    // ✅ Card del servicio
+    const cardHeight = 60 + (servicio.detalles.length * 12);
+    
+    // Fondo del card
+    const cardColor = servicio.noIncluido ? '#fef2f2' : '#f0f9ff';
+    const borderColor = servicio.noIncluido ? '#fca5a5' : '#7dd3fc';
+    
+    doc.rect(margin - 5, currentY - 5, contentWidth + 10, cardHeight)
+       .fillColor(cardColor)
+       .fill()
+       .strokeColor(borderColor)
+       .lineWidth(1)
+       .stroke();
+
+    // ✅ Icono y título
+    doc.fontSize(14)
+       .fillColor(COLORS.text)
+       .font('Helvetica-Bold')
+       .text(`${servicio.icono} ${servicio.titulo}`, margin + 10, currentY + 8);
+
+    // ✅ Descripción
+    doc.fontSize(10)
+       .fillColor(COLORS.textLight)
+       .font('Helvetica')
+       .text(servicio.descripcion, margin + 10, currentY + 28, {
+         width: contentWidth - 20
+       });
+
+    // ✅ Detalles
+    if (servicio.detalles && servicio.detalles.length > 0) {
+      let detalleY = currentY + 45;
+      servicio.detalles.forEach(detalle => {
+        doc.fontSize(8)
+           .fillColor(COLORS.textLight)
+           .font('Helvetica')
+           .text(`• ${detalle}`, margin + 20, detalleY);
+        detalleY += 12;
+      });
+    }
+
+    currentY += cardHeight + 15;
+  });
+
+  return currentY + 10;
+};
+
 // ✅ Función principal para generar el PDF del contrato
 const generateContractPDF = async (contractData, saveToFile = true) => {
   try {
@@ -239,8 +490,23 @@ const generateContractPDF = async (contractData, saveToFile = true) => {
 
     yPosition = createDataTable(doc, datosViaje, yPosition, 2);
 
+
+
+     if (contractData.Quote?.Calculation) {
+      yPosition = createSection(doc, '✅ SERVICIOS INCLUIDOS EN SU PAQUETE', yPosition, COLORS.success + '20');
+      
+      const serviciosIncluidos = procesarServiciosCalculation(contractData.Quote.Calculation);
+      yPosition = createServiciosIncluidos(doc, serviciosIncluidos, yPosition);
+    }
+
     // ✅ SECCIÓN: INFORMACIÓN DE PASAJEROS
     if (contractData.Quote?.Passengers && contractData.Quote.Passengers.length > 0) {
+      // Verificar si necesitamos nueva página
+      if (yPosition > pageHeight - 150) {
+        doc.addPage();
+        yPosition = margin;
+      }
+
       yPosition = createSection(doc, '👥 PASAJEROS', yPosition);
       
       contractData.Quote.Passengers.forEach((passenger, index) => {
@@ -270,6 +536,12 @@ const generateContractPDF = async (contractData, saveToFile = true) => {
       yPosition += 10;
     }
 
+    // ✅ VERIFICAR NUEVA PÁGINA PARA INFORMACIÓN FINANCIERA
+    if (yPosition > pageHeight - 200) {
+      doc.addPage();
+      yPosition = margin;
+    }
+
     // ✅ SECCIÓN: INFORMACIÓN FINANCIERA
     yPosition = createSection(doc, '💰 INFORMACIÓN FINANCIERA', yPosition, COLORS.accent + '20');
     
@@ -291,12 +563,11 @@ const generateContractPDF = async (contractData, saveToFile = true) => {
     const datosFinancieros = [
       { label: 'Precio por persona', valor: formatearMoneda(precioPorPersona) },
       { label: 'Forma de pago', valor: contractData.forma_pago === 'cuotas' ? 'En cuotas' : 'Pago único' },
-      { label: 'Total pagado', valor: formatearMoneda(contractData.total_pagado) },
-      { label: 'Saldo pendiente', valor: formatearMoneda(contractData.saldo_pendiente) }
+      { label: 'Total pagado', valor: formatearMoneda(contractData.total_pagado || 0) },
+      { label: 'Saldo pendiente', valor: formatearMoneda(contractData.saldo_pendiente || 0) }
     ];
 
     yPosition = createDataTable(doc, datosFinancieros, yPosition, 2);
-
     // ✅ TABLA DE PAGOS (si es en cuotas)
     if (contractData.forma_pago === 'cuotas') {
       yPosition = createSection(doc, '📅 CRONOGRAMA DE PAGOS', yPosition);
@@ -532,5 +803,7 @@ module.exports = {
   ensurePDFDirectory,
   formatearFecha,
   formatearMoneda,
-  numeroALetras
+  numeroALetras,
+  procesarServiciosCalculation,  // ✅ NUEVO
+  createServiciosIncluidos       // ✅ NUEVO
 };

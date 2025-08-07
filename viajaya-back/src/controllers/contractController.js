@@ -1329,91 +1329,329 @@ const contractController = {
 
   // ✅ ACTUALIZAR: sendContract para usar el servicio de email
   // ✅ CORREGIR: sendContract para usar el servicio de email correctamente
-  sendContract: async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { email, subject, customMessage } = req.body;
+ sendContract: async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { email, subject, customMessage } = req.body;
 
-      const contract = await Contract.findByPk(id, {
-        include: [
-          {
-            model: Quote,
-            as: "Quote",
-            include: [
-              {
-                model: User,
-                as: "Cliente",
-                attributes: ["id", "name", "lastname", "email", "phone"],
-              },
-              {
-                model: Passenger,
-                as: "Passengers",
-                attributes: [
-                  "id",
-                  "nombre",
-                  "apellido",
-                  "documento_identidad",
-                  "tipo_documento",
-                  "fecha_nacimiento",
-                  "titular",
-                ],
-                required: false,
-              },
-            ],
-          },
-          {
-            model: User,
-            as: "Cliente",
-            attributes: [
-              "id",
-              "name",
-              "lastname",
-              "email",
-              "phone",
-              "documento_identidad",
-              "tipo_documento",
-            ],
-          },
-        ],
+    const contract = await Contract.findByPk(id, {
+      include: [
+        {
+          model: Quote,
+          as: "Quote",
+          include: [
+            {
+              model: User,
+              as: "Cliente",
+              attributes: ["id", "name", "lastname", "email", "phone"],
+            },
+            {
+              model: Passenger,
+              as: "Passengers",
+              attributes: [
+                "id",
+                "nombre",
+                "apellido",
+                "documento_identidad",
+                "tipo_documento",
+                "fecha_nacimiento",
+                "titular",
+              ],
+              required: false,
+            },
+            // ✅ AGREGAR: Cálculo completo de cotización
+            {
+              model: QuoteCalculation,
+              as: "Calculation",
+              attributes: [
+                "id", "user_id", "quote_id", "num_personas",
+                "tiquetes", "hotel", "traslados", "alimentacion", "equipaje", 
+                "seguros", "excursiones", "extras", "comisiones", "ganancia",
+                "costo_base", "total_comisiones", "total_ganancia", "precio_final_total",
+                "estado", "observaciones_generales", "fecha_viaje_inicio", "fecha_viaje_fin"
+              ],
+              required: false,
+            },
+          ],
+        },
+        {
+          model: User,
+          as: "Cliente",
+          attributes: [
+            "id",
+            "name",
+            "lastname",
+            "email",
+            "phone",
+            "documento_identidad",
+            "tipo_documento",
+          ],
+        },
+      ],
+    });
+
+    if (!contract) {
+      return res.status(404).json({ message: "Contrato no encontrado" });
+    }
+
+    // ✅ VERIFICAR que el PDF ya existe
+    if (!contract.contrato_pdf_url) {
+      return res.status(400).json({
+        message: "Debe generar el PDF del contrato antes de enviarlo",
+        action: "generate_pdf_first",
       });
+    }
 
-      if (!contract) {
-        return res.status(404).json({ message: "Contrato no encontrado" });
+    const path = require("path");
+    const fs = require("fs");
+    const pdfFilePath = path.join(
+      __dirname,
+      "../../",
+      contract.contrato_pdf_url
+    );
+
+    if (!fs.existsSync(pdfFilePath)) {
+      return res.status(404).json({
+        message: "Archivo PDF no encontrado. Regenere el PDF del contrato.",
+        action: "regenerate_pdf",
+      });
+    }
+
+    // ✅ PROCESAR: Análisis del cálculo (SIN PRECIOS) - IGUAL QUE EN getContractById
+    let calculationAnalysis = null;
+    let preciosPorPersona = null;
+    
+    if (contract.Quote?.Calculation) {
+      const calc = contract.Quote.Calculation;
+      const serviciosIncluidos = [];
+      const numPersonas = calc.num_personas || contract.Quote?.numero_personas || 1;
+      
+      // ✅ CALCULAR: Precio por persona
+      const precioTotal = parseFloat(contract.precio_total || 0);
+      const precioPorPersona = precioTotal / numPersonas;
+      
+      preciosPorPersona = {
+        precio_total: precioTotal,
+        precio_por_persona: precioPorPersona,
+        numero_personas: numPersonas,
+        precio_por_persona_formateado: precioPorPersona.toLocaleString('es-CO')
+      };
+
+      // ✅ TICKETS - Estructura JSONB (SIN PRECIOS)
+      if (calc.tiquetes && typeof calc.tiquetes === 'object') {
+        const tiquetesCosto = parseFloat(calc.tiquetes.costo_total || 0);
+        if (tiquetesCosto > 0) {
+          serviciosIncluidos.push({
+            tipo: "tickets",
+            descripcion: `Tickets aéreos ${calc.tiquetes.origen || contract.Quote.origen} - ${calc.tiquetes.destino || contract.Quote.destino}`,
+            incluido: true,
+            detalles: {
+              tipo: calc.tiquetes.tipo === 'ida_vuelta' ? 'Ida y Vuelta' : 'Solo Ida',
+              origen: calc.tiquetes.origen,
+              destino: calc.tiquetes.destino,
+              fecha_ida: calc.tiquetes.fecha_ida,
+              fecha_vuelta: calc.tiquetes.fecha_vuelta,
+              proveedor: calc.tiquetes.proveedor || 'Por confirmar'
+            }
+          });
+        }
       }
 
-      // ✅ VERIFICAR que el PDF ya existe
-      if (!contract.contrato_pdf_url) {
-        return res.status(400).json({
-          message: "Debe generar el PDF del contrato antes de enviarlo",
-          action: "generate_pdf_first",
+      // ✅ HOTEL - Estructura JSONB (SIN PRECIOS)
+      if (calc.hotel && typeof calc.hotel === 'object') {
+        const hotelCosto = parseFloat(calc.hotel.costo_total || 0);
+        if (hotelCosto > 0) {
+          serviciosIncluidos.push({
+            tipo: "hotel",
+            descripcion: `Alojamiento ${calc.hotel.categoria || calc.hotel.nombre || 'N/A'}`,
+            incluido: true,
+            detalles: {
+              nombre: calc.hotel.nombre || 'Por confirmar',
+              categoria: calc.hotel.categoria,
+              acomodacion: calc.hotel.acomodacion,
+              noches: calc.hotel.noches,
+              ubicacion: calc.hotel.ubicacion || 'Por confirmar',
+              proveedor: calc.hotel.proveedor || 'Por confirmar'
+            }
+          });
+        }
+      }
+
+      // ✅ TRASLADOS - Estructura JSONB (SIN PRECIOS)
+      if (calc.traslados && typeof calc.traslados === 'object') {
+        const trasladosCosto = parseFloat(calc.traslados.costo_total || 0);
+        if (trasladosCosto > 0) {
+          const trasladosDetalles = [];
+          
+          if (calc.traslados.aeropuerto_hotel_ida?.incluido) {
+            trasladosDetalles.push('Aeropuerto → Hotel');
+          }
+          if (calc.traslados.hotel_aeropuerto_vuelta?.incluido) {
+            trasladosDetalles.push('Hotel → Aeropuerto');
+          }
+          if (calc.traslados.otros && calc.traslados.otros.length > 0) {
+            calc.traslados.otros.forEach(traslado => {
+              trasladosDetalles.push(traslado.descripcion);
+            });
+          }
+          
+          serviciosIncluidos.push({
+            tipo: "traslados",
+            descripcion: "Traslados",
+            incluido: true,
+            detalles: {
+              servicios: trasladosDetalles,
+              descripcion: trasladosDetalles.join(', ')
+            }
+          });
+        }
+      }
+
+      // ✅ ALIMENTACIÓN - Estructura JSONB (SIN PRECIOS)
+      if (calc.alimentacion && typeof calc.alimentacion === 'object') {
+        const alimentacionCosto = parseFloat(calc.alimentacion.costo_total || 0);
+        if (alimentacionCosto > 0) {
+          serviciosIncluidos.push({
+            tipo: "alimentacion",
+            descripcion: `Alimentación ${calc.alimentacion.tipo || 'incluida'}`,
+            incluido: true,
+            detalles: {
+              tipo: calc.alimentacion.tipo,
+              proveedor: calc.alimentacion.proveedor || 'Por confirmar',
+              observaciones: calc.alimentacion.observaciones
+            }
+          });
+        } else if (calc.alimentacion.tipo === 'ninguna') {
+          serviciosIncluidos.push({
+            tipo: "alimentacion",
+            descripcion: "Alimentación no incluida",
+            incluido: false,
+            detalles: {
+              nota: "La alimentación no está incluida en este paquete"
+            }
+          });
+        }
+      }
+
+      // ✅ EQUIPAJE - Estructura JSONB (SIN PRECIOS)
+      if (calc.equipaje && typeof calc.equipaje === 'object') {
+        const equipajeDetalles = [];
+        
+        if (calc.equipaje.cabina?.incluido) {
+          equipajeDetalles.push('Equipaje de cabina incluido');
+        }
+        if (calc.equipaje.bodega?.incluido) {
+          equipajeDetalles.push('Equipaje de bodega incluido');
+        }
+        if (calc.equipaje.equipaje_extra?.incluido) {
+          equipajeDetalles.push('Equipaje extra incluido');
+        }
+        
+        if (equipajeDetalles.length > 0) {
+          serviciosIncluidos.push({
+            tipo: "equipaje",
+            descripcion: "Equipaje",
+            incluido: true,
+            detalles: {
+              servicios: equipajeDetalles,
+              descripcion: equipajeDetalles.join(', ')
+            }
+          });
+        }
+      }
+
+      // ✅ SEGUROS - Estructura JSONB (SIN PRECIOS)
+      if (calc.seguros && typeof calc.seguros === 'object') {
+        const segurosCosto = parseFloat(calc.seguros.costo_total || 0);
+        if (segurosCosto > 0) {
+          const segurosDetalles = [];
+          
+          if (calc.seguros.asistencia_medica?.tipo) {
+            segurosDetalles.push(`Asistencia médica: ${calc.seguros.asistencia_medica.tipo}`);
+          }
+          if (calc.seguros.cancelacion?.incluido) {
+            segurosDetalles.push('Seguro de cancelación');
+          }
+          if (calc.seguros.otros && calc.seguros.otros.length > 0) {
+            calc.seguros.otros.forEach(seguro => {
+              segurosDetalles.push(seguro.descripcion);
+            });
+          }
+          
+          serviciosIncluidos.push({
+            tipo: "seguros",
+            descripcion: "Seguros de viaje",
+            incluido: true,
+            detalles: {
+              servicios: segurosDetalles,
+              descripcion: segurosDetalles.join(', ')
+            }
+          });
+        }
+      }
+
+      // ✅ EXCURSIONES - Array JSONB (SIN PRECIOS)
+      if (calc.excursiones && Array.isArray(calc.excursiones)) {
+        calc.excursiones.forEach((excursion, index) => {
+          const excursionCosto = parseFloat(excursion.costo || 0);
+          if (excursionCosto > 0) {
+            serviciosIncluidos.push({
+              tipo: "excursiones",
+              descripcion: excursion.nombre || `Excursión ${index + 1}`,
+              incluido: true,
+              detalles: {
+                nombre: excursion.nombre,
+                descripcion: excursion.descripcion,
+                duracion: excursion.duracion,
+                incluye: excursion.incluye
+              }
+            });
+          }
         });
       }
 
-      const path = require("path");
-      const fs = require("fs");
-      const pdfFilePath = path.join(
-        __dirname,
-        "../../",
-        contract.contrato_pdf_url
-      );
-
-      if (!fs.existsSync(pdfFilePath)) {
-        return res.status(404).json({
-          message: "Archivo PDF no encontrado. Regenere el PDF del contrato.",
-          action: "regenerate_pdf",
+      // ✅ EXTRAS - Array JSONB (SIN PRECIOS)
+      if (calc.extras && Array.isArray(calc.extras)) {
+        calc.extras.forEach((extra, index) => {
+          const extraCosto = parseFloat(extra.costo || 0);
+          if (extraCosto > 0) {
+            serviciosIncluidos.push({
+              tipo: "extras",
+              descripcion: extra.nombre || `Extra ${index + 1}`,
+              incluido: true,
+              detalles: {
+                nombre: extra.nombre,
+                descripcion: extra.descripcion,
+                observaciones: extra.observaciones
+              }
+            });
+          }
         });
       }
 
-      // ✅ GENERAR EMAIL HTML (mismo código que antes)
-      const emailSubject =
-        subject ||
-        `📋 Contrato de Viaje - ${contract.Quote?.destino} | ${contract.contract_number}`;
-      const passengers = contract.Quote?.Passengers || [];
+      calculationAnalysis = {
+        servicios_incluidos: serviciosIncluidos,
+        resumen: {
+          total_servicios: serviciosIncluidos.filter(s => s.incluido).length,
+          servicios_no_incluidos: serviciosIncluidos.filter(s => !s.incluido).length,
+          tipos_servicio: [...new Set(serviciosIncluidos.map(s => s.tipo))]
+        },
+        metadata: {
+          estado: calc.estado,
+          observaciones: calc.observaciones_generales,
+          fecha_viaje_inicio: calc.fecha_viaje_inicio,
+          fecha_viaje_fin: calc.fecha_viaje_fin,
+          num_personas: calc.num_personas
+        }
+      };
+    }
 
-      const signatureToken = generateSignatureToken(contract.id);
-      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    // ✅ GENERAR EMAIL HTML ACTUALIZADO
+    const emailSubject = subject || `📋 Contrato de Viaje - ${contract.Quote?.destino} | ${contract.contract_number}`;
+    const passengers = contract.Quote?.Passengers || [];
+    const signatureToken = generateSignatureToken(contract.id);
 
-      const emailHtml = `
+    const emailHtml = `
       <!DOCTYPE html>
       <html lang="es">
       <head>
@@ -1441,6 +1679,12 @@ const contractController = {
           .passengers-section { background: #f0f8ff; border-radius: 8px; padding: 15px; margin: 20px 0; }
           .passenger { background: white; padding: 10px; margin: 5px 0; border-radius: 5px; border-left: 3px solid #2be0e9; }
           .passenger.titular { border-left-color: #421261; background: #faf5ff; }
+          .services-section { background: #f8f9fa; border-radius: 8px; padding: 15px; margin: 20px 0; }
+          .service-item { background: white; padding: 12px; margin: 8px 0; border-radius: 5px; border-left: 3px solid #28a745; }
+          .service-item.not-included { border-left-color: #dc3545; opacity: 0.7; }
+          .service-header { display: flex; justify-content: between; align-items: center; margin-bottom: 5px; }
+          .service-type { background: #e9ecef; padding: 2px 8px; border-radius: 12px; font-size: 11px; text-transform: uppercase; }
+          .service-details { font-size: 13px; color: #6c757d; margin-top: 5px; }
           .instructions { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0; }
           .instructions h3 { margin: 0 0 10px 0; color: #856404; }
           .footer { background: #421261; color: white; padding: 20px; text-align: center; }
@@ -1463,9 +1707,7 @@ const contractController = {
 
           <!-- Content -->
           <div class="content">
-            <h2>¡Estimado/a ${contract.Cliente?.name} ${
-        contract.Cliente?.lastname
-      }!</h2>
+            <h2>¡Estimado/a ${contract.Cliente?.name} ${contract.Cliente?.lastname}!</h2>
             
             <p>Nos complace enviarle su <strong>contrato de viaje</strong> para revisión y confirmación. Este documento contiene todos los detalles de su reserva y las condiciones del servicio.</p>
 
@@ -1476,9 +1718,7 @@ const contractController = {
               <div class="info-grid">
                 <div class="info-item">
                   <label>📅 FECHA DE SALIDA</label>
-                  <value>${new Date(
-                    contract.fecha_inicio_viaje
-                  ).toLocaleDateString("es-ES", {
+                  <value>${new Date(contract.fecha_inicio_viaje).toLocaleDateString("es-ES", {
                     weekday: "long",
                     year: "numeric",
                     month: "long",
@@ -1488,9 +1728,7 @@ const contractController = {
                 
                 <div class="info-item">
                   <label>📅 FECHA DE REGRESO</label>
-                  <value>${new Date(
-                    contract.fecha_fin_viaje
-                  ).toLocaleDateString("es-ES", {
+                  <value>${new Date(contract.fecha_fin_viaje).toLocaleDateString("es-ES", {
                     weekday: "long",
                     year: "numeric",
                     month: "long",
@@ -1520,92 +1758,91 @@ const contractController = {
               </div>
             </div>
 
-            <!-- Precio Total -->
+            <!-- ✅ NUEVO: Precio por persona -->
             <div class="price-highlight">
-              <div class="amount">$${parseFloat(
-                contract.precio_total
-              ).toLocaleString("es-CO")}</div>
-              <div class="label">VALOR TOTAL DEL CONTRATO</div>
+              <div class="amount">$${preciosPorPersona?.precio_por_persona_formateado || '0'}</div>
+              <div class="label">PRECIO POR PERSONA</div>
+              ${preciosPorPersona?.numero_personas > 1 ? `
+                <div style="margin-top: 10px; font-size: 14px; opacity: 0.8;">
+                  Total para ${preciosPorPersona.numero_personas} personas: $${preciosPorPersona.precio_total.toLocaleString('es-CO')}
+                </div>
+              ` : ''}
             </div>
 
+            <!-- ✅ NUEVO: Servicios incluidos (SIN PRECIOS) -->
+            ${calculationAnalysis?.servicios_incluidos?.length > 0 ? `
+            <div class="services-section">
+              <h3>✅ SERVICIOS INCLUIDOS EN SU PAQUETE</h3>
+              ${calculationAnalysis.servicios_incluidos.map(servicio => `
+                <div class="service-item ${servicio.incluido ? '' : 'not-included'}">
+                  <div class="service-header">
+                    <strong>${servicio.incluido ? '✅' : '❌'} ${servicio.descripcion}</strong>
+                    <span class="service-type">${servicio.tipo}</span>
+                  </div>
+                  ${servicio.detalles ? `
+                    <div class="service-details">
+                      ${servicio.tipo === 'tickets' && servicio.detalles ? `
+                        • Tipo: ${servicio.detalles.tipo}<br>
+                        • Aerolínea: ${servicio.detalles.proveedor}<br>
+                        • Ida: ${servicio.detalles.fecha_ida ? new Date(servicio.detalles.fecha_ida).toLocaleDateString('es-ES') : 'Por confirmar'}<br>
+                        ${servicio.detalles.fecha_vuelta ? `• Regreso: ${new Date(servicio.detalles.fecha_vuelta).toLocaleDateString('es-ES')}` : ''}
+                      ` : ''}
+                      ${servicio.tipo === 'hotel' && servicio.detalles ? `
+                        • Hotel: ${servicio.detalles.nombre}<br>
+                        • Categoría: ${servicio.detalles.categoria}<br>
+                        • Acomodación: ${servicio.detalles.acomodacion}<br>
+                        • Noches: ${servicio.detalles.noches}
+                        ${servicio.detalles.ubicacion ? `<br>• Ubicación: ${servicio.detalles.ubicacion}` : ''}
+                      ` : ''}
+                      ${servicio.tipo === 'traslados' && servicio.detalles?.descripcion ? `
+                        • ${servicio.detalles.descripcion}
+                      ` : ''}
+                      ${servicio.tipo === 'seguros' && servicio.detalles?.descripcion ? `
+                        • ${servicio.detalles.descripcion}
+                      ` : ''}
+                    </div>
+                  ` : ''}
+                </div>
+              `).join('')}
+            </div>
+            ` : ''}
+
             <!-- Información de Pago -->
-            ${
-              contract.forma_pago === "cuotas"
-                ? `
+            ${contract.forma_pago === "cuotas" ? `
             <div class="payment-info">
               <h3>💳 FORMA DE PAGO: EN CUOTAS</h3>
-              ${
-                contract.tiene_cuota_inicial
-                  ? `
-                <p><strong>Cuota Inicial:</strong> $${parseFloat(
-                  contract.cuota_inicial_monto || 0
-                ).toLocaleString("es-CO")} (${
-                      contract.cuota_inicial_porcentaje
-                    }%)</p>
-                <p><strong>Fecha límite cuota inicial:</strong> ${
-                  contract.fecha_vencimiento_inicial
-                    ? new Date(
-                        contract.fecha_vencimiento_inicial
-                      ).toLocaleDateString("es-ES")
-                    : "N/A"
-                }</p>
-              `
-                  : ""
-              }
-              <p><strong>Número de cuotas:</strong> ${
-                contract.numero_cuotas_restantes || "N/A"
-              }</p>
-              <p><strong>Valor por cuota:</strong> $${parseFloat(
-                contract.valor_cuota_restante || 0
-              ).toLocaleString("es-CO")}</p>
-              <p><strong>Saldo restante:</strong> $${parseFloat(
-                contract.monto_restante || contract.saldo_pendiente || 0
-              ).toLocaleString("es-CO")}</p>
+              ${contract.tiene_cuota_inicial ? `
+                <p><strong>Cuota Inicial:</strong> $${parseFloat(contract.cuota_inicial_monto || 0).toLocaleString("es-CO")} (${contract.cuota_inicial_porcentaje}%)</p>
+                <p><strong>Fecha límite cuota inicial:</strong> ${contract.fecha_vencimiento_inicial ? new Date(contract.fecha_vencimiento_inicial).toLocaleDateString("es-ES") : "N/A"}</p>
+              ` : ""}
+              <p><strong>Número de cuotas:</strong> ${contract.numero_cuotas_restantes || "N/A"}</p>
+              <p><strong>Valor por cuota:</strong> $${parseFloat(contract.valor_cuota_restante || 0).toLocaleString("es-CO")}</p>
+              <p><strong>Saldo restante:</strong> $${parseFloat(contract.monto_restante || contract.saldo_pendiente || 0).toLocaleString("es-CO")}</p>
             </div>
-            `
-                : `
+            ` : `
             <div class="payment-info">
               <h3>💳 FORMA DE PAGO: CONTADO</h3>
               <p>Pago único por el valor total del contrato.</p>
             </div>
-            `
-            }
+            `}
 
             <!-- Información de Pasajeros -->
             <div class="passengers-section">
               <h3>👥 INFORMACIÓN DE PASAJEROS</h3>
-              ${
-                passengers.length > 0
-                  ? passengers
-                      .map(
-                        (passenger) => `
+              ${passengers.length > 0 ? passengers.map(passenger => `
                 <div class="passenger ${passenger.titular ? "titular" : ""}">
-                  <strong>${passenger.nombre} ${passenger.apellido}</strong> ${
-                          passenger.titular ? "👑 (Titular)" : ""
-                        }
+                  <strong>${passenger.nombre} ${passenger.apellido}</strong> ${passenger.titular ? "👑 (Titular)" : ""}
                   <br>
-                  <small>${passenger.tipo_documento?.toUpperCase()}: ${
-                          passenger.documento_identidad
-                        } | 
-                  Nacimiento: ${new Date(
-                    passenger.fecha_nacimiento
-                  ).toLocaleDateString("es-ES")}</small>
+                  <small>${passenger.tipo_documento?.toUpperCase()}: ${passenger.documento_identidad} | 
+                  Nacimiento: ${new Date(passenger.fecha_nacimiento).toLocaleDateString("es-ES")}</small>
                 </div>
-              `
-                      )
-                      .join("")
-                  : `
+              `).join("") : `
                 <div class="passenger titular">
-                  <strong>${contract.Cliente?.name} ${
-                      contract.Cliente?.lastname
-                    }</strong> 👑 (Titular)
+                  <strong>${contract.Cliente?.name} ${contract.Cliente?.lastname}</strong> 👑 (Titular)
                   <br>
-                  <small>${contract.Cliente?.tipo_documento?.toUpperCase()}: ${
-                      contract.Cliente?.documento_identidad
-                    }</small>
+                  <small>${contract.Cliente?.tipo_documento?.toUpperCase()}: ${contract.Cliente?.documento_identidad}</small>
                 </div>
-              `
-              }
+              `}
             </div>
 
             <!-- Instrucciones -->
@@ -1630,19 +1867,13 @@ const contractController = {
 
             <!-- Botón de Confirmación -->
             <div style="text-align: center;">
-    <a href="${
-      process.env.FRONTEND_URL || "http://localhost:5173"
-    }/contract-signature/${contract.id}?token=${generateSignatureToken(
-        contract.id
-      )}" class="cta-button">
-      ✅ FIRMAR CONTRATO DIGITALMENTE
-    </a>
-  </div>
+              <a href="${process.env.FRONTEND_URL || "http://localhost:5173"}/contract-signature/${contract.id}?token=${signatureToken}" class="cta-button">
+                ✅ FIRMAR CONTRATO DIGITALMENTE
+              </a>
+            </div>
 
             <p style="margin-top: 30px;">
-              <strong>🎯 ¡Estamos emocionados de hacer realidad su viaje a ${
-                contract.Quote?.destino
-              }!</strong>
+              <strong>🎯 ¡Estamos emocionados de hacer realidad su viaje a ${contract.Quote?.destino}!</strong>
             </p>
 
             <p>Para cualquier consulta o aclaración, no dude en contactarnos:</p>
@@ -1666,166 +1897,188 @@ const contractController = {
       </html>
     `;
 
-      // ✅ PREPARAR EMAIL
-      const finalEmail = email || contract.Cliente?.email;
+    // ✅ PREPARAR EMAIL
+    const finalEmail = email || contract.Cliente?.email;
 
-      const mailOptions = {
-        to: finalEmail,
-        subject: emailSubject,
-        html: customMessage
-          ? `
+    const mailOptions = {
+      to: finalEmail,
+      subject: emailSubject,
+      html: customMessage ? `
         <div style="background: #f8f9fa; padding: 20px; border-radius: 5px; margin-bottom: 20px; border-left: 4px solid #421261;">
           <h3 style="color: #421261; margin: 0 0 10px 0;">💬 Mensaje Personalizado:</h3>
           <p style="margin: 0; white-space: pre-line;">${customMessage}</p>
         </div>
         ${emailHtml}
-      `
-          : emailHtml,
-        attachments: [
-          {
-            filename: `contrato-${contract.contract_number}.pdf`,
-            path: pdfFilePath,
-            contentType: "application/pdf",
-          },
-        ],
-      };
+      ` : emailHtml,
+      attachments: [
+        {
+          filename: `contrato-${contract.contract_number}.pdf`,
+          path: pdfFilePath,
+          contentType: "application/pdf",
+        },
+      ],
+    };
 
-      // ✅ ENVIAR EMAIL
-      console.log("📧 Enviando email a:", finalEmail);
-      const { sendEmail } = require("../utils/emailService");
-      const emailResult = await sendEmail(mailOptions);
+    // ✅ ENVIAR EMAIL
+    console.log("📧 Enviando email a:", finalEmail);
+    const { sendEmail } = require("../utils/emailService");
+    const emailResult = await sendEmail(mailOptions);
 
-      // ✅ ACTUALIZAR ESTADO DEL CONTRATO
-      await contract.update({
+    // ✅ ACTUALIZAR ESTADO DEL CONTRATO
+    await contract.update({
+      status: "sent",
+      sent_at: new Date(),
+      email_sent_to: finalEmail,
+    });
+
+    console.log("✅ Contrato enviado exitosamente");
+
+    res.json({
+      success: true,
+      message: "Contrato enviado exitosamente",
+      contract: {
+        id: contract.id,
+        contract_number: contract.contract_number,
         status: "sent",
-        sent_at: new Date(),
-        email_sent_to: finalEmail,
-      });
+      },
+      email_info: {
+        sent_to: finalEmail,
+        pdf_attached: true,
+        sent_at: new Date().toISOString(),
+        message_id: emailResult?.messageId || "no-message-id",
+        precio_por_persona: preciosPorPersona?.precio_por_persona_formateado,
+        servicios_incluidos: calculationAnalysis?.resumen?.total_servicios || 0,
+      },
+    });
+  } catch (error) {
+    console.error("Error sending contract:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error al enviar el contrato",
+      error: error.message,
+    });
+  }
+},
 
-      console.log("✅ Contrato enviado exitosamente");
+ generateContractPDF: async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { preview = false } = req.query; // ?preview=true para vista previa
 
+    const contract = await Contract.findByPk(id, {
+      include: [
+        {
+          model: Quote,
+          as: "Quote",
+          include: [
+            {
+              model: User,
+              as: "Cliente",
+              attributes: ["id", "name", "lastname", "email", "phone"],
+            },
+            {
+              model: Passenger,
+              as: "Passengers",
+              attributes: [
+                "id",
+                "nombre",
+                "apellido",
+                "documento_identidad",
+                "tipo_documento",
+                "fecha_nacimiento",
+                "titular",
+              ],
+            },
+            // ✅ AGREGAR: Cálculo completo de cotización para el PDF
+            {
+              model: QuoteCalculation,
+              as: "Calculation",
+              attributes: [
+                "id", "user_id", "quote_id", "num_personas",
+                "tiquetes", "hotel", "traslados", "alimentacion", "equipaje", 
+                "seguros", "excursiones", "extras", "comisiones", "ganancia",
+                "costo_base", "total_comisiones", "total_ganancia", "precio_final_total",
+                "estado", "observaciones_generales", "fecha_viaje_inicio", "fecha_viaje_fin"
+              ],
+              required: false,
+            },
+          ],
+        },
+        {
+          model: User,
+          as: "Cliente",
+          attributes: [
+            "id",
+            "name",
+            "lastname",
+            "email",
+            "phone",
+            "documento_identidad",
+            "tipo_documento",
+          ],
+        },
+      ],
+    });
+
+    if (!contract) {
+      return res.status(404).json({ message: "Contrato no encontrado" });
+    }
+
+    // ✅ GENERAR PDF (siempre guardamos el archivo)
+    const { generateContractPDF } = require("../utils/generateContractPDF");
+    const pdfResult = await generateContractPDF(contract, true); // Siempre guardar
+
+    // ✅ ACTUALIZAR contrato con la URL del PDF
+    await contract.update({
+      contrato_pdf_url: pdfResult.relativePath,
+    });
+
+    if (preview === "true") {
+      // ✅ VISTA PREVIA: Devolver el PDF directamente en el response
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `inline; filename="${pdfResult.filename}"`
+      );
+
+      const fs = require("fs");
+      const fileBuffer = fs.readFileSync(pdfResult.filepath);
+      res.send(fileBuffer);
+    } else {
+      // ✅ RESPUESTA JSON: Info del PDF generado
       res.json({
         success: true,
-        message: "Contrato enviado exitosamente",
+        message: "PDF del contrato generado exitosamente",
+        pdf: {
+          filename: pdfResult.filename,
+          url: pdfResult.relativePath,
+          filepath: pdfResult.filepath,
+        },
         contract: {
           id: contract.id,
           contract_number: contract.contract_number,
-          status: "sent",
+          contrato_pdf_url: pdfResult.relativePath,
         },
-        email_info: {
-          sent_to: finalEmail,
-          pdf_attached: true,
-          sent_at: new Date().toISOString(),
-          message_id: emailResult?.messageId || "no-message-id",
-        },
-      });
-    } catch (error) {
-      console.error("Error sending contract:", error);
-      res.status(500).json({
-        success: false,
-        message: "Error al enviar el contrato",
-        error: error.message,
+        // ✅ OPCIONAL: Información adicional sobre el contenido del PDF
+        calculation_info: contract.Quote?.Calculation ? {
+          has_calculation: true,
+          num_personas: contract.Quote.Calculation.num_personas,
+          estado: contract.Quote.Calculation.estado,
+          precio_final_total: contract.Quote.Calculation.precio_final_total
+        } : {
+          has_calculation: false
+        }
       });
     }
-  },
-
-  generateContractPDF: async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { preview = false } = req.query; // ?preview=true para vista previa
-
-      const contract = await Contract.findByPk(id, {
-        include: [
-          {
-            model: Quote,
-            as: "Quote",
-            include: [
-              {
-                model: User,
-                as: "Cliente",
-                attributes: ["id", "name", "lastname", "email", "phone"],
-              },
-              {
-                model: Passenger,
-                as: "Passengers",
-                attributes: [
-                  "id",
-                  "nombre",
-                  "apellido",
-                  "documento_identidad",
-                  "tipo_documento",
-                  "fecha_nacimiento",
-                  "titular",
-                ],
-              },
-            ],
-          },
-          {
-            model: User,
-            as: "Cliente",
-            attributes: [
-              "id",
-              "name",
-              "lastname",
-              "email",
-              "phone",
-              "documento_identidad",
-              "tipo_documento",
-            ],
-          },
-        ],
-      });
-
-      if (!contract) {
-        return res.status(404).json({ message: "Contrato no encontrado" });
-      }
-
-      // ✅ GENERAR PDF (siempre guardamos el archivo)
-      const { generateContractPDF } = require("../utils/generateContractPDF");
-      const pdfResult = await generateContractPDF(contract, true); // Siempre guardar
-
-      // ✅ ACTUALIZAR contrato con la URL del PDF
-      await contract.update({
-        contrato_pdf_url: pdfResult.relativePath,
-      });
-
-      if (preview === "true") {
-        // ✅ VISTA PREVIA: Devolver el PDF directamente en el response
-        res.setHeader("Content-Type", "application/pdf");
-        res.setHeader(
-          "Content-Disposition",
-          `inline; filename="${pdfResult.filename}"`
-        );
-
-        const fs = require("fs");
-        const fileBuffer = fs.readFileSync(pdfResult.filepath);
-        res.send(fileBuffer);
-      } else {
-        // ✅ RESPUESTA JSON: Info del PDF generado
-        res.json({
-          success: true,
-          message: "PDF del contrato generado exitosamente",
-          pdf: {
-            filename: pdfResult.filename,
-            url: pdfResult.relativePath,
-            filepath: pdfResult.filepath,
-          },
-          contract: {
-            id: contract.id,
-            contract_number: contract.contract_number,
-            contrato_pdf_url: pdfResult.relativePath,
-          },
-        });
-      }
-    } catch (error) {
-      console.error("Error generating contract PDF:", error);
-      res.status(500).json({
-        success: false,
-        message: "Error al generar el PDF del contrato",
-        error: error.message,
-      });
-    }
-  },
+  } catch (error) {
+    console.error("Error generating contract PDF:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error al generar el PDF del contrato",
+      error: error.message,
+    });
+  }
+},
 
   // ✅ NUEVO: Descargar PDF del contrato
   downloadContractPDF: async (req, res) => {
@@ -1871,140 +2124,153 @@ const contractController = {
     }
   },
 
-  servePDF: async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { t: timestamp } = req.query; // Detectar si viene con timestamp anti-cache
+servePDF: async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { t: timestamp } = req.query; // Detectar si viene con timestamp anti-cache
 
-      const contract = await Contract.findByPk(id, {
-        include: [
-          {
-            model: Quote,
-            as: "Quote",
-            include: [
-              {
-                model: User,
-                as: "Cliente",
-                attributes: ["id", "name", "lastname", "email", "phone"],
-              },
-              {
-                model: Passenger,
-                as: "Passengers",
-                attributes: [
-                  "id",
-                  "nombre",
-                  "apellido",
-                  "documento_identidad",
-                  "tipo_documento",
-                  "fecha_nacimiento",
-                  "titular",
-                ],
-              },
-            ],
-          },
-          {
-            model: User,
-            as: "Cliente",
-            attributes: [
-              "id",
-              "name",
-              "lastname",
-              "email",
-              "phone",
-              "documento_identidad",
-              "tipo_documento",
-            ],
-          },
-        ],
-      });
+    const contract = await Contract.findByPk(id, {
+      include: [
+        {
+          model: Quote,
+          as: "Quote",
+          include: [
+            {
+              model: User,
+              as: "Cliente",
+              attributes: ["id", "name", "lastname", "email", "phone"],
+            },
+            {
+              model: Passenger,
+              as: "Passengers",
+              attributes: [
+                "id",
+                "nombre",
+                "apellido",
+                "documento_identidad",
+                "tipo_documento",
+                "fecha_nacimiento",
+                "titular",
+              ],
+            },
+            // ✅ AGREGAR: Cálculo de cotización para regeneración automática
+            {
+              model: QuoteCalculation,
+              as: "Calculation",
+              attributes: [
+                "id", "user_id", "quote_id", "num_personas",
+                "tiquetes", "hotel", "traslados", "alimentacion", "equipaje", 
+                "seguros", "excursiones", "extras", "comisiones", "ganancia",
+                "costo_base", "total_comisiones", "total_ganancia", "precio_final_total",
+                "estado", "observaciones_generales", "fecha_viaje_inicio", "fecha_viaje_fin"
+              ],
+              required: false,
+            },
+          ],
+        },
+        {
+          model: User,
+          as: "Cliente",
+          attributes: [
+            "id",
+            "name",
+            "lastname",
+            "email",
+            "phone",
+            "documento_identidad",
+            "tipo_documento",
+          ],
+        },
+      ],
+    });
 
-      if (!contract) {
-        return res.status(404).json({ message: "Contrato no encontrado" });
-      }
+    if (!contract) {
+      return res.status(404).json({ message: "Contrato no encontrado" });
+    }
 
-      const path = require("path");
-      const fs = require("fs");
-      let filePath = null;
-      let shouldGeneratePDF = false;
+    const path = require("path");
+    const fs = require("fs");
+    let filePath = null;
+    let shouldGeneratePDF = false;
 
-      // ✅ VERIFICAR si existe PDF y archivo físico
-      if (contract.contrato_pdf_url) {
-        filePath = path.join(__dirname, "../../", contract.contrato_pdf_url);
-        if (!fs.existsSync(filePath)) {
-          console.log("⚠️ PDF referenciado no existe en disco, regenerando...");
-          shouldGeneratePDF = true;
-        }
-      } else {
-        console.log("⚠️ No hay PDF generado para este contrato, generando...");
+    // ✅ VERIFICAR si existe PDF y archivo físico
+    if (contract.contrato_pdf_url) {
+      filePath = path.join(__dirname, "../../", contract.contrato_pdf_url);
+      if (!fs.existsSync(filePath)) {
+        console.log("⚠️ PDF referenciado no existe en disco, regenerando...");
         shouldGeneratePDF = true;
       }
+    } else {
+      console.log("⚠️ No hay PDF generado para este contrato, generando...");
+      shouldGeneratePDF = true;
+    }
 
-      // ✅ GENERAR PDF automáticamente si no existe
-      if (shouldGeneratePDF) {
-        try {
-          console.log(
-            "🔄 Generando PDF automáticamente para contrato:",
-            contract.contract_number
-          );
-          const {
-            generateContractPDF,
-          } = require("../utils/generateContractPDF");
-          const pdfResult = await generateContractPDF(contract, true);
+    // ✅ GENERAR PDF automáticamente si no existe
+    if (shouldGeneratePDF) {
+      try {
+        console.log(
+          "🔄 Generando PDF automáticamente para contrato:",
+          contract.contract_number
+        );
+        const {
+          generateContractPDF,
+        } = require("../utils/generateContractPDF");
+        const pdfResult = await generateContractPDF(contract, true);
 
-          // Actualizar contrato con nueva URL
-          await contract.update({
-            contrato_pdf_url: pdfResult.relativePath,
-          });
+        // Actualizar contrato con nueva URL
+        await contract.update({
+          contrato_pdf_url: pdfResult.relativePath,
+        });
 
-          filePath = pdfResult.filepath;
-          console.log("✅ PDF generado automáticamente:", pdfResult.filename);
-        } catch (pdfError) {
-          console.error("❌ Error generando PDF automáticamente:", pdfError);
-          return res.status(500).json({
-            message: "Error generando PDF del contrato: " + pdfError.message,
-          });
-        }
-      }
-
-      // ✅ VERIFICAR una vez más que el archivo existe
-      if (!fs.existsSync(filePath)) {
+        filePath = pdfResult.filepath;
+        console.log("✅ PDF generado automáticamente:", pdfResult.filename);
+      } catch (pdfError) {
+        console.error("❌ Error generando PDF automáticamente:", pdfError);
         return res.status(500).json({
-          message: "Error: PDF no se pudo generar correctamente",
+          message: "Error generando PDF del contrato: " + pdfError.message,
         });
       }
-
-      // ✅ ESTABLECER headers para PDF
-      res.setHeader("Content-Type", "application/pdf");
-      res.setHeader(
-        "Content-Disposition",
-        `inline; filename="contrato-${contract.contract_number}.pdf"`
-      );
-
-      // ✅ MEJORAR: Headers anti-cache si viene con timestamp
-      if (timestamp) {
-        console.log(
-          "🔄 Sirviendo PDF con headers anti-cache (timestamp:",
-          timestamp,
-          ")"
-        );
-        res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-        res.setHeader("Pragma", "no-cache");
-        res.setHeader("Expires", "0");
-        res.setHeader("Last-Modified", new Date().toUTCString());
-        res.setHeader("ETag", `"${Date.now()}"`); // ETag único para forzar revalidación
-      } else {
-        res.setHeader("Cache-Control", "private, max-age=3600"); // Cache por 1 hora solo si no hay timestamp
-      }
-
-      // ✅ ENVIAR archivo
-      res.sendFile(filePath);
-    } catch (error) {
-      console.error("Error sirviendo PDF:", error);
-      res
-        .status(500)
-        .json({ message: "Error interno del servidor: " + error.message });
     }
-  },
+
+    // ✅ VERIFICAR una vez más que el archivo existe
+    if (!fs.existsSync(filePath)) {
+      return res.status(500).json({
+        message: "Error: PDF no se pudo generar correctamente",
+      });
+    }
+
+    // ✅ ESTABLECER headers para PDF
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="contrato-${contract.contract_number}.pdf"`
+    );
+
+    // ✅ MEJORAR: Headers anti-cache si viene con timestamp
+    if (timestamp) {
+      console.log(
+        "🔄 Sirviendo PDF con headers anti-cache (timestamp:",
+        timestamp,
+        ")"
+      );
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
+      res.setHeader("Last-Modified", new Date().toUTCString());
+      res.setHeader("ETag", `"${Date.now()}"`); // ETag único para forzar revalidación
+    } else {
+      res.setHeader("Cache-Control", "private, max-age=3600"); // Cache por 1 hora solo si no hay timestamp
+    }
+
+    // ✅ ENVIAR archivo
+    res.sendFile(filePath);
+  } catch (error) {
+    console.error("Error sirviendo PDF:", error);
+    res
+      .status(500)
+      .json({ message: "Error interno del servidor: " + error.message });
+  }
+},
 
   // Completar contrato (después del viaje)
   completeContract: async (req, res) => {
