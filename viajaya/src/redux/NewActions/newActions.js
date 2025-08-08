@@ -51,8 +51,8 @@ import {
 } from "./NewActions-Types";
 
 
-//const BASE_URL = 'https://viajaya-mve8.onrender.com';
-const BASE_URL = 'http://localhost:3001'
+const BASE_URL = 'https://viajaya-production.up.railway.app';
+//const BASE_URL = 'http://localhost:3001'
 
 
 export const loginUser = (email, password) => async (dispatch) => {
