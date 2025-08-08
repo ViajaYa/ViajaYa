@@ -28,3 +28,5 @@ conn.sync({ alter: true })
     .catch((error) => {
         console.error("Error syncing the database:", error);
     });
+
+    //probando coemntario para deploy
