@@ -1,6 +1,6 @@
 const { DataTypes } = require('sequelize');
 module.exports = (sequelize) => {
-  sequelize.define('Carousel', {
+  sequelize.define('carousel', {
     src: {
         type: DataTypes.STRING,
         allowNull: false, // URL de la imagen en Cloudinary

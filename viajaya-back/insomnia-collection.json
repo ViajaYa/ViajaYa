@@ -1,0 +1,455 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2024-12-26T12:00:00.000Z",
+  "__export_source": "insomnia.desktop.app:v2023.5.8",
+  "resources": [
+    {
+      "_id": "wrk_viajaya",
+      "parentId": null,
+      "modified": 1703548800000,
+      "created": 1703548800000,
+      "name": "ViajaYa API",
+      "description": "API REST para sistema de gestión de agencia de viajes",
+      "scope": "collection",
+      "_type": "workspace"
+    },
+    {
+      "_id": "env_base",
+      "parentId": "wrk_viajaya",
+      "modified": 1703548800000,
+      "created": 1703548800000,
+      "name": "Base Environment",
+      "data": {
+        "base_url": "http://localhost:3001",
+        "token": ""
+      },
+      "dataPropertyOrder": {
+        "&": ["base_url", "token"]
+      },
+      "color": null,
+      "isPrivate": false,
+      "metaSortKey": 1703548800000,
+      "_type": "environment"
+    },
+    {
+      "_id": "fld_auth",
+      "parentId": "wrk_viajaya",
+      "modified": 1703548800000,
+      "created": 1703548800000,
+      "name": "🔐 Authentication",
+      "description": "Endpoints de autenticación y gestión de usuarios",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1703548800000,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_users",
+      "parentId": "wrk_viajaya",
+      "modified": 1703548800000,
+      "created": 1703548800000,
+      "name": "👥 Users Management",
+      "description": "Gestión de usuarios",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1703548700000,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_quotes",
+      "parentId": "wrk_viajaya",
+      "modified": 1703548800000,
+      "created": 1703548800000,
+      "name": "📋 Quotes",
+      "description": "Gestión de cotizaciones",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1703548600000,
+      "_type": "request_group"
+    },
+    {
+      "_id": "req_auth_login",
+      "parentId": "fld_auth",
+      "modified": 1703548800000,
+      "created": 1703548800000,
+      "url": "{{ _.base_url }}/api/user/login",
+      "name": "🔑 Login User (USAR PRIMERO)",
+      "description": "Login de usuario - USAR ESTE PRIMERO",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"admin@viajaya.com\",\n  \"password\": \"Admin123!\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1703548800000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_auth_verify_token",
+      "parentId": "fld_auth",
+      "modified": 1703548800000,
+      "created": 1703548800000,
+      "url": "{{ _.base_url }}/api/user/verify/token",
+      "name": "Verify Token",
+      "description": "Verificar token JWT",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1703548700000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_auth_profile",
+      "parentId": "fld_auth",
+      "modified": 1703548800000,
+      "created": 1703548800000,
+      "url": "{{ _.base_url }}/api/user/profile",
+      "name": "Get Profile",
+      "description": "Obtener perfil del usuario autenticado",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1703548600000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_auth_register",
+      "parentId": "fld_auth",
+      "modified": 1703548800000,
+      "created": 1703548800000,
+      "url": "{{ _.base_url }}/api/user/register",
+      "name": "Register User",
+      "description": "Registro de nuevo usuario",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Carlos\",\n  \"lastname\": \"Vendedor\",\n  \"email\": \"carlos.vendedor@viajaya.com\",\n  \"password\": \"Vendedor123!\",\n  \"phone\": \"3001234567\",\n  \"role\": 2,\n  \"documento_identidad\": \"12345678\",\n  \"tipo_documento\": \"cedula\",\n  \"ciudad\": \"Bogotá\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1703548500000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_auth_change_password",
+      "parentId": "fld_auth",
+      "modified": 1703548800000,
+      "created": 1703548800000,
+      "url": "{{ _.base_url }}/api/user/change-password",
+      "name": "Change Password",
+      "description": "Cambiar contraseña propia",
+      "method": "PUT",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"currentPassword\": \"Admin123!\",\n  \"newPassword\": \"NewPassword123!\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1703548400000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_users_list",
+      "parentId": "fld_users",
+      "modified": 1703548800000,
+      "created": 1703548800000,
+      "url": "{{ _.base_url }}/api/user",
+      "name": "Get All Users",
+      "description": "Obtener todos los usuarios (Solo Admin+)",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1703548300000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_users_get_by_id",
+      "parentId": "fld_users",
+      "modified": 1703548800000,
+      "created": 1703548800000,
+      "url": "{{ _.base_url }}/api/user/1",
+      "name": "Get User by ID",
+      "description": "Obtener usuario por ID (con jerarquía)",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1703548200000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_quotes_create",
+      "parentId": "fld_quotes",
+      "modified": 1703548800000,
+      "created": 1703548800000,
+      "url": "{{ _.base_url }}/api/quotes",
+      "name": "Create Quote",
+      "description": "Crear nueva cotización",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"asesor_id\": 2,\n  \"lider_id\": null,\n  \"gerente_id\": null,\n  \"cliente_id\": 1,\n  \"numero_personas\": 2,\n  \"fecha_ida\": \"2024-12-15\",\n  \"fecha_regreso\": \"2024-12-22\",\n  \"destino\": \"Cartagena\",\n  \"origen\": \"Bogotá\",\n  \"acomodacion\": \"Doble\",\n  \"tipo_hotel\": \"4 estrellas\",\n  \"ninos\": 0,\n  \"edades_ninos\": [],\n  \"observaciones\": \"Solicitud de cotización para luna de miel\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1703548100000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_quotes_list",
+      "parentId": "fld_quotes",
+      "modified": 1703548800000,
+      "created": 1703548800000,
+      "url": "{{ _.base_url }}/api/quotes",
+      "name": "Get All Quotes",
+      "description": "Obtener todas las cotizaciones",
+      "method": "GET",
+      "body": {},
+      "parameters": [
+        {
+          "name": "status",
+          "value": "pending",
+          "description": "Filtrar por estado (pending, completed, approved, rejected)"
+        },
+        {
+          "name": "page",
+          "value": "1",
+          "description": "Número de página"
+        },
+        {
+          "name": "limit",
+          "value": "10",
+          "description": "Límite por página"
+        }
+      ],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1703548000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_quotes_get_by_id",
+      "parentId": "fld_quotes",
+      "modified": 1703548800000,
+      "created": 1703548800000,
+      "url": "{{ _.base_url }}/api/quotes/1",
+      "name": "Get Quote by ID",
+      "description": "Obtener cotización por ID",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1703547900000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_quotes_update",
+      "parentId": "fld_quotes",
+      "modified": 1703548800000,
+      "created": 1703548800000,
+      "url": "{{ _.base_url }}/api/quotes/1",
+      "name": "Update Quote (Admin)",
+      "description": "Actualizar cotización (completar por Admin)",
+      "method": "PUT",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"precio_total\": 2500000,\n  \"observaciones\": \"Cotización completada con precios actualizados\",\n  \"status\": \"completed\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1703547800000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_quotes_approve",
+      "parentId": "fld_quotes",
+      "modified": 1703548800000,
+      "created": 1703548800000,
+      "url": "{{ _.base_url }}/api/quotes/1/approve",
+      "name": "Approve Quote",
+      "description": "Aprobar cotización",
+      "method": "PATCH",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1703547700000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    }
+  ]
+}

@@ -7,7 +7,10 @@ const getOrderReservationsByUser = async (req, res) => {
       // Buscar todas las órdenes de reserva que pertenecen a un usuario específico
       const orders = await OrderReservation.findAll({
         where: { userId },
-        include: [Pack]  // Incluir los datos del pack asociado
+        include: [
+        { model: Pack, as: 'Package' },
+        
+      ]
       });
   
       if (!orders || orders.length === 0) {

@@ -1,0 +1,464 @@
+import { Routes, Route } from "react-router-dom";
+import { Suspense, lazy } from "react";
+import PropTypes from "prop-types";
+import { USER_ROLES } from './RoleRoute';
+import RoleRoute from './RoleRoute';
+import PrivateRoute from './PrivateRoute';
+import LoadingSpinner from './LoadingSpinner';
+
+// Lazy loading de componentes
+const Landing = lazy(() => import("./pages/Landing/Landing"));
+const Login = lazy(() => import("./pages/Login/Login"));
+const ProfileAdmin = lazy(() => import("./pages/ProfileAdmin/Profile"));
+const DetailNuevo = lazy(() => import("./pages/Detail/DetailNuevo"));
+const UserReservation = lazy(() => import("./pages/ProfileAdmin/UserReservations"));
+const OrdenReserva = lazy(() => import("./pages/Ordenes/OrdenReserva"));
+const WompiPaymentWidget = lazy(() => import("./pages/Ordenes/WompiPaymentWidget"));
+const ThankYouPage = lazy(() => import("./pages/Ordenes/ThankYouPage"));
+const ReferralInfo = lazy(() => import("./ReferralInfo"));
+const Rifa = lazy(() => import("./pages/Rifa"));
+const NumberBoard = lazy(() => import("./pages/NumberBoard"));
+const Form = lazy(() => import("./pages/Form"));
+const SelectedNumbersList = lazy(() => import("./pages/SelectedNumberList"));
+const AsesoresVideos = lazy(() => import("./Panel/AsesoresVideos"));
+const Capacitaciones = lazy(() => import("./pages/Capacitaciones"));
+const PanelPage = lazy(() => import("./Panel/PanelPage"));
+const GestionOrdenes = lazy(() => import("./Panel/GestionOrdenes"));
+const UserManagement = lazy(() => import("./Panel/UserManagment"));  
+const PackManagement = lazy(() => import("./Panel/PackManagement"));
+const NewPack = lazy(() => import("./Panel/NewPack"));
+const ManagePopup = lazy(() => import("./popups/ManagePopup"));
+const GestionarPagina = lazy(() => import("./Panel/GestionarPagina"));
+const InstaVideoUploader = lazy(() => import("./Panel/InstaVideoUploader"));
+const UploadCarouselImage  = lazy(() => import("./Panel/UploadCarouselImage "));
+const About = lazy(() => import("./pages/About/About"));
+const Politicas = lazy(() => import("./pages/Politicas/Politicas"));
+const Terminos = lazy(() => import("./pages/Politicas/Terminos"));
+const AllsPacks = lazy(() => import("./AllsPacks"));
+const TabbedImages = lazy(() => import("./pages/Operador/TabbedImages"));
+const Popup = lazy(() => import("./popups/Popup"));
+const QuotesList = lazy(() => import("./Panel/Quotes/QuotesList"));
+const QuoteEdit = lazy(() => import("./Panel/Quotes/QuoteEdit"));
+const CreateStaff = lazy(() => import("./Panel/CreateStaff"));
+const ContractsList = lazy(() => import("./Panel/Contracts/ContractsList"));
+const ContractSet = lazy(() => import("./Panel/Contracts/ContractSet"));
+const CommissionsList = lazy(() => import("./Panel/Commissions/CommissionsList"));
+const ContractCommissions = lazy(() => import("./Panel/Contracts/ContractCommissions"));
+const CommissionConfigManager = lazy(() => import("./Panel/Commissions/CommissionConfigManager"));
+const DocumentsReview = lazy(() => import("./Panel/DocumentsReview"));
+const OrganizationView = lazy(() => import("./pages/Organization/OrganizationView"));
+const AllTeamsView = lazy(() => import("./pages/Organization/AllTeamsView"));
+const PassengerForm = lazy(() => import("./Panel/Quotes/PassengerForm"));
+const PassengerSuccess = lazy(() => import("./Panel/Quotes/PassengerSuccess"));
+const ContractSignature = lazy(() => import("./Panel/Contracts/ContractSignature"));
+const SignatureSuccess = lazy(() => import("./Panel/Contracts/SignatureSuccess"));
+const MyCommissions = lazy(() => import("./Panel/Commissions/MyCommissions"));
+const ResetPassword = lazy(() => import("./pages/Login/ResetPassword"));
+const ContractPurchaseManager = lazy(() => import("./Panel/Contracts/ContractPurchaseManager"));
+// const ItemCard = lazy(() => import("./Panel/Contracts/ItemCard"));
+// const PurchaseUploadModal = lazy(() => import("./Panel/Contracts/PurchaseUploadModal"));
+// const DeadlineUpdateModal = lazy(() => import("./Panel/Contracts/DeadlineUpdateModal"));
+
+const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
+  return (
+    <Routes>
+      {/* ✅ RUTAS PÚBLICAS - accesibles para todos */}
+      <Route path="/login" element={
+        <Suspense fallback={<LoadingSpinner />}>
+          <Login />
+        </Suspense>
+      } />
+      
+      <Route path="/login/:referral_code" element={
+        <Suspense fallback={<LoadingSpinner />}>
+          <Login />
+        </Suspense>
+      } />
+      
+      <Route path="/about" element={
+        <Suspense fallback={<LoadingSpinner />}>
+          <About />
+        </Suspense>
+      } />
+      
+      <Route path="/politicas" element={
+        <Suspense fallback={<LoadingSpinner />}>
+          <Politicas />
+        </Suspense>
+      } />
+      
+      <Route path="/terminos" element={
+        <Suspense fallback={<LoadingSpinner />}>
+          <Terminos />
+        </Suspense>
+      } />
+      
+      <Route path="/detail/:id" element={
+        <Suspense fallback={<LoadingSpinner />}>
+          <DetailNuevo />
+        </Suspense>
+      } />
+      
+      <Route path="/allpacks" element={
+        <Suspense fallback={<LoadingSpinner />}>
+          <AllsPacks />
+        </Suspense>
+      } />
+      
+      <Route path="/productos" element={
+        <Suspense fallback={<LoadingSpinner />}>
+          <TabbedImages />
+        </Suspense>
+      } />
+      
+      <Route path="/Panel/popup/popup" element={
+        <Suspense fallback={<LoadingSpinner />}>
+          <Popup />
+        </Suspense>
+      } />
+        <Route path="/passenger-form/:quoteId" element={<PassengerForm />} />
+        <Route path="/passenger-success" element={<PassengerSuccess />} />
+      <Route path="/contract-signature/:contractId" element={<ContractSignature />} />
+      <Route path="/signature-success/:contractId" element={<SignatureSuccess />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/" element={
+        <Suspense fallback={<LoadingSpinner />}>
+          <Landing />
+        </Suspense>
+      } />
+
+
+
+      {/* ✅ RUTAS PARA CLIENTES AUTENTICADOS */}
+      <Route path="/profile" element={
+        <PrivateRoute>
+          <Suspense fallback={<LoadingSpinner />}>
+            <ProfileAdmin />
+          </Suspense>
+        </PrivateRoute>
+      } />
+
+       <Route
+        path="/my-commissions"
+        element={
+          <RoleRoute allowedRoles={[USER_ROLES.ASESOR, USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+            <Suspense fallback={<LoadingSpinner />}>
+              <MyCommissions />
+            </Suspense>
+          </RoleRoute>
+        }
+      />
+
+      <Route path="/userReservas" element={
+        <PrivateRoute>
+          <Suspense fallback={<LoadingSpinner />}>
+            <UserReservation />
+          </Suspense>
+        </PrivateRoute>
+      } />
+      
+      <Route path="/ordenReserva/:id" element={
+        <PrivateRoute>
+          <Suspense fallback={<LoadingSpinner />}>
+            <OrdenReserva />
+          </Suspense>
+        </PrivateRoute>
+      } />
+      
+      <Route path="/pay" element={
+        <PrivateRoute>
+          <Suspense fallback={<LoadingSpinner />}>
+            <WompiPaymentWidget />
+          </Suspense>
+        </PrivateRoute>
+      } />
+      
+      <Route path="/thanks" element={
+        <PrivateRoute>
+          <Suspense fallback={<LoadingSpinner />}>
+            <ThankYouPage />
+          </Suspense>
+        </PrivateRoute>
+      } />
+      
+      <Route path="/puntos" element={
+        <PrivateRoute>
+          <Suspense fallback={<LoadingSpinner />}>
+            <ReferralInfo />
+          </Suspense>
+        </PrivateRoute>
+      } />
+
+      {/* ✅ RUTAS PARA ASESORES Y SUPERIORES */}
+      <Route path="/rifa" element={
+        <RoleRoute allowedRoles={[USER_ROLES.ASESOR, USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <Rifa />
+          </Suspense>
+        </RoleRoute>
+      } />
+      
+      <Route path="/number" element={
+        <RoleRoute allowedRoles={[USER_ROLES.ASESOR, USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <NumberBoard />
+          </Suspense>
+        </RoleRoute>
+      } />
+      
+      <Route path="/selectedTrue" element={
+        <RoleRoute allowedRoles={[USER_ROLES.ASESOR, USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <SelectedNumbersList />
+          </Suspense>
+        </RoleRoute>
+      } />
+      
+      <Route path="/asesores" element={
+        <RoleRoute allowedRoles={[USER_ROLES.ASESOR, USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <AsesoresVideos />
+          </Suspense>
+        </RoleRoute>
+      } />
+      
+      <Route path="/capacitacion" element={
+        <RoleRoute allowedRoles={[USER_ROLES.ASESOR, USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <Capacitaciones />
+          </Suspense>
+        </RoleRoute>
+      } />
+
+      {/* ✅ RUTAS PARA LÍDERES Y SUPERIORES */}
+      <Route path="/panel" element={
+        <RoleRoute allowedRoles={[USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <PanelPage />
+          </Suspense>
+        </RoleRoute>
+      } />
+      
+      <Route path="/panel/reservas" element={
+        <RoleRoute allowedRoles={[USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <GestionOrdenes />
+          </Suspense>
+        </RoleRoute>
+      } />
+
+      {/* ✅ RUTAS PARA ADMINISTRADORES Y SUPERIORES */}
+      <Route path="/panel/user" element={
+        <RoleRoute allowedRoles={[ USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <UserManagement />
+          </Suspense>
+        </RoleRoute>
+      } />
+      
+      <Route path="/panel/pack" element={
+        <RoleRoute allowedRoles={[USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <PackManagement />
+          </Suspense>
+        </RoleRoute>
+      } />
+
+      <Route path="/contracts/:contractId/purchase-management" element={
+  <RoleRoute allowedRoles={[USER_ROLES.OWNER]}>
+    <Suspense fallback={<LoadingSpinner />}>
+      <ContractPurchaseManager />
+    </Suspense>
+  </RoleRoute>
+} />
+
+<Route path="/contracts/:contractId/purchases" element={
+  <RoleRoute allowedRoles={[USER_ROLES.OWNER]}>
+    <Suspense fallback={<LoadingSpinner />}>
+      <ContractPurchaseManager />
+    </Suspense>
+  </RoleRoute>
+} />
+      
+      <Route path="/panel/newPack" element={
+        <RoleRoute allowedRoles={[USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <NewPack />
+          </Suspense>
+        </RoleRoute>
+      } />
+      
+      <Route path="/panel/popup" element={
+        <RoleRoute allowedRoles={[USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <ManagePopup />
+          </Suspense>
+        </RoleRoute>
+      } />
+      
+      <Route path="/panel/documents-review" element={
+        <RoleRoute allowedRoles={[USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <DocumentsReview />
+          </Suspense>
+        </RoleRoute>
+      } />
+      
+      <Route path="/panelGestion" element={
+        <RoleRoute allowedRoles={[USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <GestionarPagina />
+          </Suspense>
+        </RoleRoute>
+      } />
+      
+      <Route path="/panelInstagram" element={
+        <RoleRoute allowedRoles={[USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <InstaVideoUploader />
+          </Suspense>
+        </RoleRoute>
+      } />
+      
+      <Route path="/panelCarousel" element={
+        <RoleRoute allowedRoles={[USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <UploadCarouselImage />
+          </Suspense>
+        </RoleRoute>
+      } />
+
+      <Route path="/quotesList" element={
+        <RoleRoute allowedRoles={[USER_ROLES.LIDER, USER_ROLES.ADMIN, USER_ROLES.GERENTE, USER_ROLES.ASESOR, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <QuotesList />
+          </Suspense>
+        </RoleRoute>
+      } />
+      <Route path="/quotes/:id/edit" element={
+        <RoleRoute allowedRoles={[USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <QuoteEdit />
+          </Suspense>
+        </RoleRoute>
+      } />
+      <Route path="/contractsList" element={
+        <RoleRoute allowedRoles={[USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <ContractsList />
+          </Suspense>
+        </RoleRoute>
+      } />
+      <Route path="/contracts/:id/edit" element={
+        <RoleRoute allowedRoles={[USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <ContractSet />
+          </Suspense>
+        </RoleRoute>
+      } />
+
+      <Route path="/contracts/:contractId/commissions" element={
+        <RoleRoute allowedRoles={[USER_ROLES.ASESOR, USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <ContractCommissions />
+          </Suspense>
+        </RoleRoute>
+      } />
+
+      <Route path="/contracts/:id/edit" element={
+        <RoleRoute allowedRoles={[USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <ContractSet />
+          </Suspense>
+        </RoleRoute>
+      } />
+
+      
+
+      {/* ✅ NUEVA RUTA: Comisiones */}
+      <Route path="/panel/commissions" element={
+        <RoleRoute allowedRoles={[USER_ROLES.ASESOR, USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.CONTADOR, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <CommissionsList />
+          </Suspense>
+        </RoleRoute>
+      } />
+
+      <Route path="/commissionsList" element={
+        <RoleRoute allowedRoles={[USER_ROLES.ASESOR, USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.CONTADOR, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <CommissionsList />
+          </Suspense>
+        </RoleRoute>
+      } />
+
+      {/* ✅ NUEVA RUTA: Configuración de Comisiones */}
+      <Route path="/commission-config" element={
+        <RoleRoute allowedRoles={[USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <CommissionConfigManager />
+          </Suspense>
+        </RoleRoute>
+      } />
+
+      <Route path="/createStaff" element={
+        <RoleRoute allowedRoles={[ USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <CreateStaff />
+          </Suspense>
+        </RoleRoute>
+      } />
+
+      {/* ✅ RUTAS DE ORGANIZACIÓN */}
+      <Route path="/panel/organization" element={
+        <RoleRoute allowedRoles={[USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <OrganizationView />
+          </Suspense>
+        </RoleRoute>
+      } />
+
+      <Route path="/panel/organization/:userId" element={
+        <RoleRoute allowedRoles={[USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <OrganizationView />
+          </Suspense>
+        </RoleRoute>
+      } />
+
+      <Route path="/panel/all-teams" element={
+        <RoleRoute allowedRoles={[USER_ROLES.ADMIN, USER_ROLES.CONTADOR, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <AllTeamsView />
+          </Suspense>
+        </RoleRoute>
+      } />
+
+      {/* ✅ RUTAS ESPECIALES CON LÓGICA PERSONALIZADA */}
+      <Route path="/form" element={
+        showForm ? (
+          <Suspense fallback={<LoadingSpinner />}>
+            <Form selectedNumbers={selectedNumbers} onBack={handleFormBack} />
+          </Suspense>
+        ) : (
+          <RoleRoute allowedRoles={[USER_ROLES.ASESOR, USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+            <Suspense fallback={<LoadingSpinner />}>
+              <Form />
+            </Suspense>
+          </RoleRoute>
+        )
+      } />
+    </Routes>
+  );
+};
+
+// ✅ PropTypes
+AppRoutes.propTypes = {
+  selectedNumbers: PropTypes.array,
+  showForm: PropTypes.bool,
+  handleFormBack: PropTypes.func,
+  handleSelect: PropTypes.func,
+  rutaAnterior: PropTypes.any,
+};
+
+export default AppRoutes;

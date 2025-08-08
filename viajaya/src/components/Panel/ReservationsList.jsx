@@ -1,14 +1,29 @@
 import  { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchReservations } from '../../redux/NewActions/newActions'; 
+// ✅ Usar el nuevo sistema de slices en lugar de las acciones legacy
+import { 
+  fetchReservations,
+  selectReservations,
+  selectLoadingReservations,
+  selectErrorReservations
+} from '../../redux/slices/reservationSlice';
+import { DEBUG_MODE } from '../../utils/debugMode';
 
 const ReservationsList = () => {
   const dispatch = useDispatch();
-  const reservations = useSelector(state => state.reservations.reservations);
-  const loading = useSelector(state => state.reservations.loading);
-  const error = useSelector(state => state.reservations.error);
+  // ✅ Usar los nuevos selectores
+  const reservations = useSelector(selectReservations);
+  const loading = useSelector(selectLoadingReservations);
+  const error = useSelector(selectErrorReservations);
 
   useEffect(() => {
+    // ✅ Agregar protección para evitar el loop infinito
+    if (DEBUG_MODE.DISABLE_AUTO_FETCH) {
+      console.log('🚫 ReservationsList - fetchReservations bloqueado por DEBUG_MODE');
+      return;
+    }
+    
+    console.log('🔄 ReservationsList - Cargando reservas...');
     dispatch(fetchReservations());
   }, [dispatch]);
 

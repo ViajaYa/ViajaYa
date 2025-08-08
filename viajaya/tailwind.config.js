@@ -31,6 +31,73 @@ module.exports = {
         nunito: ['Nunito', 'sans-serif'], // Definir la fuente Nunito
         dancing:['Dancing+Script']
       },
+      animation: {
+        'fadeIn': 'fadeIn 0.5s ease-in-out',
+        'slideIn': 'slideIn 0.4s ease-out',
+        'slideUp': 'slideUp 0.3s ease-out',
+        'bounce-soft': 'bounceSoft 2s infinite',
+        'pulse-slow': 'pulse 3s infinite',
+        'wiggle': 'wiggle 1s ease-in-out infinite',
+      },
+      // ✅ Definir los keyframes
+      keyframes: {
+        fadeIn: {
+          '0%': { 
+            opacity: '0',
+            transform: 'scale(0.95)'
+          },
+          '100%': { 
+            opacity: '1',
+            transform: 'scale(1)'
+          },
+        },
+        slideIn: {
+          '0%': { 
+            opacity: '0', 
+            transform: 'translateY(20px)' 
+          },
+          '100%': { 
+            opacity: '1', 
+            transform: 'translateY(0)' 
+          },
+        },
+        slideUp: {
+          '0%': { 
+            opacity: '0', 
+            transform: 'translateY(30px)' 
+          },
+          '100%': { 
+            opacity: '1', 
+            transform: 'translateY(0)' 
+          },
+        },
+        bounceSoft: {
+          '0%, 100%': { 
+            transform: 'translateY(0)' 
+          },
+          '50%': { 
+            transform: 'translateY(-5px)' 
+          },
+        },
+        wiggle: {
+          '0%, 100%': { 
+            transform: 'rotate(-3deg)' 
+          },
+          '50%': { 
+            transform: 'rotate(3deg)' 
+          },
+        }
+      },
+      // ✅ Agregar transiciones personalizadas
+      transitionProperty: {
+        'height': 'height',
+        'spacing': 'margin, padding',
+      },
+      // ✅ Duraciones de transición personalizadas
+      transitionDuration: {
+        '0': '0ms',
+        '2000': '2000ms',
+      }
     },
   },
   plugins: [],

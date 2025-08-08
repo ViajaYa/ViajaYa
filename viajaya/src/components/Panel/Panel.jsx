@@ -1,5 +1,3 @@
-/* eslint-disable no-unused-vars */
-/* eslint-disable react-hooks/rules-of-hooks */
 /* eslint-disable react/jsx-key */
 import { useEffect, useState } from "react";
 import style from "./Panel.module.css";
@@ -20,6 +18,14 @@ import {
   setPagina,
   filterPacks,
 } from "../../redux/actions/actions";
+// ✅ CORREGIR IMPORTS - quitar fetchUserProfile y usar verifyToken
+import { 
+  logout, 
+  selectUser, 
+  selectIsAuthenticated, 
+  selectAuthLoading, // ✅ Nombre correcto
+} from "../../redux/slices/authSlice";
+import useAuthGuard from "../hooks/useAuthGuard"; // ✅ Usar el hook mejorado
 import { useDispatch, useSelector } from "react-redux";
 import Map from "../layout/Map/Map";
 import { toast, Toaster } from "react-hot-toast";
@@ -37,20 +43,25 @@ dayjs.locale("es");
 const Panel = () => {
   const [page, setPage] = useState(0);
   const navigate = useNavigate();
-  const [user, setUser] = useState();
+  
+  // ✅ Comentar useAuthGuard para evitar múltiples llamadas - ya se ejecuta en App.jsx
+  // useAuthGuard();
+  
+  // ✅ Usar selectores del authSlice
   const dispatch = useDispatch();
-   const [loading, setLoading] = useState(true);
+  const user = useSelector(selectUser);
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const authLoading = useSelector(selectAuthLoading);
+  const [componentLoading, setComponentLoading] = useState(true);
 
   const urlReg =
     /^(http|https):\/\/([a-zA-Z0-9_-]+\.)*[a-zA-Z0-9_-]+\.[a-zA-Z]{2,9}(\/[a-zA-Z0-9_#.-]+\/?)*(\?[a-zA-Z0-9_\-&%=]*)?$/;
-  const emailReg = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const phoneReg = /^\d{10}$/;
 
   // ADMIN
   const [creator, setCreator] = useState(false);
   const [pagination, setPagination] = useState(1);
   const [center, setCenter] = useState([4.0267284, -74.0093039]);
-  // const [clases, dispatch(setClass] = useStat)e()
   const [clase, setClase] = useState();
 
   const [packs, setPacks] = useState();
@@ -58,35 +69,73 @@ const Panel = () => {
     images: [],
     fechas: [],
   });
+  
   const paquetes = useSelector((s) => s.paquetes);
- 
   const clases = useSelector((s) => s.clases);
   const pagina = useSelector((s) => s.pagina);
   const maxPagesPacks = useSelector((s) => s.maxPagesPacks);
   const maxPagesClass = useSelector((s) => s.maxPagesClass);
   const maxPagesUser = useSelector((s) => s.maxPagesUser);
 
-  const [chars, setChars] = useState();
+  const [chars, setChars] = useState([]);
   const [promo, setPromo] = useState();
   const [promos, setPromos] = useState();
   const [buy, setBuy] = useState();
 
+  // ✅ Protección de ruta mejorada
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
   useEffect(() => {
-    axios.get("/user").then((data) => {
-      dispatch(setUsers(data.data));
-      setTimeout(() => {
-        setLoading(false);
-      }, 500);
-    });
-    axios.get("/class").then((data) => dispatch(setClass(data.data)));
-    axios.get("/pack").then((data) => dispatch(setPaquetes(data.data)));
-    axios.get("/pack/chars").then((data) => setChars(data.data));
-    axios.get("/promo").then((data) => setPromo(data.data));
-    axios.get(`/user/verify/${localStorage.getItem("token")}`).then((data) => {
-    
-      axios.get(`/buy/${data.data.id}`).then((data) => setBuy(data.data));
-    });
-  }, []);
+    // ✅ Cargar datos una vez que tenemos usuario autenticado
+    const loadData = async () => {
+      try {
+        setComponentLoading(true);
+
+        // Cargar datos que no dependen del usuario específico
+        const [usersResponse, classResponse, packResponse, charsResponse, promoResponse] = await Promise.all([
+          axios.get("/user"),
+          axios.get("/class"),
+          axios.get("/pack"),
+          axios.get("/pack/chars"),
+          axios.get("/promo")
+        ]);
+
+        // Actualizar el estado
+        dispatch(setUsers(usersResponse.data));
+        dispatch(setClass(classResponse.data));
+        dispatch(setPaquetes(packResponse.data));
+        setChars(charsResponse.data);
+        setPromo(promoResponse.data);
+
+        // ✅ Cargar compras del usuario si está disponible
+        if (user && user.id) {
+          const buyResponse = await axios.get(`/buy/${user.id}`);
+          setBuy(buyResponse.data);
+        }
+
+      } catch (error) {
+        console.error('Error loading panel data:', error);
+        toast.error('Error cargando datos del panel');
+      } finally {
+        setTimeout(() => {
+          setComponentLoading(false);
+        }, 500);
+      }
+    };
+
+    // Solo cargar una vez cuando tenemos usuario y está autenticado
+    if (isAuthenticated && user) {
+      loadData();
+    }
+  }, [isAuthenticated, user, dispatch]); // ✅ Dependencias controladas
+
+  // ✅ Función de logout mejorada usando authSlice
+  const handleLogout = () => {
+    dispatch(logout());
+    navigate("/login");
+  };
 
   const findLocation = (e) => {
     if (e.target.value.length >= 4) {
@@ -227,10 +276,6 @@ const Panel = () => {
     });
   };
 
-  
-
-  
-
   const setLocation = (loc) => {
     const { lat, lng } = loc;
     setPack({
@@ -239,12 +284,6 @@ const Panel = () => {
       lng: lng,
     });
   };
-
-  if (localStorage.getItem("token") == null) {
-    return <Navigate to="/login" replace />;
-  }
-
- 
 
   const uploadImage = async (e) => {
     const files = e.target.files;
@@ -263,9 +302,8 @@ const Panel = () => {
     });
   };
 
-
   const [visible, setVisible] = useState(false);
-  const [packChars, setPackChars] = useState([]);  
+  const [packChars, setPackChars] = useState([]);
 
   const uploadImages = async (e) => {
     const files = e.target.files;
@@ -340,7 +378,6 @@ const Panel = () => {
   const filtrarPaquetes = (e, type) => {
     dispatch(filterPacks(e.target.value, type));
   };
-  
 
   const handleChars = (e) => {
     setPack({
@@ -350,11 +387,12 @@ const Panel = () => {
     setPackChars([...packChars, e.at(-1)]);
   };
 
- 
-
-  const options = chars?.map((c) => {
-    return { value: c.id, label: c.name };
-  });
+  // ✅ Proteger el map con validación adicional
+  const options = chars && Array.isArray(chars) 
+    ? chars.map((c) => {
+        return { value: c.id, label: c.name };
+      })
+    : []; 
 
   const customStyles = {
     control: (provided) => ({
@@ -382,21 +420,24 @@ const Panel = () => {
       border: "none",
     }),
   };
+
+  // ✅ Mejorar la condición de loading
+  const isLoading = authLoading || componentLoading;
+
   return (
     <>
-      {loading ? (
-        <div >
-          
+      {isLoading ? (
+        <div className="flex justify-center items-center h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
       ) : (
         <div className={style.profileContainer}>
           <Toaster />
           {window.innerWidth > 900 ? (
             <nav className={style.nav}>
-              
               <ul className={style.ul}>
-                
-                 
+                {/* ✅ Verificar roles con el user del authSlice */}
+                {user?.role >= 7 && (
                   <li
                     onClick={() => {
                       setPage(3);
@@ -406,13 +447,15 @@ const Panel = () => {
                   >
                     <BsBoxSeam className={style.icon} /> Paquetes
                   </li>
+                )}
                 
-                
+                {user?.role >= 7 && (
                   <li onClick={() => setPage(4)} className={style.li}>
                     <MdOutlineLocalOffer className={style.icon} /> Promocion
                   </li>
+                )}
                 
-                
+                {user?.role >= 2 && (
                   <li
                     onClick={() => {
                       setPage(5);
@@ -423,16 +466,13 @@ const Panel = () => {
                     <FaChalkboardTeacher className={style.icon} />{" "}
                     Capacitaciones
                   </li>
+                )}
                 
                 <li onClick={() => navigate("/")} className={style.li}>
                   <FaChalkboardTeacher className={style.icon} /> Volver
                 </li>
                 <li
-                  onClick={() => {
-                    navigate("/");
-                    localStorage.removeItem("token");
-                    dispatch(setUser(false));
-                  }}
+                  onClick={handleLogout} // ✅ Usar la nueva función de logout
                   className={style.li}
                 >
                   <MdExitToApp className={style.icon} /> Cerrar sesion
@@ -466,7 +506,7 @@ const Panel = () => {
                 >
                   <MdPayment className={style.icon} /> Mis compras
                 </li>
-                {user?.role == 3 && (
+                {user?.role >= 7 && (
                   <li
                     onClick={() => {
                       setPage(2);
@@ -478,7 +518,7 @@ const Panel = () => {
                     <FiUsers className={style.icon} /> Usuarios
                   </li>
                 )}
-                {user?.role == 3 && (
+                {user?.role >= 7 && (
                   <li
                     onClick={() => {
                       setPage(3);
@@ -490,7 +530,7 @@ const Panel = () => {
                     <BsBoxSeam className={style.icon} /> Paquetes
                   </li>
                 )}
-                {user?.role == 3 && (
+                {user?.role >= 7 && (
                   <li
                     onClick={() => {
                       setPage(4);
@@ -518,11 +558,7 @@ const Panel = () => {
                   <FaChalkboardTeacher className={style.icon} /> Volver
                 </li>
                 <li
-                  onClick={() => {
-                    navigate("/");
-                    localStorage.removeItem("token");
-                    dispatch(setUser(false));
-                  }}
+                  onClick={handleLogout} // ✅ Usar la nueva función de logout
                   className={style.li}
                 >
                   <MdExitToApp className={style.icon} /> Cerrar sesion
@@ -535,12 +571,12 @@ const Panel = () => {
             </h1>
           )}
          
-          {page == 1 && (
+         {page == 1 && (
             <div className={style.view}>
               <div className={style.planContainer}>
                 {buy?.length == 0 && <h1>No has comprado nada aún</h1>}
                 {buy?.map((b) => (
-                  <div className={style.plan}>
+                  <div className={style.plan} key={b.id}>
                     <div className={style.planTop}>
                       <img src={b.pack.images[0]} className={style.imgPlan} />
                       <div className={style.planDetail}>
@@ -556,7 +592,7 @@ const Panel = () => {
                         <p>{b.pack.location} - Todo incluido</p>
                         <div className={style.tags}>
                           {b.pack.chars.map((c) => (
-                            <span className={style.tag}>{c.name}</span>
+                            <span className={style.tag} key={c.id}>{c.name}</span>
                           ))}
                         </div>
                       </div>
@@ -575,7 +611,7 @@ const Panel = () => {
           )}
         
 
-          {page == 3 && user?.role == 3 && !creator && (
+          {page == 3 && user?.role == 7 && !creator && (
             <div className={style.view}>
               <div className={style.top}>
                 <button
@@ -645,7 +681,7 @@ const Panel = () => {
               </div>
             </div>
           )}
-          {page == 3 && user?.role == 3 && creator && packDetail && (
+          {page == 3 && user?.role == 7 && creator && packDetail && (
             <div className={style.view}>
               <div className={style.creator}>
                 <div className={style.formPaquete}>
@@ -725,7 +761,7 @@ const Panel = () => {
               </div>
             </div>
           )}
-          {page == 3 && user?.role == 3 && creator && !packDetail && (
+          {page == 3 && user?.role == 7 && creator && !packDetail && (
             <div className={style.view}>
               <div className={style.creator}>
                 <div className={style.formPaquete}>
@@ -880,7 +916,7 @@ const Panel = () => {
               </div>
             </div>
           )}
-          {page == 4 && user?.role == 3 && (
+          {page == 4 && user?.role == 7 && (
             <div className={style.view}>
               <div className={style.editContainer}>
                 <div className={style.edit}>
@@ -934,7 +970,7 @@ const Panel = () => {
           )}
           {page == 5 && user?.role >= 2 && !creator && (
             <div className={style.view}>
-              {user?.role == 3 ? (
+              {user?.role == 7 ? (
                 <>
                   <div className={style.top}>
                     <button
@@ -964,15 +1000,16 @@ const Panel = () => {
                       <td className={style.topTd}>Nombre de la capacitacion</td>
                       <td className={style.topTd}>Link</td>
                       <td className={style.topTd}>Creado por</td>
-                      {user?.role == 3 && (
+                      {user?.role == 7 && (
                         <td className={style.topTd}>Estado</td>
                       )}
-                      {user?.role == 3 && (
+                      {user?.role == 7 && (
                         <td className={style.topTd}>Acciones</td>
                       )}
                     </tr>
                     {clases &&
                       clases.map((c) => (
+                        // eslint-disable-next-line react/jsx-key
                         <tr>
                           <td className={style.td}>{c.title}</td>
                           <td className={style.td}>
@@ -981,7 +1018,7 @@ const Panel = () => {
                             </a>
                           </td>
                           <td className={style.td}>{c.created}</td>
-                          {user?.role == 3 && (
+                          {user?.role == 7 && (
                             <td
                               className={style.td}
                               style={{ cursor: "pointer" }}
@@ -990,7 +1027,7 @@ const Panel = () => {
                               {c.status == false ? "Publicar" : "Archivar"}
                             </td>
                           )}
-                          {user?.role == 3 && (
+                          {user?.role == 7 && (
                             <td
                               className={style.td}
                               style={{ cursor: "pointer" }}
@@ -1037,7 +1074,7 @@ const Panel = () => {
               )}
             </div>
           )}
-          {page == 5 && user?.role == 3 && creator && (
+          {page == 5 && user?.role == 7 && creator && (
             <div className={style.view}>
               <form className={style.formCapacitacion}>
                 <div className={style.containerCapacita}>

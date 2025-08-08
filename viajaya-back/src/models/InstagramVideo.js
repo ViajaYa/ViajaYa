@@ -1,6 +1,6 @@
 const { DataTypes } = require('sequelize');
 module.exports = (sequelize) => {
-  sequelize.define('InstagramVideo', {
+  sequelize.define('instagramVideo', {
     url: {
         type: DataTypes.STRING,
         allowNull: false,

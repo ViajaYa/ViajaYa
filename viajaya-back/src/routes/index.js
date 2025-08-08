@@ -9,6 +9,14 @@ const numberRoutes= require("./numberRoutes")
 const asesoresCapacitaciones = require('./asesoresCapacitaciones')
 const instagramVideoRoutes = require("./instagramVideoRoutes")
 const carouselRoutes = require("./carouselRoutes")
+const quoteRoutes = require("./quoteRoutes")
+const contractRoutes = require("./contractRoutes")
+const paymentRoutes = require("./paymentRoutes")
+const passengerRoutes = require("./passengerRoutes")
+const documentUsersRoutes = require("./documentUsersRoutes")
+const commissionRoutes = require("./commissionRoutes")
+const commissionConfigRoutes = require("./commissionConfigRoutes")
+const quoteCalculationRoutes = require("./quoteCalculationRoutes")
 const routes = Router()
 
 routes
@@ -22,5 +30,12 @@ routes
 .use("/insta", instagramVideoRoutes)
 .use("/asesores", asesoresCapacitaciones)
 .use("/carousel", carouselRoutes)
-
+.use("/quotes", quoteRoutes)
+.use("/contracts", contractRoutes)
+.use("/payments", paymentRoutes)
+.use("/document-users", documentUsersRoutes)
+.use("/commissions", commissionRoutes)
+.use("/commission-configs", commissionConfigRoutes)
+.use("/passengers", passengerRoutes)
+.use("/quote-calculations", quoteCalculationRoutes)
 module.exports = routes

@@ -1,14 +1,8 @@
-/* eslint-disable react/prop-types */
 import { useState, useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import {
-  getAllOrders,
-  deleteOrder,
-} from "../../../redux/NewActions/newActions"; // Make sure to import deleteOrder
+import { useReservations } from "../../hooks/useReservations";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import QRImage from "../../../assets/QR.png";
-import axios from "axios";
 import {
   FaQrcode,
   FaMoneyBillWave,
@@ -62,57 +56,56 @@ const PaymentMethods = ({ onSelect }) => {
 };
 
 const UserReservations = () => {
-  const dispatch = useDispatch();
-  const reservations = useSelector((state) => state.reservations);
-  const { loadingReservations, errorReservations } = useSelector(
-    (state) => state.reservations
-  );
-  const [user, setUser] = useState(null);
+  console.log('🔄 UserReservations render ejecutado');
+  
+  // Usa el hook global
+  const {
+    reservations,
+    loading,
+    error,
+    fetchReservations,
+    deleteReservation,
+  } = useReservations();
+
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
-  const [isQrPopupOpen, setIsQrPopupOpen] = useState(false); // Estado para el popup
+  const [isQrPopupOpen, setIsQrPopupOpen] = useState(false);
 
-  const verify = async () => {
-    try {
-      const data = await axios.get(
-        `/user/verify/${localStorage.getItem("token")}`
-      );
-      setUser(data.data.id);
-    } catch (error) {
-      toast.error("Por favor, inicia sesión para ver tus reservas", {
-        position: "top-right",
-      });
-    }
-  };
-
+  // ✅ Protección: Solo cargar reservaciones si estamos en la ruta correcta
   useEffect(() => {
-    verify();
+    console.log('UserReservations - Componente montado en:', window.location.pathname);
+    
+    // Solo cargar si estamos en la ruta correcta
+    if (window.location.pathname === '/userReservas') {
+      console.log('UserReservations - Cargando reservaciones del usuario...');
+      fetchReservations();
+    } else {
+      console.log('UserReservations - NO cargando (ruta incorrecta)');
+    }
+    // eslint-disable-next-line
   }, []);
 
-  useEffect(() => {
-    if (user) {
-      dispatch(getAllOrders(user));
-    }
-  }, [dispatch, user]);
-
   const handleCancelReservation = (idOrder) => {
-    console.log("Attempting to delete reservation with ID:", idOrder); // Log the ID being deleted
-    console.log("Current reservations before deletion:", reservations); // Log current reservations
-
-    dispatch(deleteOrder(idOrder)); // Asegúrate de pasar el idOrder aquí
-
-    // Opcionalmente re-fetch orders después de la eliminación
-    if (user) {
-      dispatch(getAllOrders(user));
-    }
+    deleteReservation(idOrder)
+      .unwrap()
+      .then(() => {
+        toast.success("Reserva anulada correctamente");
+        // ✅ Solo recargar si estamos en la ruta correcta
+        if (window.location.pathname === '/userReservas') {
+          fetchReservations();
+        }
+      })
+      .catch((error) => {
+        toast.error(error || "Error al anular la reserva");
+      });
   };
 
-  if (loadingReservations) {
+  if (loading) {
     return <div className="text-center mt-8">Cargando reservas...</div>;
   }
 
-  if (errorReservations) {
+  if (error) {
     return (
-      <div className="text-center mt-8 text-red-500">{errorReservations}</div>
+      <div className="text-center mt-8 text-red-500">{error}</div>
     );
   }
 
@@ -138,21 +131,18 @@ const UserReservations = () => {
                   </h3>
                   <div className="border-b border-gray-300 pb-2 font-nunito space-y-4 text-lg ">
                     <p className="flex items-center">
-                      <FaUser className="mr-2 text-gray-500" />{" "}
-                      {/* Icono de personas */}
-                      <strong>Cantidad de Personas:</strong>&nbsp;{" "}
+                      <FaUser className="mr-2 text-gray-500" />
+                      <strong>Cantidad de Personas:</strong>&nbsp;
                       {reserva.numberOfPeople || "No especificado"}
                     </p>
                     <p className="flex items-center">
-                      <GiAirplaneDeparture className="mr-2 text-gray-500" />{" "}
-                      {/* Icono de avión */}
-                      <strong>Destino:</strong>&nbsp;{" "}
+                      <GiAirplaneDeparture className="mr-2 text-gray-500" />
+                      <strong>Destino:</strong>&nbsp;
                       {reserva.pack?.title || "Destino no especificado"}
                     </p>
                     <p className="flex items-center">
-                      <FaMoneyBillWave className="mr-2 text-gray-500" />{" "}
-                      {/* Icono de dinero */}
-                      <strong>Precio Total:</strong>&nbsp;{" "}
+                      <FaMoneyBillWave className="mr-2 text-gray-500" />
+                      <strong>Precio Total:</strong>&nbsp;
                       {Number(reserva.totalPrice).toLocaleString("es-CO", {
                         style: "currency",
                         currency: "COP",
@@ -160,7 +150,7 @@ const UserReservations = () => {
                     </p>
                     <p className="flex items-center">
                       <FaCalendarAlt className="inline mr-2 text-gray-500" />
-                      <strong>Fecha de salida:</strong>&nbsp;{" "}
+                      <strong>Fecha de salida:</strong>&nbsp;
                       {new Date(reserva.fechas?.salida).toLocaleDateString(
                         "es-CO",
                         { day: "2-digit", month: "2-digit", year: "2-digit" }
@@ -168,7 +158,7 @@ const UserReservations = () => {
                     </p>
                     <p className="flex items-center">
                       <FaCalendarAlt className="inline mr-2 text-gray-500" />
-                      <strong>Fecha de llegada:</strong>&nbsp;{" "}
+                      <strong>Fecha de llegada:</strong>&nbsp;
                       {new Date(reserva.fechas?.llegada).toLocaleDateString(
                         "es-CO",
                         { day: "2-digit", month: "2-digit", year: "2-digit" }
@@ -177,7 +167,7 @@ const UserReservations = () => {
                   </div>
                   <div className="flex justify-end mt-4">
                     <button
-                      onClick={() => handleCancelReservation(reserva.idOrder)} // Call deleteOrder with reserva ID
+                      onClick={() => handleCancelReservation(reserva.idOrder)}
                       className="bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors font-nunito"
                     >
                       Anular Reserva
@@ -207,7 +197,6 @@ const UserReservations = () => {
                           <p className="text-xl">
                             Realiza el pago a través de Wompi:
                           </p>
-                          {/* Llamar al componente WompiPaymentWidget */}
                           <WompiPaymentWidget selectedReservation={reserva} />
                         </div>
                       )}
@@ -249,7 +238,7 @@ const UserReservations = () => {
             <img
               src={QRImage}
               alt="Código QR"
-              className="w-[350px] h-[480px]" // Usando Tailwind para definir el tamaño en px
+              className="w-[350px] h-[480px]"
             />
           </div>
         </div>

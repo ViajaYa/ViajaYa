@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize) => {
-  sequelize.define('Number', {
+  sequelize.define('number', {
   value: {
     type: DataTypes.STRING,
     unique: true,
