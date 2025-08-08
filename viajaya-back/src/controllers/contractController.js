@@ -1041,6 +1041,44 @@ const contractController = {
                       "titular",
                     ],
                   },
+                  // ✅ INCLUIR: Cálculo completo de cotización para el PDF
+                  {
+                    model: QuoteCalculation,
+                    as: "Calculation",
+                    attributes: [
+                      "id", "user_id", "quote_id", "num_personas",
+                      "tiquetes", "hotel", "traslados", "alimentacion", "equipaje", 
+                      "seguros", "excursiones", "extras", "comisiones", "ganancia",
+                      "costo_base", "total_comisiones", "total_ganancia", "precio_final_total",
+                      "estado", "observaciones_generales", "fecha_viaje_inicio", "fecha_viaje_fin"
+                    ],
+                    required: false,
+                  },
+                  // ✅ INCLUIR: Información del equipo de ventas para PDF
+                  {
+                    model: User,
+                    as: "Asesor",
+                    attributes: ["id", "name", "lastname", "email"],
+                    required: false,
+                  },
+                  {
+                    model: User,
+                    as: "Lider",
+                    attributes: ["id", "name", "lastname", "email"],
+                    required: false,
+                  },
+                  {
+                    model: User,
+                    as: "Gerente",
+                    attributes: ["id", "name", "lastname", "email"],
+                    required: false,
+                  },
+                  {
+                    model: User,
+                    as: "Admin",
+                    attributes: ["id", "name", "lastname", "email"],
+                    required: false,
+                  },
                 ],
               },
               {
@@ -1139,6 +1177,31 @@ const contractController = {
             include: [
               { model: User, as: "Cliente" },
               { model: Passenger, as: "Passengers" },
+              // ✅ INCLUIR: Información del equipo de ventas para PDF
+              {
+                model: User,
+                as: "Asesor",
+                attributes: ["id", "name", "lastname", "email"],
+                required: false,
+              },
+              {
+                model: User,
+                as: "Lider",
+                attributes: ["id", "name", "lastname", "email"],
+                required: false,
+              },
+              {
+                model: User,
+                as: "Gerente",
+                attributes: ["id", "name", "lastname", "email"],
+                required: false,
+              },
+              {
+                model: User,
+                as: "Admin",
+                attributes: ["id", "name", "lastname", "email"],
+                required: false,
+              },
             ],
           },
           { model: User, as: "Cliente" },
@@ -1265,6 +1328,31 @@ const contractController = {
                 ],
                 required: false,
               },
+              // ✅ INCLUIR: Información del equipo de ventas
+              {
+                model: User,
+                as: "Asesor",
+                attributes: ["id", "name", "lastname", "email"],
+                required: false,
+              },
+              {
+                model: User,
+                as: "Lider",
+                attributes: ["id", "name", "lastname", "email"],
+                required: false,
+              },
+              {
+                model: User,
+                as: "Gerente",
+                attributes: ["id", "name", "lastname", "email"],
+                required: false,
+              },
+              {
+                model: User,
+                as: "Admin",
+                attributes: ["id", "name", "lastname", "email"],
+                required: false,
+              },
             ],
           },
           {
@@ -1370,6 +1458,31 @@ const contractController = {
                 "costo_base", "total_comisiones", "total_ganancia", "precio_final_total",
                 "estado", "observaciones_generales", "fecha_viaje_inicio", "fecha_viaje_fin"
               ],
+              required: false,
+            },
+            // ✅ INCLUIR: Información del equipo de ventas
+            {
+              model: User,
+              as: "Asesor",
+              attributes: ["id", "name", "lastname", "email"],
+              required: false,
+            },
+            {
+              model: User,
+              as: "Lider",
+              attributes: ["id", "name", "lastname", "email"],
+              required: false,
+            },
+            {
+              model: User,
+              as: "Gerente",
+              attributes: ["id", "name", "lastname", "email"],
+              required: false,
+            },
+            {
+              model: User,
+              as: "Admin",
+              attributes: ["id", "name", "lastname", "email"],
               required: false,
             },
           ],
@@ -2002,6 +2115,31 @@ const contractController = {
               ],
               required: false,
             },
+            // ✅ INCLUIR: Información del equipo de ventas para PDF
+            {
+              model: User,
+              as: "Asesor",
+              attributes: ["id", "name", "lastname", "email"],
+              required: false,
+            },
+            {
+              model: User,
+              as: "Lider",
+              attributes: ["id", "name", "lastname", "email"],
+              required: false,
+            },
+            {
+              model: User,
+              as: "Gerente",
+              attributes: ["id", "name", "lastname", "email"],
+              required: false,
+            },
+            {
+              model: User,
+              as: "Admin",
+              attributes: ["id", "name", "lastname", "email"],
+              required: false,
+            },
           ],
         },
         {
@@ -2164,6 +2302,31 @@ servePDF: async (req, res) => {
                 "costo_base", "total_comisiones", "total_ganancia", "precio_final_total",
                 "estado", "observaciones_generales", "fecha_viaje_inicio", "fecha_viaje_fin"
               ],
+              required: false,
+            },
+            // ✅ INCLUIR: Información del equipo de ventas para PDF
+            {
+              model: User,
+              as: "Asesor",
+              attributes: ["id", "name", "lastname", "email"],
+              required: false,
+            },
+            {
+              model: User,
+              as: "Lider",
+              attributes: ["id", "name", "lastname", "email"],
+              required: false,
+            },
+            {
+              model: User,
+              as: "Gerente",
+              attributes: ["id", "name", "lastname", "email"],
+              required: false,
+            },
+            {
+              model: User,
+              as: "Admin",
+              attributes: ["id", "name", "lastname", "email"],
               required: false,
             },
           ],
