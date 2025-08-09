@@ -36,7 +36,7 @@ const ContractPaymentsManager = () => {
 
   // Filtrar contratos firmados
   const signedContracts = useMemo(() => {
-    return allContracts.filter(contract => contract.status === 'signed');
+    return allContracts.filter(contract => contract.status === 'completed');
   }, [allContracts]);
 
   // Cargar contratos al montar
