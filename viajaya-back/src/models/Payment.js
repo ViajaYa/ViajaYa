@@ -2,7 +2,7 @@ const { DataTypes } = require('sequelize');
 const { v4: uuidv4 } = require('uuid');
 
 module.exports = (sequelize) => {
-  sequelize.define('payment', {
+  return sequelize.define('payment', {
     id: {
       type: DataTypes.UUID,
       defaultValue: uuidv4,
@@ -17,7 +17,7 @@ module.exports = (sequelize) => {
       }
     },
     tipo_pago: {
-      type: DataTypes.ENUM('wompi', 'transferencia', 'efectivo', 'tarjeta'),
+      type: DataTypes.ENUM('wompi', 'transferencia', 'efectivo', 'tarjeta', 'cheque'),
       allowNull: false,
     },
     monto: {
@@ -44,7 +44,8 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: true,
     },
-    // Datos adicionales para integración con Wompi
+    
+    // ✅ DATOS ADICIONALES PARA INTEGRACIÓN CON WOMPI
     wompi_transaction_id: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -53,7 +54,8 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: true,
     },
-    // Información del pagador
+    
+    // ✅ INFORMACIÓN DEL PAGADOR
     pagador_nombre: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -65,10 +67,115 @@ module.exports = (sequelize) => {
     pagador_telefono: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    
+    // ✅ CAMPOS DE VERIFICACIÓN Y TRACKING
+    verified_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    verified_by: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'users',
+        key: 'id'
+      }
+    },
+    created_by: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'users',
+        key: 'id'
+      }
+    },
+    
+    // ✅ INFORMACIÓN BANCARIA ADICIONAL
+    banco_origen: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    
+    // ✅ OBSERVACIONES Y NOTAS
+    observaciones: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    
+    // ✅ METADATA ADICIONAL
+    metadatos: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      comment: 'Información adicional del pago en formato JSON'
     }
   }, {
+    // ✅ OPCIONES DEL MODELO
     timestamps: true,
     createdAt: 'created_at',
-    updatedAt: 'updated_at'
+    updatedAt: 'updated_at',
+    tableName: 'payments',
+    
+    // ✅ ÍNDICES PARA OPTIMIZAR CONSULTAS
+    indexes: [
+      {
+        fields: ['contract_id']
+      },
+      {
+        fields: ['status']
+      },
+      {
+        fields: ['tipo_pago']
+      },
+      {
+        fields: ['fecha_pago']
+      },
+      {
+        fields: ['verified_by']
+      },
+      {
+        fields: ['created_by']
+      }
+    ],
+    
+    // ✅ HOOKS PARA LOGGING
+    hooks: {
+      beforeCreate: (payment, options) => {
+        console.log('📝 Creando nuevo pago:', {
+          contract_id: payment.contract_id,
+          monto: payment.monto,
+          tipo_pago: payment.tipo_pago
+        });
+      },
+      afterCreate: (payment, options) => {
+        console.log('✅ Pago creado exitosamente:', {
+          id: payment.id,
+          monto: payment.monto
+        });
+      },
+      beforeUpdate: (payment, options) => {
+        if (payment.changed('status')) {
+          console.log('🔄 Cambiando estado de pago:', {
+            id: payment.id,
+            from: payment._previousDataValues.status,
+            to: payment.status
+          });
+        }
+      }
+    },
+    
+    // ✅ VALIDACIONES PERSONALIZADAS
+    validate: {
+      montoPositivo() {
+        if (this.monto <= 0) {
+          throw new Error('El monto debe ser mayor a cero');
+        }
+      },
+      comprobanteRequeridoParaTransferencia() {
+        if (this.tipo_pago === 'transferencia' && !this.comprobante_url && this.status !== 'pending') {
+          throw new Error('El comprobante es requerido para transferencias');
+        }
+      }
+    }
   });
 };

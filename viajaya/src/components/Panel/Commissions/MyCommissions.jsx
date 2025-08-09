@@ -4,21 +4,17 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faCoins,
   faFileInvoice,
-  faCalendarAlt,
-  faDollarSign,
-  faUser,
-  faUpload,
+  faMoneyBillWave,
   faDownload,
-  faEye,
   faCheck,
   faClock,
   faExclamationTriangle,
-  faBank,
   faSpinner
 } from "@fortawesome/free-solid-svg-icons";
 import { toast } from "react-hot-toast";
 import api from "../../../utils/api";
 import PaymentRequestModal from "./PaymentRequestModal";
+import PaymentReceiptModal from "./PaymentReceiptModal"
 
 const MyCommissions = () => {
   
@@ -34,6 +30,9 @@ const MyCommissions = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedCommission, setSelectedCommission] = useState(null);
   const [stats, setStats] = useState({});
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+const [selectedReceipt, setSelectedReceipt] = useState(null);
+
 
   useEffect(() => {
     if (user?.id) {
@@ -79,6 +78,24 @@ const MyCommissions = () => {
     setSelectedCommission(commission);
     setShowPaymentModal(true);
   };
+
+  const handleShowPaymentReceipt = (commission) => {
+  const receiptUrl = commission.DocumentoSoporte?.comprobante_pago_url;
+  
+  if (!receiptUrl) {
+    toast.error('No hay comprobante de pago disponible');
+    return;
+  }
+
+  setSelectedReceipt({
+    url: receiptUrl,
+    commission: commission,
+    title: `Comprobante - ${commission.Contract?.contract_number}`,
+    paidBy: commission.PagadoPor,
+    paymentDate: commission.fecha_pago
+  });
+  setShowReceiptModal(true);
+};
 
  const handleDownloadDocument = async (documentId, numeroDocumento) => {
     try {
@@ -356,6 +373,15 @@ const MyCommissions = () => {
                             <FontAwesomeIcon icon={faDownload} />
                           </button>
                         )}
+                         {commission.status === 'paid' && commission.DocumentoSoporte?.comprobante_pago_url && (
+      <button
+        onClick={() => handleShowPaymentReceipt(commission)}
+        className="text-green-600 hover:text-green-900"
+        title="Ver comprobante de pago"
+      >
+        <FontAwesomeIcon icon={faMoneyBillWave} />
+      </button>
+    )}
                       </div>
                     </td>
                   </tr>
@@ -410,6 +436,15 @@ const MyCommissions = () => {
           }}
         />
       )}
+      {showReceiptModal && selectedReceipt && (
+  <PaymentReceiptModal
+    receipt={selectedReceipt}
+    onClose={() => {
+      setShowReceiptModal(false);
+      setSelectedReceipt(null);
+    }}
+  />
+)}
     </div>
   );
 };

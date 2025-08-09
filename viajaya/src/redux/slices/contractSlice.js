@@ -6,6 +6,9 @@ const initialState = {
   contracts: [],
   currentContract: null,
   contractTemplates: [],
+  contractPayments: [],
+  contractPaymentsLoading: false,
+  contractPaymentsError: null,
   loading: false,
   error: null,
   filters: {
@@ -683,6 +686,41 @@ export const fetchContractStats = createAsyncThunk(
   }
 );
 
+export const fetchContractPayments = createAsyncThunk(
+  "contract/fetchContractPayments",
+  async (contractId, { rejectWithValue, getState }) => {
+    try {
+      const { auth } = getState();
+      console.log('💰 Fetching contract payments for:', contractId);
+
+      const response = await fetch(
+        getApiUrl(`/contracts/${contractId}/payments`),
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${auth.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const data = await response.json();
+      console.log('💰 Contract payments response:', data);
+
+      if (!response.ok) {
+        return rejectWithValue(
+          data.message || "Error obteniendo pagos del contrato"
+        );
+      }
+
+      return data;
+    } catch (error) {
+      console.error('❌ Error fetching contract payments:', error);
+      return rejectWithValue(error.message || "Error de conexión");
+    }
+  }
+);
+
 // Slice
 const contractSlice = createSlice({
   name: "contract",
@@ -748,7 +786,40 @@ const contractSlice = createSlice({
     clearEmailPreviewError: (state) => {
       state.emailPreviewError = null;
     },
+    clearContractPayments: (state) => {
+    state.contractPayments = [];
+    state.contractPaymentsError = null;
   },
+  
+  // ✅ NUEVO: Actualizar estado de contrato cuando se registra un pago
+  updateContractAfterPayment: (state, action) => {
+    const { contractId, newSaldo, totalPagado, status } = action.payload;
+    
+    // Actualizar en la lista de contratos
+    const contractIndex = state.contracts.findIndex(c => c.id === contractId);
+    if (contractIndex !== -1) {
+      state.contracts[contractIndex].saldo_pendiente = newSaldo;
+      state.contracts[contractIndex].total_pagado = totalPagado;
+      state.contracts[contractIndex].status = status;
+    }
+    
+    // Actualizar currentContract
+    if (state.currentContract?.id === contractId || state.currentContract?.contract?.id === contractId) {
+      if (state.currentContract.contract) {
+        state.currentContract.contract.saldo_pendiente = newSaldo;
+        state.currentContract.contract.total_pagado = totalPagado;
+        state.currentContract.contract.status = status;
+      } else {
+        state.currentContract.saldo_pendiente = newSaldo;
+        state.currentContract.total_pagado = totalPagado;
+        state.currentContract.status = status;
+      }
+    }
+  }
+},
+  
+
+
   extraReducers: (builder) => {
     builder
       // Fetch Contracts
@@ -889,7 +960,7 @@ const contractSlice = createSlice({
       .addCase(generateContractPDF.fulfilled, (state, action) => {
         state.loading = false;
 
-        const { contractId, pdf } = action.payload;
+        const { pdf } = action.payload;
 
         // ✅ ACTUALIZAR: El contrato actual con la URL del PDF
         if (
@@ -1149,6 +1220,19 @@ const contractSlice = createSlice({
   state.loading = false;
   state.error = action.payload;
 })
+.addCase(fetchContractPayments.pending, (state) => {
+      state.contractPaymentsLoading = true;
+      state.contractPaymentsError = null;
+    })
+    .addCase(fetchContractPayments.fulfilled, (state, action) => {
+      state.contractPaymentsLoading = false;
+      state.contractPayments = action.payload.payments || [];
+    })
+    .addCase(fetchContractPayments.rejected, (state, action) => {
+      state.contractPaymentsLoading = false;
+      state.contractPaymentsError = action.payload;
+      state.contractPayments = [];
+    });
   },
 });
 
@@ -1166,6 +1250,8 @@ export const {
   resetContractItems,
   clearEmailPreview,
   clearEmailPreviewError,
+  clearContractPayments,
+  updateContractAfterPayment,
 } = contractSlice.actions;
 
 // Selectores
@@ -1320,6 +1406,31 @@ export const selectFinancialSummary = (state) => {
     margen_bruto: analysis.valor_total_compras > 0 
       ? ((parseFloat(contract.precio_total) - analysis.valor_total_compras) / parseFloat(contract.precio_total) * 100).toFixed(2)
       : 0
+  };
+};
+export const selectContractPayments = (state) => state.contract.contractPayments;
+export const selectContractPaymentsLoading = (state) => state.contract.contractPaymentsLoading;
+export const selectContractPaymentsError = (state) => state.contract.contractPaymentsError;
+
+// ✅ NUEVO: Selector para información financiera del contrato
+export const selectContractFinancials = (state) => {
+  const contract = state.contract.currentContract?.contract || state.contract.currentContract;
+  if (!contract) return null;
+  
+  const precioTotal = parseFloat(contract.precio_total || 0);
+  const totalPagado = parseFloat(contract.total_pagado || 0);
+  const saldoPendiente = parseFloat(contract.saldo_pendiente || precioTotal);
+  
+  return {
+    precio_total: precioTotal,
+    total_pagado: totalPagado,
+    saldo_pendiente: saldoPendiente,
+    porcentaje_pagado: precioTotal > 0 ? ((totalPagado / precioTotal) * 100).toFixed(1) : 0,
+    completamente_pagado: saldoPendiente <= 0,
+    forma_pago: contract.forma_pago,
+    tiene_cuota_inicial: contract.tiene_cuota_inicial,
+    cuota_inicial_pagada: contract.cuota_inicial_pagada,
+    cuota_inicial_monto: parseFloat(contract.cuota_inicial_monto || 0)
   };
 };
 

@@ -69,52 +69,116 @@ const paymentController = {
 
   // Verificar y aprobar pago
   verifyPayment: async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { status, observaciones } = req.body;
+  try {
+    const { id } = req.params;
+    const { status, observaciones } = req.body;
 
-      const payment = await Payment.findByPk(id, {
-        include: [{ model: Contract }]
-      });
+    const payment = await Payment.findByPk(id, {
+      include: [{ 
+        model: Contract, 
+        as: 'Contract',
+        include: [
+          { 
+            model: Quote, 
+            as: 'Quote',
+            attributes: ['quote_number', 'nombre_cliente'] 
+          }
+        ]
+      }]
+    });
 
-      if (!payment) {
-        return res.status(404).json({ message: 'Pago no encontrado' });
-      }
-
-      await payment.update({
-        status,
-        observaciones
-      });
-
-      // Si el pago es verificado, actualizar el saldo del contrato
-      if (status === 'verified') {
-        const contract = payment.Contract;
-        const nuevoSaldo = parseFloat(contract.saldo_pendiente) - parseFloat(payment.monto);
-        const totalPagado = parseFloat(contract.total_pagado) + parseFloat(payment.monto);
-
-        await contract.update({
-          saldo_pendiente: nuevoSaldo,
-          total_pagado: totalPagado
-        });
-
-        // Generar recibo PDF aquí
-        // payment.recibo_pdf_url = await generateReciboPDF(payment);
-        // await payment.save();
-      }
-
-      res.json({
-        message: 'Pago verificado exitosamente',
-        payment
-      });
-
-    } catch (error) {
-      console.error('Error verifying payment:', error);
-      res.status(500).json({ 
-        message: 'Error al verificar el pago', 
-        error: error.message 
+    if (!payment) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Pago no encontrado' 
       });
     }
-  },
+
+    const oldStatus = payment.status;
+    
+    await payment.update({
+      status,
+      observaciones,
+      verified_at: status === 'verified' ? new Date() : null,
+      verified_by: req.user ? req.user.id : null
+    });
+
+    let contractUpdated = false;
+    let contractChanges = {};
+
+    // ✅ SI EL PAGO ES VERIFICADO, actualizar el contrato
+    if (status === 'verified' && oldStatus !== 'verified') {
+      const contract = payment.Contract;
+      const montoFloat = parseFloat(payment.monto);
+      const nuevoSaldo = parseFloat(contract.saldo_pendiente) - montoFloat;
+      const totalPagado = parseFloat(contract.total_pagado || 0) + montoFloat;
+
+      contractChanges = {
+        saldo_pendiente: Math.max(0, nuevoSaldo),
+        total_pagado: totalPagado
+      };
+
+      // ✅ CAMBIAR ESTADO SI SE COMPLETÓ EL PAGO
+      if (nuevoSaldo <= 0) {
+        contractChanges.status = 'paid';
+      }
+
+      await contract.update(contractChanges);
+      contractUpdated = true;
+      
+      console.log('✅ Pago verificado, contrato actualizado:', {
+        contract_number: contract.contract_number,
+        changes: contractChanges
+      });
+    }
+
+    // ✅ SI SE RECHAZA UN PAGO QUE ESTABA VERIFICADO, revertir cambios
+    if (oldStatus === 'verified' && status === 'rejected') {
+      const contract = payment.Contract;
+      const montoFloat = parseFloat(payment.monto);
+      const nuevoSaldo = parseFloat(contract.saldo_pendiente) + montoFloat;
+      const totalPagado = Math.max(0, parseFloat(contract.total_pagado || 0) - montoFloat);
+
+      contractChanges = {
+        saldo_pendiente: nuevoSaldo,
+        total_pagado: totalPagado,
+        status: nuevoSaldo > 0 ? 'signed' : contract.status // Revertir estado si hay saldo pendiente
+      };
+
+      await contract.update(contractChanges);
+      contractUpdated = true;
+      
+      console.log('🔄 Pago rechazado, saldos revertidos:', {
+        contract_number: contract.contract_number,
+        changes: contractChanges
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `Pago ${status === 'verified' ? 'verificado' : status === 'rejected' ? 'rechazado' : 'actualizado'} exitosamente`,
+      payment: await Payment.findByPk(id, {
+        include: [
+          {
+            model: Contract,
+            as: 'Contract',
+            attributes: ['contract_number', 'status', 'saldo_pendiente', 'total_pagado']
+          }
+        ]
+      }),
+      contract_updated: contractUpdated,
+      contract_changes: contractChanges
+    });
+
+  } catch (error) {
+    console.error('Error verifying payment:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error al verificar el pago', 
+      error: error.message 
+    });
+  }
+},
 
   // Obtener todos los pagos
   getAllPayments: async (req, res) => {
@@ -432,7 +496,169 @@ const paymentController = {
         error: error.message 
       });
     }
+  },
+
+  registerClientPayment: async (req, res) => {
+    try {
+      const {
+        contract_id,
+        tipo_pago,
+        monto,
+        fecha_pago,
+        referencia_pago,
+        banco_origen,
+        observaciones,
+        pagador_nombre,
+        pagador_email,
+        pagador_telefono
+      } = req.body;
+
+      const registradoPor = req.user.id;
+
+      console.log('💰 Registrando pago de cliente:', {
+        contract_id,
+        tipo_pago,
+        monto,
+        registrado_por: registradoPor,
+        hasComprobante: !!req.file
+      });
+
+      // ✅ VERIFICAR que el contrato existe
+      const contract = await Contract.findByPk(contract_id, {
+        include: [
+          {
+            model: Quote,
+            as: 'Quote',
+            include: [
+              {
+                model: User,
+                as: 'Cliente',
+                attributes: ['id', 'name', 'lastname', 'email', 'phone']
+              }
+            ]
+          }
+        ]
+      });
+
+      if (!contract) {
+        return res.status(404).json({ 
+          success: false,
+          message: 'Contrato no encontrado' 
+        });
+      }
+
+      // ✅ VERIFICAR monto válido
+      const montoFloat = parseFloat(monto);
+      const saldoPendiente = parseFloat(contract.saldo_pendiente || contract.precio_total);
+
+      if (montoFloat > saldoPendiente + 1) { // +1 tolerancia
+        return res.status(400).json({ 
+          success: false,
+          message: `El monto ($${montoFloat.toLocaleString('es-CO')}) excede el saldo pendiente ($${saldoPendiente.toLocaleString('es-CO')})` 
+        });
+      }
+
+      if (montoFloat <= 0) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'El monto debe ser mayor a cero' 
+        });
+      }
+
+      // ✅ URL del comprobante desde Cloudinary
+      const comprobanteUrl = req.file ? req.file.path : null;
+
+      // ✅ INFORMACIÓN del cliente
+      const clienteInfo = contract.Quote?.Cliente;
+      const finalPagadorNombre = pagador_nombre || 
+        `${clienteInfo?.name || ''} ${clienteInfo?.lastname || ''}`.trim() ||
+        'Cliente';
+      const finalPagadorEmail = pagador_email || clienteInfo?.email;
+      const finalPagadorTelefono = pagador_telefono || clienteInfo?.phone;
+
+      // ✅ CREAR el registro de pago
+      const newPayment = await Payment.create({
+        contract_id,
+        tipo_pago,
+        monto: montoFloat,
+        fecha_pago: fecha_pago || new Date(),
+        referencia_pago: referencia_pago || `PAY-${Date.now()}`,
+        comprobante_url: comprobanteUrl,
+        pagador_nombre: finalPagadorNombre,
+        pagador_email: finalPagadorEmail,
+        pagador_telefono: finalPagadorTelefono,
+        banco_origen,
+        observaciones: observaciones || `Pago registrado por ${req.user.name} ${req.user.lastname}`,
+        status: 'verified' // ✅ Ya verificado por admin
+      });
+
+      // ✅ ACTUALIZAR SALDOS DEL CONTRATO
+      const nuevoSaldoPendiente = Math.max(0, saldoPendiente - montoFloat);
+      const totalPagado = parseFloat(contract.total_pagado || 0) + montoFloat;
+
+      let contractUpdates = {
+        saldo_pendiente: nuevoSaldoPendiente,
+        total_pagado: totalPagado
+      };
+
+      // ✅ CAMBIAR ESTADO SI SE COMPLETÓ EL PAGO
+      if (nuevoSaldoPendiente <= 0) {
+        contractUpdates.status = 'paid';
+      }
+
+      // ✅ APLICAR ACTUALIZACIONES AL CONTRATO
+      await contract.update(contractUpdates);
+
+      console.log('✅ Contrato actualizado:', {
+        contract_number: contract.contract_number,
+        nuevo_saldo: nuevoSaldoPendiente,
+        total_pagado: totalPagado
+      });
+
+      // ✅ OBTENER PAGO CON DETALLES
+      const paymentWithDetails = await Payment.findByPk(newPayment.id, {
+        include: [
+          {
+            model: Contract,
+            as: 'Contract',
+            attributes: ['id', 'contract_number', 'status', 'saldo_pendiente', 'total_pagado'],
+            include: [
+              {
+                model: Quote,
+                as: 'Quote',
+                attributes: ['quote_number', 'nombre_cliente', 'destino']
+              }
+            ]
+          }
+        ]
+      });
+
+      res.status(201).json({
+        success: true,
+        message: 'Pago registrado y aplicado exitosamente',
+        payment: paymentWithDetails,
+        contract_updates: contractUpdates,
+        summary: {
+          monto_pagado: montoFloat,
+          nuevo_saldo_pendiente: nuevoSaldoPendiente,
+          total_pagado_contrato: totalPagado,
+          contrato_completamente_pagado: nuevoSaldoPendiente <= 0,
+          comprobante_guardado: !!comprobanteUrl,
+          registrado_por: `${req.user.name} ${req.user.lastname}`
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ Error registering client payment:', error);
+      res.status(500).json({ 
+        success: false,
+        message: 'Error al registrar el pago del cliente', 
+        error: error.message 
+      });
+    }
   }
 };
+
+
 
 module.exports = paymentController;
