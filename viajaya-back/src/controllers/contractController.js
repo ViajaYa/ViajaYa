@@ -21,6 +21,237 @@ const {
   generateSignedContractPDF,
 } = require("../utils/generateSignedContractPDF");
 
+
+// ✅ FUNCIÓN AUXILIAR AJUSTADA al modelo ContractItem.js
+const convertQuoteToItems = async (contract) => {
+  const calc = contract.Quote.Calculation;
+  const items = [];
+
+  console.log('🔍 Procesando cálculo:', calc.id);
+
+  // ✅ TICKETS - Estructura JSONB
+  if (calc.tiquetes && typeof calc.tiquetes === 'object') {
+    const tiquetesCosto = parseFloat(calc.tiquetes.costo_total || 0);
+    if (tiquetesCosto > 0) {
+      items.push({
+        contract_id: contract.id,
+        quote_id: contract.quote_id,
+        // ❌ REMOVER: quote_calculation_id (no existe en el modelo)
+        tipo: "tickets", // ✅ Coincide con ENUM
+        descripcion: `Tickets aéreos ${calc.tiquetes.origen || contract.Quote.origen} - ${calc.tiquetes.destino || contract.Quote.destino}`,
+        detalle: `${calc.tiquetes.tipo || 'ida_vuelta'} para ${calc.num_personas} personas`,
+        precio_total: tiquetesCosto,
+        // ❌ REMOVER: precio_cotizado (no existe en el modelo)
+        cantidad: calc.num_personas,
+        precio_unitario: tiquetesCosto / calc.num_personas,
+        status: "pendiente_compra", // ✅ Coincide con ENUM
+        // ❌ REMOVER: requiere_compra, prioridad, fecha_limite_compra (no existen)
+        // ✅ USAR: fecha_vencimiento_pago (que sí existe)
+        fecha_vencimiento_pago: new Date(Date.now() + (2 * 24 * 60 * 60 * 1000)), // 2 días
+        observaciones: JSON.stringify(calc.tiquetes)
+      });
+    }
+  }
+
+  // ✅ HOTEL/ALOJAMIENTO - Estructura JSONB  
+  if (calc.hotel && typeof calc.hotel === 'object') {
+    const hotelCosto = parseFloat(calc.hotel.costo_total || 0);
+    if (hotelCosto > 0) {
+      items.push({
+        contract_id: contract.id,
+        quote_id: contract.quote_id,
+        tipo: "alojamiento", // ✅ Usar ENUM correcto
+        descripcion: `Alojamiento ${calc.hotel.categoria || calc.hotel.nombre || 'N/A'}`,
+        detalle: `${calc.hotel.noches || 0} noches, acomodación ${calc.hotel.acomodacion || 'N/A'}`,
+        precio_total: hotelCosto,
+        cantidad: calc.hotel.noches || 1,
+        precio_unitario: hotelCosto / (calc.hotel.noches || 1),
+        status: "pendiente_compra",
+        fecha_vencimiento_pago: new Date(Date.now() + (7 * 24 * 60 * 60 * 1000)), // 7 días
+        observaciones: JSON.stringify(calc.hotel)
+      });
+    }
+  }
+
+  // ✅ TRASLADOS - Estructura JSONB
+  if (calc.traslados && typeof calc.traslados === 'object') {
+    const trasladosCosto = parseFloat(calc.traslados.costo_total || 0);
+    if (trasladosCosto > 0) {
+      items.push({
+        contract_id: contract.id,
+        quote_id: contract.quote_id,
+        tipo: "traslados", // ✅ Coincide con ENUM
+        descripcion: "Traslados",
+        detalle: "Traslados aeropuerto-hotel-aeropuerto",
+        precio_total: trasladosCosto,
+        cantidad: 1,
+        precio_unitario: trasladosCosto,
+        status: "pendiente_compra",
+        fecha_vencimiento_pago: new Date(Date.now() + (5 * 24 * 60 * 60 * 1000)), // 5 días
+        observaciones: JSON.stringify(calc.traslados)
+      });
+    }
+  }
+
+  // ✅ SEGUROS - Estructura JSONB
+  if (calc.seguros && typeof calc.seguros === 'object') {
+    const segurosCosto = parseFloat(calc.seguros.costo_total || 0);
+    if (segurosCosto > 0) {
+      items.push({
+        contract_id: contract.id,
+        quote_id: contract.quote_id,
+        tipo: "seguro", // ✅ Usar ENUM correcto (singular)
+        descripcion: "Seguros de viaje",
+        detalle: `Cobertura para ${calc.num_personas} personas`,
+        precio_total: segurosCosto,
+        cantidad: calc.num_personas,
+        precio_unitario: segurosCosto / calc.num_personas,
+        status: "pendiente_compra",
+        fecha_vencimiento_pago: new Date(Date.now() + (3 * 24 * 60 * 60 * 1000)), // 3 días
+        observaciones: JSON.stringify(calc.seguros)
+      });
+    }
+  }
+
+  // ✅ ALIMENTACIÓN - Estructura JSONB
+  if (calc.alimentacion && typeof calc.alimentacion === 'object') {
+    const alimentacionCosto = parseFloat(calc.alimentacion.costo_total || 0);
+    if (alimentacionCosto > 0) {
+      items.push({
+        contract_id: contract.id,
+        quote_id: contract.quote_id,
+        tipo: "alimentacion", // ✅ Coincide con ENUM
+        descripcion: "Plan alimentario",
+        detalle: `${calc.alimentacion.tipo || 'Plan alimentario'} para ${calc.num_personas} personas`,
+        precio_total: alimentacionCosto,
+        cantidad: calc.num_personas,
+        precio_unitario: alimentacionCosto / calc.num_personas,
+        status: "pendiente_compra",
+        fecha_vencimiento_pago: new Date(Date.now() + (7 * 24 * 60 * 60 * 1000)), // 7 días
+        observaciones: JSON.stringify(calc.alimentacion)
+      });
+    }
+  }
+
+  // ✅ EQUIPAJE - Estructura JSONB
+  if (calc.equipaje && typeof calc.equipaje === 'object') {
+    const equipajeCosto = parseFloat(calc.equipaje.costo_total || 0);
+    if (equipajeCosto > 0) {
+      items.push({
+        contract_id: contract.id,
+        quote_id: contract.quote_id,
+        tipo: "equipaje", // ✅ Coincide con ENUM
+        descripcion: "Equipaje adicional",
+        detalle: `${calc.equipaje.tipo || 'Equipaje adicional'} para ${calc.num_personas} personas`,
+        precio_total: equipajeCosto,
+        cantidad: calc.num_personas,
+        precio_unitario: equipajeCosto / calc.num_personas,
+        status: "pendiente_compra",
+        fecha_vencimiento_pago: new Date(Date.now() + (5 * 24 * 60 * 60 * 1000)), // 5 días
+        observaciones: JSON.stringify(calc.equipaje)
+      });
+    }
+  }
+
+  // ✅ EXCURSIONES - Array JSONB
+  if (calc.excursiones && Array.isArray(calc.excursiones)) {
+    calc.excursiones.forEach((excursion, index) => {
+      const excursionCosto = parseFloat(excursion.costo || 0);
+      if (excursionCosto > 0) {
+        items.push({
+          contract_id: contract.id,
+          quote_id: contract.quote_id,
+          tipo: "excursiones", // ✅ Coincide con ENUM
+          descripcion: excursion.nombre || `Excursión ${index + 1}`,
+          detalle: excursion.descripcion || `Excursión incluida en el paquete`,
+          precio_total: excursionCosto,
+          cantidad: 1,
+          precio_unitario: excursionCosto,
+          status: "pendiente_compra",
+          fecha_vencimiento_pago: new Date(Date.now() + (10 * 24 * 60 * 60 * 1000)), // 10 días
+          observaciones: JSON.stringify(excursion)
+        });
+      }
+    });
+  }
+
+  // ✅ EXTRAS - Array JSONB
+  if (calc.extras && Array.isArray(calc.extras)) {
+    calc.extras.forEach((extra, index) => {
+      const extraCosto = parseFloat(extra.costo || 0);
+      if (extraCosto > 0) {
+        items.push({
+          contract_id: contract.id,
+          quote_id: contract.quote_id,
+          tipo: "extras", // ✅ Coincide con ENUM
+          descripcion: extra.nombre || `Extra ${index + 1}`,
+          detalle: extra.descripcion || `Servicio extra incluido`,
+          precio_total: extraCosto,
+          cantidad: 1,
+          precio_unitario: extraCosto,
+          status: "pendiente_compra",
+          fecha_vencimiento_pago: new Date(Date.now() + (15 * 24 * 60 * 60 * 1000)), // 15 días
+          observaciones: JSON.stringify(extra)
+        });
+      }
+    });
+  }
+
+  // ✅ COMISIONES - NO requieren compra
+  const totalComisiones = parseFloat(calc.total_comisiones || 0);
+  if (totalComisiones > 0) {
+    items.push({
+      contract_id: contract.id,
+      quote_id: contract.quote_id,
+      tipo: "comisiones", // ✅ Coincide con ENUM
+      descripcion: "Comisiones de ventas",
+      detalle: `Comisiones para el equipo de ventas`,
+      precio_total: totalComisiones,
+      cantidad: 1,
+      precio_unitario: totalComisiones,
+      status: "no_requiere", // ✅ Usar status correcto para items informativos
+      // ❌ No fecha_vencimiento_pago para items que no requieren compra
+      observaciones: JSON.stringify(calc.comisiones || {})
+    });
+  }
+
+  // ✅ GANANCIA EMPRESA - NO requiere compra
+  const totalGanancia = parseFloat(calc.total_ganancia || 0);
+  if (totalGanancia > 0) {
+    items.push({
+      contract_id: contract.id,
+      quote_id: contract.quote_id,
+      tipo: "ganancia_empresa", // ✅ Coincide con ENUM
+      descripcion: "Ganancia Empresa",
+      detalle: "Margen de ganancia para la empresa",
+      precio_total: totalGanancia,
+      cantidad: 1,
+      precio_unitario: totalGanancia,
+      status: "no_requiere", // ✅ Usar status correcto
+      observaciones: JSON.stringify(calc.ganancia || {})
+    });
+  }
+
+  // ✅ CREAR items en batch
+  console.log(`📦 Creando ${items.length} items para contrato ${contract.contract_number}`);
+  
+  const createdItems = await ContractItem.bulkCreate(items, {
+    returning: true,
+  });
+
+  return {
+    success: true,
+    message: `${createdItems.length} items creados automáticamente`,
+    items: createdItems,
+    summary: {
+      total: createdItems.length,
+      requieren_compra: createdItems.filter((item) => item.status === 'pendiente_compra').length,
+      no_requieren_compra: createdItems.filter((item) => item.status === 'no_requiere').length,
+      tipos_generados: [...new Set(createdItems.map(item => item.tipo))]
+    },
+  };
+};
+
 const contractController = {
   // Crear nuevo contrato basado en cotización aprobada
   createContract: async (req, res) => {
@@ -1145,6 +1376,10 @@ const contractController = {
     }
   },
 
+  // ✅ NUEVA FUNCIÓN AUXILIAR - Agregar al contractController antes de signContract
+
+
+
   // Firmar contrato
   signContract: async (req, res) => {
     try {
@@ -1177,7 +1412,18 @@ const contractController = {
             include: [
               { model: User, as: "Cliente" },
               { model: Passenger, as: "Passengers" },
-              // ✅ INCLUIR: Información del equipo de ventas para PDF
+
+              {
+              model: QuoteCalculation,
+              as: "Calculation",
+              attributes: [
+                "id", "user_id", "quote_id", "num_personas",
+                "tiquetes", "hotel", "traslados", "alimentacion", "equipaje", 
+                "seguros", "excursiones", "extras", "comisiones", "ganancia",
+                "costo_base", "total_comisiones", "total_ganancia", "precio_final_total"
+              ],
+              required: false,
+            },
               {
                 model: User,
                 as: "Asesor",
@@ -1235,6 +1481,40 @@ const contractController = {
         signature_data: JSON.stringify(signatureData),
       });
 
+      let itemsConvertidos = null;
+    let conversionError = null;
+
+    try {
+      console.log('🔄 Iniciando conversión automática de cotización a items...');
+      
+      // Verificar que tenga cálculo de cotización
+      if (contract.Quote?.Calculation) {
+        // Verificar que no tenga items ya generados
+        const existingItems = await ContractItem.findAll({
+          where: { contract_id: id },
+          limit: 1
+        });
+
+        if (existingItems.length === 0) {
+          console.log('✅ Condiciones cumplidas, convirtiendo items...');
+          
+          // Llamar a la función de conversión (reutilizar código existente)
+          const conversionResult = await convertQuoteToItems(contract);
+          itemsConvertidos = conversionResult;
+          
+          console.log(`✅ Conversión automática completada: ${conversionResult.items.length} items creados`);
+        } else {
+          console.log('⚠️ Ya existen items para este contrato, saltando conversión');
+        }
+      } else {
+        console.log('⚠️ No hay cálculo de cotización para convertir');
+      }
+    } catch (conversionErr) {
+      console.error('❌ Error en conversión automática:', conversionErr);
+      conversionError = conversionErr.message;
+      // No fallar el proceso de firma por este error
+    }
+
       // ✅ REGENERAR PDF con firma
       try {
         console.log("📄 Regenerando PDF con firma...");
@@ -1285,6 +1565,14 @@ const contractController = {
           signed_at: signed_at,
           signer_name: signer_info.nombre,
         },
+        automatic_conversion: {
+        attempted: !!contract.Quote?.Calculation,
+        success: !!itemsConvertidos,
+        items_created: itemsConvertidos?.items?.length || 0,
+        error: conversionError,
+        summary: itemsConvertidos?.summary
+      }
+   
       });
     } catch (error) {
       console.error("Error signing contract:", error);

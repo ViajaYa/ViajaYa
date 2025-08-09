@@ -15,9 +15,7 @@ import {
   convertQuoteToContractItems,
   
   // Selectors
-  
   selectPurchaseItems,
-  
   selectPurchaseLoading,
   selectPurchaseError,
   selectUploadingReceipt,
@@ -35,9 +33,10 @@ import {
   faShoppingCart, faPlane, faHotel, faCar, faUtensils,
   faSuitcase, faShieldAlt, faMapMarkedAlt, faGift,
   faExclamationTriangle, faCheckCircle, faTimesCircle,
-  faUpload,faCalendarAlt, faMoneyBillWave,
+  faUpload, faCalendarAlt, faMoneyBillWave,
   faClock, faSort, faFilter, faSpinner, faDownload,
-  faBell, faPercent, faChartLine, faWarning, faCoins
+  faBell, faPercent, faChartLine, faWarning, faCoins,
+  faHeartbeat
 } from '@fortawesome/free-solid-svg-icons';
 
 const ContractPurchaseManager = () => {
@@ -45,9 +44,7 @@ const ContractPurchaseManager = () => {
   const dispatch = useDispatch();
   
   // Redux selectors
-  //const purchaseManagement = useSelector(selectPurchaseManagement);
   const items = useSelector(selectPurchaseItems);
-  //const stats = useSelector(selectPurchaseStats);
   const loading = useSelector(selectPurchaseLoading);
   const error = useSelector(selectPurchaseError);
   const uploadingReceipt = useSelector(selectUploadingReceipt);
@@ -67,7 +64,7 @@ const ContractPurchaseManager = () => {
   const [showDeadlineModal, setShowDeadlineModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
 
-  // ✅ CONFIGURACIÓN DE TIPOS DE ITEMS
+  // ✅ CONFIGURACIÓN DE TIPOS DE ITEMS - AJUSTADO AL MODELO REAL
   const itemConfig = React.useMemo(() => ({
     tickets: {
       icon: faPlane,
@@ -77,7 +74,7 @@ const ContractPurchaseManager = () => {
       name: 'Tickets Aéreos',
       priority: 1
     },
-    hotel: {
+    alojamiento: { // ✅ CORREGIDO: "hotel" -> "alojamiento"
       icon: faHotel,
       color: '#2563eb',
       bgColor: 'bg-blue-50',
@@ -109,21 +106,30 @@ const ContractPurchaseManager = () => {
       name: 'Equipaje',
       priority: 5
     },
-    seguro_asistencia: {
+    seguro: { // ✅ CORREGIDO: "seguro_asistencia" -> "seguro" (singular)
       icon: faShieldAlt,
       color: '#10b981',
       bgColor: 'bg-green-50',
       borderColor: 'border-green-200',
-      name: 'Seguro Asistencia',
+      name: 'Seguro',
       priority: 2
     },
-    seguro_cancelacion: {
-      icon: faShieldAlt,
-      color: '#f59e0b',
-      bgColor: 'bg-yellow-50',
-      borderColor: 'border-yellow-200',
-      name: 'Seguro Cancelación',
-      priority: 3
+    // ✅ AGREGADO: Tipos que están en el modelo
+    asistencia_medica: {
+      icon: faHeartbeat,
+      color: '#ef4444',
+      bgColor: 'bg-red-50',
+      borderColor: 'border-red-200',
+      name: 'Asistencia Médica',
+      priority: 2
+    },
+    'contacto de urgencia': {
+      icon: faBell,
+      color: '#f97316',
+      bgColor: 'bg-orange-50',
+      borderColor: 'border-orange-200',
+      name: 'Contacto Urgencia',
+      priority: 8
     },
     excursiones: {
       icon: faMapMarkedAlt,
@@ -159,15 +165,17 @@ const ContractPurchaseManager = () => {
     }
   }), []);
 
-  // ✅ FUNCIÓN PARA DETERMINAR COLOR DE ALERTA
+  // ✅ FUNCIÓN PARA DETERMINAR COLOR DE ALERTA - AJUSTADA AL MODELO
   const getAlertStatus = useCallback((item) => {
-    if (!item.requiere_compra) return 'no-required';
+    // ✅ CORREGIDO: El modelo no tiene "requiere_compra", usar "status" para determinar si requiere compra
+    if (item.status === 'no_requiere') return 'no-required';
     if (item.status === 'comprado_pagado') return 'completed';
     if (item.status === 'vencido') return 'expired';
     
-    if (item.fecha_limite_compra) {
+    // ✅ CORREGIDO: Usar "fecha_vencimiento_pago" en lugar de "fecha_limite_compra"
+    if (item.fecha_vencimiento_pago) {
       const now = new Date();
-      const deadline = new Date(item.fecha_limite_compra);
+      const deadline = new Date(item.fecha_vencimiento_pago);
       const diffHours = (deadline - now) / (1000 * 60 * 60);
       
       if (diffHours < 0) return 'expired';
@@ -246,7 +254,7 @@ const ContractPurchaseManager = () => {
     }
   }, [error]);
 
-  // ✅ FILTRAR Y ORDENAR ITEMS
+  // ✅ FILTRAR Y ORDENAR ITEMS - AJUSTADO AL MODELO
   const filteredAndSortedItems = React.useMemo(() => {
     let filtered = [...items];
 
@@ -268,7 +276,6 @@ const ContractPurchaseManager = () => {
         filtered = filtered.filter(item => getAlertStatus(item) === 'expired');
         break;
       default:
-        // 'all' - no filtrar
         break;
     }
 
@@ -282,10 +289,11 @@ const ContractPurchaseManager = () => {
         }
         
         case 'date': {
-          if (!a.fecha_limite_compra && !b.fecha_limite_compra) return 0;
-          if (!a.fecha_limite_compra) return 1;
-          if (!b.fecha_limite_compra) return -1;
-          return new Date(a.fecha_limite_compra) - new Date(b.fecha_limite_compra);
+          // ✅ CORREGIDO: Usar "fecha_vencimiento_pago"
+          if (!a.fecha_vencimiento_pago && !b.fecha_vencimiento_pago) return 0;
+          if (!a.fecha_vencimiento_pago) return 1;
+          if (!b.fecha_vencimiento_pago) return -1;
+          return new Date(a.fecha_vencimiento_pago) - new Date(b.fecha_vencimiento_pago);
         }
         
         case 'price': {
@@ -298,9 +306,10 @@ const ContractPurchaseManager = () => {
             'pendiente_compra': 1,
             'comprado_pendiente': 2,
             'comprado_pagado': 3,
-            'no_requiere': 4
+            'no_requiere': 4,
+            'cancelado': 5 // ✅ AGREGADO estado que faltaba
           };
-          return (statusOrder[a.status] || 5) - (statusOrder[b.status] || 5);
+          return (statusOrder[a.status] || 6) - (statusOrder[b.status] || 6);
         }
         
         default: {
@@ -312,9 +321,10 @@ const ContractPurchaseManager = () => {
     return filtered;
   }, [items, filter, sortBy, getAlertStatus, itemConfig]);
 
-  // ✅ CALCULAR ESTADÍSTICAS DETALLADAS
+  // ✅ CALCULAR ESTADÍSTICAS DETALLADAS - AJUSTADO AL MODELO
   const calculatedStats = React.useMemo(() => {
-    const itemsWithPurchase = items.filter(item => item.requiere_compra !== false);
+    // ✅ CORREGIDO: Filtrar por status en lugar de "requiere_compra"
+    const itemsWithPurchase = items.filter(item => item.status !== 'no_requiere');
     
     const totals = itemsWithPurchase.reduce((acc, item) => {
       acc.total++;
@@ -383,12 +393,12 @@ const ContractPurchaseManager = () => {
     }
   };
 
-  // ✅ MANEJAR ACTUALIZACIÓN DE FECHA LÍMITE
-  const handleUpdateDeadline = async (fecha_limite_compra) => {
+  // ✅ MANEJAR ACTUALIZACIÓN DE FECHA LÍMITE - CORREGIDO NOMBRE DEL CAMPO
+  const handleUpdateDeadline = async (fecha_vencimiento_pago) => {
     try {
       await dispatch(updateItemDeadline({
         itemId: selectedItem.id,
-        fecha_limite_compra
+        fecha_vencimiento_pago // ✅ CORREGIDO nombre del campo
       })).unwrap();
       
       toast.success('Fecha límite actualizada');

@@ -270,13 +270,7 @@ const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
   </RoleRoute>
 } />
 
-<Route path="/contracts/:contractId/purchases" element={
-  <RoleRoute allowedRoles={[USER_ROLES.OWNER]}>
-    <Suspense fallback={<LoadingSpinner />}>
-      <ContractPurchaseManager />
-    </Suspense>
-  </RoleRoute>
-} />
+
 
 <Route path="/contract-payments" element={
   <RoleRoute allowedRoles={[USER_ROLES.OWNER]}>

@@ -1,4 +1,4 @@
-import  { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { formatDistanceToNow, format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -11,7 +11,7 @@ const ContractPaymentDetail = ({
   onPaymentUpload, 
   onPaymentRegister 
 }) => {
-  const [activeTab, setActiveTab] = useState('overview'); // overview, payments, schedule
+  const [activeTab, setActiveTab] = useState('overview');
 
   // ✅ CALCULAR INFORMACIÓN FINANCIERA DETALLADA
   const financialDetails = useMemo(() => {
@@ -34,7 +34,6 @@ const ContractPaymentDetail = ({
     const schedule = [];
     const today = new Date();
 
-    // Cuota inicial si existe
     if (contract.tiene_cuota_inicial) {
       schedule.push({
         id: 'initial',
@@ -50,7 +49,6 @@ const ContractPaymentDetail = ({
       });
     }
 
-    // Cuotas restantes
     if (contract.fechas_vencimiento_cuotas && contract.fechas_vencimiento_cuotas.length > 0) {
       contract.fechas_vencimiento_cuotas.forEach((fecha, index) => {
         const dueDate = new Date(fecha);
@@ -72,7 +70,6 @@ const ContractPaymentDetail = ({
       });
     }
 
-    // Si es pago de contado
     if (contract.forma_pago === 'contado' && !financialDetails.completamentePagado) {
       schedule.push({
         id: 'contado',
@@ -90,7 +87,6 @@ const ContractPaymentDetail = ({
     return schedule.sort((a, b) => a.dueDate - b.dueDate);
   }, [contract, financialDetails]);
 
-  // ✅ ESTADÍSTICAS DEL CRONOGRAMA
   const scheduleStats = useMemo(() => {
     const stats = {
       total: paymentSchedule.length,
@@ -110,7 +106,6 @@ const ContractPaymentDetail = ({
       }
     });
 
-    // Próximo pago
     const nextUnpaid = paymentSchedule.find(item => !item.isPaid);
     if (nextUnpaid) {
       stats.nextPayment = nextUnpaid;
@@ -119,7 +114,6 @@ const ContractPaymentDetail = ({
     return stats;
   }, [paymentSchedule]);
 
-  // ✅ PAGOS VERIFICADOS Y PENDIENTES
   const paymentsStats = useMemo(() => {
     if (!payments) return { verified: [], pending: [], rejected: [] };
 
@@ -139,321 +133,396 @@ const ContractPaymentDetail = ({
     }
   };
 
-  const getStatusClass = (status) => {
+  const getStatusBadgeClasses = (status) => {
+    const baseClasses = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium";
     switch (status) {
-      case 'verified': return 'success';
-      case 'pending': return 'warning';
-      case 'rejected': return 'danger';
-      default: return 'default';
+      case 'verified': return `${baseClasses} bg-green-100 text-green-800`;
+      case 'pending': return `${baseClasses} bg-yellow-100 text-yellow-800`;
+      case 'rejected': return `${baseClasses} bg-red-100 text-red-800`;
+      default: return `${baseClasses} bg-gray-100 text-gray-800`;
     }
   };
 
-  const getScheduleItemClass = (item) => {
-    if (item.isPaid) return 'paid';
-    if (item.isOverdue) return 'overdue';
-    if (item.daysUntilDue <= 3) return 'urgent';
-    if (item.daysUntilDue <= 7) return 'warning';
-    return 'pending';
+  const getScheduleItemClasses = (item) => {
+    const baseClasses = "bg-white border-l-4 border rounded-lg p-4 shadow-sm";
+    if (item.isPaid) return `${baseClasses} border-l-green-500 bg-green-50`;
+    if (item.isOverdue) return `${baseClasses} border-l-red-500 bg-red-50`;
+    if (item.daysUntilDue <= 3) return `${baseClasses} border-l-orange-500 bg-orange-50`;
+    if (item.daysUntilDue <= 7) return `${baseClasses} border-l-yellow-500 bg-yellow-50`;
+    return `${baseClasses} border-l-blue-500`;
   };
 
   if (loading) {
     return (
-      <div className="contract-detail-loading">
-        <div className="spinner"></div>
-        <p>Cargando detalles del contrato...</p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Cargando detalles del contrato...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="contract-payment-detail">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="detail-header">
-        <button className="back-btn" onClick={onBack}>
-          ← Volver a la lista
-        </button>
-        <div className="contract-info">
-          <h1>{contract.contract_number}</h1>
-          <p>{contract.Quote?.nombre_cliente} - {contract.Quote?.destino}</p>
+      <div className="bg-white border-b border-gray-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <button 
+                onClick={onBack}
+                className="flex items-center px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors duration-200"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                Volver a la lista
+              </button>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">{contract.contract_number}</h1>
+                <p className="text-gray-600">{contract.Quote?.nombre_cliente} - {contract.Quote?.destino}</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => onPaymentUpload(contract)}
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+            >
+              💰 Registrar Pago
+            </button>
+          </div>
         </div>
-        <button 
-          className="primary-btn"
-          onClick={() => onPaymentUpload(contract)}
-        >
-          💰 Registrar Pago
-        </button>
       </div>
 
       {/* Resumen financiero */}
-      <div className="financial-summary">
-        <div className="summary-card">
-          <h3>Resumen Financiero</h3>
-          <div className="financial-grid">
-            <div className="financial-item">
-              <span className="label">Precio Total:</span>
-              <span className="value total">${financialDetails.precioTotal.toLocaleString()}</span>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          {/* Card principal de resumen financiero */}
+          <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Resumen Financiero</h3>
+            
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="text-center p-3 bg-gray-50 rounded-lg">
+                <div className="text-sm text-gray-600">Precio Total</div>
+                <div className="text-xl font-bold text-gray-900">${financialDetails.precioTotal.toLocaleString()}</div>
+              </div>
+              <div className="text-center p-3 bg-green-50 rounded-lg">
+                <div className="text-sm text-green-600">Total Pagado</div>
+                <div className="text-xl font-bold text-green-700">${financialDetails.totalPagado.toLocaleString()}</div>
+              </div>
+              <div className="text-center p-3 bg-red-50 rounded-lg">
+                <div className="text-sm text-red-600">Saldo Pendiente</div>
+                <div className="text-xl font-bold text-red-700">${financialDetails.saldoPendiente.toLocaleString()}</div>
+              </div>
+              <div className="text-center p-3 bg-blue-50 rounded-lg">
+                <div className="text-sm text-blue-600">Progreso</div>
+                <div className="text-xl font-bold text-blue-700">{financialDetails.porcentajePagado.toFixed(1)}%</div>
+              </div>
             </div>
-            <div className="financial-item">
-              <span className="label">Total Pagado:</span>
-              <span className="value paid">${financialDetails.totalPagado.toLocaleString()}</span>
-            </div>
-            <div className="financial-item">
-              <span className="label">Saldo Pendiente:</span>
-              <span className="value pending">${financialDetails.saldoPendiente.toLocaleString()}</span>
-            </div>
-            <div className="financial-item">
-              <span className="label">Progreso:</span>
-              <span className="value progress">{financialDetails.porcentajePagado.toFixed(1)}%</span>
-            </div>
-          </div>
-          
-          <div className="progress-bar-container">
-            <div className="progress-bar">
+            
+            {/* Barra de progreso */}
+            <div className="w-full bg-gray-200 rounded-full h-3">
               <div 
-                className="progress-fill"
+                className="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full transition-all duration-300 ease-in-out"
                 style={{ width: `${financialDetails.porcentajePagado}%` }}
               ></div>
             </div>
-          </div>
-        </div>
-
-        {/* Próximo pago */}
-        {scheduleStats.nextPayment && (
-          <div className="next-payment-card">
-            <h4>Próximo Pago</h4>
-            <div className="next-payment-info">
-              <span className="payment-description">{scheduleStats.nextPayment.description}</span>
-              <span className="payment-amount">${scheduleStats.nextPayment.amount.toLocaleString()}</span>
-              <span className={`payment-due ${scheduleStats.nextPayment.isOverdue ? 'overdue' : ''}`}>
-                {scheduleStats.nextPayment.isOverdue 
-                  ? `Vencido hace ${Math.abs(scheduleStats.nextPayment.daysUntilDue)} días`
-                  : `Vence en ${scheduleStats.nextPayment.daysUntilDue} días`
-                }
-              </span>
+            <div className="text-center mt-2 text-sm text-gray-600">
+              {financialDetails.porcentajePagado.toFixed(1)}% completado
             </div>
           </div>
-        )}
-      </div>
 
-      {/* Tabs de navegación */}
-      <div className="detail-tabs">
-        <button 
-          className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
-          onClick={() => setActiveTab('overview')}
-        >
-          📊 Resumen
-        </button>
-        <button 
-          className={`tab-btn ${activeTab === 'schedule' ? 'active' : ''}`}
-          onClick={() => setActiveTab('schedule')}
-        >
-          📅 Cronograma ({scheduleStats.total})
-        </button>
-        <button 
-          className={`tab-btn ${activeTab === 'payments' ? 'active' : ''}`}
-          onClick={() => setActiveTab('payments')}
-        >
-          💳 Pagos Registrados ({payments?.length || 0})
-        </button>
-      </div>
-
-      {/* Contenido de las tabs */}
-      <div className="tab-content">
-        {activeTab === 'overview' && (
-          <div className="overview-content">
-            {/* Estadísticas rápidas */}
-            <div className="stats-grid">
-              <div className="stat-card">
-                <span className="stat-icon">✅</span>
-                <div className="stat-info">
-                  <span className="stat-number">{scheduleStats.paid}</span>
-                  <span className="stat-label">Pagos Completados</span>
-                </div>
-              </div>
-              <div className="stat-card overdue">
-                <span className="stat-icon">🚨</span>
-                <div className="stat-info">
-                  <span className="stat-number">{scheduleStats.overdue}</span>
-                  <span className="stat-label">Pagos Vencidos</span>
-                </div>
-              </div>
-              <div className="stat-card warning">
-                <span className="stat-icon">⚠️</span>
-                <div className="stat-info">
-                  <span className="stat-number">{scheduleStats.upcoming}</span>
-                  <span className="stat-label">Próximos 7 días</span>
-                </div>
-              </div>
-              <div className="stat-card">
-                <span className="stat-icon">📄</span>
-                <div className="stat-info">
-                  <span className="stat-number">{paymentsStats.pending.length}</span>
-                  <span className="stat-label">Pagos Pendientes</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Información del contrato */}
-            <div className="contract-details">
-              <h4>Detalles del Contrato</h4>
-              <div className="details-grid">
-                <div className="detail-item">
-                  <span className="label">Tipo de Pago:</span>
-                  <span className="value">
-                    {contract.forma_pago === 'cuotas' ? (
-                      <>📅 {contract.numero_cuotas_restantes} cuotas</>
-                    ) : (
-                      <>💳 Pago de contado</>
-                    )}
+          {/* Card de próximo pago */}
+          {scheduleStats.nextPayment && (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h4 className="text-lg font-semibold text-gray-900 mb-4">Próximo Pago</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">{scheduleStats.nextPayment.description}</span>
+                  <span className="font-semibold text-gray-900">
+                    ${scheduleStats.nextPayment.amount.toLocaleString()}
                   </span>
                 </div>
-                <div className="detail-item">
-                  <span className="label">Fecha de Inicio:</span>
-                  <span className="value">{format(new Date(contract.fecha_inicio_viaje), 'dd/MM/yyyy')}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="label">Fecha de Fin:</span>
-                  <span className="value">{format(new Date(contract.fecha_fin_viaje), 'dd/MM/yyyy')}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="label">Pasajeros:</span>
-                  <span className="value">👥 {contract.numero_pasajeros} personas</span>
+                <div className={`text-sm p-2 rounded-md ${
+                  scheduleStats.nextPayment.isOverdue 
+                    ? 'bg-red-100 text-red-800' 
+                    : 'bg-yellow-100 text-yellow-800'
+                }`}>
+                  {scheduleStats.nextPayment.isOverdue 
+                    ? `⚠️ Vencido hace ${Math.abs(scheduleStats.nextPayment.daysUntilDue)} días`
+                    : `⏰ Vence en ${scheduleStats.nextPayment.daysUntilDue} días`
+                  }
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {activeTab === 'schedule' && (
-          <div className="schedule-content">
-            <div className="schedule-header">
-              <h4>Cronograma de Pagos</h4>
-              <p>Gestiona el calendario de pagos del contrato</p>
-            </div>
-            
-            <div className="schedule-list">
-              {paymentSchedule.map(item => (
-                <div key={item.id} className={`schedule-item ${getScheduleItemClass(item)}`}>
-                  <div className="schedule-icon">
-                    {item.isPaid ? '✅' : item.isOverdue ? '🚨' : '⏳'}
-                  </div>
-                  
-                  <div className="schedule-info">
-                    <div className="schedule-title">
-                      <span className="description">{item.description}</span>
-                      <span className="amount">${item.amount.toLocaleString()}</span>
+        {/* Tabs de navegación */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8 px-6">
+              <button 
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
+                  activeTab === 'overview' 
+                    ? 'border-blue-500 text-blue-600' 
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+                onClick={() => setActiveTab('overview')}
+              >
+                📊 Resumen
+              </button>
+              <button 
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
+                  activeTab === 'schedule' 
+                    ? 'border-blue-500 text-blue-600' 
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+                onClick={() => setActiveTab('schedule')}
+              >
+                📅 Cronograma ({scheduleStats.total})
+              </button>
+              <button 
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
+                  activeTab === 'payments' 
+                    ? 'border-blue-500 text-blue-600' 
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+                onClick={() => setActiveTab('payments')}
+              >
+                💳 Pagos Registrados ({payments?.length || 0})
+              </button>
+            </nav>
+          </div>
+
+          {/* Contenido de las tabs */}
+          <div className="p-6">
+            {activeTab === 'overview' && (
+              <div className="space-y-6">
+                {/* Estadísticas rápidas */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                    <div className="flex items-center">
+                      <span className="text-2xl mr-2">✅</span>
+                      <div>
+                        <div className="text-2xl font-bold text-green-600">{scheduleStats.paid}</div>
+                        <div className="text-sm text-green-800">Pagos Completados</div>
+                      </div>
                     </div>
-                    
-                    <div className="schedule-dates">
-                      <span className="due-date">
-                        Vence: {format(item.dueDate, 'dd/MM/yyyy')}
-                      </span>
-                      {item.isPaid && item.paidDate && (
-                        <span className="paid-date">
-                          Pagado: {format(item.paidDate, 'dd/MM/yyyy')}
-                        </span>
-                      )}
+                  </div>
+                  <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+                    <div className="flex items-center">
+                      <span className="text-2xl mr-2">🚨</span>
+                      <div>
+                        <div className="text-2xl font-bold text-red-600">{scheduleStats.overdue}</div>
+                        <div className="text-sm text-red-800">Pagos Vencidos</div>
+                      </div>
                     </div>
                   </div>
-                  
-                  <div className="schedule-status">
-                    {item.isPaid ? (
-                      <span className="status-badge paid">Pagado</span>
-                    ) : item.isOverdue ? (
-                      <span className="status-badge overdue">
-                        Vencido ({Math.abs(item.daysUntilDue)} días)
-                      </span>
-                    ) : (
-                      <span className={`status-badge ${item.daysUntilDue <= 7 ? 'warning' : 'pending'}`}>
-                        {item.daysUntilDue > 0 
-                          ? `${item.daysUntilDue} días`
-                          : 'Vence hoy'
-                        }
-                      </span>
-                    )}
+                  <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                    <div className="flex items-center">
+                      <span className="text-2xl mr-2">⚠️</span>
+                      <div>
+                        <div className="text-2xl font-bold text-yellow-600">{scheduleStats.upcoming}</div>
+                        <div className="text-sm text-yellow-800">Próximos 7 días</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <div className="flex items-center">
+                      <span className="text-2xl mr-2">📄</span>
+                      <div>
+                        <div className="text-2xl font-bold text-blue-600">{paymentsStats.pending.length}</div>
+                        <div className="text-sm text-blue-800">Pagos Pendientes</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
 
-        {activeTab === 'payments' && (
-          <div className="payments-content">
-            <div className="payments-header">
-              <h4>Historial de Pagos</h4>
-              <div className="payments-summary">
-                <span className="summary-item success">✅ {paymentsStats.verified.length} Verificados</span>
-                <span className="summary-item warning">⏳ {paymentsStats.pending.length} Pendientes</span>
-                <span className="summary-item danger">❌ {paymentsStats.rejected.length} Rechazados</span>
-              </div>
-            </div>
-            
-            {payments && payments.length > 0 ? (
-              <div className="payments-list">
-                {payments.map(payment => (
-                  <div key={payment.id} className={`payment-item ${getStatusClass(payment.status)}`}>
-                    <div className="payment-icon">
-                      {getStatusIcon(payment.status)}
+                {/* Información del contrato */}
+                <div className="bg-gray-50 p-6 rounded-lg">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4">Detalles del Contrato</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Tipo de Pago:</span>
+                      <span className="font-medium text-gray-900">
+                        {contract.forma_pago === 'cuotas' ? (
+                          <>📅 {contract.numero_cuotas_restantes} cuotas</>
+                        ) : (
+                          <>💳 Pago de contado</>
+                        )}
+                      </span>
                     </div>
-                    
-                    <div className="payment-info">
-                      <div className="payment-header">
-                        <span className="payment-amount">${parseFloat(payment.monto).toLocaleString()}</span>
-                        <span className="payment-type">{payment.tipo_pago}</span>
-                        <span className={`payment-status ${getStatusClass(payment.status)}`}>
-                          {payment.status === 'verified' ? 'Verificado' :
-                           payment.status === 'pending' ? 'Pendiente' : 'Rechazado'}
-                        </span>
-                      </div>
-                      
-                      <div className="payment-details">
-                        <span className="payment-date">
-                          {format(new Date(payment.fecha_pago), 'dd/MM/yyyy HH:mm')}
-                        </span>
-                        {payment.referencia_pago && (
-                          <span className="payment-reference">Ref: {payment.referencia_pago}</span>
-                        )}
-                        {payment.pagador_nombre && (
-                          <span className="payment-payer">Por: {payment.pagador_nombre}</span>
-                        )}
-                      </div>
-                      
-                      {payment.observaciones && (
-                        <div className="payment-notes">
-                          <span className="notes-label">Observaciones:</span>
-                          <span className="notes-text">{payment.observaciones}</span>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Fecha de Inicio:</span>
+                      <span className="font-medium text-gray-900">
+                        {format(new Date(contract.fecha_inicio_viaje), 'dd/MM/yyyy')}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Fecha de Fin:</span>
+                      <span className="font-medium text-gray-900">
+                        {format(new Date(contract.fecha_fin_viaje), 'dd/MM/yyyy')}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Pasajeros:</span>
+                      <span className="font-medium text-gray-900">👥 {contract.numero_pasajeros} personas</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'schedule' && (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h4 className="text-lg font-semibold text-gray-900">Cronograma de Pagos</h4>
+                  <p className="text-gray-600">Gestiona el calendario de pagos del contrato</p>
+                </div>
+                
+                <div className="space-y-4">
+                  {paymentSchedule.map(item => (
+                    <div key={item.id} className={getScheduleItemClasses(item)}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <div className="text-2xl">
+                            {item.isPaid ? '✅' : item.isOverdue ? '🚨' : '⏳'}
+                          </div>
+                          <div>
+                            <div className="flex items-center space-x-3">
+                              <span className="font-medium text-gray-900">{item.description}</span>
+                              <span className="font-bold text-lg text-gray-900">
+                                ${item.amount.toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-4 mt-1 text-sm text-gray-600">
+                              <span>Vence: {format(item.dueDate, 'dd/MM/yyyy')}</span>
+                              {item.isPaid && item.paidDate && (
+                                <span className="text-green-600">
+                                  Pagado: {format(item.paidDate, 'dd/MM/yyyy')}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      )}
+                        
+                        <div>
+                          {item.isPaid ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              Pagado
+                            </span>
+                          ) : item.isOverdue ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                              Vencido ({Math.abs(item.daysUntilDue)} días)
+                            </span>
+                          ) : (
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              item.daysUntilDue <= 7 ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'
+                            }`}>
+                              {item.daysUntilDue > 0 
+                                ? `${item.daysUntilDue} días`
+                                : 'Vence hoy'
+                              }
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    
-                    <div className="payment-actions">
-                      {payment.comprobante_url && (
-                        <button 
-                          className="view-receipt-btn"
-                          onClick={() => window.open(payment.comprobante_url, '_blank')}
-                          title="Ver comprobante"
-                        >
-                          📄
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            ) : (
-              <div className="no-payments">
-                <p>No hay pagos registrados para este contrato</p>
-                <button 
-                  className="primary-btn"
-                  onClick={() => onPaymentUpload(contract)}
-                >
-                  Registrar Primer Pago
-                </button>
+            )}
+
+            {activeTab === 'payments' && (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h4 className="text-lg font-semibold text-gray-900">Historial de Pagos</h4>
+                  <div className="flex space-x-4 text-sm">
+                    <span className="inline-flex items-center text-green-600">
+                      ✅ {paymentsStats.verified.length} Verificados
+                    </span>
+                    <span className="inline-flex items-center text-yellow-600">
+                      ⏳ {paymentsStats.pending.length} Pendientes
+                    </span>
+                    <span className="inline-flex items-center text-red-600">
+                      ❌ {paymentsStats.rejected.length} Rechazados
+                    </span>
+                  </div>
+                </div>
+                
+                {payments && payments.length > 0 ? (
+                  <div className="space-y-4">
+                    {payments.map(payment => (
+                      <div key={payment.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start space-x-3">
+                            <div className="text-2xl">
+                              {getStatusIcon(payment.status)}
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-4 mb-2">
+                                <span className="text-xl font-bold text-gray-900">
+                                  ${parseFloat(payment.monto).toLocaleString()}
+                                </span>
+                                <span className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                                  {payment.tipo_pago}
+                                </span>
+                                <span className={getStatusBadgeClasses(payment.status)}>
+                                  {payment.status === 'verified' ? 'Verificado' :
+                                   payment.status === 'pending' ? 'Pendiente' : 'Rechazado'}
+                                </span>
+                              </div>
+                              
+                              <div className="space-y-1 text-sm text-gray-600">
+                                <div>{format(new Date(payment.fecha_pago), 'dd/MM/yyyy HH:mm')}</div>
+                                {payment.referencia_pago && (
+                                  <div>Ref: {payment.referencia_pago}</div>
+                                )}
+                                {payment.pagador_nombre && (
+                                  <div>Por: {payment.pagador_nombre}</div>
+                                )}
+                              </div>
+                              
+                              {payment.observaciones && (
+                                <div className="mt-2 p-2 bg-gray-50 rounded text-sm">
+                                  <span className="font-medium text-gray-700">Observaciones:</span>
+                                  <div className="text-gray-600">{payment.observaciones}</div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {payment.comprobante_url && (
+                            <button 
+                              onClick={() => window.open(payment.comprobante_url, '_blank')}
+                              className="text-blue-600 hover:text-blue-800 p-2 rounded-md hover:bg-blue-50 transition-colors duration-200"
+                              title="Ver comprobante"
+                            >
+                              📄
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 bg-gray-50 rounded-lg">
+                    <div className="text-4xl mb-4">💳</div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No hay pagos registrados</h3>
+                    <p className="text-gray-600 mb-4">Este contrato aún no tiene pagos registrados</p>
+                    <button 
+                      onClick={() => onPaymentUpload(contract)}
+                      className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                    >
+                      Registrar Primer Pago
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

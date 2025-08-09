@@ -1,4 +1,4 @@
-import  { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import PropTypes from 'prop-types';
 
 const PaymentUploadModal = ({ contract, onClose, onSubmit, loading }) => {
@@ -18,7 +18,6 @@ const PaymentUploadModal = ({ contract, onClose, onSubmit, loading }) => {
   const [previewUrl, setPreviewUrl] = useState(null);
   const [errors, setErrors] = useState({});
 
-  // ✅ MANEJAR CAMBIOS EN FORMULARIO
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -26,19 +25,16 @@ const PaymentUploadModal = ({ contract, onClose, onSubmit, loading }) => {
       [name]: value
     }));
     
-    // Limpiar error del campo
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
 
-  // ✅ MANEJAR SELECCIÓN DE ARCHIVO
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     
     if (!file) return;
     
-    // Validar tipo de archivo
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
     if (!validTypes.includes(file.type)) {
       setErrors(prev => ({ 
@@ -48,7 +44,6 @@ const PaymentUploadModal = ({ contract, onClose, onSubmit, loading }) => {
       return;
     }
     
-    // Validar tamaño (5MB máximo)
     if (file.size > 5 * 1024 * 1024) {
       setErrors(prev => ({ 
         ...prev, 
@@ -60,7 +55,6 @@ const PaymentUploadModal = ({ contract, onClose, onSubmit, loading }) => {
     setSelectedFile(file);
     setErrors(prev => ({ ...prev, file: '' }));
     
-    // Generar preview para imágenes
     if (file.type.startsWith('image/')) {
       const reader = new FileReader();
       reader.onload = (e) => setPreviewUrl(e.target.result);
@@ -70,7 +64,6 @@ const PaymentUploadModal = ({ contract, onClose, onSubmit, loading }) => {
     }
   };
 
-  // ✅ VALIDAR FORMULARIO
   const validateForm = () => {
     const newErrors = {};
     
@@ -103,7 +96,6 @@ const PaymentUploadModal = ({ contract, onClose, onSubmit, loading }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // ✅ MANEJAR ENVÍO
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -116,7 +108,6 @@ const PaymentUploadModal = ({ contract, onClose, onSubmit, loading }) => {
     }
   };
 
-  // ✅ CALCULAR INFORMACIÓN FINANCIERA
   const financialInfo = {
     precioTotal: parseFloat(contract.precio_total || 0),
     totalPagado: parseFloat(contract.total_pagado || 0),
@@ -124,58 +115,76 @@ const PaymentUploadModal = ({ contract, onClose, onSubmit, loading }) => {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="payment-upload-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Registrar Pago - {contract.contract_number}</h2>
-          <button className="close-btn" onClick={onClose}>×</button>
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-900">
+            Registrar Pago - {contract.contract_number}
+          </h2>
+          <button 
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors duration-200"
+          >
+            ×
+          </button>
         </div>
         
         {/* Información del contrato */}
-        <div className="contract-summary">
-          <div className="summary-item">
-            <span className="label">Cliente:</span>
-            <span className="value">{contract.Quote?.nombre_cliente}</span>
-          </div>
-          <div className="summary-item">
-            <span className="label">Total Contrato:</span>
-            <span className="value">${financialInfo.precioTotal.toLocaleString()}</span>
-          </div>
-          <div className="summary-item">
-            <span className="label">Ya Pagado:</span>
-            <span className="value success">${financialInfo.totalPagado.toLocaleString()}</span>
-          </div>
-          <div className="summary-item">
-            <span className="label">Saldo Pendiente:</span>
-            <span className="value pending">${financialInfo.saldoPendiente.toLocaleString()}</span>
+        <div className="p-6 bg-gray-50 border-b border-gray-200">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="text-center">
+              <div className="text-sm text-gray-600">Cliente</div>
+              <div className="font-semibold text-gray-900">{contract.Quote?.nombre_cliente}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-sm text-gray-600">Total Contrato</div>
+              <div className="font-semibold text-gray-900">${financialInfo.precioTotal.toLocaleString()}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-sm text-green-600">Ya Pagado</div>
+              <div className="font-semibold text-green-700">${financialInfo.totalPagado.toLocaleString()}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-sm text-red-600">Saldo Pendiente</div>
+              <div className="font-semibold text-red-700">${financialInfo.saldoPendiente.toLocaleString()}</div>
+            </div>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="payment-form">
+        <form onSubmit={handleSubmit} className="p-6 space-y-8">
           {/* Información básica del pago */}
-          <div className="form-section">
-            <h3>Información del Pago</h3>
+          <div className="space-y-6">
+            <h3 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">
+              Información del Pago
+            </h3>
             
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="tipo_pago">Tipo de Pago *</label>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="tipo_pago" className="block text-sm font-medium text-gray-700 mb-2">
+                  Tipo de Pago *
+                </label>
                 <select
                   id="tipo_pago"
                   name="tipo_pago"
                   value={formData.tipo_pago}
                   onChange={handleInputChange}
-                  className={errors.tipo_pago ? 'error' : ''}
+                  className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    errors.tipo_pago ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500'
+                  }`}
                 >
                   <option value="transferencia">Transferencia Bancaria</option>
                   <option value="efectivo">Efectivo</option>
                   <option value="tarjeta">Tarjeta de Crédito/Débito</option>
                   <option value="cheque">Cheque</option>
                 </select>
-                {errors.tipo_pago && <span className="error-text">{errors.tipo_pago}</span>}
+                {errors.tipo_pago && <p className="mt-1 text-sm text-red-600">{errors.tipo_pago}</p>}
               </div>
               
-              <div className="form-group">
-                <label htmlFor="monto">Monto a Registrar *</label>
+              <div>
+                <label htmlFor="monto" className="block text-sm font-medium text-gray-700 mb-2">
+                  Monto a Registrar *
+                </label>
                 <input
                   type="number"
                   id="monto"
@@ -186,15 +195,19 @@ const PaymentUploadModal = ({ contract, onClose, onSubmit, loading }) => {
                   step="0.01"
                   min="0"
                   max={financialInfo.saldoPendiente}
-                  className={errors.monto ? 'error' : ''}
+                  className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    errors.monto ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500'
+                  }`}
                 />
-                {errors.monto && <span className="error-text">{errors.monto}</span>}
+                {errors.monto && <p className="mt-1 text-sm text-red-600">{errors.monto}</p>}
               </div>
             </div>
             
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="fecha_pago">Fecha del Pago *</label>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="fecha_pago" className="block text-sm font-medium text-gray-700 mb-2">
+                  Fecha del Pago *
+                </label>
                 <input
                   type="date"
                   id="fecha_pago"
@@ -202,13 +215,17 @@ const PaymentUploadModal = ({ contract, onClose, onSubmit, loading }) => {
                   value={formData.fecha_pago}
                   onChange={handleInputChange}
                   max={new Date().toISOString().split('T')[0]}
-                  className={errors.fecha_pago ? 'error' : ''}
+                  className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    errors.fecha_pago ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500'
+                  }`}
                 />
-                {errors.fecha_pago && <span className="error-text">{errors.fecha_pago}</span>}
+                {errors.fecha_pago && <p className="mt-1 text-sm text-red-600">{errors.fecha_pago}</p>}
               </div>
               
-              <div className="form-group">
-                <label htmlFor="referencia_pago">Referencia/Número</label>
+              <div>
+                <label htmlFor="referencia_pago" className="block text-sm font-medium text-gray-700 mb-2">
+                  Referencia/Número
+                </label>
                 <input
                   type="text"
                   id="referencia_pago"
@@ -216,13 +233,16 @@ const PaymentUploadModal = ({ contract, onClose, onSubmit, loading }) => {
                   value={formData.referencia_pago}
                   onChange={handleInputChange}
                   placeholder="Número de transacción, cheque, etc."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
             </div>
             
             {formData.tipo_pago === 'transferencia' && (
-              <div className="form-group">
-                <label htmlFor="banco_origen">Banco de Origen</label>
+              <div>
+                <label htmlFor="banco_origen" className="block text-sm font-medium text-gray-700 mb-2">
+                  Banco de Origen
+                </label>
                 <input
                   type="text"
                   id="banco_origen"
@@ -230,18 +250,23 @@ const PaymentUploadModal = ({ contract, onClose, onSubmit, loading }) => {
                   value={formData.banco_origen}
                   onChange={handleInputChange}
                   placeholder="Nombre del banco"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
             )}
           </div>
 
           {/* Información del pagador */}
-          <div className="form-section">
-            <h3>Información del Pagador</h3>
+          <div className="space-y-6">
+            <h3 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">
+              Información del Pagador
+            </h3>
             
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="pagador_nombre">Nombre Completo *</label>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="pagador_nombre" className="block text-sm font-medium text-gray-700 mb-2">
+                  Nombre Completo *
+                </label>
                 <input
                   type="text"
                   id="pagador_nombre"
@@ -249,13 +274,17 @@ const PaymentUploadModal = ({ contract, onClose, onSubmit, loading }) => {
                   value={formData.pagador_nombre}
                   onChange={handleInputChange}
                   placeholder="Nombre de quien realiza el pago"
-                  className={errors.pagador_nombre ? 'error' : ''}
+                  className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    errors.pagador_nombre ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500'
+                  }`}
                 />
-                {errors.pagador_nombre && <span className="error-text">{errors.pagador_nombre}</span>}
+                {errors.pagador_nombre && <p className="mt-1 text-sm text-red-600">{errors.pagador_nombre}</p>}
               </div>
               
-              <div className="form-group">
-                <label htmlFor="pagador_email">Email</label>
+              <div>
+                <label htmlFor="pagador_email" className="block text-sm font-medium text-gray-700 mb-2">
+                  Email
+                </label>
                 <input
                   type="email"
                   id="pagador_email"
@@ -263,12 +292,15 @@ const PaymentUploadModal = ({ contract, onClose, onSubmit, loading }) => {
                   value={formData.pagador_email}
                   onChange={handleInputChange}
                   placeholder="email@ejemplo.com"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
             </div>
             
-            <div className="form-group">
-              <label htmlFor="pagador_telefono">Teléfono</label>
+            <div>
+              <label htmlFor="pagador_telefono" className="block text-sm font-medium text-gray-700 mb-2">
+                Teléfono
+              </label>
               <input
                 type="tel"
                 id="pagador_telefono"
@@ -276,103 +308,112 @@ const PaymentUploadModal = ({ contract, onClose, onSubmit, loading }) => {
                 value={formData.pagador_telefono}
                 onChange={handleInputChange}
                 placeholder="Número de contacto"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
           </div>
 
           {/* Comprobante */}
-          <div className="form-section">
-            <h3>Comprobante de Pago {formData.tipo_pago === 'transferencia' && '*'}</h3>
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">
+              Comprobante de Pago {formData.tipo_pago === 'transferencia' && <span className="text-red-500">*</span>}
+            </h3>
             
-            <div className="file-upload-area">
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
               <input
                 type="file"
                 ref={fileInputRef}
                 onChange={handleFileSelect}
                 accept="image/*,.pdf"
-                style={{ display: 'none' }}
+                className="hidden"
               />
               
               {!selectedFile ? (
                 <div 
-                  className="upload-placeholder"
+                  className="text-center cursor-pointer hover:bg-gray-50 py-4 rounded-lg transition-colors duration-200"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <span className="upload-icon">📎</span>
-                  <span className="upload-text">
+                  <div className="text-4xl mb-4">📎</div>
+                  <p className="text-gray-600">
                     Haz clic para seleccionar el comprobante
-                    <br />
-                    <small>Formatos: JPG, PNG, WebP, PDF (máx. 5MB)</small>
-                  </span>
+                  </p>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Formatos: JPG, PNG, WebP, PDF (máx. 5MB)
+                  </p>
                 </div>
               ) : (
-                <div className="file-preview">
+                <div className="space-y-4">
                   {previewUrl ? (
-                    <img src={previewUrl} alt="Preview" className="image-preview" />
+                    <img src={previewUrl} alt="Preview" className="max-w-full h-48 object-contain mx-auto rounded" />
                   ) : (
-                    <div className="pdf-preview">
-                      <span className="pdf-icon">📄</span>
-                      <span className="pdf-name">{selectedFile.name}</span>
+                    <div className="text-center py-8">
+                      <div className="text-4xl mb-2">📄</div>
+                      <div className="font-medium text-gray-900">{selectedFile.name}</div>
                     </div>
                   )}
                   
-                  <div className="file-info">
-                    <span className="file-name">{selectedFile.name}</span>
-                    <span className="file-size">
-                      {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                    </span>
-                    <button
-                      type="button"
-                      className="remove-file-btn"
-                      onClick={() => {
-                        setSelectedFile(null);
-                        setPreviewUrl(null);
-                        if (fileInputRef.current) fileInputRef.current.value = '';
-                      }}
-                    >
-                      Eliminar
-                    </button>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium text-gray-900">{selectedFile.name}</div>
+                        <div className="text-sm text-gray-600">
+                          {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedFile(null);
+                          setPreviewUrl(null);
+                          if (fileInputRef.current) fileInputRef.current.value = '';
+                        }}
+                        className="px-3 py-1 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors duration-200"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
               
-              {errors.file && <span className="error-text">{errors.file}</span>}
+              {errors.file && <p className="mt-2 text-sm text-red-600">{errors.file}</p>}
             </div>
           </div>
 
           {/* Observaciones */}
-          <div className="form-section">
-            <div className="form-group">
-              <label htmlFor="observaciones">Observaciones</label>
-              <textarea
-                id="observaciones"
-                name="observaciones"
-                value={formData.observaciones}
-                onChange={handleInputChange}
-                placeholder="Notas adicionales sobre el pago..."
-                rows="3"
-              />
-            </div>
+          <div>
+            <label htmlFor="observaciones" className="block text-sm font-medium text-gray-700 mb-2">
+              Observaciones
+            </label>
+            <textarea
+              id="observaciones"
+              name="observaciones"
+              value={formData.observaciones}
+              onChange={handleInputChange}
+              placeholder="Notas adicionales sobre el pago..."
+              rows="3"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
           </div>
 
           {/* Botones de acción */}
-          <div className="modal-actions">
+          <div className="flex flex-col sm:flex-row gap-3 sm:justify-end pt-6 border-t border-gray-200">
             <button 
               type="button" 
-              className="secondary-btn" 
               onClick={onClose}
               disabled={loading}
+              className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
             >
               Cancelar
             </button>
             <button 
               type="submit" 
-              className="primary-btn" 
               disabled={loading}
+              className="px-6 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 flex items-center justify-center"
             >
               {loading ? (
                 <>
-                  <span className="spinner-small"></span>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                   Registrando...
                 </>
               ) : (
