@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import  { useState } from 'react';
+import PropTypes from 'prop-types';
 import { X, Upload, DollarSign, Calendar, User, FileText, AlertCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -292,6 +293,23 @@ const PayCommissionModal = ({ commission, onClose, onSuccess }) => {
       </div>
     </div>
   );
+};
+
+PayCommissionModal.propTypes = {
+  commission: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    monto_comision: PropTypes.number.isRequired,
+    fecha_generacion: PropTypes.string.isRequired,
+    Vendedor: PropTypes.shape({
+      name: PropTypes.string,
+      lastname: PropTypes.string,
+    }),
+    Contract: PropTypes.shape({
+      contract_number: PropTypes.string,
+    }),
+  }).isRequired,
+  onClose: PropTypes.func.isRequired,
+  onSuccess: PropTypes.func.isRequired,
 };
 
 export default PayCommissionModal;

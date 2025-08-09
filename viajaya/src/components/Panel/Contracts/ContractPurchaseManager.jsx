@@ -11,13 +11,13 @@ import {
   uploadPurchaseReceipt,
   updateItemDeadline,
   markPaymentCompleted,
-  fetchContractPurchaseStats,
+  
   convertQuoteToContractItems,
   
   // Selectors
-  selectPurchaseManagement,
+  
   selectPurchaseItems,
-  selectPurchaseStats,
+  
   selectPurchaseLoading,
   selectPurchaseError,
   selectUploadingReceipt,
@@ -35,7 +35,7 @@ import {
   faShoppingCart, faPlane, faHotel, faCar, faUtensils,
   faSuitcase, faShieldAlt, faMapMarkedAlt, faGift,
   faExclamationTriangle, faCheckCircle, faTimesCircle,
-  faUpload, faEye, faCalendarAlt, faMoneyBillWave,
+  faUpload,faCalendarAlt, faMoneyBillWave,
   faClock, faSort, faFilter, faSpinner, faDownload,
   faBell, faPercent, faChartLine, faWarning, faCoins
 } from '@fortawesome/free-solid-svg-icons';
@@ -45,9 +45,9 @@ const ContractPurchaseManager = () => {
   const dispatch = useDispatch();
   
   // Redux selectors
-  const purchaseManagement = useSelector(selectPurchaseManagement);
+  //const purchaseManagement = useSelector(selectPurchaseManagement);
   const items = useSelector(selectPurchaseItems);
-  const stats = useSelector(selectPurchaseStats);
+  //const stats = useSelector(selectPurchaseStats);
   const loading = useSelector(selectPurchaseLoading);
   const error = useSelector(selectPurchaseError);
   const uploadingReceipt = useSelector(selectUploadingReceipt);
