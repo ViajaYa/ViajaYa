@@ -2,7 +2,7 @@ import axios from 'axios';
 import { store } from '../redux/store/store';
 import { logout } from '../redux/slices/authSlice';
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'; //probando 2
 
 // Crear instancia de axios
 const api = axios.create({
