@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import  { useState, useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -10,7 +10,6 @@ import {
   faRedo,
   faFileContract,
   faFilePdf,
-  faCopy,
   faEye,
   faEdit,
   faFilter,
@@ -1111,9 +1110,7 @@ const QuotesList = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  #
-                </th>
+                
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Cliente
                 </th>
@@ -1127,9 +1124,7 @@ const QuotesList = () => {
                   Valor
                 </th>
                 {/* ✅ Columna para PDF */}
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  PDF
-                </th>
+                
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Estado
                 </th>
@@ -1176,9 +1171,7 @@ const QuotesList = () => {
                           : ""
                       }`}
                     >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {quote.quote_number || quote.id}
-                      </td>
+                      
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
                           {quote.nombre_cliente || "Sin nombre"}
@@ -1211,27 +1204,7 @@ const QuotesList = () => {
                         )}
                       </td>
                       {/* ✅ Columna PDF */}
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {hasGeneratedPDF(quote) ? (
-                          <div className="flex items-center">
-                            <FontAwesomeIcon
-                              icon={faFilePdf}
-                              className="text-red-500 mr-1"
-                            />
-                            <span className="text-xs text-green-600 font-medium">
-                              Generado
-                            </span>
-                          </div>
-                        ) : canGeneratePDF(quote) ? (
-                          <span className="text-xs text-blue-600 font-medium">
-                            Disponible
-                          </span>
-                        ) : (
-                          <span className="text-xs text-gray-400">
-                            Sin precio
-                          </span>
-                        )}
-                      </td>
+                      
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(

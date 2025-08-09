@@ -239,10 +239,10 @@ export const uploadPurchaseReceipt = createAsyncThunk(
 // ✅ NUEVO: Actualizar fecha límite de compra
 export const updateItemDeadline = createAsyncThunk(
   "contract/updateItemDeadline",
-  async ({ itemId, fecha_limite_compra }, { rejectWithValue, getState }) => {
+  async ({ itemId, fecha_vencimiento_pago }, { rejectWithValue, getState }) => { // ✅ CORREGIDO
     try {
       const { auth } = getState();
-      console.log('📅 Updating deadline for item:', itemId, 'to:', fecha_limite_compra);
+      console.log('📅 Updating deadline for item:', itemId, 'to:', fecha_vencimiento_pago); // ✅ CORREGIDO
 
       const response = await fetch(
         getApiUrl(`/contracts/items/${itemId}/deadline`),
@@ -252,7 +252,7 @@ export const updateItemDeadline = createAsyncThunk(
             Authorization: `Bearer ${auth.token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ fecha_limite_compra }),
+          body: JSON.stringify({ fecha_vencimiento_pago }), // ✅ CORREGIDO
         }
       );
 
@@ -268,6 +268,69 @@ export const updateItemDeadline = createAsyncThunk(
       return data;
     } catch (error) {
       console.error('❌ Error updating deadline:', error);
+      return rejectWithValue(error.message || "Error de conexión");
+    }
+  }
+);
+
+// ✅ NUEVO: Thunk mejorado para signContract con conversión automática
+export const signContractWithAutoConversion = createAsyncThunk(
+  "contract/signContractWithAutoConversion",
+  async ({ contractId, signatureData }, { rejectWithValue, getState, dispatch }) => {
+    try {
+      console.log('🖋️ Iniciando firma de contrato con conversión automática:', contractId);
+      
+      const { auth } = getState();
+      
+      // ✅ PASO 1: Firmar el contrato
+      const response = await fetch(getApiUrl(`/contracts/${contractId}/sign`), {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${auth.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(signatureData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return rejectWithValue(data.message || "Error firmando contrato");
+      }
+
+      console.log('✅ Contrato firmado exitosamente:', data);
+
+      // ✅ PASO 2: Verificar si hubo conversión automática
+      const { automatic_conversion } = data;
+      
+      if (automatic_conversion?.attempted) {
+        console.log('🔄 Conversión automática intentada:', automatic_conversion);
+        
+        if (automatic_conversion.success) {
+          console.log('✅ Conversión automática exitosa:', automatic_conversion.items_created, 'items');
+          
+          // ✅ PASO 3: Recargar items con purchases para el estado
+          try {
+            await dispatch(fetchContractItemsWithPurchases(contractId));
+            console.log('✅ Items recargados después de conversión automática');
+          } catch (reloadError) {
+            console.warn('⚠️ Error recargando items tras conversión automática:', reloadError);
+          }
+        } else {
+          console.warn('⚠️ Conversión automática falló:', automatic_conversion.error);
+        }
+      } else {
+        console.log('ℹ️ No se intentó conversión automática');
+      }
+
+      return {
+        ...data,
+        contractId,
+        autoConversionResult: automatic_conversion
+      };
+      
+    } catch (error) {
+      console.error('❌ Error en signContractWithAutoConversion:', error);
       return rejectWithValue(error.message || "Error de conexión");
     }
   }
@@ -469,28 +532,16 @@ export const deleteContract = createAsyncThunk(
 
 export const signContract = createAsyncThunk(
   "contract/signContract",
-  async ({ contractId, signatureData }, { rejectWithValue, getState }) => {
-    try {
-      const { auth } = getState();
-      const response = await fetch(getApiUrl(`/contracts/${contractId}/sign`), {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${auth.token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(signatureData),
+  async ({ contractId, signatureData }, { rejectWithValue, getState, dispatch }) => {
+    console.log('🖋️ Usando signContract wrapper - redirigiendo a signContractWithAutoConversion');
+    
+    // ✅ DELEGAR: Al nuevo thunk con conversión automática
+    return dispatch(signContractWithAutoConversion({ contractId, signatureData }))
+      .unwrap()
+      .then(result => result)
+      .catch(error => {
+        throw error;
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return rejectWithValue(data.message || "Error firmando contrato");
-      }
-
-      return data;
-    } catch (error) {
-      return rejectWithValue(error.message || "Error de conexión");
-    }
   }
 );
 
@@ -760,16 +811,50 @@ const contractSlice = createSlice({
         totalPages: 0,
       };
     },
-    updateContractStatus: (state, action) => {
-      const { contractId, status } = action.payload;
+
+     updateAfterAutoConversion: (state, action) => {
+      const { contractId, itemsCreated, summary } = action.payload;
+      
+      // Actualizar currentContract
+      if (state.currentContract?.id === contractId || 
+          state.currentContract?.contract?.id === contractId) {
+        
+        const targetContract = state.currentContract.contract || state.currentContract;
+        
+        // Marcar que tiene items convertidos
+        targetContract.has_converted_items = true;
+        targetContract.items_count = itemsCreated;
+        targetContract.auto_conversion_date = new Date().toISOString();
+      }
+
+      // Actualizar lista de contratos
+      const contractIndex = state.contracts.findIndex(c => c.id === contractId);
+      if (contractIndex !== -1) {
+        state.contracts[contractIndex].has_converted_items = true;
+        state.contracts[contractIndex].items_count = itemsCreated;
+      }
+
+      console.log('✅ Estado actualizado tras conversión automática');
+    },
+
+   updateContractStatus: (state, action) => {
+      const { contractId, status, additionalData = {} } = action.payload;
+      
       const contract = state.contracts.find((c) => c.id === contractId);
       if (contract) {
         contract.status = status;
+        Object.assign(contract, additionalData);
       }
+      
       if (state.currentContract?.id === contractId) {
         state.currentContract.status = status;
+        Object.assign(state.currentContract, additionalData);
+      } else if (state.currentContract?.contract?.id === contractId) {
+        state.currentContract.contract.status = status;
+        Object.assign(state.currentContract.contract, additionalData);
       }
     },
+  
 
     clearContractItemsError: (state) => {
       state.contractItemsError = null;
@@ -1108,27 +1193,91 @@ const contractSlice = createSlice({
         state.purchaseManagement.error = action.payload;
       })
 
+      .addCase(signContractWithAutoConversion.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(signContractWithAutoConversion.fulfilled, (state, action) => {
+        state.loading = false;
+        
+        const { contract, contractId, autoConversionResult } = action.payload;
+        
+        // ✅ ACTUALIZAR: Contrato firmado
+        const contractIndex = state.contracts.findIndex(c => c.id === contractId);
+        if (contractIndex !== -1) {
+          state.contracts[contractIndex] = {
+            ...state.contracts[contractIndex],
+            status: 'signed',
+            signed_at: new Date().toISOString(),
+            ...contract
+          };
+        }
+        
+        if (state.currentContract?.id === contractId) {
+          state.currentContract = {
+            ...state.currentContract,
+            status: 'signed',
+            signed_at: new Date().toISOString(),
+            ...contract
+          };
+        } else if (state.currentContract?.contract?.id === contractId) {
+          state.currentContract.contract = {
+            ...state.currentContract.contract,
+            status: 'signed',
+            signed_at: new Date().toISOString(),
+            ...contract
+          };
+        }
+
+        // ✅ PROCESAR: Resultado de conversión automática
+        if (autoConversionResult) {
+          console.log('🔄 Procesando resultado de conversión automática:', autoConversionResult);
+          
+          if (autoConversionResult.success) {
+            // Marcar que el contrato tiene items convertidos automáticamente
+            const targetContract = state.contracts[contractIndex] || 
+                                 state.currentContract?.contract || 
+                                 state.currentContract;
+            
+            if (targetContract) {
+              targetContract.auto_conversion_success = true;
+              targetContract.auto_conversion_items_count = autoConversionResult.items_created;
+              targetContract.auto_conversion_date = new Date().toISOString();
+              targetContract.auto_conversion_summary = autoConversionResult.summary;
+            }
+            
+            console.log('✅ Marca de conversión automática exitosa agregada al estado');
+          } else {
+            console.warn('⚠️ Conversión automática falló:', autoConversionResult.error);
+          }
+        }
+      })
+      .addCase(signContractWithAutoConversion.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
       // Update Item Deadline
       .addCase(updateItemDeadline.pending, (state) => {
         state.purchaseManagement.updatingDeadline = true;
         state.purchaseManagement.error = null;
       })
       .addCase(updateItemDeadline.fulfilled, (state, action) => {
-        state.purchaseManagement.updatingDeadline = false;
-        
-        // ✅ Actualizar el item específico
-        const updatedItem = action.payload.item;
-        const itemIndex = state.purchaseManagement.items.findIndex(
-          item => item.id === updatedItem.id
-        );
-        
-        if (itemIndex !== -1) {
-          state.purchaseManagement.items[itemIndex].fecha_limite_compra = 
-            updatedItem.fecha_limite_compra;
-        }
-        
-        console.log('✅ Item deadline updated successfully');
-      })
+  state.purchaseManagement.updatingDeadline = false;
+  
+  const updatedItem = action.payload.item;
+  const itemIndex = state.purchaseManagement.items.findIndex(
+    item => item.id === updatedItem.id
+  );
+  
+  if (itemIndex !== -1) {
+    // ✅ CORREGIDO: Campo correcto del modelo
+    state.purchaseManagement.items[itemIndex].fecha_vencimiento_pago = 
+      updatedItem.fecha_vencimiento_pago;
+  }
+  
+  console.log('✅ Item deadline updated successfully');
+})
       .addCase(updateItemDeadline.rejected, (state, action) => {
         state.purchaseManagement.updatingDeadline = false;
         state.purchaseManagement.error = action.payload;
@@ -1252,7 +1401,12 @@ export const {
   clearEmailPreviewError,
   clearContractPayments,
   updateContractAfterPayment,
+  updateAfterAutoConversion,
+ 
+
 } = contractSlice.actions;
+
+
 
 // Selectores
 export const selectContracts = (state) => state.contract.contracts;
@@ -1284,24 +1438,6 @@ export const selectPendingPurchases = (state) =>
 export const selectCompletedPurchases = (state) =>
   state.contract.purchaseManagement.items.filter(item => item.status === 'comprado_pagado');
 
-export const selectCriticalItems = (state) => {
-  const now = new Date();
-  return state.contract.purchaseManagement.items.filter(item => {
-    if (!item.fecha_limite_compra || item.status === 'comprado_pagado') return false;
-    const deadline = new Date(item.fecha_limite_compra);
-    const diffHours = (deadline - now) / (1000 * 60 * 60);
-    return diffHours < 24 && diffHours >= 0;
-  });
-};
-
-export const selectOverdueItems = (state) => {
-  const now = new Date();
-  return state.contract.purchaseManagement.items.filter(item => {
-    if (!item.fecha_limite_compra || item.status === 'comprado_pagado') return false;
-    const deadline = new Date(item.fecha_limite_compra);
-    return deadline < now;
-  });
-};
 
 export const selectItemsByType = (tipo) => (state) =>
   state.contract.purchaseManagement.items.filter(item => item.tipo === tipo);
@@ -1432,6 +1568,40 @@ export const selectContractFinancials = (state) => {
     cuota_inicial_pagada: contract.cuota_inicial_pagada,
     cuota_inicial_monto: parseFloat(contract.cuota_inicial_monto || 0)
   };
+};
+export const selectCriticalItems = (state) => {
+  const now = new Date();
+  return state.contract.purchaseManagement.items.filter(item => {
+    if (!item.fecha_vencimiento_pago || item.status === 'comprado_pagado') return false; // ✅ CORREGIDO
+    const deadline = new Date(item.fecha_vencimiento_pago); // ✅ CORREGIDO
+    const diffHours = (deadline - now) / (1000 * 60 * 60);
+    return diffHours < 24 && diffHours >= 0;
+  });
+};
+
+export const selectOverdueItems = (state) => {
+  const now = new Date();
+  return state.contract.purchaseManagement.items.filter(item => {
+    if (!item.fecha_vencimiento_pago || item.status === 'comprado_pagado') return false; // ✅ CORREGIDO
+    const deadline = new Date(item.fecha_vencimiento_pago); // ✅ CORREGIDO
+    return deadline < now;
+  });
+};
+
+// ✅ NUEVO: Selectores para conversión automática
+export const selectHasAutoConvertedItems = (state) => {
+  const contract = state.contract.currentContract?.contract || state.contract.currentContract;
+  return contract?.auto_conversion_success || false;
+};
+
+export const selectAutoConversionSummary = (state) => {
+  const contract = state.contract.currentContract?.contract || state.contract.currentContract;
+  return contract?.auto_conversion_summary || null;
+};
+
+export const selectIsSignedWithItems = (state) => {
+  const contract = state.contract.currentContract?.contract || state.contract.currentContract;
+  return contract?.status === 'signed' && contract?.auto_conversion_success;
 };
 
 export const selectContractSummary = (state) => {

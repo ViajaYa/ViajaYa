@@ -11,10 +11,10 @@ import {
   uploadPurchaseReceipt,
   updateItemDeadline,
   markPaymentCompleted,
-  
+  signContractWithAutoConversion, // ✅ Ya lo tienes
   convertQuoteToContractItems,
   
-  // Selectors
+  // Selectors existentes
   selectPurchaseItems,
   selectPurchaseLoading,
   selectPurchaseError,
@@ -24,7 +24,10 @@ import {
   selectCriticalItems,
   selectOverdueItems,
   selectPendingPurchases,
-  selectCompletedPurchases
+  selectCompletedPurchases,
+  selectHasAutoConvertedItems,
+  selectAutoConversionSummary,
+  selectIsSignedWithItems
 } from '../../../redux/slices/contractSlice';
 
 // Icons
@@ -56,7 +59,9 @@ const ContractPurchaseManager = () => {
   const overdueItems = useSelector(selectOverdueItems);
   const pendingPurchases = useSelector(selectPendingPurchases);
   const completedPurchases = useSelector(selectCompletedPurchases);
-  
+  const hasAutoConvertedItems = useSelector(selectHasAutoConvertedItems);
+  const autoConversionSummary = useSelector(selectAutoConversionSummary);
+  const isSignedWithItems = useSelector(selectIsSignedWithItems);
   // Estados locales
   const [filter, setFilter] = useState('all');
   const [sortBy, setSortBy] = useState('priority');
@@ -374,6 +379,23 @@ const ContractPurchaseManager = () => {
     };
   }, [items, getAlertStatus]);
 
+  const handleConvertFromQuote = async () => {
+    try {
+      console.log('🔄 Iniciando conversión manual de cotización...');
+      
+      await dispatch(convertQuoteToContractItems(contractId)).unwrap();
+      
+      toast.success('✅ Items importados desde cotización exitosamente');
+      
+      // Recargar items automáticamente
+      dispatch(fetchContractItemsWithPurchases(contractId));
+      
+    } catch (error) {
+      console.error('❌ Error en conversión manual:', error);
+      toast.error(`Error importando items: ${error.message || error}`);
+    }
+  };
+
   // ✅ MANEJAR SUBIDA DE COMPROBANTE
   const handleUploadReceipt = async (formData) => {
     try {
@@ -438,143 +460,254 @@ const ContractPurchaseManager = () => {
     );
   }
 
-  return (
-    <div className="max-w-7xl mx-auto px-4 py-6">
-      {/* ✅ HEADER DEL DASHBOARD */}
-      <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-        <div className="flex items-center justify-between mb-6">
+ // ✅ RETURN COMPLETO CON TODAS LAS MEJORAS
+return (
+  <div className="max-w-7xl mx-auto px-4 py-6">
+    {/* ✅ HEADER DEL DASHBOARD - MEJORADO */}
+    <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
           <h1 className="text-2xl font-bold text-gray-900">
             <FontAwesomeIcon icon={faShoppingCart} className="mr-3 text-blue-600" />
             Gestión de Compras - Contrato #{contractId?.slice(-8)}
           </h1>
-          <div className="flex space-x-3">
-            <button 
-              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-              onClick={() => dispatch(convertQuoteToContractItems(contractId))}
-              disabled={loading}
-            >
-              <FontAwesomeIcon icon={faDownload} className="mr-2" />
-              Importar desde Cotización
-            </button>
-            <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-              <FontAwesomeIcon icon={faUpload} className="mr-2" />
-              Subir Masivo
-            </button>
-          </div>
-        </div>
-
-        {/* ✅ TARJETAS DE ESTADÍSTICAS */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
-          <StatCard 
-            icon={faShoppingCart}
-            label="Total Items"
-            value={calculatedStats.total}
-            color="blue"
-          />
-          <StatCard 
-            icon={faCheckCircle}
-            label="Completados"
-            value={calculatedStats.completed}
-            color="green"
-          />
-          <StatCard 
-            icon={faExclamationTriangle}
-            label="Críticos"
-            value={calculatedStats.critical + calculatedStats.expired}
-            color="red"
-          />
-          <StatCard 
-            icon={faClock}
-            label="Advertencia"
-            value={calculatedStats.warning}
-            color="yellow"
-          />
-          <StatCard 
-            icon={faMoneyBillWave}
-            label="Cotizado"
-            value={`$${calculatedStats.totalCotizado.toLocaleString('es-CO')}`}
-            color="gray"
-            isAmount
-          />
-          <StatCard 
-            icon={faChartLine}
-            label="Diferencia"
-            value={`${calculatedStats.diferenciaPrecio >= 0 ? '+' : ''}$${calculatedStats.diferenciaPrecio.toLocaleString('es-CO')}`}
-            color={calculatedStats.diferenciaPrecio >= 0 ? 'red' : 'green'}
-            isAmount
-          />
-        </div>
-
-        {/* ✅ BARRA DE PROGRESO */}
-        <div className="mb-6">
-          <div className="flex justify-between text-sm mb-2">
-            <span className="font-medium">Progreso de Compras</span>
-            <span>{calculatedStats.progresoCompletado}% completado</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-3">
-            <div 
-              className="bg-green-600 h-3 rounded-full transition-all duration-500"
-              style={{ width: `${calculatedStats.progresoCompletado}%` }}
-            ></div>
-          </div>
-        </div>
-
-        {/* ✅ CONTROLES DE FILTRO Y ORDENAMIENTO */}
-        <div className="flex flex-wrap gap-4 items-center">
-          <div className="flex items-center space-x-2">
-            <FontAwesomeIcon icon={faFilter} className="text-gray-500" />
-            <select 
-              value={filter} 
-              onChange={(e) => setFilter(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">Todos ({items.length})</option>
-              <option value="pending">Pendientes ({pendingPurchases.length})</option>
-              <option value="completed">Completados ({completedPurchases.length})</option>
-              <option value="critical">Críticos ({criticalItems.length})</option>
-              <option value="overdue">Vencidos ({overdueItems.length})</option>
-            </select>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <FontAwesomeIcon icon={faSort} className="text-gray-500" />
-            <select 
-              value={sortBy} 
-              onChange={(e) => setSortBy(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="priority">Prioridad</option>
-              <option value="date">Fecha Límite</option>
-              <option value="price">Precio</option>
-              <option value="status">Estado</option>
-            </select>
-          </div>
-
-          {/* ✅ ALERTAS RÁPIDAS */}
-          {criticalItems.length > 0 && (
-            <div className="flex items-center bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm">
-              <FontAwesomeIcon icon={faBell} className="mr-2" />
-              {criticalItems.length} items críticos
+          
+          {/* ✅ INFORMACIÓN DE CONVERSIÓN AUTOMÁTICA */}
+          {hasAutoConvertedItems && autoConversionSummary && (
+            <div className="mt-2 flex items-center space-x-2">
+              <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                ✅ Items auto-convertidos
+              </span>
+              <span className="text-sm text-gray-600">
+                Total: {autoConversionSummary.total} | 
+                Requieren compra: {autoConversionSummary.requieren_compra} |
+                Informativos: {autoConversionSummary.no_requieren_compra}
+              </span>
             </div>
           )}
         </div>
+        
+        <div className="flex space-x-3">
+          {/* ✅ BOTÓN DE IMPORTACIÓN INTELIGENTE */}
+          <button 
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleConvertFromQuote}
+            disabled={loading}
+          >
+            <FontAwesomeIcon 
+              icon={loading ? faSpinner : faDownload} 
+              className={`mr-2 ${loading ? 'animate-spin' : ''}`} 
+            />
+            {hasAutoConvertedItems 
+              ? 'Re-importar desde Cotización' 
+              : 'Importar desde Cotización'
+            }
+          </button>
+          
+          <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+            <FontAwesomeIcon icon={faUpload} className="mr-2" />
+            Subir Masivo
+          </button>
+        </div>
       </div>
 
-      {/* ✅ LISTA DE ITEMS */}
-      <div className="space-y-4">
-        {filteredAndSortedItems.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-lg shadow">
-            <FontAwesomeIcon icon={faShoppingCart} className="text-6xl text-gray-300 mb-4" />
-            <p className="text-xl text-gray-500 mb-2">No hay items para mostrar</p>
-            <p className="text-gray-400">
-              {filter === 'all' 
-                ? 'No se han encontrado items en este contrato'
-                : `No hay items que coincidan con el filtro "${filter}"`
-              }
-            </p>
+      {/* ✅ BANNER INFORMATIVO CUANDO NO HAY ITEMS */}
+      {items.length === 0 && !loading && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center">
+            <FontAwesomeIcon icon={faBell} className="text-blue-600 mr-3" />
+            <div>
+              <h3 className="text-blue-800 font-medium">No hay items para gestionar</h3>
+              <p className="text-blue-700 text-sm mt-1">
+                {hasAutoConvertedItems 
+                  ? 'Los items fueron convertidos automáticamente pero no se pudieron cargar. Intenta recargar la página.' 
+                  : 'Para comenzar la gestión de compras, primero importa los items desde la cotización.'
+                }
+              </p>
+            </div>
           </div>
-        ) : (
-          filteredAndSortedItems.map((item) => (
+        </div>
+      )}
+
+      {/* ✅ ESTADÍSTICAS - SOLO SI HAY ITEMS */}
+      {items.length > 0 && (
+        <>
+          {/* ✅ TARJETAS DE ESTADÍSTICAS */}
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
+            <StatCard 
+              icon={faShoppingCart}
+              label="Total Items"
+              value={calculatedStats.total}
+              color="blue"
+            />
+            <StatCard 
+              icon={faCheckCircle}
+              label="Completados"
+              value={calculatedStats.completed}
+              color="green"
+            />
+            <StatCard 
+              icon={faExclamationTriangle}
+              label="Críticos"
+              value={calculatedStats.critical + calculatedStats.expired}
+              color="red"
+            />
+            <StatCard 
+              icon={faClock}
+              label="Advertencia"
+              value={calculatedStats.warning}
+              color="yellow"
+            />
+            <StatCard 
+              icon={faMoneyBillWave}
+              label="Cotizado"
+              value={`$${calculatedStats.totalCotizado.toLocaleString('es-CO')}`}
+              color="gray"
+              isAmount
+            />
+            <StatCard 
+              icon={faChartLine}
+              label="Diferencia"
+              value={`${calculatedStats.diferenciaPrecio >= 0 ? '+' : ''}$${calculatedStats.diferenciaPrecio.toLocaleString('es-CO')}`}
+              color={calculatedStats.diferenciaPrecio >= 0 ? 'red' : 'green'}
+              isAmount
+            />
+          </div>
+
+          {/* ✅ BARRA DE PROGRESO */}
+          <div className="mb-6">
+            <div className="flex justify-between text-sm mb-2">
+              <span className="font-medium">Progreso de Compras</span>
+              <span>{calculatedStats.progresoCompletado}% completado</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-3">
+              <div 
+                className="bg-green-600 h-3 rounded-full transition-all duration-500"
+                style={{ width: `${calculatedStats.progresoCompletado}%` }}
+              ></div>
+            </div>
+          </div>
+
+          {/* ✅ CONTROLES DE FILTRO Y ORDENAMIENTO */}
+          <div className="flex flex-wrap gap-4 items-center">
+            <div className="flex items-center space-x-2">
+              <FontAwesomeIcon icon={faFilter} className="text-gray-500" />
+              <select 
+                value={filter} 
+                onChange={(e) => setFilter(e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">Todos ({items.length})</option>
+                <option value="pending">Pendientes ({pendingPurchases.length})</option>
+                <option value="completed">Completados ({completedPurchases.length})</option>
+                <option value="critical">Críticos ({criticalItems.length})</option>
+                <option value="overdue">Vencidos ({overdueItems.length})</option>
+              </select>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <FontAwesomeIcon icon={faSort} className="text-gray-500" />
+              <select 
+                value={sortBy} 
+                onChange={(e) => setSortBy(e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="priority">Prioridad</option>
+                <option value="date">Fecha Límite</option>
+                <option value="price">Precio</option>
+                <option value="status">Estado</option>
+              </select>
+            </div>
+
+            {/* ✅ ALERTAS RÁPIDAS */}
+            {criticalItems.length > 0 && (
+              <div className="flex items-center bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm">
+                <FontAwesomeIcon icon={faBell} className="mr-2" />
+                {criticalItems.length} items críticos
+              </div>
+            )}
+
+            {overdueItems.length > 0 && (
+              <div className="flex items-center bg-red-200 text-red-900 px-3 py-1 rounded-full text-sm">
+                <FontAwesomeIcon icon={faTimesCircle} className="mr-2" />
+                {overdueItems.length} items vencidos
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+
+    {/* ✅ LISTA DE ITEMS CON MEJOR MANEJO DE ESTADOS */}
+    <div className="space-y-4">
+      {filteredAndSortedItems.length === 0 ? (
+        <div className="text-center py-12 bg-white rounded-lg shadow">
+          <FontAwesomeIcon icon={faShoppingCart} className="text-6xl text-gray-300 mb-4" />
+          <p className="text-xl text-gray-500 mb-2">
+            {items.length === 0 
+              ? 'No hay items en este contrato' 
+              : 'No hay items para mostrar'
+            }
+          </p>
+          <p className="text-gray-400 mb-4">
+            {items.length === 0 
+              ? hasAutoConvertedItems 
+                ? 'Los items fueron convertidos automáticamente pero hay un problema cargándolos.'
+                : 'Importa los items desde la cotización para comenzar la gestión de compras.'
+              : `No hay items que coincidan con el filtro "${filter}"`
+            }
+          </p>
+          
+          {/* ✅ BOTÓN DE ACCIÓN EN ESTADO VACÍO */}
+          {items.length === 0 && (
+            <button
+              onClick={handleConvertFromQuote}
+              disabled={loading}
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <FontAwesomeIcon 
+                icon={loading ? faSpinner : faDownload} 
+                className={`mr-2 ${loading ? 'animate-spin' : ''}`} 
+              />
+              {loading ? 'Importando...' : 'Importar Items desde Cotización'}
+            </button>
+          )}
+          
+          {/* ✅ BOTÓN PARA LIMPIAR FILTROS CUANDO NO HAY RESULTADOS */}
+          {items.length > 0 && filter !== 'all' && (
+            <button
+              onClick={() => setFilter('all')}
+              className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors mt-4"
+            >
+              <FontAwesomeIcon icon={faFilter} className="mr-2" />
+              Mostrar todos los items
+            </button>
+          )}
+        </div>
+      ) : (
+        <>
+          {/* ✅ INDICADOR DE FILTROS ACTIVOS */}
+          {filter !== 'all' && (
+            <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <FontAwesomeIcon icon={faFilter} className="text-blue-600 mr-2" />
+                  <p className="text-blue-800">
+                    Mostrando {filteredAndSortedItems.length} items filtrados por: <strong>{filter}</strong>
+                  </p>
+                </div>
+                <button
+                  onClick={() => setFilter('all')}
+                  className="text-blue-600 hover:text-blue-800 text-sm underline"
+                >
+                  Limpiar filtro
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ✅ LISTA DE ITEMS */}
+          {filteredAndSortedItems.map((item) => (
             <ItemCard 
               key={item.id} 
               item={item}
@@ -594,38 +727,78 @@ const ContractPurchaseManager = () => {
               updatingDeadline={updatingDeadline}
               markingPayment={markingPayment}
             />
-          ))
-        )}
-      </div>
+          ))}
 
-      {/* ✅ MODALES */}
-      {showUploadModal && selectedItem && (
-        <PurchaseUploadModal
-          item={selectedItem}
-          onClose={() => {
-            setShowUploadModal(false);
-            setSelectedItem(null);
-          }}
-          onSubmit={handleUploadReceipt}
-          uploading={uploadingReceipt}
-        />
-      )}
-
-      {showDeadlineModal && selectedItem && (
-        <DeadlineUpdateModal
-          item={selectedItem}
-          onClose={() => {
-            setShowDeadlineModal(false);
-            setSelectedItem(null);
-          }}
-          onSubmit={handleUpdateDeadline}
-          updating={updatingDeadline}
-        />
+          {/* ✅ RESUMEN AL FINAL DE LA LISTA */}
+          {filteredAndSortedItems.length > 5 && (
+            <div className="bg-gray-50 rounded-lg p-4 text-center">
+              <p className="text-gray-600">
+                Mostrando {filteredAndSortedItems.length} de {items.length} items totales
+              </p>
+              {filter !== 'all' && (
+                <button
+                  onClick={() => setFilter('all')}
+                  className="text-blue-600 hover:text-blue-800 text-sm underline ml-2"
+                >
+                  Ver todos los items
+                </button>
+              )}
+            </div>
+          )}
+        </>
       )}
     </div>
-  );
-};
 
+    {/* ✅ FLOATING ACTION BUTTON PARA ACCIONES RÁPIDAS */}
+    {items.length > 0 && (criticalItems.length > 0 || overdueItems.length > 0) && (
+      <div className="fixed bottom-6 right-6 z-40">
+        <div className="bg-red-600 text-white p-3 rounded-full shadow-lg">
+          <div className="flex items-center space-x-2">
+            <FontAwesomeIcon icon={faExclamationTriangle} />
+            <span className="text-sm font-medium">
+              {criticalItems.length + overdueItems.length} items necesitan atención
+            </span>
+            <button
+              onClick={() => setFilter('critical')}
+              className="bg-red-700 hover:bg-red-800 px-2 py-1 rounded text-xs"
+            >
+              Ver
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* ✅ MODALES */}
+    {showUploadModal && selectedItem && (
+      <PurchaseUploadModal
+        item={selectedItem}
+        onClose={() => {
+          setShowUploadModal(false);
+          setSelectedItem(null);
+        }}
+        onSubmit={handleUploadReceipt}
+        uploading={uploadingReceipt}
+      />
+    )}
+
+    {showDeadlineModal && selectedItem && (
+      <DeadlineUpdateModal
+        item={selectedItem}
+        onClose={() => {
+          setShowDeadlineModal(false);
+          setSelectedItem(null);
+        }}
+        onSubmit={handleUpdateDeadline}
+        updating={updatingDeadline}
+      />
+    )}
+
+    {/* ✅ TOAST CONTAINER PARA NOTIFICACIONES */}
+    {/* Asumiendo que ya tienes ToastContainer en tu App.js, si no, agrégalo aquí */}
+  </div>
+);
+}
 // ✅ COMPONENTE AUXILIAR: StatCard
 import PropTypes from 'prop-types';
 
