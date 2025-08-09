@@ -229,85 +229,121 @@ const commissionController = {
   },
 
   // ✅ MARCAR comisión como PAGADA con comprobante obligatorio
-  payCommission: async (req, res) => {
-    try {
-      const { commissionId } = req.params;
-      const { observaciones } = req.body;
-      const userId = req.user.id;
+payCommission: async (req, res) => {
+  try {
+    const { commissionId } = req.params;
+    const { observaciones } = req.body;
+    const userId = req.user.id;
 
-      // ✅ Verificar que se haya subido el comprobante de pago
-      if (!req.file) {
-        return res.status(400).json({ 
-          success: false,
-          message: 'El comprobante de pago es obligatorio' 
-        });
-      }
+    // ✅ Debug: Ver qué llega en req.file
+    console.log('📄 Archivo recibido:', {
+      fieldname: req.file?.fieldname,
+      originalname: req.file?.originalname,
+      mimetype: req.file?.mimetype,
+      size: req.file?.size,
+      path: req.file?.path, // ✅ URL de Cloudinary
+      filename: req.file?.filename
+    });
 
-      const commission = await Commission.findByPk(commissionId, {
-        include: [
-          {
-            model: Contract,
-            as: 'Contract',
-            attributes: ['contract_number', 'precio_total']
-          },
-          {
-            model: User,
-            as: 'Vendedor',
-            attributes: ['id', 'name', 'lastname', 'email']
-          },
-          {
-            model: SupportDocument,
-            as: 'DocumentoSoporte'
-          }
-        ]
-      });
-
-      if (!commission) {
-        return res.status(404).json({ 
-          success: false,
-          message: 'Comisión no encontrada' 
-        });
-      }
-
-      // ✅ Verificar que esté en estado correcto
-      if (commission.status !== 'approved') {
-        return res.status(400).json({ 
-          success: false,
-          message: `Solo se pueden pagar comisiones aprobadas. Estado actual: ${commission.status}` 
-        });
-      }
-
-      // ✅ Guardar la URL del comprobante de pago
-      const comprobanteUrl = req.file.path || req.file.filename;
-
-      await commission.update({
-        status: 'paid',
-        fecha_pago: new Date(),
-        comprobante_pago_url: comprobanteUrl,
-        observaciones: observaciones || commission.observaciones,
-        pagado_por: userId
-      });
-
-      res.json({
-        success: true,
-        message: 'Comisión marcada como pagada exitosamente',
-        commission: await Commission.findByPk(commissionId, {
-          include: [
-            { model: Contract, as: 'Contract' },
-            { model: User, as: 'Vendedor', attributes: ['id', 'name', 'lastname'] },
-            { model: SupportDocument, as: 'DocumentoSoporte' }
-          ]
-        })
-      });
-
-    } catch (error) {
-      console.error('Error marcando comisión como pagada:', error);
-      res.status(500).json({ 
-        message: 'Error al marcar la comisión como pagada', 
-        error: error.message 
+    // ✅ Verificar que se haya subido el comprobante de pago
+    if (!req.file) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'El comprobante de pago es obligatorio' 
       });
     }
-  },
+
+    const commission = await Commission.findByPk(commissionId, {
+      include: [
+        {
+          model: Contract,
+          as: 'Contract',
+          attributes: ['contract_number', 'precio_total']
+        },
+        {
+          model: User,
+          as: 'Vendedor',
+          attributes: ['id', 'name', 'lastname', 'email']
+        },
+        {
+          model: SupportDocument,
+          as: 'DocumentoSoporte'
+        }
+      ]
+    });
+
+    if (!commission) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Comisión no encontrada' 
+      });
+    }
+
+    // ✅ Verificar que esté en estado correcto
+    if (commission.status !== 'approved') {
+      return res.status(400).json({ 
+        success: false,
+        message: `Solo se pueden pagar comisiones aprobadas. Estado actual: ${commission.status}` 
+      });
+    }
+
+    // ✅ Verificar que tenga documento de soporte
+    if (!commission.DocumentoSoporte) {
+      return res.status(400).json({
+        success: false,
+        message: 'No se encontró documento de soporte asociado'
+      });
+    }
+
+    // ✅ CORREGIR: Usar req.file.path para Cloudinary
+    const comprobanteUrl = req.file.path; // URL completa de Cloudinary
+
+    console.log('💾 Guardando comprobante URL:', comprobanteUrl);
+
+    // Actualizar el DOCUMENTO DE SOPORTE con el comprobante
+    await commission.DocumentoSoporte.update({
+      comprobante_pago_url: comprobanteUrl,
+      status: 'paid',
+      fecha_pago: new Date()
+    });
+
+    // Actualizar la COMISIÓN
+    await commission.update({
+      status: 'paid',
+      fecha_pago: new Date(),
+      observaciones: observaciones || commission.observaciones,
+      pagado_por: userId
+    });
+
+    console.log('✅ Comisión actualizada correctamente');
+
+    res.json({
+      success: true,
+      message: 'Comisión marcada como pagada exitosamente',
+      commission: await Commission.findByPk(commissionId, {
+        include: [
+          { model: Contract, as: 'Contract' },
+          { model: User, as: 'Vendedor', attributes: ['id', 'name', 'lastname'] },
+          { model: SupportDocument, as: 'DocumentoSoporte' }
+        ]
+      }),
+      // ✅ Debug info
+      file_info: {
+        original_name: req.file.originalname,
+        cloudinary_url: req.file.path,
+        file_size: req.file.size
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error marcando comisión como pagada:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error al marcar la comisión como pagada', 
+      error: error.message 
+    });
+  }
+},
 
   // ✅ OBTENER comisiones con filtros
 getCommissions: async (req, res) => {
@@ -408,7 +444,7 @@ getCommissions: async (req, res) => {
           {
             model: SupportDocument,
             as: 'DocumentoSoporte',
-            attributes: ['id', 'numero_documento', 'status', 'documento_pdf_url', 'fecha_generacion'],
+            attributes: ['id', 'numero_documento', 'status','comprobante_pago_url', 'documento_pdf_url', 'fecha_generacion'],
             required: false
           }
         ],
