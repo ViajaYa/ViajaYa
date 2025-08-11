@@ -126,19 +126,28 @@ const QuoteEdit = () => {
   // ✅ Estados del formulario
   const [formData, setFormData] = useState({
     numero_personas: "",
+    // ✅ NUEVOS CAMPOS DETALLADOS DE PASAJEROS
+    adultos: 1,
+    menores: 0,
+    infantes: 0,
+    edades_menores: [],
+    edades_infantes: [],
+    personas_atencion_especial: 0,
+    detalles_atencion_especial: "",
     fecha_ida: "",
     fecha_regreso: "",
     destino: "",
     trip_type: "nacional", // ✅ CORREGIDO: Valor por defecto
     origen: "",
-    acomodacion: "Doble",
-    tipo_hotel: "3 Estrellas",
+    acomodacion: "doble", // ✅ ACTUALIZADO: usar valores del nuevo enum
+    tipo_hotel: "basico", // ✅ ACTUALIZADO: usar valores del nuevo enum
     traslado: false,
     alimentacion: "",
-    ninos: 0,
-    edades_ninos: [],
+    // ⚠️ CAMPOS LEGACY REMOVIDOS - Ya no se usan
+    // ninos: 0, 
+    // edades_ninos: [],
     observaciones: "",
-    precio_por_persona: "", // ✅ AGREGADO: Campo para precio por persona
+    precio_por_persona: "", // ✅ CAMPO CALCULADO: Precio por persona que paga
     precio_total: "",
     servicios_detalle: "", // ✅ NUEVO: Campo para detalles de servicios (JSON string)
   });
@@ -170,22 +179,17 @@ const [showRequoteInfo, setShowRequoteInfo] = useState(false);
   });
   const [contractLoading, setContractLoading] = useState(false);
 
-  // ✅ Opciones para selects
+  // ✅ Opciones para selects actualizadas
   const acomodacionOptions = [
-    "Simple",
-    "Doble",
-    "Triple",
-    "Cuádruple",
-    "Familiar",
+    { value: "sencilla", label: "Habitación Sencilla" },
+    { value: "doble", label: "Habitación Doble" },
+    { value: "triple", label: "Habitación Triple" },
+    { value: "cuadruple", label: "Habitación Cuádruple" },
   ];
+  
   const tipoHotelOptions = [
-    "1 Estrella",
-    "2 Estrellas",
-    "3 Estrellas",
-    "4 Estrellas",
-    "5 Estrellas",
-    "Boutique",
-    "Resort",
+    { value: "basico", label: "Hotel Básico" },
+    { value: "superior", label: "Hotel Superior" },
   ];
 
   // ✅ TODAS LAS FUNCIONES DESPUÉS DE LOS HOOKS
@@ -389,7 +393,15 @@ const [showRequoteInfo, setShowRequoteInfo] = useState(false);
           ? parseFloat(formData.precio_total)
           : null,
         numero_personas: parseInt(formData.numero_personas),
-        ninos: parseInt(formData.ninos),
+        // ✅ NUEVOS CAMPOS DETALLADOS DE PASAJEROS
+        adultos: parseInt(formData.adultos) || 0,
+        menores: parseInt(formData.menores) || 0,
+        infantes: parseInt(formData.infantes) || 0,
+        edades_menores: formData.edades_menores || [],
+        edades_infantes: formData.edades_infantes || [],
+        personas_atencion_especial: parseInt(formData.personas_atencion_especial) || 0,
+        detalles_atencion_especial: formData.detalles_atencion_especial || null,
+        // ⚠️ CAMPOS LEGACY REMOVIDOS - Backend maneja conversión automática
         status: "approved", // Marcarla como aprobada para crear contrato
       };
 
@@ -520,8 +532,9 @@ useEffect(() => {
           tipo_hotel: currentQuote.tipo_hotel || "3 Estrellas",
           traslado: currentQuote.traslado || false,
           alimentacion: currentQuote.alimentacion || "",
-          ninos: currentQuote.ninos || 0,
-          edades_ninos: currentQuote.edades_ninos || [],
+          // ⚠️ CAMPOS LEGACY REMOVIDOS del formData
+          // ninos: currentQuote.ninos || 0,
+          // edades_ninos: currentQuote.edades_ninos || [],
           observaciones:
             calculation.observaciones_generales ||
             currentQuote.observaciones ||
@@ -533,15 +546,71 @@ useEffect(() => {
         // Calculation comes from Redux, no need to set it locally
       } else {
         // Si no hay cálculo, hidratar solo con datos de la cotización
+        // ✅ Calcular precio por persona usando solo las personas que pagan
+        let personasQuePagan = 0;
+        if (currentQuote.adultos || currentQuote.menores) {
+          // Si hay datos detallados, usar solo adultos + menores
+          personasQuePagan = (parseInt(currentQuote.adultos) || 0) + (parseInt(currentQuote.menores) || 0);
+        } else {
+          // Si no hay datos detallados, usar numero_personas (legacy)
+          personasQuePagan = parseInt(currentQuote.numero_personas) || 1;
+        }
+        
         const precioPorPersona =
-          currentQuote.precio_total && currentQuote.numero_personas
-            ? (
-                parseFloat(currentQuote.precio_total) /
-                parseInt(currentQuote.numero_personas)
-              ).toFixed(2)
+          currentQuote.precio_total && personasQuePagan > 0
+            ? (parseFloat(currentQuote.precio_total) / personasQuePagan).toFixed(2)
             : "";
+            
+        console.log(`💰 Precio cargado: ${currentQuote.precio_total} ÷ ${personasQuePagan} personas que pagan = ${precioPorPersona}`);
+        
+        // ✅ DISTRIBUCIÓN INTELIGENTE DE DATOS LEGACY
+        let calculatedAdultos, calculatedMenores, calculatedInfantes;
+        let calculatedEdadesMenores = [];
+        let calculatedEdadesInfantes = [];
+        
+        if (currentQuote.adultos !== undefined || currentQuote.menores !== undefined) {
+          // DATOS NUEVOS: usar directamente
+          calculatedAdultos = currentQuote.adultos || 0;
+          calculatedMenores = currentQuote.menores || 0;
+          calculatedInfantes = currentQuote.infantes || 0;
+          calculatedEdadesMenores = currentQuote.edades_menores || [];
+          calculatedEdadesInfantes = currentQuote.edades_infantes || [];
+        } else if (currentQuote.edades_ninos && currentQuote.edades_ninos.length > 0) {
+          // DATOS LEGACY CON EDADES: distribuir por edad
+          const edades = currentQuote.edades_ninos;
+          const menoresConEdad = edades.filter(edad => edad >= 2 && edad <= 14);
+          const infantesConEdad = edades.filter(edad => edad < 2);
+          
+          calculatedAdultos = (currentQuote.numero_personas || 1) - edades.length;
+          calculatedMenores = menoresConEdad.length;
+          calculatedInfantes = infantesConEdad.length;
+          calculatedEdadesMenores = menoresConEdad;
+          calculatedEdadesInfantes = infantesConEdad;
+          
+          console.log(`🔧 Legacy con edades: ${currentQuote.numero_personas} total - ${edades.length} niños = ${calculatedAdultos} adultos`);
+          console.log(`👶 Menores (2-14): ${menoresConEdad} | Infantes (<2): ${infantesConEdad}`);
+        } else {
+          // DATOS LEGACY SIN EDADES: asumir que ninos son menores
+          const numNinos = currentQuote.ninos || 0;
+          calculatedAdultos = Math.max(1, (currentQuote.numero_personas || 1) - numNinos);
+          calculatedMenores = numNinos;
+          calculatedInfantes = 0;
+          calculatedEdadesMenores = [];
+          calculatedEdadesInfantes = [];
+          
+          console.log(`🔧 Legacy sin edades: asumiendo ${numNinos} niños como menores que pagan`);
+        }
+
         setFormData({
           numero_personas: currentQuote.numero_personas || 1,
+          // ✅ CAMPOS CALCULADOS INTELIGENTEMENTE
+          adultos: calculatedAdultos,
+          menores: calculatedMenores,
+          infantes: calculatedInfantes,
+          edades_menores: calculatedEdadesMenores,
+          edades_infantes: calculatedEdadesInfantes,
+          personas_atencion_especial: currentQuote.personas_atencion_especial || 0,
+          detalles_atencion_especial: currentQuote.detalles_atencion_especial || "",
           fecha_ida: currentQuote.fecha_ida
             ? new Date(currentQuote.fecha_ida).toISOString().split("T")[0]
             : "",
@@ -551,12 +620,13 @@ useEffect(() => {
           destino: currentQuote.destino || "",
           trip_type: currentQuote.trip_type || "nacional",
           origen: currentQuote.origen || "",
-          acomodacion: currentQuote.acomodacion || "Doble",
-          tipo_hotel: currentQuote.tipo_hotel || "3 Estrellas",
+          acomodacion: currentQuote.acomodacion || "doble",
+          tipo_hotel: currentQuote.tipo_hotel || "basico",
           traslado: currentQuote.traslado || false,
           alimentacion: currentQuote.alimentacion || "",
-          ninos: currentQuote.ninos || 0,
-          edades_ninos: currentQuote.edades_ninos || [],
+          // ⚠️ CAMPOS LEGACY REMOVIDOS del formData
+          // ninos: currentQuote.ninos || 0,
+          // edades_ninos: currentQuote.edades_ninos || [],
           observaciones: currentQuote.observaciones || "",
           precio_por_persona: precioPorPersona,
           precio_total: currentQuote.precio_total || "",
@@ -584,20 +654,90 @@ useEffect(() => {
     }
   }, [pdfError, dispatch]);
 
-  useEffect(() => {
-    const numNinos = formData.edades_ninos.length;
-    if (numNinos !== formData.ninos) {
-      setFormData((prev) => ({ ...prev, ninos: numNinos }));
-    }
-  }, [formData.edades_ninos, formData.ninos]);
+  // ✅ FUNCIÓN LEGACY REMOVIDA - Ya no se usan campos ninos/edades_ninos
+  // useEffect(() => {
+  //   const numNinos = formData.edades_ninos.length;
+  //   if (numNinos !== formData.ninos) {
+  //     setFormData((prev) => ({ ...prev, ninos: numNinos }));
+  //   }
+  // }, [formData.edades_ninos, formData.ninos]);
 
-  // ✅ NUEVO: Calcular precio total automáticamente
+  // ✅ NUEVO: Recalcular número total de personas automáticamente
+  useEffect(() => {
+    const total = (parseInt(formData.adultos) || 0) + (parseInt(formData.menores) || 0) + (parseInt(formData.infantes) || 0);
+    if (total !== formData.numero_personas) {
+      setFormData(prev => ({ ...prev, numero_personas: total }));
+    }
+  }, [formData.adultos, formData.menores, formData.infantes]);
+
+  // ✅ NUEVO: Función para manejar edades de menores
+  const handleEdadMenor = (index, edad) => {
+    const nuevasEdades = [...formData.edades_menores];
+    if (edad === '') {
+      nuevasEdades.splice(index, 1);
+    } else {
+      nuevasEdades[index] = parseInt(edad);
+    }
+    setFormData(prev => ({ ...prev, edades_menores: nuevasEdades }));
+  };
+
+  // ✅ NUEVO: Función para manejar edades de infantes (en meses)
+  const handleEdadInfante = (index, meses) => {
+    const nuevasEdades = [...formData.edades_infantes];
+    if (meses === '') {
+      nuevasEdades.splice(index, 1);
+    } else {
+      nuevasEdades[index] = parseInt(meses);
+    }
+    setFormData(prev => ({ ...prev, edades_infantes: nuevasEdades }));
+  };
+
+  // ✅ FUNCIÓN: Calcular personas que realmente pagan (excluyendo infantes <2 años)
+  const calcularPersonasQuePagan = () => {
+    const adultos = parseInt(formData.adultos) || 0;
+    const menores = parseInt(formData.menores) || 0;
+    // Los infantes (<2 años) NO pagan, solo se documentan
+    return adultos + menores;
+  };
+
+  // ✅ NUEVO: Función para generar resumen de pasajeros
+  const generatePassengerSummary = () => {
+    const total = formData.numero_personas;
+    let summary = `Total: ${total} pasajero${total !== 1 ? 's' : ''}`;
+
+    if (formData.adultos > 0) {
+      summary += ` • ${formData.adultos} adulto${formData.adultos !== 1 ? 's' : ''} (14+ años)`;
+    }
+
+    if (formData.menores > 0) {
+      const edadesTexto = formData.edades_menores.length > 0 
+        ? ` (${formData.edades_menores.join(', ')} años)` 
+        : ' (2-14 años)';
+      summary += ` • ${formData.menores} menor${formData.menores !== 1 ? 'es' : ''}${edadesTexto}`;
+    }
+
+    if (formData.infantes > 0) {
+      const edadesTexto = formData.edades_infantes.length > 0 
+        ? ` (${formData.edades_infantes.join(', ')} meses)` 
+        : ' (<2 años)';
+      summary += ` • ${formData.infantes} infante${formData.infantes !== 1 ? 's' : ''}${edadesTexto}`;
+    }
+
+    if (formData.personas_atencion_especial > 0) {
+      summary += ` • ${formData.personas_atencion_especial} con atención especial`;
+    }
+
+    return summary;
+  };
+
+  // ✅ NUEVO: Calcular precio total automáticamente (solo personas que pagan)
   useEffect(() => {
     const precioPorPersona = parseFloat(formData.precio_por_persona);
-    const numeroPersonas = parseInt(formData.numero_personas);
+    const personasQuePagan = calcularPersonasQuePagan(); // ✅ Solo adultos + menores
 
-    if (precioPorPersona > 0 && numeroPersonas > 0) {
-      const precioTotal = (precioPorPersona * numeroPersonas).toFixed(2);
+    if (precioPorPersona > 0 && personasQuePagan > 0) {
+      const precioTotal = (precioPorPersona * personasQuePagan).toFixed(2);
+      console.log(`💰 Cálculo precio: ${precioPorPersona} x ${personasQuePagan} personas que pagan = ${precioTotal}`);
       setFormData((prev) => ({
         ...prev,
         precio_total: precioTotal,
@@ -609,7 +749,7 @@ useEffect(() => {
         precio_total: "",
       }));
     }
-  }, [formData.precio_por_persona, formData.numero_personas]);
+  }, [formData.precio_por_persona, formData.adultos, formData.menores]); // ✅ Dependencias actualizadas
 
   useEffect(() => {
     return () => {
@@ -633,23 +773,24 @@ useEffect(() => {
     }
   };
 
-  const handleEdadNinoChange = (index, edad) => {
-    const newEdades = [...formData.edades_ninos];
-    newEdades[index] = parseInt(edad);
-    setFormData((prev) => ({ ...prev, edades_ninos: newEdades }));
-  };
+  // ✅ FUNCIONES LEGACY REMOVIDAS - Ya no se usan campos ninos/edades_ninos
+  // const handleEdadNinoChange = (index, edad) => {
+  //   const newEdades = [...formData.edades_ninos];
+  //   newEdades[index] = parseInt(edad);
+  //   setFormData((prev) => ({ ...prev, edades_ninos: newEdades }));
+  // };
 
-  const addEdadNino = () => {
-    setFormData((prev) => ({
-      ...prev,
-      edades_ninos: [...prev.edades_ninos, 0],
-    }));
-  };
+  // const addEdadNino = () => {
+  //   setFormData((prev) => ({
+  //     ...prev,
+  //     edades_ninos: [...prev.edades_ninos, 0],
+  //   }));
+  // };
 
-  const removeEdadNino = (index) => {
-    const newEdades = formData.edades_ninos.filter((_, i) => i !== index);
-    setFormData((prev) => ({ ...prev, edades_ninos: newEdades }));
-  };
+  // const removeEdadNino = (index) => {
+  //   const newEdades = formData.edades_ninos.filter((_, i) => i !== index);
+  //   setFormData((prev) => ({ ...prev, edades_ninos: newEdades }));
+  // };
 
   const validateForm = () => {
     const newErrors = {};
@@ -733,7 +874,15 @@ useEffect(() => {
           ...formData,
           precio_total: parseFloat(formData.precio_total),
           numero_personas: parseInt(formData.numero_personas),
-          ninos: parseInt(formData.ninos),
+          // ✅ NUEVOS CAMPOS DETALLADOS DE PASAJEROS
+          adultos: parseInt(formData.adultos) || 0,
+          menores: parseInt(formData.menores) || 0,
+          infantes: parseInt(formData.infantes) || 0,
+          edades_menores: formData.edades_menores || [],
+          edades_infantes: formData.edades_infantes || [],
+          personas_atencion_especial: parseInt(formData.personas_atencion_especial) || 0,
+          detalles_atencion_especial: formData.detalles_atencion_especial || null,
+          // ⚠️ CAMPOS LEGACY REMOVIDOS - Backend maneja conversión automática
           status: "completed",
           // Asegurar que los servicios detallados se incluyan
           servicios_detalle: formData.servicios_detalle || null,
@@ -747,6 +896,12 @@ useEffect(() => {
             trip_type: updateData.trip_type,
             destino: updateData.destino,
             status: updateData.status,
+            adultos: updateData.adultos,
+            menores: updateData.menores,
+            infantes: updateData.infantes,
+            edades_menores: updateData.edades_menores,
+            edades_infantes: updateData.edades_infantes,
+            personas_atencion_especial: updateData.personas_atencion_especial
           }
         );
         await dispatch(updateQuote({ id, updates: updateData })).unwrap();
@@ -1033,33 +1188,29 @@ const handleCalculationSave = async (calculationData) => {
         });
       }
 
-      // Excursiones
-      if (
-        Array.isArray(calculationData.excursiones) &&
-        calculationData.excursiones.length > 0
-      ) {
-        calculationData.excursiones.forEach((excursion) => {
-          if (excursion.costo > 0) {
-            serviciosDetalle.push({
-              categoria: "Excursiones",
-              descripcion: excursion.nombre || "Excursión",
-              observaciones: excursion.descripcion || "",
-            });
-          }
-        });
-      }
-
-      // Extras
+      // ✅ NUEVO: Procesar extras que ahora incluyen excursiones, actividades y servicios
       if (
         Array.isArray(calculationData.extras) &&
         calculationData.extras.length > 0
       ) {
         calculationData.extras.forEach((extra) => {
           if (extra.costo > 0) {
+            // Determinar categoría basada en el tipo
+            let categoria = "Servicios Adicionales"; // Por defecto
+            if (extra.tipo === 'excursion') {
+              categoria = "Excursiones";
+            } else if (extra.tipo === 'actividad_basica') {
+              categoria = "Actividades Adicionales";
+            } else if (extra.tipo === 'servicio_extra') {
+              categoria = "Servicios Extras";
+            }
+            
             serviciosDetalle.push({
-              categoria: "Servicios Adicionales",
+              categoria: categoria,
               descripcion: extra.nombre || "Servicio adicional",
               observaciones: extra.descripcion || "",
+              proveedor: extra.proveedor || "",
+              tipo: extra.tipo || "servicio_extra"
             });
           }
         });
@@ -1102,8 +1253,9 @@ const handleCalculationSave = async (calculationData) => {
         tipo_hotel: formData.tipo_hotel,
         traslado: formData.traslado,
         alimentacion: formData.alimentacion,
-        ninos: parseInt(formData.ninos),
-        edades_ninos: formData.edades_ninos,
+        // ⚠️ CAMPOS LEGACY REMOVIDOS - Solo usar nuevos campos detallados
+        // ninos: parseInt(formData.ninos),
+        // edades_ninos: formData.edades_ninos,
         observaciones: formData.observaciones,
       };
 
@@ -1360,6 +1512,18 @@ const handleCalculationSave = async (calculationData) => {
                       )}
                     </div>
                   )}
+                  
+                  {/* ✅ NUEVO: Mostrar desglose de personas que pagan */}
+                  {(formData.adultos > 0 || formData.menores > 0 || formData.infantes > 0) && (
+                    <div className="mt-2 p-2 bg-blue-900/30 rounded text-xs">
+                      <div className="text-blue-200 font-medium">Cálculo de precio:</div>
+                      <div>• {calcularPersonasQuePagan()} personas que pagan</div>
+                      {formData.infantes > 0 && (
+                        <div className="text-yellow-200">• {formData.infantes} infante{formData.infantes !== 1 ? 's' : ''} (gratis)</div>
+                      )}
+                    </div>
+                  )}
+                  
                   {formData.precio_total && (
                     <div className="text-lg font-bold text-yellow-300">
                       <strong>Total:</strong> $
@@ -1649,6 +1813,64 @@ const handleCalculationSave = async (calculationData) => {
                   <div>
                     <strong>Número de personas:</strong>{" "}
                     {currentQuote?.numero_personas || "-"}
+                  </div>
+                  
+                  {/* ✅ NUEVA SECCIÓN: Información detallada de pasajeros */}
+                  {(currentQuote?.adultos > 0 || currentQuote?.menores > 0 || currentQuote?.infantes > 0) && (
+                    <div className="mt-2 p-3 bg-blue-50 rounded-lg">
+                      <strong className="text-blue-800">Desglose de pasajeros:</strong>
+                      <div className="mt-1 text-sm">
+                        {currentQuote?.adultos > 0 && (
+                          <div>• {currentQuote.adultos} adulto{currentQuote.adultos !== 1 ? 's' : ''} (14+ años) - <span className="text-green-600">Pagan</span></div>
+                        )}
+                        {currentQuote?.menores > 0 && (
+                          <div>
+                            • {currentQuote.menores} menor{currentQuote.menores !== 1 ? 'es' : ''} (2-14 años) - <span className="text-green-600">Pagan</span>
+                            {currentQuote?.edades_menores?.length > 0 && 
+                              ` - Edades: ${currentQuote.edades_menores.join(', ')} años`
+                            }
+                          </div>
+                        )}
+                        {currentQuote?.infantes > 0 && (
+                          <div>
+                            • {currentQuote.infantes} infante{currentQuote.infantes !== 1 ? 's' : ''} (&lt;2 años) - <span className="text-red-600">NO pagan</span>
+                            {currentQuote?.edades_infantes?.length > 0 && 
+                              ` - Edades: ${currentQuote.edades_infantes.join(', ')} meses`
+                            }
+                          </div>
+                        )}
+                        
+                        {/* ✅ MOSTRAR TOTAL DE PERSONAS QUE PAGAN */}
+                        <div className="mt-2 pt-2 border-t border-blue-200 font-semibold text-blue-700">
+                          Total que paga: {(currentQuote?.adultos || 0) + (currentQuote?.menores || 0)} persona{((currentQuote?.adultos || 0) + (currentQuote?.menores || 0)) !== 1 ? 's' : ''}
+                        </div>
+                        
+                        {currentQuote?.personas_atencion_especial > 0 && (
+                          <div className="text-orange-600">
+                            • {currentQuote.personas_atencion_especial} con atención especial
+                            {currentQuote?.detalles_atencion_especial && 
+                              ` - ${currentQuote.detalles_atencion_especial}`
+                            }
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* ✅ Información legacy de niños (si no hay datos detallados) */}
+                  {!(currentQuote?.adultos > 0 || currentQuote?.menores > 0 || currentQuote?.infantes > 0) && 
+                   currentQuote?.ninos > 0 && (
+                    <div className="mt-1 text-sm text-gray-600">
+                      • Niños: {currentQuote.ninos}
+                      {currentQuote?.edades_ninos?.length > 0 && 
+                        ` (Edades: ${currentQuote.edades_ninos.join(', ')} años)`
+                      }
+                    </div>
+                  )}
+                  
+                  <div>
+                    <strong>Alojamiento:</strong>{" "}
+                    {currentQuote?.tipo_hotel || "-"} - {currentQuote?.acomodacion || "-"}
                   </div>
                   <div>
                     <strong>Estado:</strong> {currentQuote?.status || "-"}

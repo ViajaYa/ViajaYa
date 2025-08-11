@@ -2,6 +2,7 @@ const { Commission, Contract, Quote, User, SupportDocument, CommissionConfig, co
 const { Op } = require('sequelize');
 const generatePaymentDocument = require('../utils/generatePaymentDocument');    
 const commissionConfigController = require('./commissionConfigController');
+const { calcularPersonasQuePagan } = require('../utils/quoteCalculations');
 const path = require('path'); // ✅ Agregar este import
 const fs = require('fs'); // ✅ Agregar este import
 
@@ -32,7 +33,27 @@ const commissionController = {
 
       const quote = contract.Quote;
       const montoBase = contract.precio_total;
-      const numeroPasajeros = contract.numero_pasajeros || quote.numero_personas || 1;
+      
+      // ✅ USAR NUEVA LÓGICA: Calcular solo personas que pagan (excluir infantes)
+      const personasQuePagan = calcularPersonasQuePagan({
+        adultos: quote.adultos,
+        menores: quote.menores,
+        infantes: quote.infantes
+      });
+      
+      // Fallback a datos legacy si no hay nuevos campos
+      const numeroPasajeros = personasQuePagan > 0 ? personasQuePagan : 
+                             (contract.numero_pasajeros || quote.numero_personas || 1);
+      
+      console.log('💰 CÁLCULO DE COMISIONES:', {
+        total_pasajeros: quote.numero_personas,
+        adultos: quote.adultos,
+        menores: quote.menores,
+        infantes: quote.infantes,
+        personas_que_pagan: personasQuePagan,
+        numero_usado_para_comision: numeroPasajeros
+      });
+      
       const commissionsToCreate = [];
 
       // ✅ USAR EL CAMPO TRIP_TYPE DEL CONTRATO O LA COTIZACIÓN
@@ -62,7 +83,7 @@ const commissionController = {
             monto_comision: montoComision,
             status: 'pending',
             fecha_generacion: new Date(),
-            observaciones: `Comisión ${trip_type} - ${numeroPasajeros} pasajeros`
+            observaciones: `Comisión ${trip_type} - ${numeroPasajeros} personas que pagan (excl. infantes)`
           });
         }
       }
@@ -89,7 +110,7 @@ const commissionController = {
             monto_comision: montoComision,
             status: 'pending',
             fecha_generacion: new Date(),
-            observaciones: `Comisión ${trip_type} - ${numeroPasajeros} pasajeros`
+            observaciones: `Comisión ${trip_type} - ${numeroPasajeros} personas que pagan (excl. infantes)`
           });
         }
       }
@@ -116,7 +137,7 @@ const commissionController = {
             monto_comision: montoComision,
             status: 'pending',
             fecha_generacion: new Date(),
-            observaciones: `Comisión ${trip_type} - ${numeroPasajeros} pasajeros`
+            observaciones: `Comisión ${trip_type} - ${numeroPasajeros} personas que pagan (excl. infantes)`
           });
         }
       }

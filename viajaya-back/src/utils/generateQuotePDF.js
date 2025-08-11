@@ -2,6 +2,82 @@ const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
 
+// ✅ Función auxiliar para generar desglose detallado de pasajeros
+function generatePassengerBreakdownForQuote(quote) {
+  const adultos = quote.adultos || 0;
+  const menores = quote.menores || 0;
+  const infantes = quote.infantes || 0;
+  const edades_menores = quote.edades_menores || [];
+  const edades_infantes = quote.edades_infantes || [];
+  const personas_especiales = quote.personas_atencion_especial || 0;
+  
+  // Datos legacy para compatibilidad
+  const numero_personas = quote.numero_personas || (adultos + menores + infantes);
+  const ninos_legacy = quote.ninos || 0;
+  
+  let breakdown = [];
+  
+  // Si tenemos datos detallados, usarlos
+  if (adultos > 0 || menores > 0 || infantes > 0) {
+    breakdown.push({ 
+      label: 'Total de pasajeros', 
+      value: numero_personas.toString(),
+      isBold: true 
+    });
+    
+    if (adultos > 0) {
+      breakdown.push({
+        label: 'Adultos (14+ años)',
+        value: adultos.toString()
+      });
+    }
+    
+    if (menores > 0) {
+      const edadesTexto = edades_menores.length > 0 
+        ? ` (${edades_menores.join(', ')} años)` 
+        : '';
+      breakdown.push({
+        label: `Menores (2-14 años)${edadesTexto}`,
+        value: menores.toString()
+      });
+    }
+    
+    if (infantes > 0) {
+      const edadesTexto = edades_infantes.length > 0 
+        ? ` (${edades_infantes.join(', ')} meses)` 
+        : '';
+      breakdown.push({
+        label: `Infantes (<2 años)${edadesTexto}`,
+        value: infantes.toString()
+      });
+    }
+    
+    if (personas_especiales > 0) {
+      breakdown.push({
+        label: 'Con atención especial',
+        value: personas_especiales.toString()
+      });
+    }
+  } else {
+    // Formato legacy
+    if (numero_personas > 1) {
+      breakdown.push({ 
+        label: 'Número de personas', 
+        value: numero_personas.toString() 
+      });
+    }
+    
+    if (ninos_legacy > 0 && quote.edades_ninos && quote.edades_ninos.length > 0) {
+      breakdown.push({ 
+        label: 'Niños', 
+        value: `${ninos_legacy} (Edades: ${quote.edades_ninos.join(', ')})` 
+      });
+    }
+  }
+  
+  return breakdown;
+}
+
 // 🎨 Colores de la marca ViajaYa
 const COLORS = {
   MoradoSuave: "#dc86c7",
@@ -232,26 +308,23 @@ doc.fontSize(16)
       { label: 'Acomodación', value: quote.acomodacion }
     ];
 
-    // Si hay niños, agregar información
-    if (quote.ninos > 0) {
-      detallesData.push({ label: 'Niños', value: `${quote.ninos} (Edades: ${quote.edades_ninos.join(', ')})` });
-    }
-
-    // Si hay más de una persona
-    if (quote.numero_personas > 1) {
-      detallesData.push({ label: 'Número de personas', value: quote.numero_personas.toString() });
-    }
+    // ✅ Agregar desglose detallado de pasajeros
+    const passengerBreakdown = generatePassengerBreakdownForQuote(quote);
+    detallesData.push(...passengerBreakdown);
 
     doc.fontSize(9)
        .fillColor(COLORS.textoGris)
        .font('Helvetica');
 
     detallesData.forEach(detalle => {
+      const fontWeight = detalle.isBold ? 'Helvetica-Bold' : 'Helvetica-Bold';
+      const valueFont = detalle.isBold ? 'Helvetica-Bold' : 'Helvetica';
+      
       doc.fillColor(COLORS.textoOscuro)
-         .font('Helvetica-Bold')
+         .font(fontWeight)
          .text(`${detalle.label}:`, margin + 6, yPosition, { width: 80 })
-         .fillColor(COLORS.textoGris)
-         .font('Helvetica')
+         .fillColor(detalle.isBold ? COLORS.textoOscuro : COLORS.textoGris)
+         .font(valueFont)
          .text(detalle.value, margin + 90, yPosition, { 
            width: contentWidth - 96
          });

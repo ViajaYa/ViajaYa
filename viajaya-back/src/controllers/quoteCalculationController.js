@@ -1,5 +1,6 @@
 
 const { QuoteCalculation, Quote, User, CommissionConfig } = require('../db');
+const { calcularPersonasQuePagan } = require('../utils/quoteCalculations');
 
 const quoteCalculationController = {
 
@@ -203,6 +204,17 @@ const quoteCalculationController = {
         quote_info: {
           id: quote.id,
           numero_personas: quote.numero_personas,
+          // ✅ AGREGAR INFORMACIÓN DETALLADA DE PASAJEROS
+          adultos: quote.adultos || 0,
+          menores: quote.menores || 0,
+          infantes: quote.infantes || 0,
+          edades_menores: quote.edades_menores || [],
+          edades_infantes: quote.edades_infantes || [],
+          personas_que_pagan: calcularPersonasQuePagan({
+            adultos: quote.adultos,
+            menores: quote.menores,
+            infantes: quote.infantes
+          }),
           destino: quote.destino,
           origen: quote.origen,
           trip_type: quote.trip_type,
@@ -212,8 +224,7 @@ const quoteCalculationController = {
           tipo_hotel: quote.tipo_hotel,
           traslado: quote.traslado,
           alimentacion: quote.alimentacion,
-          ninos: quote.ninos,
-          edades_ninos: quote.edades_ninos
+          // ✅ CAMPOS ELIMINADOS: ninos, edades_ninos (reemplazados por menores/edades_menores)
         },
         jerarquia_ventas: {
           asesor: quote.Asesor,
@@ -244,7 +255,16 @@ const quoteCalculationController = {
           alimentacion: {
             tipo: quote.alimentacion ? 'desayuno' : 'ninguna'
           },
+          // ✅ INFORMACIÓN DE PASAJEROS ACTUALIZADA
           num_personas: quote.numero_personas,
+          num_personas_que_pagan: calcularPersonasQuePagan({
+            adultos: quote.adultos,
+            menores: quote.menores,
+            infantes: quote.infantes
+          }),
+          adultos: quote.adultos || 0,
+          menores: quote.menores || 0,
+          infantes: quote.infantes || 0,
           fecha_viaje_inicio: quote.fecha_ida,
           fecha_viaje_fin: quote.fecha_regreso
         }
@@ -265,6 +285,39 @@ const quoteCalculationController = {
   createCalculation: async (req, res) => {
     try {
       const data = req.body;
+      
+      // ✅ NUEVO: Logging detallado para debugging
+      console.log('📊 DATOS RECIBIDOS EN createCalculation:', {
+        keys: Object.keys(data),
+        excursiones: data.excursiones ? 'PRESENTE' : 'AUSENTE',
+        extras: data.extras ? 'PRESENTE' : 'AUSENTE', 
+        items: data.items ? 'PRESENTE' : 'AUSENTE',
+        excursiones_length: Array.isArray(data.excursiones) ? data.excursiones.length : 'NO ES ARRAY',
+        extras_length: Array.isArray(data.extras) ? data.extras.length : 'NO ES ARRAY'
+      });
+      
+      // ✅ NUEVO: Procesar y validar actividades antes de guardar
+      if (data.excursiones && Array.isArray(data.excursiones)) {
+        console.log('🎯 Excursiones procesadas:', data.excursiones.length, 'items');
+        data.excursiones.forEach((exc, index) => {
+          console.log(`  Excursión ${index + 1}:`, {
+            nombre: exc.nombre,
+            costo: exc.costo,
+            keys: Object.keys(exc)
+          });
+        });
+      }
+      
+      if (data.extras && Array.isArray(data.extras)) {
+        console.log('🎯 Extras procesados:', data.extras.length, 'items');
+        data.extras.forEach((ext, index) => {
+          console.log(`  Extra ${index + 1}:`, {
+            nombre: ext.nombre,
+            costo: ext.costo,
+            keys: Object.keys(ext)
+          });
+        });
+      }
       
       // Si viene quote_id, verificar si ya existe un cálculo para esa cotización
       if (data.quote_id) {
@@ -294,6 +347,44 @@ const quoteCalculationController = {
   upsertCalculation: async (req, res) => {
     try {
       const data = req.body;
+      
+      // ✅ NUEVO: Logging detallado para debugging de actividades
+      console.log('📊 DATOS RECIBIDOS EN upsertCalculation:', {
+        quote_id: data.quote_id,
+        keys: Object.keys(data),
+        excursiones: data.excursiones ? 'PRESENTE' : 'AUSENTE',
+        extras: data.extras ? 'PRESENTE' : 'AUSENTE',
+        items: data.items ? 'PRESENTE' : 'AUSENTE'
+      });
+      
+      // ✅ NUEVO: Log específico del contenido de arrays
+      if (data.excursiones) {
+        console.log('🎯 EXCURSIONES DETALLE:', {
+          es_array: Array.isArray(data.excursiones),
+          longitud: data.excursiones.length,
+          contenido: data.excursiones,
+          primer_elemento: data.excursiones[0] || 'VACÍO'
+        });
+      }
+      
+      if (data.extras) {
+        console.log('🎪 EXTRAS DETALLE:', {
+          es_array: Array.isArray(data.extras),
+          longitud: data.extras.length,
+          contenido: data.extras,
+          primer_elemento: data.extras[0] || 'VACÍO'
+        });
+      }
+      
+      // ✅ NUEVO: Log de campos de pasajeros
+      console.log('👥 PASAJEROS RECIBIDOS:', {
+        adultos: data.adultos,
+        menores: data.menores,
+        infantes: data.infantes,
+        edades_menores: data.edades_menores,
+        edades_infantes: data.edades_infantes,
+        num_personas: data.num_personas
+      });
       
       if (!data.quote_id) {
         return res.status(400).json({ message: 'quote_id es requerido para upsert' });

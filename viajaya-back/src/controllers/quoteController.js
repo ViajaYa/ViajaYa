@@ -2,6 +2,12 @@ const { Quote, User, Contract, Passenger } = require("../db");
 const { Op } = require("sequelize");
 const { sendEmail } = require("../utils/emailService");
 const { generateQuotePDF } = require("../utils/generateQuotePDF");
+const { 
+  calcularPersonasQuePagan, 
+  calcularPrecioConEdades, 
+  validarDatosPasajeros, 
+  convertirDatosLegacy 
+} = require("../utils/quoteCalculations");
 const path = require("path");
 const crypto = require('crypto'); 
 
@@ -92,6 +98,14 @@ const quoteController = {
         admin_id,
         cliente_id,
         numero_personas,
+        // ✅ NUEVOS CAMPOS DETALLADOS DE PASAJEROS
+        adultos,
+        menores,
+        infantes,
+        edades_menores,
+        edades_infantes,
+        personas_atencion_especial,
+        detalles_atencion_especial,
         fecha_ida,
         fecha_regreso,
         destino,
@@ -99,8 +113,7 @@ const quoteController = {
         origen,
         acomodacion,
         tipo_hotel,
-        ninos,
-        edades_ninos,
+        // ✅ CAMPOS ELIMINADOS: ninos, edades_ninos (ahora usamos menores/edades_menores)
         observaciones,
         nombre_cliente,
         email_cliente,
@@ -108,6 +121,53 @@ const quoteController = {
         created_by,
         source = "internal", // ✅ NUEVO: Indicar origen de la cotización
       } = req.body;
+
+      // ✅ LÓGICA DE COMPATIBILIDAD: Usar utilidad para convertir datos legacy
+      let adultosCalculados = adultos;
+      let menoresCalculados = menores;
+      let infantesCalculados = infantes;
+      let edadesMenoresCalculadas = edades_menores;
+      let edadesInfantesCalculadas = edades_infantes;
+
+      // Si no vienen los nuevos campos pero sí los legacy, convertir usando utilidad
+      if ((adultos === undefined || menores === undefined || infantes === undefined) && 
+          numero_personas !== undefined) {
+        
+        console.log('🔄 Convirtiendo datos legacy a nuevo formato');
+        const datosConvertidos = convertirDatosLegacy({
+          numero_personas,
+          // Los campos ninos/edades_ninos ya no se usan
+        });
+        
+        adultosCalculados = datosConvertidos.adultos;
+        menoresCalculados = datosConvertidos.menores;
+        infantesCalculados = datosConvertidos.infantes;
+        edadesMenoresCalculadas = datosConvertidos.edades_menores;
+        edadesInfantesCalculadas = datosConvertidos.edades_infantes;
+        
+        console.log('✅ Datos convertidos:', datosConvertidos);
+      }
+
+      // ✅ Validar datos de pasajeros
+      const validacion = validarDatosPasajeros({
+        numero_personas,
+        adultos: adultosCalculados,
+        menores: menoresCalculados,
+        infantes: infantesCalculados,
+        edades_menores: edadesMenoresCalculadas,
+        edades_infantes: edadesInfantesCalculadas
+      });
+
+      if (!validacion.isValid) {
+        return res.status(400).json({
+          message: "Datos de pasajeros inconsistentes",
+          errors: validacion.errors
+        });
+      }
+
+      // ✅ Validación: asegurar que los números sean consistentes
+      const totalCalculado = (adultosCalculados || 0) + (menoresCalculados || 0) + (infantesCalculados || 0);
+      const numeroPersonasFinal = numero_personas || totalCalculado;
 
       // ✅ Buscar cliente por email si no hay cliente_id
       let clienteIdFinal = cliente_id || null;
@@ -257,16 +317,23 @@ const quoteController = {
         gerente_id: gerenteIdFinal,
         admin_id: adminIdFinal,
         cliente_id: clienteIdFinal,
-        numero_personas,
+        numero_personas: numeroPersonasFinal,
+        // ✅ NUEVOS CAMPOS DETALLADOS DE PASAJEROS
+        adultos: adultosCalculados || 0,
+        menores: menoresCalculados || 0,
+        infantes: infantesCalculados || 0,
+        edades_menores: edadesMenoresCalculadas || [],
+        edades_infantes: edadesInfantesCalculadas || [],
+        personas_atencion_especial: personas_atencion_especial || 0,
+        detalles_atencion_especial: detalles_atencion_especial || null,
         fecha_ida,
         fecha_regreso,
         destino,
         trip_type: trip_type || 'nacional', // ✅ NUEVO: Campo explícito para tipo de viaje
         origen,
-        acomodacion,
-        tipo_hotel,
-        ninos: ninos || 0,
-        edades_ninos: edades_ninos || [],
+        acomodacion: acomodacion || 'doble',
+        tipo_hotel: tipo_hotel || 'basico',
+        // ✅ CAMPOS ELIMINADOS: ninos, edades_ninos (reemplazados por menores/edades_menores)
         observaciones,
         nombre_cliente: nombre_cliente, // ✅ Cambiar de: clienteIdFinal ? null : nombre_cliente
         email_cliente: email_cliente, // ✅ Cambiar de: clienteIdFinal ? null : email_cliente
@@ -581,16 +648,30 @@ getQuoteById: async (req, res) => {
       return res.status(404).json({ message: "Cotización no encontrada" });
     }
 
-    // ✅ NUEVO: Calcular precio por persona
+    // ✅ CALCULAR PRECIO POR PERSONA QUE PAGA (excluyendo infantes)
     let precio_por_persona = 0;
-    if (quote.precio_total && quote.numero_personas && quote.numero_personas > 0) {
-      precio_por_persona = parseFloat(quote.precio_total) / parseInt(quote.numero_personas);
+    let personasQuePagan = 0;
+    
+    if (quote.precio_total) {
+      // Usar nueva lógica para calcular personas que pagan
+      personasQuePagan = calcularPersonasQuePagan({
+        adultos: quote.adultos,
+        menores: quote.menores,
+        infantes: quote.infantes
+      });
       
-      console.log('💰 CÁLCULO DE PRECIO POR PERSONA:', {
+      if (personasQuePagan > 0) {
+        precio_por_persona = parseFloat(quote.precio_total) / personasQuePagan;
+      }
+      
+      console.log('💰 CÁLCULO DE PRECIO POR PERSONA QUE PAGA:', {
         precio_total: quote.precio_total,
-        numero_personas: quote.numero_personas,
-        precio_por_persona: precio_por_persona,
-        precio_por_persona_formateado: precio_por_persona.toFixed(2)
+        total_pasajeros: quote.numero_personas,
+        personas_que_pagan: personasQuePagan,
+        adultos: quote.adultos,
+        menores: quote.menores,
+        infantes: quote.infantes,
+        precio_por_persona_que_paga: precio_por_persona.toFixed(2)
       });
     }
 
@@ -598,17 +679,19 @@ getQuoteById: async (req, res) => {
     const quoteResponse = {
       ...quote.toJSON(), // Convertir a objeto plano para poder agregar propiedades
       
-      // ✅ AGREGADO: Campo calculado
+      // ✅ AGREGADO: Información de precios y personas que pagan
       precio_por_persona: precio_por_persona,
       precio_por_persona_formateado: precio_por_persona.toFixed(2),
+      personas_que_pagan: personasQuePagan,
       
       // ✅ AGREGADO: Metadatos útiles para el frontend
       calculation_metadata: {
         has_price: !!quote.precio_total,
         has_passengers: quote.numero_personas > 0,
-        price_per_person_available: !!(quote.precio_total && quote.numero_personas > 0),
+        price_per_person_available: !!(quote.precio_total && personasQuePagan > 0),
         total_passengers_registered: quote.Passengers ? quote.Passengers.length : 0,
         passengers_complete: quote.Passengers ? quote.Passengers.length === quote.numero_personas : false,
+        infants_dont_pay: true, // ✅ Indicar que infantes no pagan
       },
 
       // ✅ AGREGADO: Información de formato para PDF
@@ -1626,7 +1709,8 @@ getQuoteById: async (req, res) => {
               <li><strong>📅 Fecha de ida:</strong> ${new Date(quote.fecha_ida).toLocaleDateString("es-ES")}</li>
               <li><strong>📅 Fecha de regreso:</strong> ${new Date(quote.fecha_regreso).toLocaleDateString("es-ES")}</li>
               <li><strong>👥 Número de personas:</strong> ${quote.numero_personas}</li>
-              ${quote.ninos > 0 ? `<li><strong>👶 Niños:</strong> ${quote.ninos} (Edades: ${quote.edades_ninos.join(", ")})</li>` : ""}
+              ${quote.menores > 0 ? `<li><strong>👶 Menores (2-14 años):</strong> ${quote.menores} (Edades: ${quote.edades_menores?.join(", ") || "No especificadas"})</li>` : ""}
+              ${quote.infantes > 0 ? `<li><strong>🍼 Infantes (<2 años):</strong> ${quote.infantes} (Edades: ${quote.edades_infantes?.join(", ") || "No especificadas"})</li>` : ""}
               <li><strong>🏨 Tipo de acomodación:</strong> ${quote.acomodacion}</li>
               <li><strong>⭐ Tipo de hotel:</strong> ${quote.tipo_hotel}</li>
               ${quote.traslado ? "<li><strong>🚗 Traslados:</strong> Incluidos</li>" : ""}
@@ -1937,8 +2021,7 @@ getQuoteById: async (req, res) => {
         origen,
         acomodacion,
         tipo_hotel,
-        ninos,
-        edades_ninos,
+        // ✅ CAMPOS ELIMINADOS: ninos, edades_ninos
       } = req.body;
 
       console.log('🔍 DEBUG - updateQuote recibió trip_type:', trip_type);
@@ -1959,8 +2042,7 @@ getQuoteById: async (req, res) => {
         origen,
         acomodacion,
         tipo_hotel,
-        ninos,
-        edades_ninos,
+        // ✅ CAMPOS ELIMINADOS: ninos, edades_ninos
         observaciones: observaciones || quote.observaciones,
         status: status || quote.status,
       };
@@ -2544,6 +2626,166 @@ const getRoleName = (role) => {
   return roleNames[role] || "Usuario";
 };
 
+// ✅ Endpoint para actualizar información detallada de pasajeros
+quoteController.updatePassengerDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      adultos,
+      menores,
+      infantes,
+      edades_menores,
+      edades_infantes,
+      personas_atencion_especial,
+      detalles_atencion_especial,
+      tipo_hotel,
+      acomodacion
+    } = req.body;
 
+    const quote = await Quote.findByPk(id);
+    if (!quote) {
+      return res.status(404).json({
+        message: "Cotización no encontrada",
+        success: false
+      });
+    }
+
+    // Validar datos de pasajeros usando la utilidad
+    const { validatePassengerData } = require('../utils/passengerValidation');
+    const validation = validatePassengerData({
+      numero_personas: (adultos || 0) + (menores || 0) + (infantes || 0),
+      adultos,
+      menores,
+      infantes,
+      edades_menores,
+      edades_infantes,
+      personas_atencion_especial
+    });
+
+    if (!validation.isValid) {
+      return res.status(400).json({
+        message: "Datos de pasajeros inválidos",
+        errors: validation.errors,
+        warnings: validation.warnings,
+        success: false
+      });
+    }
+
+    // Actualizar la cotización
+    await quote.update({
+      adultos: adultos || 0,
+      menores: menores || 0,
+      infantes: infantes || 0,
+      numero_personas: (adultos || 0) + (menores || 0) + (infantes || 0),
+      edades_menores: edades_menores || [],
+      edades_infantes: edades_infantes || [],
+      personas_atencion_especial: personas_atencion_especial || 0,
+      detalles_atencion_especial: detalles_atencion_especial || null,
+      tipo_hotel: tipo_hotel || quote.tipo_hotel,
+      acomodacion: acomodacion || quote.acomodacion
+    });
+
+    // Obtener resumen de pasajeros
+    const resumen = quote.obtenerResumenPasajeros();
+
+    res.json({
+      message: "Información de pasajeros actualizada exitosamente",
+      quote: quote,
+      resumen_pasajeros: resumen,
+      warnings: validation.warnings,
+      success: true
+    });
+
+  } catch (error) {
+    console.error('Error actualizando información de pasajeros:', error);
+    res.status(500).json({
+      message: "Error interno del servidor",
+      error: error.message,
+      success: false
+    });
+  }
+};
+
+// ✅ Endpoint para obtener resumen detallado de pasajeros
+quoteController.getPassengerSummary = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const quote = await Quote.findByPk(id);
+    if (!quote) {
+      return res.status(404).json({
+        message: "Cotización no encontrada",
+        success: false
+      });
+    }
+
+    const resumen = quote.obtenerResumenPasajeros();
+    const { calculatePricingByAge, generatePassengerSummary } = require('../utils/passengerValidation');
+
+    // Calcular precios si hay precio base
+    let desglosePrecio = null;
+    if (quote.precio_por_persona) {
+      desglosePrecio = calculatePricingByAge(
+        { adultos: quote.adultos, menores: quote.menores, infantes: quote.infantes },
+        parseFloat(quote.precio_por_persona)
+      );
+    }
+
+    // Generar resumen en texto
+    const resumenTexto = generatePassengerSummary({
+      adultos: quote.adultos,
+      menores: quote.menores,
+      infantes: quote.infantes,
+      personas_atencion_especial: quote.personas_atencion_especial,
+      edades_menores: quote.edades_menores,
+      edades_infantes: quote.edades_infantes
+    });
+
+    res.json({
+      quote_id: quote.id,
+      quote_number: quote.quote_number,
+      resumen_pasajeros: resumen,
+      resumen_texto: resumenTexto,
+      desglose_precio: desglosePrecio,
+      success: true
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo resumen de pasajeros:', error);
+    res.status(500).json({
+      message: "Error interno del servidor",
+      error: error.message,
+      success: false
+    });
+  }
+};
+
+// ✅ Endpoint para migrar datos existentes (solo para administradores)
+quoteController.migratePassengerData = async (req, res) => {
+  try {
+    // Verificar permisos de admin (role >= 5)
+    if (req.user && req.user.role < 5) {
+      return res.status(403).json({
+        message: "No tienes permisos para ejecutar esta migración",
+        success: false
+      });
+    }
+
+    await Quote.migrarDatosExistentes();
+
+    res.json({
+      message: "Migración de datos de pasajeros completada exitosamente",
+      success: true
+    });
+
+  } catch (error) {
+    console.error('Error en migración de datos:', error);
+    res.status(500).json({
+      message: "Error durante la migración",
+      error: error.message,
+      success: false
+    });
+  }
+};
 
 module.exports = quoteController;

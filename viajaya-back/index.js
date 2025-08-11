@@ -4,7 +4,7 @@ const {conn} = require("./src/db.js")
 const insertNumbers = require('./src/scripts/InsertNumbers.js')
 const assignInitialRoles = require('./src/scripts/assignInitialRoles.js')
 
-conn.sync({ force: true })
+conn.sync({ alter: true })
     .then(async () => {
         await insertNumbers();
         await assignInitialRoles(); // Verificar/crear usuarios con roles
