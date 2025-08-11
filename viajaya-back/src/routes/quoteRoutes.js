@@ -64,6 +64,14 @@ router.post('/mark-expired', authenticateToken, authorizeRoles(7), quoteControll
 // Obtener cotizaciones por vendedor (Con verificación de jerarquía)
 router.get('/vendedor/:vendedor_id/:tipo', authenticateToken, authorizeHierarchy, quoteController.getQuotesByVendedor);
 
+// ✅ NUEVAS RUTAS PARA MANEJO DETALLADO DE PASAJEROS
+// Actualizar información detallada de pasajeros
+router.patch('/:id/passengers', authenticateToken, quoteController.updatePassengerDetails);
 
+// Obtener resumen detallado de pasajeros
+router.get('/:id/passengers/summary', authenticateToken, quoteController.getPassengerSummary);
+
+// Migrar datos existentes de pasajeros (Solo administradores)
+router.post('/migrate-passenger-data', authenticateToken, authorizeRoles([5, 6, 7]), quoteController.migratePassengerData);
 
 module.exports = router;

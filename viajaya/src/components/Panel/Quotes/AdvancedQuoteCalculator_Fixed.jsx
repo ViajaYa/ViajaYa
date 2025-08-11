@@ -13,12 +13,72 @@ const AdvancedQuoteCalculator = ({ quote_id,
   const user = useSelector(selectUser);
   const configuredCommissions = useSelector(selectConfiguredCommissions);
 
+  // ✅ FUNCIÓN: Calcular personas que realmente pagan (excluyendo infantes <2 años)
+  const calcularPersonasQuePagan = () => {
+    const adultos = parseInt(form.adultos) || 0;
+    const menores = parseInt(form.menores) || 0;
+    let total = adultos + menores;
+    
+    // ✅ VALIDACIÓN: Si el total no coincide con numero_personas menos infantes, ajustar
+    const totalEsperado = parseInt(form.num_personas) - parseInt(form.infantes || 0);
+    if (total === 0 && totalEsperado > 0) {
+      console.log(`🔧 CORRECCIÓN: total=0 pero esperado=${totalEsperado}, usando totalEsperado`);
+      total = totalEsperado;
+    }
+    
+    // ✅ DEBUG: Log para ver los valores
+    console.log(`🧮 calcularPersonasQuePagan: adultos=${adultos}, menores=${menores}, total=${total}`);
+    console.log(`🧮 form.adultos=${form.adultos}, form.menores=${form.menores}, form.infantes=${form.infantes}`);
+    console.log(`🧮 num_personas=${form.num_personas}, totalEsperado=${totalEsperado}`);
+    
+    // Los infantes (<2 años) NO pagan
+    return Math.max(1, total); // Mínimo 1 persona que paga
+  };
+
+  // ✅ FUNCIÓN: Calcular total de actividades extras (por persona)
+  const calcularTotalActividadesExtras = () => {
+    if (!form.actividades_adicionales?.incluidas) return 0;
+    
+    let totalPorPersona = 0;
+    
+    // Actividades básicas (por persona)
+    if (form.actividades_adicionales?.actividades?.length > 0) {
+      totalPorPersona += form.actividades_adicionales.actividades.reduce((acc, actividad) => {
+        return acc + parseFloat(actividad.costo || 0);
+      }, 0);
+    }
+    
+    // Excursiones (por persona)
+    if (form.excursiones?.length > 0) {
+      totalPorPersona += form.excursiones.reduce((acc, exc) => {
+        return acc + parseFloat(exc.costo || 0);
+      }, 0);
+    }
+    
+    // Extras/servicios (costo total dividido entre personas que pagan)
+    if (form.extras?.length > 0) {
+      const totalServicios = form.extras.reduce((acc, extra) => {
+        return acc + parseFloat(extra.costo || 0);
+      }, 0);
+      totalPorPersona += totalServicios / calcularPersonasQuePagan();
+    }
+    
+    return totalPorPersona;
+  };
+
   const [activeTab, setActiveTab] = useState('transporte');
   const [form, setForm] = useState({
     // Datos base
     quote_id: quote_id,
     user_id: user?.id,
     num_personas: 1,
+    // ✅ NUEVOS: Datos detallados de pasajeros
+    adultos: 1,
+    menores: 0,
+    infantes: 0,
+    edades_menores: [],
+    edades_infantes: [],
+    personas_atencion_especial: 0,
     trip_type: 'nacional',
     
     // Categorías de costos
@@ -64,17 +124,19 @@ const AdvancedQuoteCalculator = ({ quote_id,
       costo_total: 0
     },
     seguros: {
-      asistencia_medica: { incluido: false, tipo: '', costo: 0, proveedor: '' },
+      asistencia_medica: { incluido: false, tipo: 'ninguna', costo: 0, proveedor: '' },
       cancelacion: { incluido: false, costo: 0, proveedor: '' },
       otros: [],
       costo_total: 0
     },
-    asistencia_medica: {
-      tipo: 'ninguna',
-      costo_total: 0,
-      proveedor: '',
-      observaciones: ''
+    // ✅ NUEVO: Actividades adicionales
+    actividades_adicionales: {
+      incluidas: false,
+      detalle: '',
+      costo_por_persona: 0,
+      proveedor: ''
     },
+    
     excursiones: [],
     extras: [],
     
@@ -124,6 +186,13 @@ const AdvancedQuoteCalculator = ({ quote_id,
         quote_id: existingCalculation.quote_id || quote_id,
         user_id: existingCalculation.user_id || prevForm.user_id,
         num_personas: existingCalculation.num_personas || quoteData?.numero_personas || 1,
+        // ✅ NUEVOS: Cargar datos detallados de pasajeros - QuoteEdit ya distribuyó correctamente
+        adultos: existingCalculation.adultos || quoteData?.adultos || 1,
+        menores: existingCalculation.menores || quoteData?.menores || 0,
+        infantes: existingCalculation.infantes || quoteData?.infantes || 0,
+        edades_menores: existingCalculation.edades_menores || quoteData?.edades_menores || [],
+        edades_infantes: existingCalculation.edades_infantes || quoteData?.edades_infantes || [],
+        personas_atencion_especial: existingCalculation.personas_atencion_especial || quoteData?.personas_atencion_especial || 0,
         trip_type: existingCalculation.trip_type || quoteData?.trip_type || 'nacional',
         
         // ✅ CARGAR: Tiquetes
@@ -151,6 +220,9 @@ const AdvancedQuoteCalculator = ({ quote_id,
         excursiones: Array.isArray(existingCalculation.excursiones) 
           ? existingCalculation.excursiones 
           : prevForm.excursiones,
+        
+        // ✅ CARGAR: Actividades adicionales
+        actividades_adicionales: existingCalculation.actividades_adicionales || prevForm.actividades_adicionales,
         
         // ✅ CARGAR: Extras
         extras: Array.isArray(existingCalculation.extras) 
@@ -185,6 +257,13 @@ const AdvancedQuoteCalculator = ({ quote_id,
           ...prevForm,
           quote_id: quote_id,
           num_personas: quoteData.numero_personas || 1,
+          // ✅ NUEVOS: Cargar datos detallados de pasajeros desde quoteData
+          adultos: quoteData.adultos || 1,
+          menores: quoteData.menores || 0,
+          infantes: quoteData.infantes || 0,
+          edades_menores: quoteData.edades_menores || [],
+          edades_infantes: quoteData.edades_infantes || [],
+          personas_atencion_especial: quoteData.personas_atencion_especial || 0,
           trip_type: quoteData.trip_type || 'nacional',
         }));
       }
@@ -197,6 +276,14 @@ const AdvancedQuoteCalculator = ({ quote_id,
       setForm(prev => ({
         ...prev,
         num_personas: baseData.quote_info.numero_personas || 1,
+        // ✅ NUEVOS: Cargar datos detallados desde baseData con lógica mejorada
+        adultos: baseData.quote_info.adultos || 
+                 Math.max(1, (baseData.quote_info.numero_personas - (baseData.quote_info.ninos || 0))),
+        menores: baseData.quote_info.menores || baseData.quote_info.ninos || 0,
+        infantes: baseData.quote_info.infantes || 0,
+        edades_menores: baseData.quote_info.edades_menores || [],
+        edades_infantes: baseData.quote_info.edades_infantes || [],
+        personas_atencion_especial: baseData.quote_info.personas_atencion_especial || 0,
         trip_type: baseData.quote_info.trip_type || 'nacional',
       }));
     }
@@ -236,6 +323,17 @@ const AdvancedQuoteCalculator = ({ quote_id,
     }
   }, [baseData]);
 
+  // ✅ DEBUG: useEffect para monitorear cambios en datos de personas
+  useEffect(() => {
+    console.log('👥 DEBUG datos de personas:', {
+      num_personas: form.num_personas,
+      adultos: form.adultos,
+      menores: form.menores,
+      infantes: form.infantes,
+      calcularPersonasQuePagan: calcularPersonasQuePagan()
+    });
+  }, [form.num_personas, form.adultos, form.menores, form.infantes]);
+
   // ✅ NUEVO: Actualizar comisiones cuando cambia el trip_type
   useEffect(() => {
     if (form.trip_type && quote_id) {
@@ -262,23 +360,49 @@ const AdvancedQuoteCalculator = ({ quote_id,
   const calcularTotales = useCallback(() => {
     let costoBase = 0;
     const numPersonas = parseInt(form.num_personas || 1);
+    const personasQuePagan = calcularPersonasQuePagan(); // ✅ Solo adultos + menores
 
-    // Sumar todos los costos (por persona y multiplicar por número de personas)
-    costoBase += parseFloat(form.tiquetes.costo_total || 0) * numPersonas;
-    costoBase += parseFloat(form.traslados.costo_total || 0) * numPersonas;
-    costoBase += parseFloat(form.hotel.costo_total || 0) * numPersonas;
-    costoBase += parseFloat(form.alimentacion.costo_total || 0) * numPersonas;
-    costoBase += parseFloat(form.equipaje.costo_total || 0) * numPersonas;
-    costoBase += parseFloat(form.seguros.costo_total || 0) * numPersonas;
-    costoBase += parseFloat(form.asistencia_medica.costo_total || 0) * numPersonas;
+    // Sumar todos los costos (por persona y multiplicar por número de personas QUE PAGAN)
+    costoBase += parseFloat(form.tiquetes.costo_total || 0) * personasQuePagan;
+    costoBase += parseFloat(form.traslados.costo_total || 0) * personasQuePagan;
+    costoBase += parseFloat(form.hotel.costo_total || 0) * personasQuePagan;
+    costoBase += parseFloat(form.alimentacion.costo_total || 0) * personasQuePagan;
+    costoBase += parseFloat(form.equipaje.costo_total || 0) * personasQuePagan;
+    costoBase += parseFloat(form.seguros.costo_total || 0) * personasQuePagan;
+    costoBase += parseFloat(form.seguros?.asistencia_medica?.costo || 0) * personasQuePagan;
 
-    // Sumar excursiones
-    const totalExcursiones = form.excursiones.reduce((acc, exc) => acc + parseFloat(exc.costo || 0), 0);
-    costoBase += totalExcursiones * numPersonas;
-
-    // Sumar extras
-    const totalExtras = form.extras.reduce((acc, extra) => acc + parseFloat(extra.costo || 0), 0);
-    costoBase += totalExtras * numPersonas;
+    // ✅ ACTUALIZADO: Calcular extras combinados según el nuevo sistema
+    let totalExtrasPersonas = 0;
+    let totalExtrasGenerales = 0;
+    
+    if (form.actividades_adicionales?.incluidas) {
+      // Actividades básicas agregadas (por persona)
+      if (form.actividades_adicionales?.actividades?.length > 0) {
+        const totalActividades = form.actividades_adicionales.actividades.reduce((acc, actividad) => {
+          return acc + parseFloat(actividad.costo || 0);
+        }, 0);
+        totalExtrasPersonas += totalActividades;
+      }
+      
+      // Excursiones (por persona)
+      if (form.excursiones?.length > 0) {
+        const totalExcursiones = form.excursiones.reduce((acc, exc) => {
+          return acc + parseFloat(exc.costo || 0);
+        }, 0);
+        totalExtrasPersonas += totalExcursiones;
+      }
+      
+      // Extras/servicios (costo total, no por persona)
+      if (form.extras?.length > 0) {
+        const totalServicios = form.extras.reduce((acc, extra) => {
+          return acc + parseFloat(extra.costo || 0);
+        }, 0);
+        totalExtrasGenerales += totalServicios;
+      }
+    }
+    
+    // Sumar al costo base
+    costoBase += (totalExtrasPersonas * personasQuePagan) + totalExtrasGenerales;
 
     // Calcular comisiones sobre el costo base SOLO si costoBase > 0
     let totalComisiones = 0;
@@ -292,7 +416,8 @@ const AdvancedQuoteCalculator = ({ quote_id,
 
           // Calcular según el tipo de comisión
           if (comision.tipo_calculo === 'fixed_per_person') {
-            totalRol = parseFloat(comision.valor_por_persona || 0) * numPersonas;
+            // ✅ CORRECTO: Solo se comisiona por personas que pagan (excluye infantes <2 años)
+            totalRol = parseFloat(comision.valor_por_persona || 0) * personasQuePagan;
           } else if (comision.tipo_calculo === 'percentage') {
             const porcentaje = parseFloat(comision.porcentaje || 0);
             totalRol = costoBase * porcentaje / 100;
@@ -325,7 +450,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
 
     // Precio final
     const precioFinalTotal = costoBase + totalComisiones + totalGanancia;
-    const precioFinalPorPersona = precioFinalTotal / numPersonas;
+    const precioFinalPorPersona = personasQuePagan > 0 ? precioFinalTotal / personasQuePagan : 0; // ✅ Dividir por personas que pagan
 
     setForm(prev => ({
       ...prev,
@@ -347,8 +472,11 @@ const AdvancedQuoteCalculator = ({ quote_id,
     form.alimentacion.costo_total,
     form.equipaje.costo_total,
     form.seguros.costo_total,
-    form.asistencia_medica.costo_total,
+    form.seguros?.asistencia_medica?.costo,
     form.excursiones,
+    // ✅ NUEVA: Dependencia para actividades adicionales
+    form.actividades_adicionales?.costo_por_persona,
+    form.actividades_adicionales?.incluidas,
     form.extras,
     form.comisiones.asesor.porcentaje,
     form.comisiones.asesor.valor_fijo,
@@ -364,7 +492,11 @@ const AdvancedQuoteCalculator = ({ quote_id,
     form.comisiones.admin.valor_por_persona,
     form.ganancia.porcentaje,
     form.ganancia.valor_fijo,
-    form.num_personas
+    form.num_personas,
+    // ✅ NUEVAS: Dependencias para recalcular cuando cambian los pasajeros
+    form.adultos,
+    form.menores,
+    form.infantes
   ]);
 
   // Pre-llenar formulario con datos base
@@ -492,6 +624,70 @@ const AdvancedQuoteCalculator = ({ quote_id,
     });
   };
 
+  // ✅ NUEVO: Funciones para manejar excursiones
+  const addExcursion = () => {
+    setForm(prev => ({
+      ...prev,
+      excursiones: [...prev.excursiones, { 
+        nombre: '', 
+        descripcion: '', 
+        duracion: '', 
+        costo: 0, 
+        proveedor: '', 
+        obligatoria: false 
+      }]
+    }));
+  };
+
+  const removeExcursion = (index) => {
+    setForm(prev => ({
+      ...prev,
+      excursiones: prev.excursiones.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleExcursionChange = (index, field, value) => {
+    setForm(prev => {
+      const newExcursiones = [...prev.excursiones];
+      newExcursiones[index][field] = value;
+      return {
+        ...prev,
+        excursiones: newExcursiones
+      };
+    });
+  };
+
+  // ✅ NUEVO: Funciones para manejar extras
+  const addExtra = () => {
+    setForm(prev => ({
+      ...prev,
+      extras: [...prev.extras, { 
+        nombre: '', 
+        descripcion: '', 
+        costo: 0, 
+        proveedor: '' 
+      }]
+    }));
+  };
+
+  const removeExtra = (index) => {
+    setForm(prev => ({
+      ...prev,
+      extras: prev.extras.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleExtraChange = (index, field, value) => {
+    setForm(prev => {
+      const newExtras = [...prev.extras];
+      newExtras[index][field] = value;
+      return {
+        ...prev,
+        extras: newExtras
+      };
+    });
+  };
+
   const handleSubmit = async (e) => {
   e.preventDefault();
   
@@ -505,8 +701,9 @@ const AdvancedQuoteCalculator = ({ quote_id,
   console.log("🍽️ COMPONENTE: Alimentación:", form.alimentacion);
   console.log("🛡️ COMPONENTE: Seguros:", form.seguros);
   console.log("🎒 COMPONENTE: Equipaje:", form.equipaje);
-  console.log("🏥 COMPONENTE: Asistencia médica:", form.asistencia_medica);
+  console.log("🏥 COMPONENTE: Asistencia médica:", form.seguros?.asistencia_medica);
   console.log("🎯 COMPONENTE: Excursiones:", form.excursiones);
+  console.log("🎪 COMPONENTE: Actividades adicionales:", form.actividades_adicionales);
   console.log("➕ COMPONENTE: Extras:", form.extras);
   
   // ✅ AGREGAR: Log de comisiones y totales
@@ -548,9 +745,100 @@ const AdvancedQuoteCalculator = ({ quote_id,
   
   console.log("📤 COMPONENTE: Enviando datos vía dispatch...");
   
+  // ✅ NUEVO: Log específico para debugging de excursiones/extras antes de enviar
+  console.log("🔍 DEBUGGING EXCURSIONES/EXTRAS ANTES DE ENVIAR:");
+  console.log("  - Excursiones:", {
+    length: form.excursiones?.length || 0,
+    data: form.excursiones,
+    isArray: Array.isArray(form.excursiones)
+  });
+  console.log("  - Extras:", {
+    length: form.extras?.length || 0,
+    data: form.extras,
+    isArray: Array.isArray(form.extras)
+  });
+  console.log("  - Actividades adicionales:", {
+    incluidas: form.actividades_adicionales?.incluidas,
+    data: form.actividades_adicionales,
+  });
+  
+  // ✅ NUEVO: Combinar todas las actividades en un solo array de "extras"
+  const combinedExtras = [];
+  
+  // Solo incluir si actividades están habilitadas
+  if (form.actividades_adicionales?.incluidas) {
+    // Agregar actividades básicas si existen
+    if (form.actividades_adicionales?.actividades?.length > 0) {
+      form.actividades_adicionales.actividades.forEach(actividad => {
+        if (actividad.descripcion && actividad.costo > 0) {
+          combinedExtras.push({
+            nombre: actividad.descripcion,
+            descripcion: actividad.descripcion,
+            costo: parseFloat(actividad.costo),
+            proveedor: actividad.proveedor || '',
+            tipo: 'actividad_basica'
+          });
+        }
+      });
+    }
+    
+    // Agregar excursiones
+    if (form.excursiones?.length > 0) {
+      form.excursiones.forEach(excursion => {
+        if (excursion.nombre && excursion.costo > 0) {
+          combinedExtras.push({
+            nombre: excursion.nombre,
+            descripcion: excursion.descripcion || '',
+            costo: parseFloat(excursion.costo),
+            proveedor: excursion.proveedor || '',
+            tipo: 'excursion'
+          });
+        }
+      });
+    }
+    
+    // Agregar extras
+    if (form.extras?.length > 0) {
+      form.extras.forEach(extra => {
+        if (extra.nombre && extra.costo > 0) {
+          combinedExtras.push({
+            nombre: extra.nombre,
+            descripcion: extra.descripcion || '',
+            costo: parseFloat(extra.costo),
+            proveedor: extra.proveedor || '',
+            tipo: 'servicio_extra'
+          });
+        }
+      });
+    }
+  }
+  
+  console.log("🔄 COMBINANDO ACTIVIDADES EN EXTRAS:");
+  console.log("  - Total items combinados:", combinedExtras.length);
+  console.log("  - Array combinado:", combinedExtras);
+  
+  // ✅ NUEVO: Preparar datos modificados para enviar
+  const dataToSend = {
+    ...form,
+    extras: combinedExtras, // ✅ Solo enviar el array combinado como "extras"
+    excursiones: [], // ✅ Vaciar excursiones porque van en extras
+    actividades_adicionales: { // ✅ Mantener solo el flag de inclusión
+      incluidas: form.actividades_adicionales?.incluidas || false,
+      detalle: '',
+      costo_por_persona: 0,
+      proveedor: ''
+    }
+  };
+  
+  console.log("📤 DATOS FINALES A ENVIAR:", dataToSend);
+  console.log("📤 EXTRAS FINALES:", dataToSend.extras);
+  console.log("🏥 ASISTENCIA MÉDICA ENVIADA:", dataToSend.seguros?.asistencia_medica);
+  console.log("🍽️ ALIMENTACIÓN ENVIADA:", dataToSend.alimentacion);
+  console.log("🛡️ SEGUROS COMPLETO:", dataToSend.seguros);
+  
   try {
    console.log("💾 CALCULADORA: Usando upsertQuoteCalculation para guardar/actualizar");
-      const result = await dispatch(upsertQuoteCalculation(form));
+      const result = await dispatch(upsertQuoteCalculation(dataToSend));
       console.log("📨 CALCULADORA: Resultado del dispatch:", result);
       
     
@@ -649,7 +937,25 @@ const AdvancedQuoteCalculator = ({ quote_id,
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
+          
+          {/* ✅ NUEVA: Información sobre personas que pagan */}
           <div>
+            <label className="block text-sm font-medium mb-1">Desglose de Costos</label>
+            <div className="text-sm bg-blue-50 border border-blue-200 rounded-md p-2">
+              <div className="font-medium text-blue-800">
+                {calcularPersonasQuePagan()} persona(s) que pagan
+              </div>
+              {form.infantes > 0 && (
+                <div className="text-blue-600">
+                  + {form.infantes} infante(s) (gratis)
+                </div>
+              )}
+              <div className="text-xs text-gray-600 mt-1">
+                Los costos se calculan solo para adultos y menores
+              </div>
+            </div>
+          </div>
+          {/* <div>
             <label className="block text-sm font-medium mb-1">Estado</label>
             <select
               value={form.estado}
@@ -659,7 +965,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
               <option value="temporal">Temporal</option>
               <option value="confirmado">Confirmado</option>
             </select>
-          </div>
+          </div> */}
         </div>
       </div>
 
@@ -678,7 +984,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
                     onChange={e => handleInputChange('tiquetes', 'tipo', e.target.value)}
                     className="w-full border rounded px-3 py-2"
                   >
-                    <option value="ida">Solo Ida</option>
+                    
                     <option value="ida_vuelta">Ida y Vuelta</option>
                     <option value="sin_tiquetes">Sin Tiquetes</option>
                   </select>
@@ -695,8 +1001,8 @@ const AdvancedQuoteCalculator = ({ quote_id,
                 </div>
                 {form.tiquetes.tipo !== 'sin_tiquetes' && (
                   <>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Costo Ida (por persona)</label>
+                    {/* <div>
+                      <label className="block text-sm font-medium mb-1">Valor (por persona)</label>
                       <input
                         type="number"
                         value={form.tiquetes.costo_ida}
@@ -704,10 +1010,10 @@ const AdvancedQuoteCalculator = ({ quote_id,
                         className="w-full border rounded px-3 py-2"
                         placeholder="0"
                       />
-                    </div>
+                    </div> */}
                     {form.tiquetes.tipo === 'ida_vuelta' && (
                       <div>
-                        <label className="block text-sm font-medium mb-1">Costo Vuelta (por persona)</label>
+                        <label className="block text-sm font-medium mb-1">Valor (por persona)</label>
                         <input
                           type="number"
                           value={form.tiquetes.costo_vuelta}
@@ -723,7 +1029,12 @@ const AdvancedQuoteCalculator = ({ quote_id,
               <div className="mt-3 p-2 bg-blue-50 rounded">
                 <strong>Total Tiquetes por persona: ${Number(form.tiquetes.costo_total).toLocaleString()}</strong>
                 <br />
-                <strong>Total para {form.num_personas} persona(s): ${Number(form.tiquetes.costo_total * form.num_personas).toLocaleString()}</strong>
+                <strong>Total para {calcularPersonasQuePagan()} persona(s) que pagan: ${Number(form.tiquetes.costo_total * calcularPersonasQuePagan()).toLocaleString()}</strong>
+                {form.infantes > 0 && (
+                  <div className="text-sm text-gray-600 mt-1">
+                    + {form.infantes} infante(s) (gratis)
+                  </div>
+                )}
               </div>
             </div>
 
@@ -775,7 +1086,12 @@ const AdvancedQuoteCalculator = ({ quote_id,
               <div className="mt-3 p-2 bg-blue-50 rounded">
                 <strong>Total Traslados por persona: ${Number(form.traslados.costo_total).toLocaleString()}</strong>
                 <br />
-                <strong>Total para {form.num_personas} persona(s): ${Number(form.traslados.costo_total * form.num_personas).toLocaleString()}</strong>
+                <strong>Total para {calcularPersonasQuePagan()} persona(s) que pagan: ${Number(form.traslados.costo_total * calcularPersonasQuePagan()).toLocaleString()}</strong>
+                {form.infantes > 0 && (
+                  <div className="text-sm text-gray-600 mt-1">
+                    + {form.infantes} infante(s) (gratis)
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -839,7 +1155,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Costo por Noche (por persona)</label>
+                  <label className="block text-sm font-medium mb-1">Valor por Noche (por persona)</label>
                   <input
                     type="number"
                     value={form.hotel.costo_noche}
@@ -852,7 +1168,12 @@ const AdvancedQuoteCalculator = ({ quote_id,
               <div className="mt-3 p-2 bg-blue-50 rounded">
                 <strong>Total Hotel por persona: ${Number(form.hotel.costo_total).toLocaleString()}</strong>
                 <br />
-                <strong>Total para {form.num_personas} persona(s): ${Number(form.hotel.costo_total * form.num_personas).toLocaleString()}</strong>
+                <strong>Total para {calcularPersonasQuePagan()} persona(s) que pagan: ${Number(form.hotel.costo_total * calcularPersonasQuePagan()).toLocaleString()}</strong>
+                {form.infantes > 0 && (
+                  <div className="text-sm text-gray-600 mt-1">
+                    + {form.infantes} infante(s) (gratis)
+                  </div>
+                )}
               </div>
             </div>
 
@@ -868,14 +1189,14 @@ const AdvancedQuoteCalculator = ({ quote_id,
                     className="w-full border rounded px-3 py-2"
                   >
                     <option value="ninguna">Ninguna</option>
-                    <option value="desayuno">Solo Desayuno</option>
-                    <option value="media_pension">Media Pensión</option>
-                    <option value="pension_completa">Pensión Completa</option>
-                    <option value="todo_incluido">Todo Incluido</option>
+                    <option value="desayuno">Desayuno</option>
+                    <option value="media_pension">Desayuno y cena</option>
+                    <option value="pension_completa">Desayuno, almuerzo y cena</option>
+                    <option value="todo_incluido">Todo Incluido (Desayuno, almuerzo y cena + bebidas y licores + snacks)</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Costo Total (por persona)</label>
+                  <label className="block text-sm font-medium mb-1">Valor Total (por persona)</label>
                   <input
                     type="number"
                     value={form.alimentacion.costo_total}
@@ -888,7 +1209,12 @@ const AdvancedQuoteCalculator = ({ quote_id,
               <div className="mt-3 p-2 bg-blue-50 rounded">
                 <strong>Total Alimentación por persona: ${Number(form.alimentacion.costo_total).toLocaleString()}</strong>
                 <br />
-                <strong>Total para {form.num_personas} persona(s): ${Number(form.alimentacion.costo_total * form.num_personas).toLocaleString()}</strong>
+                <strong>Total para {calcularPersonasQuePagan()} persona(s) que pagan: ${Number(form.alimentacion.costo_total * calcularPersonasQuePagan()).toLocaleString()}</strong>
+                {form.infantes > 0 && (
+                  <div className="text-sm text-gray-600 mt-1">
+                    + {form.infantes} infante(s) (gratis)
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -898,7 +1224,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
         {activeTab === 'servicios' && (
           <div className="space-y-6">
             {/* Seguros */}
-            <div className="border rounded-lg p-4">
+            {/* <div className="border rounded-lg p-4">
               <h4 className="font-semibold mb-3">Seguros</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -928,9 +1254,14 @@ const AdvancedQuoteCalculator = ({ quote_id,
               <div className="mt-3 p-2 bg-blue-50 rounded">
                 <strong>Total Seguros por persona: ${Number(form.seguros.costo_total).toLocaleString()}</strong>
                 <br />
-                <strong>Total para {form.num_personas} persona(s): ${Number(form.seguros.costo_total * form.num_personas).toLocaleString()}</strong>
+                <strong>Total para {calcularPersonasQuePagan()} persona(s) que pagan: ${Number(form.seguros.costo_total * calcularPersonasQuePagan()).toLocaleString()}</strong>
+                {form.infantes > 0 && (
+                  <div className="text-sm text-gray-600 mt-1">
+                    + {form.infantes} infante(s) (gratis)
+                  </div>
+                )}
               </div>
-            </div>
+            </div> */}
 
             {/* Equipaje */}
             <div className="border rounded-lg p-4">
@@ -945,20 +1276,10 @@ const AdvancedQuoteCalculator = ({ quote_id,
                     />
                     <label className="text-sm font-medium">Equipaje Extra</label>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Costo Equipaje Extra (por persona)</label>
-                    <input
-                      type="number"
-                      value={form.equipaje.equipaje_extra.costo}
-                      onChange={e => handleInputChange('equipaje', 'equipaje_extra', e.target.value, 'costo')}
-                      className="w-full border rounded px-3 py-2"
-                      min="0"
-                      disabled={!form.equipaje.equipaje_extra.incluido}
-                    />
-                  </div>
+                 
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Costo Total Equipaje (por persona)</label>
+                  <label className="block text-sm font-medium mb-1">Valor Total Equipaje (por persona)</label>
                   <input
                     type="number"
                     value={form.equipaje.costo_total}
@@ -971,7 +1292,12 @@ const AdvancedQuoteCalculator = ({ quote_id,
               <div className="mt-3 p-2 bg-blue-50 rounded">
                 <strong>Total Equipaje por persona: ${Number(form.equipaje.costo_total).toLocaleString()}</strong>
                 <br />
-                <strong>Total para {form.num_personas} persona(s): ${Number(form.equipaje.costo_total * form.num_personas).toLocaleString()}</strong>
+                <strong>Total para {calcularPersonasQuePagan()} persona(s) que pagan: ${Number(form.equipaje.costo_total * calcularPersonasQuePagan()).toLocaleString()}</strong>
+                {form.infantes > 0 && (
+                  <div className="text-sm text-gray-600 mt-1">
+                    + {form.infantes} infante(s) (gratis)
+                  </div>
+                )}
               </div>
             </div>
 
@@ -982,8 +1308,8 @@ const AdvancedQuoteCalculator = ({ quote_id,
                 <div>
                   <label className="block text-sm font-medium mb-1">Tipo de Asistencia</label>
                   <select
-                    value={form.asistencia_medica?.tipo || 'ninguna'}
-                    onChange={e => handleInputChange('asistencia_medica', 'tipo', e.target.value)}
+                    value={form.seguros?.asistencia_medica?.tipo || 'ninguna'}
+                    onChange={e => handleInputChange('seguros', 'asistencia_medica', e.target.value, 'tipo')}
                     className="w-full border rounded px-3 py-2"
                   >
                     <option value="ninguna">Ninguna</option>
@@ -993,20 +1319,25 @@ const AdvancedQuoteCalculator = ({ quote_id,
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Costo Total (por persona)</label>
+                  <label className="block text-sm font-medium mb-1">Valor Total (por persona)</label>
                   <input
                     type="number"
-                    value={form.asistencia_medica?.costo_total || 0}
-                    onChange={e => handleInputChange('asistencia_medica', 'costo_total', e.target.value)}
+                    value={form.seguros?.asistencia_medica?.costo || 0}
+                    onChange={e => handleInputChange('seguros', 'asistencia_medica', e.target.value, 'costo')}
                     className="w-full border rounded px-3 py-2"
                     min="0"
                   />
                 </div>
               </div>
               <div className="mt-3 p-2 bg-blue-50 rounded">
-                <strong>Total Asistencia Médica por persona: ${Number(form.asistencia_medica?.costo_total || 0).toLocaleString()}</strong>
+                <strong>Total Asistencia Médica por persona: ${Number(form.seguros?.asistencia_medica?.costo || 0).toLocaleString()}</strong>
                 <br />
-                <strong>Total para {form.num_personas} persona(s): ${Number((form.asistencia_medica?.costo_total || 0) * form.num_personas).toLocaleString()}</strong>
+                <strong>Total para {calcularPersonasQuePagan()} persona(s) que pagan: ${Number((form.seguros?.asistencia_medica?.costo || 0) * calcularPersonasQuePagan()).toLocaleString()}</strong>
+                {form.infantes > 0 && (
+                  <div className="text-sm text-gray-600 mt-1">
+                    + {form.infantes} infante(s) (gratis)
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1016,9 +1347,227 @@ const AdvancedQuoteCalculator = ({ quote_id,
         {activeTab === 'actividades' && (
           <div className="space-y-6">
             <div className="border rounded-lg p-4">
-              <h4 className="font-semibold mb-3">Excursiones y Actividades</h4>
-              <p className="text-gray-600">Esta sección estará disponible próximamente para agregar excursiones y actividades adicionales.</p>
+              <h4 className="font-semibold mb-3">Actividades Adicionales</h4>
+              
+              {/* ✅ NUEVO: Checkbox para incluir actividades */}
+              <div className="flex items-center mb-4">
+                <input
+                  type="checkbox"
+                  id="incluir-actividades"
+                  checked={form.actividades_adicionales?.incluidas || false}
+                  onChange={(e) => handleInputChange('actividades_adicionales', 'incluidas', e.target.checked)}
+                  className="mr-2"
+                />
+                <label htmlFor="incluir-actividades" className="text-sm font-medium">
+                  Incluir actividades adicionales
+                </label>
+              </div>
+
+              {/* ✅ NUEVO: Campos de actividades cuando está habilitado */}
+              {form.actividades_adicionales?.incluidas && (
+                <div className="space-y-4">
+             
+               
+                  
+                  {/* ✅ SECCIÓN: Excursiones */}
+                  <div className="mt-6 border rounded-lg p-4 bg-gray-50">
+                    <h5 className="font-medium mb-3 text-gray-700">Excursiones Específicas</h5>
+                    
+                    {form.excursiones.map((excursion, idx) => (
+                      <div key={idx} className="mb-4 p-4 border rounded-lg bg-white">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Nombre de la excursión *
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Ej: City Tour, Excursión en barco"
+                              value={excursion.nombre || ''}
+                              onChange={(e) => handleExcursionChange(idx, 'nombre', e.target.value)}
+                              className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Valor por persona *
+                            </label>
+                            <input
+                              type="number"
+                              placeholder="0"
+                              value={excursion.costo || ''}
+                              onChange={(e) => handleExcursionChange(idx, 'costo', e.target.value)}
+                              className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Descripción
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Descripción detallada de la excursión"
+                              value={excursion.descripcion || ''}
+                              onChange={(e) => handleExcursionChange(idx, 'descripcion', e.target.value)}
+                              className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Proveedor
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Nombre del proveedor"
+                              value={excursion.proveedor || ''}
+                              onChange={(e) => handleExcursionChange(idx, 'proveedor', e.target.value)}
+                              className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="flex justify-between items-center">
+                          <div className="text-sm text-gray-600">
+                            Total para {calcularPersonasQuePagan()} persona(s): ${Number((excursion.costo || 0) * calcularPersonasQuePagan()).toLocaleString()}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeExcursion(idx)}
+                            className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    <button
+                      type="button"
+                      onClick={addExcursion}
+                      className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                    >
+                      + Agregar Excursión
+                    </button>
+                    
+                    {form.excursiones.length > 0 && (
+                      <div className="mt-3 p-2 bg-green-50 rounded">
+                        <strong>Total Excursiones: ${form.excursiones.reduce((acc, exc) => acc + Number(exc.costo || 0), 0).toLocaleString()} por persona</strong>
+                        <br />
+                        <strong>Total para {calcularPersonasQuePagan()} persona(s) que pagan: ${(form.excursiones.reduce((acc, exc) => acc + Number(exc.costo || 0), 0) * calcularPersonasQuePagan()).toLocaleString()}</strong>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* ✅ SECCIÓN: Servicios Extras */}
+                  <div className="mt-6 border rounded-lg p-4 bg-gray-50">
+                    <h5 className="font-medium mb-3 text-gray-700">Servicios Extras</h5>
+                    
+                    {form.extras.map((extra, idx) => (
+                      <div key={idx} className="mb-4 p-4 border rounded-lg bg-white">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Nombre del servicio *
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Ej: Seguro adicional, Wi-Fi"
+                              value={extra.nombre || ''}
+                              onChange={(e) => handleExtraChange(idx, 'nombre', e.target.value)}
+                              className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Valor total del servicio *
+                            </label>
+                            <input
+                              type="number"
+                              placeholder="0"
+                              value={extra.costo || ''}
+                              onChange={(e) => handleExtraChange(idx, 'costo', e.target.value)}
+                              className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Descripción
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Descripción del servicio extra"
+                              value={extra.descripcion || ''}
+                              onChange={(e) => handleExtraChange(idx, 'descripcion', e.target.value)}
+                              className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Proveedor
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Nombre del proveedor"
+                              value={extra.proveedor || ''}
+                              onChange={(e) => handleExtraChange(idx, 'proveedor', e.target.value)}
+                              className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="flex justify-between items-center">
+                          <div className="text-sm text-gray-600">
+                            Costo total del servicio: ${Number(extra.costo || 0).toLocaleString()}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeExtra(idx)}
+                            className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    <button
+                      type="button"
+                      onClick={addExtra}
+                      className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    >
+                      + Agregar Servicio Extra
+                    </button>
+                    
+                    {form.extras.length > 0 && (
+                      <div className="mt-3 p-2 bg-blue-50 rounded">
+                        <strong>Total Servicios Extras: ${form.extras.reduce((acc, ext) => acc + Number(ext.costo || 0), 0).toLocaleString()}</strong>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
+               {/* ✅ NUEVO: Mostrar total calculado */}
+                  <div className="mt-3 p-2 bg-blue-50 rounded">
+                    <strong>Total Actividades por persona: ${Number(calcularTotalActividadesExtras()).toLocaleString()}</strong>
+                    <br />
+                    <strong>Total para {calcularPersonasQuePagan()} persona(s) que pagan: ${Number(calcularTotalActividadesExtras() * calcularPersonasQuePagan()).toLocaleString()}</strong>
+                    {form.infantes > 0 && (
+                      <div className="text-sm text-gray-600 mt-1">
+                        + {form.infantes} infante(s) (gratis)
+                      </div>
+                    )}
+                  </div>
           </div>
         )}
 
@@ -1027,6 +1576,15 @@ const AdvancedQuoteCalculator = ({ quote_id,
           <div className="space-y-6">
             <div className="border rounded-lg p-4">
               <h4 className="font-semibold mb-3">Comisiones por Jerarquía</h4>
+              
+              {/* ✅ NUEVA: Información sobre cálculo de comisiones */}
+              <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="text-sm text-yellow-800">
+                  <strong>Nota:</strong> Las comisiones por persona se calculan solo para {calcularPersonasQuePagan()} persona(s) que pagan.
+                  {form.infantes > 0 && ` Los ${form.infantes} infante(s) no generan comisión.`}
+                </div>
+              </div>
+              
               {baseData && baseData.comisiones_configuradas && (
                 <div className="space-y-3">
                   {Object.entries(baseData.comisiones_configuradas).map(([rol, datos]) => 
@@ -1123,11 +1681,64 @@ const AdvancedQuoteCalculator = ({ quote_id,
                 </div>
                 <div className="flex justify-between">
                   <span>Asistencia Médica (por persona):</span>
-                  <span>${Number(form.asistencia_medica?.costo_total || 0).toLocaleString()}</span>
+                  <span>${Number(form.seguros?.asistencia_medica?.costo || 0).toLocaleString()}</span>
                 </div>
+                {/* ✅ NUEVA: Actividades adicionales detalladas en el resumen */}
+                {form.actividades_adicionales?.incluidas && (
+                  <>
+                    <div className="border-t pt-2 mt-2">
+                      <h5 className="font-medium text-gray-700 mb-2">Actividades Extras Incluidas:</h5>
+                      
+                      {/* Actividades Básicas */}
+                      {form.actividades_adicionales?.actividades?.length > 0 && (
+                        <div className="ml-4 mb-2">
+                          <div className="text-sm font-medium text-blue-600 mb-1">Actividades Básicas:</div>
+                          {form.actividades_adicionales.actividades.map((actividad, index) => (
+                            <div key={index} className="flex justify-between text-sm ml-2">
+                              <span>• {actividad.descripcion}</span>
+                              <span>${Number(actividad.costo).toLocaleString()} x {calcularPersonasQuePagan()} = ${Number(actividad.costo * calcularPersonasQuePagan()).toLocaleString()}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* Excursiones */}
+                      {form.excursiones?.length > 0 && (
+                        <div className="ml-4 mb-2">
+                          <div className="text-sm font-medium text-green-600 mb-1">Excursiones:</div>
+                          {form.excursiones.map((excursion, index) => (
+                            <div key={index} className="flex justify-between text-sm ml-2">
+                              <span>• {excursion.descripcion}</span>
+                              <span>${Number(excursion.costo).toLocaleString()} x {calcularPersonasQuePagan()} = ${Number(excursion.costo * calcularPersonasQuePagan()).toLocaleString()}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* Servicios Extras */}
+                      {form.extras?.length > 0 && (
+                        <div className="ml-4 mb-2">
+                          <div className="text-sm font-medium text-purple-600 mb-1">Servicios Extras:</div>
+                          {form.extras.map((extra, index) => (
+                            <div key={index} className="flex justify-between text-sm ml-2">
+                              <span>• {extra.descripcion}</span>
+                              <span>${Number(extra.costo).toLocaleString()} (costo total)</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* Total de actividades */}
+                      <div className="flex justify-between font-medium text-orange-600 mt-2 pt-2 border-t">
+                        <span>Total Actividades Extras (por persona):</span>
+                        <span>${Number(calcularTotalActividadesExtras()).toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </>
+                )}
                 <div className="border-t pt-2">
                   <div className="flex justify-between font-semibold">
-                    <span>Costo Base Total ({form.num_personas} persona(s)):</span>
+                    <span>Costo Base Total ({calcularPersonasQuePagan()} persona(s) que pagan):</span>
                     <span>${Number(form.costo_base).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-orange-600">
@@ -1146,6 +1757,11 @@ const AdvancedQuoteCalculator = ({ quote_id,
                     <div className="flex justify-between text-lg font-bold text-blue-600">
                       <span>PRECIO POR PERSONA:</span>
                       <span>${Number(form.precio_final_por_persona).toLocaleString()}</span>
+                    </div>
+                    {/* ✅ NUEVA: Información sobre el cálculo */}
+                    <div className="text-sm text-gray-600 mt-2 text-center">
+                      Precio calculado para {calcularPersonasQuePagan()} persona(s) que pagan
+                      {form.infantes > 0 && ` • ${form.infantes} infante(s) incluido(s) gratis`}
                     </div>
                   </div>
                 </div>

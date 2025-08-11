@@ -1,6 +1,84 @@
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
+const { generatePassengerSummary } = require('./passengerValidation');
+
+// ✅ Función auxiliar para generar desglose detallado de pasajeros
+function generatePassengerBreakdown(contractData) {
+  const quote = contractData.Quote || contractData;
+  
+  // Datos detallados de pasajeros (nuevo formato)
+  const adultos = quote.adultos || 0;
+  const menores = quote.menores || 0;
+  const infantes = quote.infantes || 0;
+  const edades_menores = quote.edades_menores || [];
+  const edades_infantes = quote.edades_infantes || [];
+  const personas_especiales = quote.personas_atencion_especial || 0;
+  
+  // Datos legacy para compatibilidad
+  const numero_personas = quote.numero_personas || (adultos + menores + infantes);
+  const ninos_legacy = quote.ninos || 0;
+  
+  let breakdown = [];
+  
+  // Si tenemos datos detallados, usarlos
+  if (adultos > 0 || menores > 0 || infantes > 0) {
+    if (adultos > 0) {
+      breakdown.push({
+        label: 'Adultos (14+ años):',
+        value: adultos.toString()
+      });
+    }
+    
+    if (menores > 0) {
+      const edadesTexto = edades_menores.length > 0 
+        ? ` (${edades_menores.join(', ')} años)` 
+        : '';
+      breakdown.push({
+        label: `Menores (2-14 años)${edadesTexto}:`,
+        value: menores.toString()
+      });
+    }
+    
+    if (infantes > 0) {
+      const edadesTexto = edades_infantes.length > 0 
+        ? ` (${edades_infantes.join(', ')} meses)` 
+        : '';
+      breakdown.push({
+        label: `Infantes (<2 años)${edadesTexto}:`,
+        value: infantes.toString()
+      });
+    }
+    
+    if (personas_especiales > 0) {
+      breakdown.push({
+        label: 'Atención especial:',
+        value: personas_especiales.toString()
+      });
+    }
+    
+    breakdown.push({
+      label: 'TOTAL PASAJEROS:',
+      value: numero_personas.toString(),
+      isBold: true
+    });
+  } else {
+    // Formato legacy
+    breakdown.push({
+      label: 'Cantidad de Pasajeros:',
+      value: numero_personas.toString()
+    });
+    
+    if (ninos_legacy > 0) {
+      breakdown.push({
+        label: 'Niños:',
+        value: ninos_legacy.toString()
+      });
+    }
+  }
+  
+  return breakdown;
+}
 
 // 🎨 Paleta de colores profesional para el contrato
 const COLORS = {
@@ -288,14 +366,8 @@ const createReservaSection = (doc, contractData) => {
       label: 'Destino:', 
       value: contractData.Quote?.destino || ''
     },
-    { 
-      label: 'Cantidad de Pasajeros:', 
-      value: contractData.numero_pasajeros?.toString() || contractData.Quote?.numero_personas?.toString() || '0'
-    },
-    { 
-      label: 'Cantidad de Infantes (0-23 meses):', 
-      value: '0' // TODO: Calcular basado en edades
-    },
+    // ✅ Insertar desglose dinámico de pasajeros
+    ...generatePassengerBreakdown(contractData),
     { 
       label: 'Fecha de salida:', 
       value: formatearFecha(contractData.fecha_inicio_viaje)

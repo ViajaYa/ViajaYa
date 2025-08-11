@@ -26,16 +26,54 @@ const QuotePopup = ({ isOpen, onClose, prefilledData = {} }) => {
     fecha_ida: prefilledData.fecha_ida || '',
     fecha_regreso: prefilledData.fecha_regreso || '',
     numero_personas: prefilledData.numero_personas || 1,
-    acomodacion: prefilledData.acomodacion || '',
-    tipo_hotel: prefilledData.tipo_hotel || '',
-    ninos: prefilledData.ninos || 0,
-    edades_ninos: prefilledData.edades_ninos || '',
+    // ✅ NUEVOS CAMPOS DETALLADOS DE PASAJEROS
+    adultos: prefilledData.adultos || 1,
+    menores: prefilledData.menores || 0,
+    infantes: prefilledData.infantes || 0,
+    edades_menores: prefilledData.edades_menores || [],
+    edades_infantes: prefilledData.edades_infantes || [],
+    personas_atencion_especial: prefilledData.personas_atencion_especial || 0,
+    detalles_atencion_especial: prefilledData.detalles_atencion_especial || '',
+    acomodacion: prefilledData.acomodacion || 'doble',
+    tipo_hotel: prefilledData.tipo_hotel || 'basico',
+    ninos: prefilledData.ninos || 0, // ⚠️ LEGACY: mantener por compatibilidad
+    edades_ninos: prefilledData.edades_ninos || '', // ⚠️ LEGACY: mantener por compatibilidad
     observaciones: prefilledData.observaciones || '',
     cliente_id: null
   });
 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+
+  // ✅ Recalcular número total de personas automáticamente
+  useEffect(() => {
+    const total = (parseInt(form.adultos) || 0) + (parseInt(form.menores) || 0) + (parseInt(form.infantes) || 0);
+    if (total !== form.numero_personas) {
+      setForm(prev => ({ ...prev, numero_personas: total }));
+    }
+  }, [form.adultos, form.menores, form.infantes]);
+
+  // ✅ Función para agregar/quitar edades de menores
+  const handleEdadMenor = (index, edad) => {
+    const nuevasEdades = [...form.edades_menores];
+    if (edad === '') {
+      nuevasEdades.splice(index, 1);
+    } else {
+      nuevasEdades[index] = parseInt(edad);
+    }
+    setForm(prev => ({ ...prev, edades_menores: nuevasEdades }));
+  };
+
+  // ✅ Función para agregar/quitar edades de infantes (en meses)
+  const handleEdadInfante = (index, meses) => {
+    const nuevasEdades = [...form.edades_infantes];
+    if (meses === '') {
+      nuevasEdades.splice(index, 1);
+    } else {
+      nuevasEdades[index] = parseInt(meses);
+    }
+    setForm(prev => ({ ...prev, edades_infantes: nuevasEdades }));
+  };
 
    useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -124,9 +162,48 @@ useEffect(() => {
     if (!form.fecha_ida) {
       newErrors.fecha_ida = 'La fecha de ida es requerida';
     }
-    if (!form.numero_personas || form.numero_personas < 1) {
-      newErrors.numero_personas = 'Debe ser al menos 1 persona';
+    
+    // ✅ Validaciones de pasajeros
+    const totalPasajeros = (form.adultos || 0) + (form.menores || 0) + (form.infantes || 0);
+    if (totalPasajeros < 1) {
+      newErrors.numero_personas = 'Debe haber al menos 1 pasajero';
     }
+    
+    if (form.adultos < 0) {
+      newErrors.adultos = 'El número de adultos no puede ser negativo';
+    }
+    
+    if (form.menores < 0) {
+      newErrors.menores = 'El número de menores no puede ser negativo';
+    }
+    
+    if (form.infantes < 0) {
+      newErrors.infantes = 'El número de infantes no puede ser negativo';
+    }
+    
+    // ✅ Validar edades de menores
+    if (form.menores > 0 && form.edades_menores.length !== form.menores) {
+      newErrors.edades_menores = 'Debe especificar la edad de todos los menores';
+    }
+    
+    if (form.edades_menores.some(edad => edad < 2 || edad > 14)) {
+      newErrors.edades_menores = 'Las edades de menores deben estar entre 2 y 14 años';
+    }
+    
+    // ✅ Validar edades de infantes
+    if (form.infantes > 0 && form.edades_infantes.length !== form.infantes) {
+      newErrors.edades_infantes = 'Debe especificar la edad de todos los infantes';
+    }
+    
+    if (form.edades_infantes.some(meses => meses < 0 || meses >= 24)) {
+      newErrors.edades_infantes = 'Las edades de infantes deben estar entre 0 y 23 meses';
+    }
+    
+    // ✅ Validar personas con atención especial
+    if (form.personas_atencion_especial > totalPasajeros) {
+      newErrors.personas_atencion_especial = 'No puede haber más personas con atención especial que el total de pasajeros';
+    }
+    
     if (form.fecha_ida && form.fecha_regreso && new Date(form.fecha_ida) >= new Date(form.fecha_regreso)) {
       newErrors.fecha_regreso = 'La fecha de regreso debe ser posterior a la fecha de ida';
     }
@@ -137,15 +214,53 @@ useEffect(() => {
 
   const handleChange = e => {
     const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
+    
+    // ✅ Manejar campos numéricos especiales
+    if (['adultos', 'menores', 'infantes', 'personas_atencion_especial', 'numero_personas', 'ninos'].includes(name)) {
+      const numValue = parseInt(value) || 0;
+      setForm(prev => ({ ...prev, [name]: Math.max(0, numValue) }));
+      
+      // ✅ Si se cambia menores, ajustar array de edades
+      if (name === 'menores') {
+        const currentEdades = form.edades_menores.length;
+        const newCount = numValue;
+        
+        if (newCount > currentEdades) {
+          // Agregar slots vacíos
+          const nuevasEdades = [...form.edades_menores, ...Array(newCount - currentEdades).fill(2)];
+          setForm(prev => ({ ...prev, edades_menores: nuevasEdades }));
+        } else if (newCount < currentEdades) {
+          // Remover edades extra
+          const nuevasEdades = form.edades_menores.slice(0, newCount);
+          setForm(prev => ({ ...prev, edades_menores: nuevasEdades }));
+        }
+      }
+      
+      // ✅ Si se cambia infantes, ajustar array de edades en meses
+      if (name === 'infantes') {
+        const currentEdades = form.edades_infantes.length;
+        const newCount = numValue;
+        
+        if (newCount > currentEdades) {
+          // Agregar slots vacíos (6 meses por defecto)
+          const nuevasEdades = [...form.edades_infantes, ...Array(newCount - currentEdades).fill(6)];
+          setForm(prev => ({ ...prev, edades_infantes: nuevasEdades }));
+        } else if (newCount < currentEdades) {
+          // Remover edades extra
+          const nuevasEdades = form.edades_infantes.slice(0, newCount);
+          setForm(prev => ({ ...prev, edades_infantes: nuevasEdades }));
+        }
+      }
+    } else {
+      setForm(prev => ({ ...prev, [name]: value }));
+    }
     
     // Limpiar error específico
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: null }));
     }
- 
 
-   if (name === 'email_cliente') {
+    if (name === 'email_cliente') {
       dispatch(clearEmailValidation());
     }
   };
@@ -197,40 +312,48 @@ const handleSubmit = async (e) => {
 
     // ✅ CLAVE: Preparar datos del cliente (desde DB si existe, sino desde el formulario)
     const getClientData = () => {
-  // ✅ Usar cliente_id del estado (ya se setea en useEffect)
-  const baseData = {
-    cliente_id: form.cliente_id, // ✅ Usar del estado
-    destino: form.destino,
-    origen: form.origen,
-    fecha_ida: form.fecha_ida,
-    fecha_regreso: form.fecha_regreso,
-    numero_personas: form.numero_personas,
-    acomodacion: form.acomodacion,
-    tipo_hotel: form.tipo_hotel,
-    ninos: form.ninos,
-    edades_ninos: form.edades_ninos,
-    observaciones: form.observaciones
-  };
+      // ✅ Usar cliente_id del estado (ya se setea en useEffect)
+      const baseData = {
+        cliente_id: form.cliente_id, // ✅ Usar del estado
+        destino: form.destino,
+        origen: form.origen,
+        fecha_ida: form.fecha_ida,
+        fecha_regreso: form.fecha_regreso,
+        numero_personas: form.numero_personas,
+        // ✅ NUEVOS CAMPOS DETALLADOS DE PASAJEROS
+        adultos: form.adultos,
+        menores: form.menores,
+        infantes: form.infantes,
+        edades_menores: form.edades_menores,
+        edades_infantes: form.edades_infantes,
+        personas_atencion_especial: form.personas_atencion_especial,
+        detalles_atencion_especial: form.detalles_atencion_especial,
+        acomodacion: form.acomodacion,
+        tipo_hotel: form.tipo_hotel,
+        ninos: form.ninos, // ⚠️ LEGACY: mantener por compatibilidad
+        edades_ninos: form.edades_ninos, // ⚠️ LEGACY: mantener por compatibilidad
+        observaciones: form.observaciones
+      };
 
-  if (emailValidation.exists && emailValidation.userData) {
-    // Usuario existe - usar datos de DB
-    const userData = emailValidation.userData;
-    return {
-      ...baseData,
-      nombre_cliente: `${userData.name} ${userData.lastname}`.trim(),
-      email_cliente: userData.email,
-      telefono_cliente: userData.phone || form.telefono_cliente
+      if (emailValidation.exists && emailValidation.userData) {
+        // Usuario existe - usar datos de DB
+        const userData = emailValidation.userData;
+        return {
+          ...baseData,
+          nombre_cliente: `${userData.name} ${userData.lastname}`.trim(),
+          email_cliente: userData.email,
+          telefono_cliente: userData.phone || form.telefono_cliente
+        };
+      } else {
+        // Cliente nuevo - usar datos del formulario
+        return {
+          ...baseData,
+          nombre_cliente: form.nombre_cliente,
+          email_cliente: form.email_cliente,
+          telefono_cliente: form.telefono_cliente
+        };
+      }
     };
-  } else {
-    // Cliente nuevo - usar datos del formulario
-    return {
-      ...baseData,
-      nombre_cliente: form.nombre_cliente,
-      email_cliente: form.email_cliente,
-      telefono_cliente: form.telefono_cliente
-    };
-  }
-};
 
     const payload = {
       ...getClientData(), // ✅ Usar datos del cliente (DB o formulario)
@@ -400,7 +523,7 @@ const handleSubmit = async (e) => {
               <input
                 type="text"
                 name="origen"
-                placeholder="Colombia *"
+                placeholder="Origen (Colombia) *"
                 value={form.origen}
                 onChange={handleChange}
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -434,69 +557,205 @@ const handleSubmit = async (e) => {
                 <label className="text-xs text-gray-500">Fecha de regreso</label>
                 {errors.fecha_regreso && <p className="text-red-500 text-xs mt-1">{errors.fecha_regreso}</p>}
               </div>
-              
+            </div>
+          </div>
+
+          {/* ✅ NUEVA SECCIÓN: Información detallada de pasajeros */}
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center">
+              <FontAwesomeIcon icon={faUser} className="mr-2 text-blue-500" />
+              Información de Pasajeros
+            </h3>
+            
+            {/* Resumen total */}
+            <div className="bg-white p-3 rounded-lg mb-4 border-l-4 border-blue-500">
+              <p className="text-lg font-bold text-blue-800">
+                Total de pasajeros: {form.numero_personas}
+              </p>
+              <p className="text-sm text-gray-600">
+                {form.adultos} adulto(s) + {form.menores} menor(es) + {form.infantes} infante(s)
+              </p>
+            </div>
+
+            {/* Campos de conteo por categoría */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div>
                 <input
                   type="number"
-                  name="numero_personas"
-                  placeholder="Número de personas *"
-                  value={form.numero_personas}
+                  name="adultos"
+                  placeholder="Adultos (14+ años)"
+                  value={form.adultos}
                   onChange={handleChange}
-                  min={1}
+                  min={0}
                   className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.numero_personas ? 'border-red-500' : 'border-gray-300'
+                    errors.adultos ? 'border-red-500' : 'border-gray-300'
                   }`}
                 />
-                 <label className="text-xs text-gray-500">Nº Personas *</label>
-                {errors.numero_personas && <p className="text-red-500 text-xs mt-1">{errors.numero_personas}</p>}
+                <label className="text-xs text-gray-500">Adultos (14+ años) *</label>
+                {errors.adultos && <p className="text-red-500 text-xs mt-1">{errors.adultos}</p>}
               </div>
+
               <div>
                 <input
                   type="number"
-                  name="ninos"
-                  placeholder="Número de niños"
-                  value={form.ninos}
-                onChange={handleChange}
-                min={0}
-                className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.ninos ? 'border-red-500' : 'border-gray-300'
+                  name="menores"
+                  placeholder="Menores (2-14 años)"
+                  value={form.menores}
+                  onChange={handleChange}
+                  min={0}
+                  className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    errors.menores ? 'border-red-500' : 'border-gray-300'
                   }`}
                 />
-                <label className="text-xs text-gray-500">Nº Niños</label>
+                <label className="text-xs text-gray-500">Menores (2-14 años)</label>
+                {errors.menores && <p className="text-red-500 text-xs mt-1">{errors.menores}</p>}
+              </div>
+
+              <div>
+                <input
+                  type="number"
+                  name="infantes"
+                  placeholder="Infantes (<2 años)"
+                  value={form.infantes}
+                  onChange={handleChange}
+                  min={0}
+                  className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    errors.infantes ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                />
+                <label className="text-xs text-gray-500">Infantes (&lt;2 años)</label>
+                {errors.infantes && <p className="text-red-500 text-xs mt-1">{errors.infantes}</p>}
+              </div>
+            </div>
+
+            {/* Edades específicas de menores */}
+            {form.menores > 0 && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Edades específicas de menores (2-14 años):
+                </label>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {Array.from({ length: form.menores }, (_, index) => (
+                    <div key={index}>
+                      <input
+                        type="number"
+                        placeholder={`Menor ${index + 1}`}
+                        value={form.edades_menores[index] || ''}
+                        onChange={(e) => handleEdadMenor(index, e.target.value)}
+                        min={2}
+                        max={14}
+                        className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <label className="text-xs text-gray-500">años</label>
+                    </div>
+                  ))}
+                </div>
+                {errors.edades_menores && <p className="text-red-500 text-xs mt-1">{errors.edades_menores}</p>}
+              </div>
+            )}
+
+            {/* Edades específicas de infantes */}
+            {form.infantes > 0 && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Edades específicas de infantes (en meses):
+                </label>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {Array.from({ length: form.infantes }, (_, index) => (
+                    <div key={index}>
+                      <input
+                        type="number"
+                        placeholder={`Infante ${index + 1}`}
+                        value={form.edades_infantes[index] || ''}
+                        onChange={(e) => handleEdadInfante(index, e.target.value)}
+                        min={0}
+                        max={23}
+                        className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <label className="text-xs text-gray-500">meses</label>
+                    </div>
+                  ))}
+                </div>
+                {errors.edades_infantes && <p className="text-red-500 text-xs mt-1">{errors.edades_infantes}</p>}
+              </div>
+            )}
+
+            {/* Atención especial */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <input
+                  type="number"
+                  name="personas_atencion_especial"
+                  placeholder="Personas con necesidades especiales"
+                  value={form.personas_atencion_especial}
+                  onChange={handleChange}
+                  min={0}
+                  max={form.numero_personas}
+                  className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    errors.personas_atencion_especial ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                />
+                <label className="text-xs text-gray-500">Atención especial</label>
+                {errors.personas_atencion_especial && <p className="text-red-500 text-xs mt-1">{errors.personas_atencion_especial}</p>}
+              </div>
+
+              {form.personas_atencion_especial > 0 && (
+                <div>
+                  <textarea
+                    name="detalles_atencion_especial"
+                    placeholder="Detalles de las necesidades especiales..."
+                    value={form.detalles_atencion_especial}
+                    onChange={handleChange}
+                    rows={3}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  />
+                  <label className="text-xs text-gray-500">Detalles específicos</label>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ✅ Preferencias de alojamiento mejoradas */}
+          <div className="bg-purple-50 p-4 rounded-lg">
+            <h3 className="text-lg font-semibold text-gray-700 mb-4">Preferencias de Alojamiento</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <select
+                  name="tipo_hotel"
+                  value={form.tipo_hotel}
+                  onChange={handleChange}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="basico">Hotel Básico</option>
+                  <option value="superior">Hotel Superior</option>
+                </select>
+                <label className="text-xs text-gray-500">Tipo de hotel</label>
+              </div>
+
+              <div>
+                <select
+                  name="acomodacion"
+                  value={form.acomodacion}
+                  onChange={handleChange}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="sencilla">Habitación Sencilla</option>
+                  <option value="doble">Habitación Doble</option>
+                  <option value="triple">Habitación Triple</option>
+                  <option value="cuadruple">Habitación Cuádruple</option>
+                </select>
+                <label className="text-xs text-gray-500">Tipo de acomodación</label>
               </div>
             </div>
          </div>
 
-          {/* ✅ Preferencias de alojamiento */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input
-              type="text"
-              name="acomodacion"
-              placeholder="Tipo de acomodación preferida"
-              value={form.acomodacion}
-              onChange={handleChange}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <input
-              type="text"
-              name="tipo_hotel"
-              placeholder="Categoría de hotel"
-              value={form.tipo_hotel}
-              onChange={handleChange}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          {/* ✅ Información adicional */}
+          {/* ✅ Información adicional y compatibilidad legacy */}
           <div className="space-y-4">
-            <input
-              type="text"
-              name="edades_ninos"
-              placeholder="Edades de los niños (separadas por coma)"
-              value={form.edades_ninos}
-              onChange={handleChange}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            
+            </div>
+            
             <textarea
               name="observaciones"
               placeholder="Observaciones y solicitudes especiales"

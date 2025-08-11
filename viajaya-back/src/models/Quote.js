@@ -2,7 +2,7 @@ const { DataTypes } = require('sequelize');
 const { v4: uuidv4 } = require('uuid');
 
 module.exports = (sequelize) => {
-  sequelize.define('quote', {
+ sequelize.define('quote', {
     id: {
       type: DataTypes.UUID,
       defaultValue: uuidv4,
@@ -72,6 +72,53 @@ module.exports = (sequelize) => {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    // ✅ NUEVOS CAMPOS PARA MANEJO DETALLADO DE PASAJEROS
+    adultos: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      comment: 'Personas mayores de 14 años (pagan precio completo)'
+    },
+    menores: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      comment: 'Niños de 2-14 años (pagan precio reducido)'
+    },
+    infantes: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      comment: 'Bebés menores de 2 años (no pagan pero necesitan datos)'
+    },
+    edades_menores: {
+      type: DataTypes.ARRAY(DataTypes.INTEGER),
+      defaultValue: [],
+      comment: 'Edades específicas de menores de 2-14 años'
+    },
+    edades_infantes: {
+      type: DataTypes.ARRAY(DataTypes.INTEGER),
+      defaultValue: [],
+      comment: 'Edades específicas de infantes menores de 2 años (en meses)'
+    },
+    personas_atencion_especial: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      comment: 'Personas que requieren atención especial/discapacidad'
+    },
+    detalles_atencion_especial: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: 'Descripción de las necesidades especiales'
+    },
+    // ✅ CAMPOS MEJORADOS PARA ALOJAMIENTO
+    tipo_hotel: {
+      type: DataTypes.ENUM('basico', 'superior'),
+      allowNull: true,
+      defaultValue: 'basico'
+    },
+    acomodacion: {
+      type: DataTypes.ENUM('sencilla', 'doble', 'triple', 'cuadruple'),
+      allowNull: true,
+      defaultValue: 'doble'
+    },
     fecha_ida: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -97,27 +144,15 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    acomodacion: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    traslado: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-      allowNull: false,
-    },
-    tipo_hotel: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    ninos: {
-      type: DataTypes.INTEGER,
-      defaultValue: 0,
-    },
-    edades_ninos: {
-      type: DataTypes.ARRAY(DataTypes.INTEGER),
-      defaultValue: [],
-    },
+    // ✅ CAMPOS LEGACY COMENTADOS (mantener por compatibilidad de DB)
+    // ninos: {
+    //   type: DataTypes.INTEGER,
+    //   defaultValue: 0,
+    // },
+    // edades_ninos: {
+    //   type: DataTypes.ARRAY(DataTypes.INTEGER),
+    //   defaultValue: [],
+    // },
     observaciones: {
       type: DataTypes.TEXT,
       allowNull: true,
@@ -218,7 +253,6 @@ module.exports = (sequelize) => {
     updatedAt: 'updated_at',
     tableName: 'quotes', // ✅ Nombre explícito de la tabla
     indexes: [
-      
       {
         fields: ['quote_number'],
         unique: true
@@ -258,4 +292,6 @@ module.exports = (sequelize) => {
       }
     ]
   });
+
+ 
 }
