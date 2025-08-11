@@ -124,16 +124,10 @@ const AdvancedQuoteCalculator = ({ quote_id,
       costo_total: 0
     },
     seguros: {
-      asistencia_medica: { incluido: false, tipo: '', costo: 0, proveedor: '' },
+      asistencia_medica: { incluido: false, tipo: 'ninguna', costo: 0, proveedor: '' },
       cancelacion: { incluido: false, costo: 0, proveedor: '' },
       otros: [],
       costo_total: 0
-    },
-    asistencia_medica: {
-      tipo: 'ninguna',
-      costo_total: 0,
-      proveedor: '',
-      observaciones: ''
     },
     // ✅ NUEVO: Actividades adicionales
     actividades_adicionales: {
@@ -375,7 +369,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
     costoBase += parseFloat(form.alimentacion.costo_total || 0) * personasQuePagan;
     costoBase += parseFloat(form.equipaje.costo_total || 0) * personasQuePagan;
     costoBase += parseFloat(form.seguros.costo_total || 0) * personasQuePagan;
-    costoBase += parseFloat(form.asistencia_medica.costo_total || 0) * personasQuePagan;
+    costoBase += parseFloat(form.seguros?.asistencia_medica?.costo || 0) * personasQuePagan;
 
     // ✅ ACTUALIZADO: Calcular extras combinados según el nuevo sistema
     let totalExtrasPersonas = 0;
@@ -478,7 +472,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
     form.alimentacion.costo_total,
     form.equipaje.costo_total,
     form.seguros.costo_total,
-    form.asistencia_medica.costo_total,
+    form.seguros?.asistencia_medica?.costo,
     form.excursiones,
     // ✅ NUEVA: Dependencia para actividades adicionales
     form.actividades_adicionales?.costo_por_persona,
@@ -707,7 +701,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
   console.log("🍽️ COMPONENTE: Alimentación:", form.alimentacion);
   console.log("🛡️ COMPONENTE: Seguros:", form.seguros);
   console.log("🎒 COMPONENTE: Equipaje:", form.equipaje);
-  console.log("🏥 COMPONENTE: Asistencia médica:", form.asistencia_medica);
+  console.log("🏥 COMPONENTE: Asistencia médica:", form.seguros?.asistencia_medica);
   console.log("🎯 COMPONENTE: Excursiones:", form.excursiones);
   console.log("🎪 COMPONENTE: Actividades adicionales:", form.actividades_adicionales);
   console.log("➕ COMPONENTE: Extras:", form.extras);
@@ -833,16 +827,14 @@ const AdvancedQuoteCalculator = ({ quote_id,
       detalle: '',
       costo_por_persona: 0,
       proveedor: ''
-    },
-    asistencia_medica: form.asistencia_medica || { // ✅ Asegurar que asistencia_medica se envíe
-      costo_total: 0,
-      proveedor: '',
-      observaciones: ''
     }
   };
   
   console.log("📤 DATOS FINALES A ENVIAR:", dataToSend);
   console.log("📤 EXTRAS FINALES:", dataToSend.extras);
+  console.log("🏥 ASISTENCIA MÉDICA ENVIADA:", dataToSend.seguros?.asistencia_medica);
+  console.log("🍽️ ALIMENTACIÓN ENVIADA:", dataToSend.alimentacion);
+  console.log("🛡️ SEGUROS COMPLETO:", dataToSend.seguros);
   
   try {
    console.log("💾 CALCULADORA: Usando upsertQuoteCalculation para guardar/actualizar");
@@ -1197,10 +1189,10 @@ const AdvancedQuoteCalculator = ({ quote_id,
                     className="w-full border rounded px-3 py-2"
                   >
                     <option value="ninguna">Ninguna</option>
-                    <option value="desayuno">Solo Desayuno</option>
-                    <option value="media_pension">Media Pensión</option>
-                    <option value="pension_completa">Pensión Completa</option>
-                    <option value="todo_incluido">Todo Incluido</option>
+                    <option value="desayuno">Desayuno</option>
+                    <option value="media_pension">Desayuno y cena</option>
+                    <option value="pension_completa">Desayuno, almuerzo y cena</option>
+                    <option value="todo_incluido">Todo Incluido (Desayuno, almuerzo y cena + bebidas y licores + snacks)</option>
                   </select>
                 </div>
                 <div>
@@ -1316,8 +1308,8 @@ const AdvancedQuoteCalculator = ({ quote_id,
                 <div>
                   <label className="block text-sm font-medium mb-1">Tipo de Asistencia</label>
                   <select
-                    value={form.asistencia_medica?.tipo || 'ninguna'}
-                    onChange={e => handleInputChange('asistencia_medica', 'tipo', e.target.value)}
+                    value={form.seguros?.asistencia_medica?.tipo || 'ninguna'}
+                    onChange={e => handleInputChange('seguros', 'asistencia_medica', e.target.value, 'tipo')}
                     className="w-full border rounded px-3 py-2"
                   >
                     <option value="ninguna">Ninguna</option>
@@ -1330,17 +1322,17 @@ const AdvancedQuoteCalculator = ({ quote_id,
                   <label className="block text-sm font-medium mb-1">Valor Total (por persona)</label>
                   <input
                     type="number"
-                    value={form.asistencia_medica?.costo_total || 0}
-                    onChange={e => handleInputChange('asistencia_medica', 'costo_total', e.target.value)}
+                    value={form.seguros?.asistencia_medica?.costo || 0}
+                    onChange={e => handleInputChange('seguros', 'asistencia_medica', e.target.value, 'costo')}
                     className="w-full border rounded px-3 py-2"
                     min="0"
                   />
                 </div>
               </div>
               <div className="mt-3 p-2 bg-blue-50 rounded">
-                <strong>Total Asistencia Médica por persona: ${Number(form.asistencia_medica?.costo_total || 0).toLocaleString()}</strong>
+                <strong>Total Asistencia Médica por persona: ${Number(form.seguros?.asistencia_medica?.costo || 0).toLocaleString()}</strong>
                 <br />
-                <strong>Total para {calcularPersonasQuePagan()} persona(s) que pagan: ${Number((form.asistencia_medica?.costo_total || 0) * calcularPersonasQuePagan()).toLocaleString()}</strong>
+                <strong>Total para {calcularPersonasQuePagan()} persona(s) que pagan: ${Number((form.seguros?.asistencia_medica?.costo || 0) * calcularPersonasQuePagan()).toLocaleString()}</strong>
                 {form.infantes > 0 && (
                   <div className="text-sm text-gray-600 mt-1">
                     + {form.infantes} infante(s) (gratis)
@@ -1689,7 +1681,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
                 </div>
                 <div className="flex justify-between">
                   <span>Asistencia Médica (por persona):</span>
-                  <span>${Number(form.asistencia_medica?.costo_total || 0).toLocaleString()}</span>
+                  <span>${Number(form.seguros?.asistencia_medica?.costo || 0).toLocaleString()}</span>
                 </div>
                 {/* ✅ NUEVA: Actividades adicionales detalladas en el resumen */}
                 {form.actividades_adicionales?.incluidas && (
