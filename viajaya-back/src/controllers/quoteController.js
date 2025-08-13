@@ -1,4 +1,4 @@
-const { Quote, User, Contract, Passenger } = require("../db");
+const { Quote, User, Contract, Passenger, QuoteCalculation } = require("../db");
 const { Op } = require("sequelize");
 const { sendEmail } = require("../utils/emailService");
 const { generateQuotePDF } = require("../utils/generateQuotePDF");
@@ -2091,8 +2091,7 @@ getQuoteById: async (req, res) => {
         trip_type_guardado: quote.trip_type
       });
 
-      // ✅ NUEVO: Sincronizar fechas con QuoteCalculation si existe
-      const { QuoteCalculation } = require("../db");
+
       const existingCalculation = await QuoteCalculation.findOne({ 
         where: { quote_id: id } 
       });

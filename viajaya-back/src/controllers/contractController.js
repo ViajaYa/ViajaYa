@@ -29,80 +29,263 @@ const convertQuoteToItems = async (contract) => {
 
   console.log('🔍 Procesando cálculo:', calc.id);
 
-  // ✅ TICKETS - Estructura JSONB
+  // ✅ TICKETS - Estructura JSONB MEJORADA
   if (calc.tiquetes && typeof calc.tiquetes === 'object') {
     const tiquetesCosto = parseFloat(calc.tiquetes.costo_total || 0);
     if (tiquetesCosto > 0) {
+      const tipoTiquete = calc.tiquetes.tipo || 'ida_vuelta';
+      const origenTiquete = calc.tiquetes.origen || contract.Quote.origen || 'Origen no especificado';
+      const destinoTiquete = calc.tiquetes.destino || contract.Quote.destino || 'Destino no especificado';
+      const proveedorTiquete = calc.tiquetes.proveedor || 'Por definir';
+      const fechaIda = calc.tiquetes.fecha_ida || contract.Quote.fecha_ida;
+      const fechaVuelta = calc.tiquetes.fecha_vuelta || contract.Quote.fecha_regreso;
+
       items.push({
         contract_id: contract.id,
         quote_id: contract.quote_id,
-        // ❌ REMOVER: quote_calculation_id (no existe en el modelo)
         tipo: "tickets", // ✅ Coincide con ENUM
-        descripcion: `Tickets aéreos ${calc.tiquetes.origen || contract.Quote.origen} - ${calc.tiquetes.destino || contract.Quote.destino}`,
-        detalle: `${calc.tiquetes.tipo || 'ida_vuelta'} para ${calc.num_personas} personas`,
+        descripcion: `Tickets aéreos ${origenTiquete} - ${destinoTiquete}`,
+        detalle: `${tipoTiquete === 'ida_vuelta' ? 'Ida y vuelta' : 'Solo ida'} para ${calc.num_personas} personas - Aerolínea: ${proveedorTiquete}`,
         precio_total: tiquetesCosto,
-        // ❌ REMOVER: precio_cotizado (no existe en el modelo)
         cantidad: calc.num_personas,
         precio_unitario: tiquetesCosto / calc.num_personas,
         status: "pendiente_compra", // ✅ Coincide con ENUM
-        // ❌ REMOVER: requiere_compra, prioridad, fecha_limite_compra (no existen)
-        // ✅ USAR: fecha_vencimiento_pago (que sí existe)
         fecha_vencimiento_pago: new Date(Date.now() + (2 * 24 * 60 * 60 * 1000)), // 2 días
-        observaciones: JSON.stringify(calc.tiquetes)
+        observaciones: JSON.stringify({
+          tipo: tipoTiquete,
+          origen: origenTiquete,
+          destino: destinoTiquete,
+          proveedor: proveedorTiquete,
+          fecha_ida: fechaIda,
+          fecha_vuelta: fechaVuelta,
+          costo_ida: calc.tiquetes.costo_ida || 0,
+          costo_vuelta: calc.tiquetes.costo_vuelta || 0,
+          observaciones: calc.tiquetes.observaciones || '',
+          detalles_completos: calc.tiquetes
+        })
       });
     }
   }
 
-  // ✅ HOTEL/ALOJAMIENTO - Estructura JSONB  
+  // ✅ HOTEL/ALOJAMIENTO - Estructura JSONB MEJORADA
   if (calc.hotel && typeof calc.hotel === 'object') {
     const hotelCosto = parseFloat(calc.hotel.costo_total || 0);
     if (hotelCosto > 0) {
+      const nombreHotel = calc.hotel.nombre || 'Hotel por definir';
+      const categoriaHotel = calc.hotel.categoria || 'estándar';
+      const acomodacionHotel = calc.hotel.acomodacion || 'doble';
+      const nochesHotel = calc.hotel.noches || 1;
+      const ubicacionHotel = calc.hotel.ubicacion || 'Por confirmar';
+      const proveedorHotel = calc.hotel.proveedor || 'Por definir';
+      const costoNoche = parseFloat(calc.hotel.costo_noche || 0);
+
       items.push({
         contract_id: contract.id,
         quote_id: contract.quote_id,
         tipo: "alojamiento", // ✅ Usar ENUM correcto
-        descripcion: `Alojamiento ${calc.hotel.categoria || calc.hotel.nombre || 'N/A'}`,
-        detalle: `${calc.hotel.noches || 0} noches, acomodación ${calc.hotel.acomodacion || 'N/A'}`,
+        descripcion: `Alojamiento ${categoriaHotel} - ${nombreHotel}`,
+        detalle: `${nochesHotel} noches, acomodación ${acomodacionHotel} - ${ubicacionHotel} - Proveedor: ${proveedorHotel}`,
         precio_total: hotelCosto,
-        cantidad: calc.hotel.noches || 1,
-        precio_unitario: hotelCosto / (calc.hotel.noches || 1),
+        cantidad: nochesHotel,
+        precio_unitario: costoNoche > 0 ? costoNoche : (hotelCosto / nochesHotel),
         status: "pendiente_compra",
         fecha_vencimiento_pago: new Date(Date.now() + (7 * 24 * 60 * 60 * 1000)), // 7 días
-        observaciones: JSON.stringify(calc.hotel)
+        observaciones: JSON.stringify({
+          nombre: nombreHotel,
+          categoria: categoriaHotel,
+          acomodacion: acomodacionHotel,
+          noches: nochesHotel,
+          ubicacion: ubicacionHotel,
+          proveedor: proveedorHotel,
+          costo_noche: costoNoche,
+          costo_total: hotelCosto,
+          observaciones: calc.hotel.observaciones || '',
+          detalles_completos: calc.hotel
+        })
       });
     }
   }
 
-  // ✅ TRASLADOS - Estructura JSONB
+  // ✅ TRASLADOS - Estructura JSONB MEJORADA
   if (calc.traslados && typeof calc.traslados === 'object') {
     const trasladosCosto = parseFloat(calc.traslados.costo_total || 0);
+    
     if (trasladosCosto > 0) {
+      // ✅ CONSTRUIR DESCRIPCIÓN DETALLADA DE TRASLADOS
+      const serviciosTraslados = [];
+      
+      if (calc.traslados.aeropuerto_hotel_ida && calc.traslados.aeropuerto_hotel_ida.costo > 0) {
+        serviciosTraslados.push('Aeropuerto → Hotel (llegada)');
+      }
+      
+      if (calc.traslados.hotel_aeropuerto_vuelta && calc.traslados.hotel_aeropuerto_vuelta.costo > 0) {
+        serviciosTraslados.push('Hotel → Aeropuerto (salida)');
+      }
+      
+      if (calc.traslados.otros && Array.isArray(calc.traslados.otros)) {
+        calc.traslados.otros.forEach(traslado => {
+          if (traslado.descripcion) {
+            serviciosTraslados.push(traslado.descripcion);
+          }
+        });
+      }
+
+      const descripcionTraslados = serviciosTraslados.length > 0 
+        ? serviciosTraslados.join(', ') 
+        : 'Traslados aeropuerto-hotel-aeropuerto';
+
       items.push({
         contract_id: contract.id,
         quote_id: contract.quote_id,
         tipo: "traslados", // ✅ Coincide con ENUM
         descripcion: "Traslados",
-        detalle: "Traslados aeropuerto-hotel-aeropuerto",
+        detalle: `${descripcionTraslados} para ${calc.num_personas} personas`,
         precio_total: trasladosCosto,
         cantidad: 1,
         precio_unitario: trasladosCosto,
         status: "pendiente_compra",
         fecha_vencimiento_pago: new Date(Date.now() + (5 * 24 * 60 * 60 * 1000)), // 5 días
-        observaciones: JSON.stringify(calc.traslados)
+        observaciones: JSON.stringify({
+          servicios_incluidos: serviciosTraslados,
+          aeropuerto_hotel_ida: calc.traslados.aeropuerto_hotel_ida || {},
+          hotel_aeropuerto_vuelta: calc.traslados.hotel_aeropuerto_vuelta || {},
+          otros: calc.traslados.otros || [],
+          costo_total: trasladosCosto,
+          detalles_completos: calc.traslados
+        })
+      });
+    } else if (calc.traslados.aeropuerto_hotel_ida?.incluido || calc.traslados.hotel_aeropuerto_vuelta?.incluido) {
+      // ✅ TRASLADOS INCLUIDOS SIN COSTO ADICIONAL
+      const serviciosIncluidos = [];
+      
+      if (calc.traslados.aeropuerto_hotel_ida?.incluido) {
+        serviciosIncluidos.push('Aeropuerto → Hotel incluido');
+      }
+      if (calc.traslados.hotel_aeropuerto_vuelta?.incluido) {
+        serviciosIncluidos.push('Hotel → Aeropuerto incluido');
+      }
+      
+      items.push({
+        contract_id: contract.id,
+        quote_id: contract.quote_id,
+        tipo: "traslados",
+        descripcion: "Traslados incluidos",
+        detalle: `${serviciosIncluidos.join(', ')} para ${calc.num_personas} personas`,
+        precio_total: 0,
+        cantidad: 1,
+        precio_unitario: 0,
+        status: "no_requiere", // No requiere compra porque está incluido
+        observaciones: JSON.stringify({
+          servicios_incluidos: serviciosIncluidos,
+          incluido: true,
+          aeropuerto_hotel_ida: calc.traslados.aeropuerto_hotel_ida || {},
+          hotel_aeropuerto_vuelta: calc.traslados.hotel_aeropuerto_vuelta || {},
+          detalles_completos: calc.traslados
+        })
       });
     }
   }
 
-  // ✅ SEGUROS - Estructura JSONB
+  // ✅ SEGUROS - Estructura JSONB MEJORADA
   if (calc.seguros && typeof calc.seguros === 'object') {
     const segurosCosto = parseFloat(calc.seguros.costo_total || 0);
-    if (segurosCosto > 0) {
+    
+    // ✅ ASISTENCIA MÉDICA - Extraer información específica
+    if (calc.seguros.asistencia_medica && typeof calc.seguros.asistencia_medica === 'object') {
+      const asistenciaCosto = parseFloat(calc.seguros.asistencia_medica.costo || 0);
+      if (asistenciaCosto > 0) {
+        const tipoAsistencia = calc.seguros.asistencia_medica.tipo || 'básica';
+        const proveedorAsistencia = calc.seguros.asistencia_medica.proveedor || 'Por definir';
+        
+        items.push({
+          contract_id: contract.id,
+          quote_id: contract.quote_id,
+          tipo: "seguro", // ✅ Usar ENUM correcto (singular)
+          descripcion: `Asistencia médica ${tipoAsistencia}`,
+          detalle: `Seguro de asistencia médica ${tipoAsistencia} para ${calc.num_personas} personas - Proveedor: ${proveedorAsistencia}`,
+          precio_total: asistenciaCosto,
+          cantidad: calc.num_personas,
+          precio_unitario: asistenciaCosto / calc.num_personas,
+          status: "pendiente_compra",
+          fecha_vencimiento_pago: new Date(Date.now() + (3 * 24 * 60 * 60 * 1000)), // 3 días
+          observaciones: JSON.stringify({
+            tipo: tipoAsistencia,
+            proveedor: proveedorAsistencia,
+            incluido: calc.seguros.asistencia_medica.incluido || false,
+            costo: asistenciaCosto,
+            detalles_completos: calc.seguros.asistencia_medica
+          })
+        });
+      }
+    }
+    
+    // ✅ SEGURO DE CANCELACIÓN - Si existe
+    if (calc.seguros.cancelacion && typeof calc.seguros.cancelacion === 'object') {
+      const cancelacionCosto = parseFloat(calc.seguros.cancelacion.costo || 0);
+      if (cancelacionCosto > 0) {
+        const proveedorCancelacion = calc.seguros.cancelacion.proveedor || 'Por definir';
+        
+        items.push({
+          contract_id: contract.id,
+          quote_id: contract.quote_id,
+          tipo: "seguro",
+          descripcion: "Seguro de cancelación",
+          detalle: `Seguro de cancelación para ${calc.num_personas} personas - Proveedor: ${proveedorCancelacion}`,
+          precio_total: cancelacionCosto,
+          cantidad: calc.num_personas,
+          precio_unitario: cancelacionCosto / calc.num_personas,
+          status: "pendiente_compra",
+          fecha_vencimiento_pago: new Date(Date.now() + (3 * 24 * 60 * 60 * 1000)), // 3 días
+          observaciones: JSON.stringify({
+            tipo: 'cancelacion',
+            proveedor: proveedorCancelacion,
+            incluido: calc.seguros.cancelacion.incluido || false,
+            costo: cancelacionCosto,
+            detalles_completos: calc.seguros.cancelacion
+          })
+        });
+      }
+    }
+
+    // ✅ OTROS SEGUROS - Si existen en el array
+    if (calc.seguros.otros && Array.isArray(calc.seguros.otros)) {
+      calc.seguros.otros.forEach((seguro, index) => {
+        const seguroCosto = parseFloat(seguro.costo || 0);
+        if (seguroCosto > 0) {
+          items.push({
+            contract_id: contract.id,
+            quote_id: contract.quote_id,
+            tipo: "seguro",
+            descripcion: seguro.nombre || `Seguro adicional ${index + 1}`,
+            detalle: `${seguro.descripcion || seguro.nombre || 'Seguro adicional'} para ${calc.num_personas} personas`,
+            precio_total: seguroCosto,
+            cantidad: calc.num_personas,
+            precio_unitario: seguroCosto / calc.num_personas,
+            status: "pendiente_compra",
+            fecha_vencimiento_pago: new Date(Date.now() + (3 * 24 * 60 * 60 * 1000)), // 3 días
+            observaciones: JSON.stringify({
+              tipo: 'adicional',
+              nombre: seguro.nombre,
+              descripcion: seguro.descripcion,
+              costo: seguroCosto,
+              detalles_completos: seguro
+            })
+          });
+        }
+      });
+    }
+
+    // ✅ SEGUROS GENERALES - Solo si no hay componentes específicos
+    if (segurosCosto > 0 && 
+        (!calc.seguros.asistencia_medica || parseFloat(calc.seguros.asistencia_medica.costo || 0) === 0) &&
+        (!calc.seguros.cancelacion || parseFloat(calc.seguros.cancelacion.costo || 0) === 0) &&
+        (!calc.seguros.otros || calc.seguros.otros.length === 0)) {
       items.push({
         contract_id: contract.id,
         quote_id: contract.quote_id,
-        tipo: "seguro", // ✅ Usar ENUM correcto (singular)
+        tipo: "seguro",
         descripcion: "Seguros de viaje",
-        detalle: `Cobertura para ${calc.num_personas} personas`,
+        detalle: `Cobertura general para ${calc.num_personas} personas`,
         precio_total: segurosCosto,
         cantidad: calc.num_personas,
         precio_unitario: segurosCosto / calc.num_personas,
@@ -113,42 +296,148 @@ const convertQuoteToItems = async (contract) => {
     }
   }
 
-  // ✅ ALIMENTACIÓN - Estructura JSONB
+  // ✅ ALIMENTACIÓN - Estructura JSONB MEJORADA
   if (calc.alimentacion && typeof calc.alimentacion === 'object') {
     const alimentacionCosto = parseFloat(calc.alimentacion.costo_total || 0);
+    const tipoAlimentacion = calc.alimentacion.tipo || 'no especificado';
+    const proveedorAlimentacion = calc.alimentacion.proveedor || 'Por definir';
+    
     if (alimentacionCosto > 0) {
+      // ✅ ALIMENTACIÓN CON COSTO
       items.push({
         contract_id: contract.id,
         quote_id: contract.quote_id,
         tipo: "alimentacion", // ✅ Coincide con ENUM
         descripcion: "Plan alimentario",
-        detalle: `${calc.alimentacion.tipo || 'Plan alimentario'} para ${calc.num_personas} personas`,
+        detalle: `Plan alimentario ${tipoAlimentacion} para ${calc.num_personas} personas - Proveedor: ${proveedorAlimentacion}`,
         precio_total: alimentacionCosto,
         cantidad: calc.num_personas,
         precio_unitario: alimentacionCosto / calc.num_personas,
         status: "pendiente_compra",
         fecha_vencimiento_pago: new Date(Date.now() + (7 * 24 * 60 * 60 * 1000)), // 7 días
-        observaciones: JSON.stringify(calc.alimentacion)
+        observaciones: JSON.stringify({
+          tipo: tipoAlimentacion,
+          proveedor: proveedorAlimentacion,
+          costo_total: alimentacionCosto,
+          observaciones: calc.alimentacion.observaciones || '',
+          detalles_completos: calc.alimentacion
+        })
+      });
+    } else if (tipoAlimentacion && tipoAlimentacion !== 'ninguna') {
+      // ✅ ALIMENTACIÓN SIN COSTO PERO CON TIPO ESPECIFICADO (ej: incluida)
+      items.push({
+        contract_id: contract.id,
+        quote_id: contract.quote_id,
+        tipo: "alimentacion",
+        descripcion: `Alimentación ${tipoAlimentacion}`,
+        detalle: `Plan alimentario ${tipoAlimentacion} incluido en el paquete para ${calc.num_personas} personas`,
+        precio_total: 0,
+        cantidad: calc.num_personas,
+        precio_unitario: 0,
+        status: "no_requiere", // No requiere compra porque está incluido
+        observaciones: JSON.stringify({
+          tipo: tipoAlimentacion,
+          incluido: true,
+          proveedor: proveedorAlimentacion,
+          observaciones: calc.alimentacion.observaciones || 'Incluido en el paquete',
+          detalles_completos: calc.alimentacion
+        })
+      });
+    } else if (tipoAlimentacion === 'ninguna') {
+      // ✅ ALIMENTACIÓN NO INCLUIDA - Item informativo
+      items.push({
+        contract_id: contract.id,
+        quote_id: contract.quote_id,
+        tipo: "alimentacion",
+        descripcion: "Alimentación no incluida",
+        detalle: `Alimentación por cuenta del cliente - ${calc.num_personas} personas`,
+        precio_total: 0,
+        cantidad: calc.num_personas,
+        precio_unitario: 0,
+        status: "no_requiere", // No requiere compra porque no está incluida
+        observaciones: JSON.stringify({
+          tipo: 'ninguna',
+          incluido: false,
+          nota: 'El cliente debe gestionar su alimentación',
+          observaciones: calc.alimentacion.observaciones || 'No incluida en el paquete',
+          detalles_completos: calc.alimentacion
+        })
       });
     }
   }
 
-  // ✅ EQUIPAJE - Estructura JSONB
+  // ✅ EQUIPAJE - Estructura JSONB MEJORADA
   if (calc.equipaje && typeof calc.equipaje === 'object') {
     const equipajeCosto = parseFloat(calc.equipaje.costo_total || 0);
+    
     if (equipajeCosto > 0) {
+      // ✅ CONSTRUIR DESCRIPCIÓN DETALLADA DEL EQUIPAJE
+      const serviciosEquipaje = [];
+      
+      if (calc.equipaje.cabina && calc.equipaje.cabina.incluido) {
+        serviciosEquipaje.push(`Equipaje de cabina ${calc.equipaje.cabina.costo > 0 ? '(adicional)' : '(incluido)'}`);
+      }
+      
+      if (calc.equipaje.bodega && calc.equipaje.bodega.incluido) {
+        serviciosEquipaje.push(`Equipaje de bodega ${calc.equipaje.bodega.costo > 0 ? '(adicional)' : '(incluido)'}`);
+      }
+      
+      if (calc.equipaje.equipaje_extra && calc.equipaje.equipaje_extra.incluido) {
+        serviciosEquipaje.push(`Equipaje extra ${calc.equipaje.equipaje_extra.costo > 0 ? '(adicional)' : '(incluido)'}`);
+      }
+
+      const descripcionEquipaje = serviciosEquipaje.length > 0 
+        ? serviciosEquipaje.join(', ') 
+        : 'Equipaje adicional';
+
       items.push({
         contract_id: contract.id,
         quote_id: contract.quote_id,
         tipo: "equipaje", // ✅ Coincide con ENUM
         descripcion: "Equipaje adicional",
-        detalle: `${calc.equipaje.tipo || 'Equipaje adicional'} para ${calc.num_personas} personas`,
+        detalle: `${descripcionEquipaje} para ${calc.num_personas} personas`,
         precio_total: equipajeCosto,
         cantidad: calc.num_personas,
         precio_unitario: equipajeCosto / calc.num_personas,
         status: "pendiente_compra",
         fecha_vencimiento_pago: new Date(Date.now() + (5 * 24 * 60 * 60 * 1000)), // 5 días
-        observaciones: JSON.stringify(calc.equipaje)
+        observaciones: JSON.stringify({
+          servicios_incluidos: serviciosEquipaje,
+          cabina: calc.equipaje.cabina || {},
+          bodega: calc.equipaje.bodega || {},
+          equipaje_extra: calc.equipaje.equipaje_extra || {},
+          costo_total: equipajeCosto,
+          detalles_completos: calc.equipaje
+        })
+      });
+    } else if (calc.equipaje.cabina?.incluido || calc.equipaje.bodega?.incluido) {
+      // ✅ EQUIPAJE INCLUIDO SIN COSTO ADICIONAL
+      const serviciosIncluidos = [];
+      
+      if (calc.equipaje.cabina?.incluido) {
+        serviciosIncluidos.push('Equipaje de cabina incluido');
+      }
+      if (calc.equipaje.bodega?.incluido) {
+        serviciosIncluidos.push('Equipaje de bodega incluido');
+      }
+      
+      items.push({
+        contract_id: contract.id,
+        quote_id: contract.quote_id,
+        tipo: "equipaje",
+        descripcion: "Equipaje incluido",
+        detalle: `${serviciosIncluidos.join(', ')} para ${calc.num_personas} personas`,
+        precio_total: 0,
+        cantidad: calc.num_personas,
+        precio_unitario: 0,
+        status: "no_requiere", // No requiere compra porque está incluido
+        observaciones: JSON.stringify({
+          servicios_incluidos: serviciosIncluidos,
+          incluido: true,
+          cabina: calc.equipaje.cabina || {},
+          bodega: calc.equipaje.bodega || {},
+          detalles_completos: calc.equipaje
+        })
       });
     }
   }
@@ -718,10 +1007,61 @@ const contractController = {
         }
       }
 
-      // ✅ SEGUROS - Estructura JSONB correcta
+      // ✅ SEGUROS - Estructura JSONB correcta MEJORADA
       if (calc.seguros && typeof calc.seguros === 'object') {
         const segurosCosto = parseFloat(calc.seguros.costo_total || 0);
-        if (segurosCosto > 0) {
+        
+        // ✅ ASISTENCIA MÉDICA - Análisis específico
+        if (calc.seguros.asistencia_medica && typeof calc.seguros.asistencia_medica === 'object') {
+          const asistenciaCosto = parseFloat(calc.seguros.asistencia_medica.costo || 0);
+          const tipoAsistencia = calc.seguros.asistencia_medica.tipo || 'básica';
+          const proveedorAsistencia = calc.seguros.asistencia_medica.proveedor || 'Por confirmar';
+          
+          if (asistenciaCosto > 0 || calc.seguros.asistencia_medica.incluido) {
+            potentialItems.push({
+              tipo: "seguros",
+              descripcion: `Asistencia médica ${tipoAsistencia}`,
+              valor: asistenciaCosto,
+              requiere_compra: asistenciaCosto > 0,
+              prioridad: "alta",
+              detalles: {
+                tipo: tipoAsistencia,
+                proveedor: proveedorAsistencia,
+                incluido: calc.seguros.asistencia_medica.incluido || false,
+                costo: asistenciaCosto,
+                cobertura: calc.seguros.asistencia_medica.cobertura || 'Estándar'
+              }
+            });
+            if (asistenciaCosto > 0) totalItemsValue += asistenciaCosto;
+          }
+        }
+        
+        // ✅ SEGURO DE CANCELACIÓN - Análisis específico
+        if (calc.seguros.cancelacion && typeof calc.seguros.cancelacion === 'object') {
+          const cancelacionCosto = parseFloat(calc.seguros.cancelacion.costo || 0);
+          
+          if (cancelacionCosto > 0 || calc.seguros.cancelacion.incluido) {
+            potentialItems.push({
+              tipo: "seguros",
+              descripcion: "Seguro de cancelación",
+              valor: cancelacionCosto,
+              requiere_compra: cancelacionCosto > 0,
+              prioridad: "media",
+              detalles: {
+                tipo: 'cancelacion',
+                proveedor: calc.seguros.cancelacion.proveedor || 'Por confirmar',
+                incluido: calc.seguros.cancelacion.incluido || false,
+                costo: cancelacionCosto
+              }
+            });
+            if (cancelacionCosto > 0) totalItemsValue += cancelacionCosto;
+          }
+        }
+
+        // ✅ SEGUROS GENERALES - Solo si no hay componentes específicos
+        if (segurosCosto > 0 && 
+            (!calc.seguros.asistencia_medica || (!calc.seguros.asistencia_medica.costo && !calc.seguros.asistencia_medica.incluido)) &&
+            (!calc.seguros.cancelacion || (!calc.seguros.cancelacion.costo && !calc.seguros.cancelacion.incluido))) {
           potentialItems.push({
             tipo: "seguros",
             descripcion: "Seguros de viaje",
@@ -1911,27 +2251,46 @@ const contractController = {
         }
       }
 
-      // ✅ ALIMENTACIÓN - Estructura JSONB (SIN PRECIOS)
+      // ✅ ALIMENTACIÓN - Estructura JSONB (SIN PRECIOS) MEJORADA
       if (calc.alimentacion && typeof calc.alimentacion === 'object') {
         const alimentacionCosto = parseFloat(calc.alimentacion.costo_total || 0);
+        const tipoAlimentacion = calc.alimentacion.tipo || 'no especificado';
+        const proveedorAlimentacion = calc.alimentacion.proveedor || 'Por confirmar';
+        
         if (alimentacionCosto > 0) {
+          // ✅ ALIMENTACIÓN CON COSTO (INCLUIDA EN EL PAQUETE)
           serviciosIncluidos.push({
             tipo: "alimentacion",
-            descripcion: `Alimentación ${calc.alimentacion.tipo || 'incluida'}`,
+            descripcion: `Alimentación ${tipoAlimentacion}`,
             incluido: true,
             detalles: {
-              tipo: calc.alimentacion.tipo,
-              proveedor: calc.alimentacion.proveedor || 'Por confirmar',
-              observaciones: calc.alimentacion.observaciones
+              tipo: tipoAlimentacion,
+              proveedor: proveedorAlimentacion,
+              observaciones: calc.alimentacion.observaciones || `Plan alimentario ${tipoAlimentacion}`,
+              descripcion: `Plan alimentario ${tipoAlimentacion} - ${proveedorAlimentacion}`
             }
           });
-        } else if (calc.alimentacion.tipo === 'ninguna') {
+        } else if (tipoAlimentacion && tipoAlimentacion !== 'ninguna') {
+          // ✅ ALIMENTACIÓN SIN COSTO PERO INCLUIDA
+          serviciosIncluidos.push({
+            tipo: "alimentacion",
+            descripcion: `Alimentación ${tipoAlimentacion} incluida`,
+            incluido: true,
+            detalles: {
+              tipo: tipoAlimentacion,
+              nota: "Incluida en el paquete sin costo adicional",
+              descripcion: `Alimentación ${tipoAlimentacion} incluida en el paquete`
+            }
+          });
+        } else if (tipoAlimentacion === 'ninguna') {
+          // ✅ ALIMENTACIÓN NO INCLUIDA
           serviciosIncluidos.push({
             tipo: "alimentacion",
             descripcion: "Alimentación no incluida",
             incluido: false,
             detalles: {
-              nota: "La alimentación no está incluida en este paquete"
+              nota: "La alimentación no está incluida en este paquete. El cliente debe gestionar sus comidas.",
+              descripcion: "Alimentación por cuenta del cliente"
             }
           });
         }
@@ -1964,31 +2323,81 @@ const contractController = {
         }
       }
 
-      // ✅ SEGUROS - Estructura JSONB (SIN PRECIOS)
+      // ✅ SEGUROS - Estructura JSONB (SIN PRECIOS) MEJORADA
       if (calc.seguros && typeof calc.seguros === 'object') {
         const segurosCosto = parseFloat(calc.seguros.costo_total || 0);
-        if (segurosCosto > 0) {
-          const segurosDetalles = [];
+        
+        // ✅ ASISTENCIA MÉDICA - Análisis específico para email
+        if (calc.seguros.asistencia_medica && typeof calc.seguros.asistencia_medica === 'object') {
+          const asistenciaCosto = parseFloat(calc.seguros.asistencia_medica.costo || 0);
+          const tipoAsistencia = calc.seguros.asistencia_medica.tipo || 'básica';
+          const proveedorAsistencia = calc.seguros.asistencia_medica.proveedor || 'Por confirmar';
           
-          if (calc.seguros.asistencia_medica?.tipo) {
-            segurosDetalles.push(`Asistencia médica: ${calc.seguros.asistencia_medica.tipo}`);
-          }
-          if (calc.seguros.cancelacion?.incluido) {
-            segurosDetalles.push('Seguro de cancelación');
-          }
-          if (calc.seguros.otros && calc.seguros.otros.length > 0) {
-            calc.seguros.otros.forEach(seguro => {
-              segurosDetalles.push(seguro.descripcion);
+          if (asistenciaCosto > 0 || calc.seguros.asistencia_medica.incluido) {
+            serviciosIncluidos.push({
+              tipo: "seguros",
+              descripcion: `Asistencia médica ${tipoAsistencia}`,
+              incluido: true,
+              detalles: {
+                tipo: tipoAsistencia,
+                proveedor: proveedorAsistencia,
+                cobertura: calc.seguros.asistencia_medica.cobertura || 'Cobertura médica estándar',
+                descripcion: `Asistencia médica ${tipoAsistencia} - Proveedor: ${proveedorAsistencia}`
+              }
             });
           }
+        }
+        
+        // ✅ SEGURO DE CANCELACIÓN - Análisis específico para email
+        if (calc.seguros.cancelacion && typeof calc.seguros.cancelacion === 'object') {
+          const cancelacionCosto = parseFloat(calc.seguros.cancelacion.costo || 0);
           
+          if (cancelacionCosto > 0 || calc.seguros.cancelacion.incluido) {
+            serviciosIncluidos.push({
+              tipo: "seguros",
+              descripcion: "Seguro de cancelación",
+              incluido: true,
+              detalles: {
+                tipo: 'cancelacion',
+                proveedor: calc.seguros.cancelacion.proveedor || 'Por confirmar',
+                cobertura: calc.seguros.cancelacion.cobertura || 'Cancelación por enfermedad o emergencia',
+                descripcion: `Seguro de cancelación - ${calc.seguros.cancelacion.proveedor || 'Por confirmar'}`
+              }
+            });
+          }
+        }
+
+        // ✅ OTROS SEGUROS - Array de seguros adicionales
+        if (calc.seguros.otros && Array.isArray(calc.seguros.otros)) {
+          calc.seguros.otros.forEach(seguro => {
+            const seguroCosto = parseFloat(seguro.costo || 0);
+            if (seguroCosto > 0) {
+              serviciosIncluidos.push({
+                tipo: "seguros",
+                descripcion: seguro.nombre || 'Seguro adicional',
+                incluido: true,
+                detalles: {
+                  tipo: 'adicional',
+                  nombre: seguro.nombre,
+                  descripcion: seguro.descripcion || seguro.nombre,
+                  proveedor: seguro.proveedor || 'Por confirmar'
+                }
+              });
+            }
+          });
+        }
+
+        // ✅ SEGUROS GENERALES - Solo si no hay componentes específicos
+        if (segurosCosto > 0 && 
+            (!calc.seguros.asistencia_medica || (!calc.seguros.asistencia_medica.costo && !calc.seguros.asistencia_medica.incluido)) &&
+            (!calc.seguros.cancelacion || (!calc.seguros.cancelacion.costo && !calc.seguros.cancelacion.incluido)) &&
+            (!calc.seguros.otros || calc.seguros.otros.length === 0)) {
           serviciosIncluidos.push({
             tipo: "seguros",
             descripcion: "Seguros de viaje",
             incluido: true,
             detalles: {
-              servicios: segurosDetalles,
-              descripcion: segurosDetalles.join(', ')
+              descripcion: "Cobertura general de seguros de viaje"
             }
           });
         }
@@ -2201,8 +2610,29 @@ const contractController = {
                       ${servicio.tipo === 'traslados' && servicio.detalles?.descripcion ? `
                         • ${servicio.detalles.descripcion}
                       ` : ''}
-                      ${servicio.tipo === 'seguros' && servicio.detalles?.descripcion ? `
+                      ${servicio.tipo === 'alimentacion' && servicio.detalles ? `
+                        ${servicio.detalles.tipo ? `• Tipo: ${servicio.detalles.tipo}<br>` : ''}
+                        ${servicio.detalles.proveedor ? `• Proveedor: ${servicio.detalles.proveedor}<br>` : ''}
+                        ${servicio.detalles.nota ? `• Nota: ${servicio.detalles.nota}<br>` : ''}
+                        ${servicio.detalles.observaciones ? `• ${servicio.detalles.observaciones}` : ''}
+                      ` : ''}
+                      ${servicio.tipo === 'seguros' && servicio.detalles ? `
+                        ${servicio.detalles.tipo ? `• Tipo: ${servicio.detalles.tipo}<br>` : ''}
+                        ${servicio.detalles.proveedor ? `• Proveedor: ${servicio.detalles.proveedor}<br>` : ''}
+                        ${servicio.detalles.cobertura ? `• Cobertura: ${servicio.detalles.cobertura}<br>` : ''}
+                        ${servicio.detalles.descripcion ? `• ${servicio.detalles.descripcion}` : ''}
+                      ` : ''}
+                      ${servicio.tipo === 'equipaje' && servicio.detalles?.descripcion ? `
                         • ${servicio.detalles.descripcion}
+                      ` : ''}
+                      ${servicio.tipo === 'excursiones' && servicio.detalles ? `
+                        ${servicio.detalles.nombre ? `• Nombre: ${servicio.detalles.nombre}<br>` : ''}
+                        ${servicio.detalles.descripcion ? `• ${servicio.detalles.descripcion}<br>` : ''}
+                        ${servicio.detalles.duracion ? `• Duración: ${servicio.detalles.duracion}` : ''}
+                      ` : ''}
+                      ${servicio.tipo === 'extras' && servicio.detalles ? `
+                        ${servicio.detalles.nombre ? `• ${servicio.detalles.nombre}<br>` : ''}
+                        ${servicio.detalles.descripcion ? `• ${servicio.detalles.descripcion}` : ''}
                       ` : ''}
                     </div>
                   ` : ''}

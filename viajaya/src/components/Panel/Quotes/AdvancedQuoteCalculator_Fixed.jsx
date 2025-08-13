@@ -17,6 +17,18 @@ const AdvancedQuoteCalculator = ({ quote_id,
   // ✅ REF: Para detectar cambios en quote_id
   const prevQuoteIdRef = useRef(null);
 
+  // ✅ FUNCIÓN: Convertir fecha ISO a formato yyyy-MM-dd para inputs HTML
+  const formatDateForInput = (isoDate) => {
+    if (!isoDate) return '';
+    try {
+      const date = new Date(isoDate);
+      return date.toISOString().split('T')[0];
+    } catch (error) {
+      console.warn('Error formateando fecha:', error);
+      return '';
+    }
+  };
+
   // ✅ FUNCIÓN: Resetear formulario a valores por defecto (para nuevas cotizaciones)
   const resetFormToDefault = useCallback(() => {
     console.log('🔄 CALCULADORA: Reseteando formulario a valores por defecto');
@@ -303,8 +315,13 @@ const AdvancedQuoteCalculator = ({ quote_id,
         personas_atencion_especial: existingCalculation.personas_atencion_especial || quoteData?.personas_atencion_especial || 0,
         trip_type: existingCalculation.trip_type || quoteData?.trip_type || '',
 
-        // ✅ CARGAR: Tiquetes
-        tiquetes: existingCalculation.tiquetes || prevForm.tiquetes,
+        // ✅ CARGAR: Tiquetes con formato correcto de fechas
+        tiquetes: {
+          ...prevForm.tiquetes,
+          ...(existingCalculation.tiquetes || {}),
+          fecha_ida: formatDateForInput(existingCalculation.tiquetes?.fecha_ida) || prevForm.tiquetes.fecha_ida,
+          fecha_vuelta: formatDateForInput(existingCalculation.tiquetes?.fecha_vuelta) || prevForm.tiquetes.fecha_vuelta
+        },
 
         // ✅ CARGAR: Hotel
         hotel: existingCalculation.hotel || prevForm.hotel,

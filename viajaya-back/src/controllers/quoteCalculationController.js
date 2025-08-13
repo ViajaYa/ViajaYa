@@ -319,6 +319,15 @@ const quoteCalculationController = {
         });
       }
       
+      // ✅ CORRECCIÓN: Mapear asistencia médica para compatibilidad con código legacy
+      if (data.seguros && data.seguros.asistencia_medica && !data.asistencia_medica) {
+        data.asistencia_medica = {
+          ...data.seguros.asistencia_medica,
+          costo_total: data.seguros.asistencia_medica.costo || 0
+        };
+        console.log('🏥 MAPEO: Asistencia médica mapeada desde seguros a campo directo:', data.asistencia_medica);
+      }
+      
       // Si viene quote_id, verificar si ya existe un cálculo para esa cotización
       if (data.quote_id) {
         const existingCalc = await QuoteCalculation.findOne({ 
@@ -386,6 +395,21 @@ const quoteCalculationController = {
         edades_infantes: data.edades_infantes,
         num_personas: data.num_personas
       });
+      
+      // ✅ CORRECCIÓN: Mapear asistencia médica para compatibilidad con código legacy
+      if (data.seguros && data.seguros.asistencia_medica && !data.asistencia_medica) {
+        data.asistencia_medica = {
+          ...data.seguros.asistencia_medica,
+          costo_total: data.seguros.asistencia_medica.costo || 0
+        };
+        console.log('🏥 MAPEO UPSERT: Asistencia médica mapeada desde seguros a campo directo:', data.asistencia_medica);
+      }
+      
+      // ✅ CORRECCIÓN: Mapear datos de alimentación para mejorar compatibilidad
+      if (data.alimentacion && data.alimentacion.tipo && !data.alimentacion.detalles_tipo) {
+        data.alimentacion.detalles_tipo = data.alimentacion.tipo;
+        console.log('🍽️ MAPEO UPSERT: Alimentación tipo mapeado para compatibilidad:', data.alimentacion);
+      }
       
       if (!data.quote_id) {
         return res.status(400).json({ message: 'quote_id es requerido para upsert' });
