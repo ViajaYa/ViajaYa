@@ -44,24 +44,6 @@ export const upsertQuoteCalculation = createAsyncThunk(
   'quoteCalculation/upsert',
   async (data, { rejectWithValue }) => {
     try {
-      // ✅ NUEVO: Log para debugging de excursiones/extras en Redux
-      console.log('🔍 REDUX SLICE - Datos enviados a backend:', {
-        quote_id: data.quote_id,
-        excursiones_presente: !!data.excursiones,
-        excursiones_length: Array.isArray(data.excursiones) ? data.excursiones.length : 'NO ES ARRAY',
-        extras_presente: !!data.extras,
-        extras_length: Array.isArray(data.extras) ? data.extras.length : 'NO ES ARRAY',
-        keys: Object.keys(data)
-      });
-      
-      if (data.excursiones && Array.isArray(data.excursiones)) {
-        console.log('🎯 REDUX - Excursiones detalle:', data.excursiones);
-      }
-      
-      if (data.extras && Array.isArray(data.extras)) {
-        console.log('🎪 REDUX - Extras detalle:', data.extras);
-      }
-      
       const res = await api.post('/quote-calculations/upsert', data);
       return res.data;
     } catch (err) {

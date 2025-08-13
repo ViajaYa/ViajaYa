@@ -34,9 +34,9 @@ module.exports = (sequelize) => {
   allowNull: true
 },
 trip_type: {
-  type: DataTypes.ENUM('nacional', 'internacional'),
+  type: DataTypes.ENUM('nacional', 'internacional', 'operadorLlano', 'hotel'),
   allowNull: true, // Temporal para no romper registros existentes
-  defaultValue: 'nacional',
+  
 },
 pasajero_titular: {
   type: DataTypes.STRING(200),

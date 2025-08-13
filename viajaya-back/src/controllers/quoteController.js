@@ -11,6 +11,21 @@ const {
 const path = require("path");
 const crypto = require('crypto'); 
 
+// ✅ Función auxiliar para convertir trip_type a etiqueta legible
+const getTripTypeLabel = (tripType) => {
+  switch (tripType) {
+    case 'nacional':
+      return 'Nacional';
+    case 'internacional':
+      return 'Internacional';
+    case 'operadorLlano':
+      return 'Operador Llano';
+    case 'hotel':
+      return 'Hotel';
+    default:
+      return tripType || 'No especificado';
+  }
+};
 
 const createClientUser = async (quoteData) => {
   try {
@@ -329,7 +344,7 @@ const quoteController = {
         fecha_ida,
         fecha_regreso,
         destino,
-        trip_type: trip_type || 'nacional', // ✅ NUEVO: Campo explícito para tipo de viaje
+        trip_type: trip_type || null, // ✅ CORREGIDO: No establecer valor por defecto
         origen,
         acomodacion: acomodacion || 'doble',
         tipo_hotel: tipo_hotel || 'basico',
@@ -700,7 +715,7 @@ getQuoteById: async (req, res) => {
         precio_por_persona_cop: precio_por_persona > 0 ? `$${precio_por_persona.toLocaleString('es-CO')}` : null,
         fecha_ida_formatted: quote.fecha_ida ? new Date(quote.fecha_ida).toLocaleDateString('es-ES') : null,
         fecha_regreso_formatted: quote.fecha_regreso ? new Date(quote.fecha_regreso).toLocaleDateString('es-ES') : null,
-        trip_type_label: quote.trip_type === 'nacional' ? 'Nacional' : 'Internacional',
+        trip_type_label: getTripTypeLabel(quote.trip_type),
       },
 
       // ✅ AGREGADO: Información del asesor responsable (para PDF)
@@ -1629,7 +1644,7 @@ getQuoteById: async (req, res) => {
         precio_por_persona_cop: precio_por_persona > 0 ? `$${precio_por_persona.toLocaleString('es-CO')}` : null,
         fecha_ida_formatted: quote.fecha_ida ? new Date(quote.fecha_ida).toLocaleDateString('es-ES') : null,
         fecha_regreso_formatted: quote.fecha_regreso ? new Date(quote.fecha_regreso).toLocaleDateString('es-ES') : null,
-        trip_type_label: quote.trip_type === 'nacional' ? 'Nacional' : 'Internacional',
+        trip_type_label: getTripTypeLabel(quote.trip_type),
       },
 
       // ✅ AGREGAR: Información del asesor responsable
@@ -1964,7 +1979,7 @@ getQuoteById: async (req, res) => {
         precio_por_persona_cop: precio_por_persona > 0 ? `$${precio_por_persona.toLocaleString('es-CO')}` : null,
         fecha_ida_formatted: quote.fecha_ida ? new Date(quote.fecha_ida).toLocaleDateString('es-ES') : null,
         fecha_regreso_formatted: quote.fecha_regreso ? new Date(quote.fecha_regreso).toLocaleDateString('es-ES') : null,
-        trip_type_label: quote.trip_type === 'nacional' ? 'Nacional' : 'Internacional',
+        trip_type_label: getTripTypeLabel(quote.trip_type),
       },
       asesor_info: {
         nombre_completo: quote.Asesor ? `${quote.Asesor.name} ${quote.Asesor.lastname}` : 
@@ -2025,6 +2040,12 @@ getQuoteById: async (req, res) => {
       } = req.body;
 
       console.log('🔍 DEBUG - updateQuote recibió trip_type:', trip_type);
+      console.log('🔍 DEBUG - updateQuote fechas recibidas:', {
+        fecha_ida,
+        fecha_regreso,
+        fecha_ida_type: typeof fecha_ida,
+        fecha_regreso_type: typeof fecha_regreso
+      });
 
       const quote = await Quote.findByPk(id);
 
@@ -2038,7 +2059,6 @@ getQuoteById: async (req, res) => {
         fecha_ida,
         fecha_regreso,
         destino,
-        trip_type, // ✅ AGREGADO: Campo faltante
         origen,
         acomodacion,
         tipo_hotel,
@@ -2047,11 +2067,79 @@ getQuoteById: async (req, res) => {
         status: status || quote.status,
       };
 
+      // ✅ CORREGIDO: Solo agregar trip_type si no está vacío
+      if (trip_type !== undefined && trip_type !== '' && trip_type !== null) {
+        updateData.trip_type = trip_type;
+      }
+
+      console.log('🔍 DEBUG - updateData antes de guardar:', {
+        fecha_ida: updateData.fecha_ida,
+        fecha_regreso: updateData.fecha_regreso,
+        trip_type: updateData.trip_type,
+        datos_completos: updateData
+      });
+
       if (status === "completed" && quote.status !== "completed") {
         updateData.completed_at = new Date();
       }
 
       await quote.update(updateData);
+
+      console.log('🔍 DEBUG - Quote actualizado, verificando fechas guardadas:', {
+        fecha_ida_guardada: quote.fecha_ida,
+        fecha_regreso_guardada: quote.fecha_regreso,
+        trip_type_guardado: quote.trip_type
+      });
+
+      // ✅ NUEVO: Sincronizar fechas con QuoteCalculation si existe
+      const { QuoteCalculation } = require("../db");
+      const existingCalculation = await QuoteCalculation.findOne({ 
+        where: { quote_id: id } 
+      });
+
+      if (existingCalculation) {
+        const calculationUpdateData = {};
+        
+        // Sincronizar fechas
+        if (updateData.fecha_ida) {
+          calculationUpdateData.fecha_viaje_inicio = updateData.fecha_ida;
+          // También actualizar en la estructura de tiquetes si existe
+          if (existingCalculation.tiquetes) {
+            const tiquetesData = typeof existingCalculation.tiquetes === 'string' 
+              ? JSON.parse(existingCalculation.tiquetes) 
+              : existingCalculation.tiquetes;
+            tiquetesData.fecha_ida = updateData.fecha_ida;
+            calculationUpdateData.tiquetes = tiquetesData;
+          }
+        }
+        
+        if (updateData.fecha_regreso) {
+          calculationUpdateData.fecha_viaje_fin = updateData.fecha_regreso;
+          // También actualizar en la estructura de tiquetes si existe
+          if (existingCalculation.tiquetes) {
+            const tiquetesData = typeof existingCalculation.tiquetes === 'string' 
+              ? JSON.parse(existingCalculation.tiquetes) 
+              : existingCalculation.tiquetes;
+            tiquetesData.fecha_vuelta = updateData.fecha_regreso;
+            calculationUpdateData.tiquetes = tiquetesData;
+          }
+        }
+
+        // Sincronizar otros campos importantes
+        if (updateData.trip_type) calculationUpdateData.trip_type = updateData.trip_type;
+        if (updateData.numero_personas) calculationUpdateData.num_personas = updateData.numero_personas;
+        if (updateData.precio_total) calculationUpdateData.precio_final_total = updateData.precio_total;
+
+        if (Object.keys(calculationUpdateData).length > 0) {
+          console.log('🔄 SYNC: Sincronizando fechas de Quote a QuoteCalculation:', {
+            quote_id: id,
+            changes: calculationUpdateData
+          });
+          
+          await existingCalculation.update(calculationUpdateData);
+          console.log('✅ SYNC: QuoteCalculation actualizado exitosamente');
+        }
+      }
 
       const updatedQuote = await Quote.findByPk(id, {
         include: [

@@ -137,7 +137,7 @@ const QuoteEdit = () => {
     fecha_ida: "",
     fecha_regreso: "",
     destino: "",
-    trip_type: "nacional", // ✅ CORREGIDO: Valor por defecto
+    trip_type: "", // 
     origen: "",
     acomodacion: "doble", // ✅ ACTUALIZADO: usar valores del nuevo enum
     tipo_hotel: "basico", // ✅ ACTUALIZADO: usar valores del nuevo enum
@@ -526,7 +526,7 @@ useEffect(() => {
             ? new Date(currentQuote.fecha_regreso).toISOString().split("T")[0]
             : "",
           destino: currentQuote.destino || "",
-          trip_type: currentQuote.trip_type || "nacional",
+          trip_type: currentQuote.trip_type || "",
           origen: currentQuote.origen || "",
           acomodacion: currentQuote.acomodacion || "Doble",
           tipo_hotel: currentQuote.tipo_hotel || "3 Estrellas",
@@ -618,7 +618,7 @@ useEffect(() => {
             ? new Date(currentQuote.fecha_regreso).toISOString().split("T")[0]
             : "",
           destino: currentQuote.destino || "",
-          trip_type: currentQuote.trip_type || "nacional",
+          trip_type: currentQuote.trip_type || "",
           origen: currentQuote.origen || "",
           acomodacion: currentQuote.acomodacion || "doble",
           tipo_hotel: currentQuote.tipo_hotel || "basico",
@@ -1229,6 +1229,11 @@ const handleCalculationSave = async (calculationData) => {
         precio_total: calculationData.precio_final_total.toString(),
         numero_personas: calculationData.num_personas.toString(),
         servicios_detalle: JSON.stringify(serviciosDetalle),
+        // ✅ NUEVO: Sincronizar fechas desde calculadora
+        fecha_ida: calculationData.tiquetes?.fecha_ida || prev.fecha_ida,
+        fecha_regreso: calculationData.tiquetes?.fecha_vuelta || prev.fecha_regreso,
+        // ✅ NUEVO: Sincronizar trip_type desde calculadora
+        trip_type: calculationData.trip_type || prev.trip_type,
       }));
 
       // ✅ PASO 2: Guardar/actualizar el cálculo usando upsert
@@ -1247,8 +1252,9 @@ const handleCalculationSave = async (calculationData) => {
         trip_type: formData.trip_type,
         destino: formData.destino,
         origen: formData.origen,
-        fecha_ida: formData.fecha_ida,
-        fecha_regreso: formData.fecha_regreso,
+        // ✅ CORREGIDO: Usar fechas de la calculadora si están disponibles, sino del formulario
+        fecha_ida: calculationData.tiquetes?.fecha_ida || formData.fecha_ida,
+        fecha_regreso: calculationData.tiquetes?.fecha_vuelta || formData.fecha_regreso,
         acomodacion: formData.acomodacion,
         tipo_hotel: formData.tipo_hotel,
         traslado: formData.traslado,
@@ -1264,7 +1270,17 @@ const handleCalculationSave = async (calculationData) => {
         destino: updateData.destino,
         precio_total: updateData.precio_total,
         status: updateData.status,
-        isRequoting: isRequoting
+        isRequoting: isRequoting,
+        fecha_ida: updateData.fecha_ida,
+        fecha_regreso: updateData.fecha_regreso,
+        fechas_desde_calculadora: {
+          fecha_ida_calc: calculationData.tiquetes?.fecha_ida,
+          fecha_vuelta_calc: calculationData.tiquetes?.fecha_vuelta
+        },
+        formData_fechas: {
+          fecha_ida: formData.fecha_ida,
+          fecha_regreso: formData.fecha_regreso
+        }
       });
 
       await dispatch(
@@ -1444,27 +1460,33 @@ const handleCalculationSave = async (calculationData) => {
                 <div className="space-y-1 text-sm">
                   <div>
                     <strong>Destino:</strong>{" "}
-                    {formData.destino || "Por definir"}
+                    {currentQuote?.destino || formData.destino || "Por definir"}
                   </div>
                   <div>
-                    <strong>Origen:</strong> {formData.origen || "Por definir"}
+                    <strong>Origen:</strong> {currentQuote?.origen || formData.origen || "Por definir"}
                   </div>
                   <div>
                     <strong>Tipo:</strong>{" "}
-                    {formData.trip_type === "nacional"
+                    {(currentQuote?.trip_type || formData.trip_type) === "nacional"
                       ? "Nacional"
-                      : "Internacional"}
+                      : (currentQuote?.trip_type || formData.trip_type) === "internacional"
+                      ? "Internacional"
+                      : (currentQuote?.trip_type || formData.trip_type) === "operadorLlano"
+                      ? "Operador Llano"
+                      : (currentQuote?.trip_type || formData.trip_type) === "hotel"
+                      ? "Hotel"
+                      : (currentQuote?.trip_type || formData.trip_type) || "Por definir"}
                   </div>
-                  {formData.fecha_ida && (
+                  {(currentQuote?.fecha_ida || formData.fecha_ida) && (
                     <div>
                       <strong>Ida:</strong>{" "}
-                      {new Date(formData.fecha_ida).toLocaleDateString("es-ES")}
+                      {new Date(currentQuote?.fecha_ida || formData.fecha_ida).toLocaleDateString("es-ES")}
                     </div>
                   )}
-                  {formData.fecha_regreso && (
+                  {(currentQuote?.fecha_regreso || formData.fecha_regreso) && (
                     <div>
                       <strong>Regreso:</strong>{" "}
-                      {new Date(formData.fecha_regreso).toLocaleDateString(
+                      {new Date(currentQuote?.fecha_regreso || formData.fecha_regreso).toLocaleDateString(
                         "es-ES"
                       )}
                     </div>
@@ -1480,18 +1502,43 @@ const handleCalculationSave = async (calculationData) => {
                 </h3>
                 <div className="space-y-1 text-sm">
                   <div>
-                    <strong>Personas:</strong> {formData.numero_personas || 1}
+                    <strong>Personas:</strong> {currentQuote?.numero_personas || formData.numero_personas || 1}
+                  </div>
+                  
+                  {/* ✅ CORREGIDO: Desglose detallado de pasajeros usando currentQuote */}
+                  {(currentQuote?.adultos > 0 || currentQuote?.menores > 0 || currentQuote?.infantes > 0) ? (
+                    <div className="mt-2 space-y-1">
+                      {currentQuote?.adultos > 0 && (
+                        <div className="text-xs">• {currentQuote.adultos} adulto{currentQuote.adultos !== 1 ? 's' : ''}</div>
+                      )}
+                      {currentQuote?.menores > 0 && (
+                        <div className="text-xs">• {currentQuote.menores} menor{currentQuote.menores !== 1 ? 'es' : ''}</div>
+                      )}
+                      {currentQuote?.infantes > 0 && (
+                        <div className="text-xs">• {currentQuote.infantes} infante{currentQuote.infantes !== 1 ? 's' : ''}</div>
+                      )}
+                      
+                      {/* ✅ CORREGIDO: Información de atención especial en viajeros usando currentQuote */}
+                      {currentQuote?.personas_atencion_especial > 0 && (
+                        <div className="text-xs text-orange-300 mt-1">
+                          • {currentQuote.personas_atencion_especial} con atención especial
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    // Fallback para datos legacy usando formData
+                    <div>
+                      <strong>Niños:</strong> {formData.ninos || 0}
+                    </div>
+                  )}
+                  
+                  <div>
+                    <strong>Acomodación:</strong> {currentQuote?.acomodacion || formData.acomodacion}
                   </div>
                   <div>
-                    <strong>Niños:</strong> {formData.ninos || 0}
+                    <strong>Hotel:</strong> {currentQuote?.tipo_hotel || formData.tipo_hotel}
                   </div>
-                  <div>
-                    <strong>Acomodación:</strong> {formData.acomodacion}
-                  </div>
-                  <div>
-                    <strong>Hotel:</strong> {formData.tipo_hotel}
-                  </div>
-                  {formData.traslado && (
+                  {(currentQuote?.traslado || formData.traslado) && (
                     <div className="text-green-300">✓ Incluye traslados</div>
                   )}
                 </div>
@@ -1504,30 +1551,47 @@ const handleCalculationSave = async (calculationData) => {
                   Precios
                 </h3>
                 <div className="space-y-1 text-sm">
-                  {formData.precio_por_persona && (
+                  {/* ✅ CORREGIDO: Precio por persona usando currentQuote */}
+                  {currentQuote?.precio_por_persona && (
                     <div>
                       <strong>Por persona:</strong> $
-                      {parseFloat(formData.precio_por_persona).toLocaleString(
+                      {parseFloat(currentQuote.precio_por_persona).toLocaleString(
                         "es-CO"
                       )}
                     </div>
                   )}
                   
-                  {/* ✅ NUEVO: Mostrar desglose de personas que pagan */}
-                  {(formData.adultos > 0 || formData.menores > 0 || formData.infantes > 0) && (
+                  {/* ✅ ACTUALIZADO: Mostrar desglose de personas que pagan usando currentQuote */}
+                  {(currentQuote?.adultos > 0 || currentQuote?.menores > 0 || currentQuote?.infantes > 0) && (
                     <div className="mt-2 p-2 bg-blue-900/30 rounded text-xs">
                       <div className="text-blue-200 font-medium">Cálculo de precio:</div>
-                      <div>• {calcularPersonasQuePagan()} personas que pagan</div>
-                      {formData.infantes > 0 && (
-                        <div className="text-yellow-200">• {formData.infantes} infante{formData.infantes !== 1 ? 's' : ''} (gratis)</div>
+                      <div>• {(currentQuote?.adultos || 0) + (currentQuote?.menores || 0)} personas que pagan</div>
+                      {currentQuote?.infantes > 0 && (
+                        <div className="text-yellow-200">• {currentQuote.infantes} infante{currentQuote.infantes !== 1 ? 's' : ''} (gratis)</div>
+                      )}
+                      
+                      {/* ✅ CORREGIDO: Total que paga usando currentQuote */}
+                      <div className="mt-1 pt-1 border-t border-blue-700/50 font-semibold text-blue-100">
+                        Total que paga: {(currentQuote?.adultos || 0) + (currentQuote?.menores || 0)} persona{((currentQuote?.adultos || 0) + (currentQuote?.menores || 0)) !== 1 ? 's' : ''}
+                      </div>
+                      
+                      {/* ✅ CORREGIDO: Información de atención especial usando currentQuote */}
+                      {currentQuote?.personas_atencion_especial > 0 && (
+                        <div className="text-orange-200 mt-1">
+                          • {currentQuote.personas_atencion_especial} con atención especial
+                          {currentQuote?.detalles_atencion_especial && 
+                            ` - ${currentQuote.detalles_atencion_especial}`
+                          }
+                        </div>
                       )}
                     </div>
                   )}
                   
-                  {formData.precio_total && (
+                  {/* ✅ CORREGIDO: Precio total usando currentQuote */}
+                  {currentQuote?.precio_total && (
                     <div className="text-lg font-bold text-yellow-300">
                       <strong>Total:</strong> $
-                      {parseFloat(formData.precio_total).toLocaleString(
+                      {parseFloat(currentQuote.precio_total).toLocaleString(
                         "es-CO"
                       )}
                     </div>

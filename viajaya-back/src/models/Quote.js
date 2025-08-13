@@ -136,9 +136,9 @@ module.exports = (sequelize) => {
       allowNull: false,
     },
     trip_type: {
-      type: DataTypes.ENUM('nacional', 'internacional'),
-      allowNull: true, // Temporal para no romper registros existentes
-      defaultValue: 'nacional',
+      type: DataTypes.ENUM('nacional', 'internacional', 'operadorLlano', 'hotel'),
+      allowNull: true, // Permitir NULL hasta que el usuario seleccione
+      defaultValue: null, // No valor por defecto
     },
     origen: {
       type: DataTypes.STRING,

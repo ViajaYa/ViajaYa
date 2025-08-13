@@ -1,36 +1,135 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { createQuoteCalculation, upsertQuoteCalculation, fetchCalculationBaseData } from '../../../redux/slices/quoteCalculationSlice';
 import { selectUser } from '../../../redux/slices/authSlice';
 import { fetchCommissionsByTripType, selectConfiguredCommissions } from '../../../redux/slices/commissionSlice';
+import { toast } from 'react-toastify';
 
-const AdvancedQuoteCalculator = ({ quote_id, 
-  onContinue, 
-  existingCalculation, 
+const AdvancedQuoteCalculator = ({ quote_id,
+  onContinue,
+  existingCalculation,
   quoteData }) => {
   const dispatch = useDispatch();
   const { loading, error, baseData, baseDataLoading } = useSelector(state => state.quoteCalculation || {});
   const user = useSelector(selectUser);
   const configuredCommissions = useSelector(selectConfiguredCommissions);
 
+  // ✅ REF: Para detectar cambios en quote_id
+  const prevQuoteIdRef = useRef(null);
+
+  // ✅ FUNCIÓN: Resetear formulario a valores por defecto (para nuevas cotizaciones)
+  const resetFormToDefault = useCallback(() => {
+    console.log('🔄 CALCULADORA: Reseteando formulario a valores por defecto');
+    setForm({
+      // Datos base
+      quote_id: quote_id,
+      user_id: user?.id,
+      num_personas: 1,
+      adultos: 1,
+      menores: 0,
+      infantes: 0,
+      edades_menores: [],
+      edades_infantes: [],
+      personas_atencion_especial: 0,
+      trip_type: '',
+
+      // Categorías de costos - valores por defecto limpios
+      tiquetes: {
+        tipo: 'ida_vuelta',
+        origen: '',
+        destino: '',
+        fecha_ida: '',
+        fecha_vuelta: '',
+        costo_ida: 0,
+        costo_vuelta: 0,
+        costo_total: 0,
+        proveedor: '',
+        observaciones: ''
+      },
+      traslados: {
+        aeropuerto_hotel_ida: { incluido: false, costo: 0, proveedor: '' },
+        hotel_aeropuerto_vuelta: { incluido: false, costo: 0, proveedor: '' },
+        otros: [],
+        costo_total: 0
+      },
+      hotel: {
+        nombre: '',
+        categoria: '3_estrellas',
+        acomodacion: 'doble',
+        noches: 0,
+        costo_noche: 0,
+        costo_total: 0,
+        ubicacion: '',
+        proveedor: '',
+        observaciones: ''
+      },
+      alimentacion: {
+        tipo: 'ninguna',
+        costo_total: 0,
+        proveedor: '',
+        observaciones: ''
+      },
+      equipaje: {
+        cabina: { incluido: true, costo: 0 },
+        bodega: { incluido: false, costo: 0 },
+        equipaje_extra: { incluido: false, costo: 0 },
+        costo_total: 0
+      },
+      seguros: {
+        asistencia_medica: { incluido: false, tipo: 'ninguna', costo: 0, proveedor: '' },
+        cancelacion: { incluido: false, costo: 0, proveedor: '' },
+        otros: [],
+        costo_total: 0
+      },
+      actividades_adicionales: {
+        incluidas: false,
+        detalle: '',
+        costo_por_persona: 0,
+        proveedor: ''
+      },
+      excursiones: [],
+      extras: [],
+      comisiones: {
+        asesor: { porcentaje: 0, valor_fijo: 0, valor_por_persona: 0, tipo_calculo: 'percentage', total: 0 },
+        lider: { porcentaje: 0, valor_fijo: 0, valor_por_persona: 0, tipo_calculo: 'percentage', total: 0 },
+        gerente: { porcentaje: 0, valor_fijo: 0, valor_por_persona: 0, tipo_calculo: 'percentage', total: 0 },
+        admin: { porcentaje: 0, valor_fijo: 0, valor_por_persona: 0, tipo_calculo: 'percentage', total: 0 },
+        total_comisiones: 0
+      },
+      ganancia: {
+        porcentaje: 15,
+        valor_fijo: 0,
+        total: 0
+      },
+      costo_base: 0,
+      total_comisiones: 0,
+      total_ganancia: 0,
+      precio_final_total: 0,
+      precio_final_por_persona: 0,
+      estado: 'temporal',
+      observaciones_generales: ''
+    });
+    setShouldRecalculate(false);
+  }, [quote_id, user?.id]);
+
   // ✅ FUNCIÓN: Calcular personas que realmente pagan (excluyendo infantes <2 años)
   const calcularPersonasQuePagan = () => {
     const adultos = parseInt(form.adultos) || 0;
     const menores = parseInt(form.menores) || 0;
     let total = adultos + menores;
-    
+
     // ✅ VALIDACIÓN: Si el total no coincide con numero_personas menos infantes, ajustar
     const totalEsperado = parseInt(form.num_personas) - parseInt(form.infantes || 0);
     if (total === 0 && totalEsperado > 0) {
       console.log(`🔧 CORRECCIÓN: total=0 pero esperado=${totalEsperado}, usando totalEsperado`);
       total = totalEsperado;
     }
-    
+
     // ✅ DEBUG: Log para ver los valores
     console.log(`🧮 calcularPersonasQuePagan: adultos=${adultos}, menores=${menores}, total=${total}`);
     console.log(`🧮 form.adultos=${form.adultos}, form.menores=${form.menores}, form.infantes=${form.infantes}`);
     console.log(`🧮 num_personas=${form.num_personas}, totalEsperado=${totalEsperado}`);
-    
+
     // Los infantes (<2 años) NO pagan
     return Math.max(1, total); // Mínimo 1 persona que paga
   };
@@ -38,23 +137,23 @@ const AdvancedQuoteCalculator = ({ quote_id,
   // ✅ FUNCIÓN: Calcular total de actividades extras (por persona)
   const calcularTotalActividadesExtras = () => {
     if (!form.actividades_adicionales?.incluidas) return 0;
-    
+
     let totalPorPersona = 0;
-    
+
     // Actividades básicas (por persona)
     if (form.actividades_adicionales?.actividades?.length > 0) {
       totalPorPersona += form.actividades_adicionales.actividades.reduce((acc, actividad) => {
         return acc + parseFloat(actividad.costo || 0);
       }, 0);
     }
-    
+
     // Excursiones (por persona)
     if (form.excursiones?.length > 0) {
       totalPorPersona += form.excursiones.reduce((acc, exc) => {
         return acc + parseFloat(exc.costo || 0);
       }, 0);
     }
-    
+
     // Extras/servicios (costo total dividido entre personas que pagan)
     if (form.extras?.length > 0) {
       const totalServicios = form.extras.reduce((acc, extra) => {
@@ -62,11 +161,12 @@ const AdvancedQuoteCalculator = ({ quote_id,
       }, 0);
       totalPorPersona += totalServicios / calcularPersonasQuePagan();
     }
-    
+
     return totalPorPersona;
   };
 
   const [activeTab, setActiveTab] = useState('transporte');
+  const [shouldRecalculate, setShouldRecalculate] = useState(false);
   const [form, setForm] = useState({
     // Datos base
     quote_id: quote_id,
@@ -79,8 +179,8 @@ const AdvancedQuoteCalculator = ({ quote_id,
     edades_menores: [],
     edades_infantes: [],
     personas_atencion_especial: 0,
-    trip_type: 'nacional',
-    
+    trip_type: '',
+
     // Categorías de costos
     tiquetes: {
       tipo: 'ida_vuelta',
@@ -136,10 +236,10 @@ const AdvancedQuoteCalculator = ({ quote_id,
       costo_por_persona: 0,
       proveedor: ''
     },
-    
+
     excursiones: [],
     extras: [],
-    
+
     // Comisiones y ganancia
     comisiones: {
       asesor: { porcentaje: 0, valor_fijo: 0, valor_por_persona: 0, tipo_calculo: 'percentage', total: 0 },
@@ -153,33 +253,41 @@ const AdvancedQuoteCalculator = ({ quote_id,
       valor_fijo: 0,
       total: 0
     },
-    
+
     // Totales
     costo_base: 0,
     total_comisiones: 0,
     total_ganancia: 0,
     precio_final_total: 0,
     precio_final_por_persona: 0,
-    
+
     estado: 'temporal',
     observaciones_generales: ''
   });
 
   // Cargar datos base al montar el componente
   useEffect(() => {
-    if (quote_id) {
+    if (quote_id && quote_id !== 'new') {
       dispatch(fetchCalculationBaseData(quote_id));
     }
   }, [dispatch, quote_id]);
 
   useEffect(() => {
     console.log('🔄 CALCULADORA: Verificando datos existentes...');
+    console.log('📋 CALCULADORA: quote_id:', quote_id);
     console.log('📋 CALCULADORA: existingCalculation:', existingCalculation);
     console.log('📋 CALCULADORA: quoteData:', quoteData);
-    
+
+    // ✅ Si no hay quote_id o es 'new', resetear formulario
+    if (!quote_id || quote_id === 'new') {
+      console.log('🆕 CALCULADORA: Nueva cotización - reseteando formulario');
+      resetFormToDefault();
+      return;
+    }
+
     if (existingCalculation && Object.keys(existingCalculation).length > 0) {
       console.log('✅ CALCULADORA: Cargando datos existentes en formulario');
-      
+
       // ✅ CARGAR: Datos básicos
       setForm(prevForm => ({
         ...prevForm,
@@ -193,64 +301,66 @@ const AdvancedQuoteCalculator = ({ quote_id,
         edades_menores: existingCalculation.edades_menores || quoteData?.edades_menores || [],
         edades_infantes: existingCalculation.edades_infantes || quoteData?.edades_infantes || [],
         personas_atencion_especial: existingCalculation.personas_atencion_especial || quoteData?.personas_atencion_especial || 0,
-        trip_type: existingCalculation.trip_type || quoteData?.trip_type || 'nacional',
-        
+        trip_type: existingCalculation.trip_type || quoteData?.trip_type || '',
+
         // ✅ CARGAR: Tiquetes
         tiquetes: existingCalculation.tiquetes || prevForm.tiquetes,
-        
+
         // ✅ CARGAR: Hotel
         hotel: existingCalculation.hotel || prevForm.hotel,
-        
+
         // ✅ CARGAR: Traslados
         traslados: existingCalculation.traslados || prevForm.traslados,
-        
+
         // ✅ CARGAR: Alimentación
         alimentacion: existingCalculation.alimentacion || prevForm.alimentacion,
-        
+
         // ✅ CARGAR: Equipaje
         equipaje: existingCalculation.equipaje || prevForm.equipaje,
-        
+
         // ✅ CARGAR: Seguros
         seguros: existingCalculation.seguros || prevForm.seguros,
-        
+
         // ✅ CARGAR: Asistencia médica
         asistencia_medica: existingCalculation.asistencia_medica || prevForm.asistencia_medica,
-        
+
         // ✅ CARGAR: Excursiones
-        excursiones: Array.isArray(existingCalculation.excursiones) 
-          ? existingCalculation.excursiones 
+        excursiones: Array.isArray(existingCalculation.excursiones)
+          ? existingCalculation.excursiones
           : prevForm.excursiones,
-        
+
         // ✅ CARGAR: Actividades adicionales
         actividades_adicionales: existingCalculation.actividades_adicionales || prevForm.actividades_adicionales,
-        
+
         // ✅ CARGAR: Extras
-        extras: Array.isArray(existingCalculation.extras) 
-          ? existingCalculation.extras 
+        extras: Array.isArray(existingCalculation.extras)
+          ? existingCalculation.extras
           : prevForm.extras,
-        
+
         // ✅ CARGAR: Comisiones
         comisiones: existingCalculation.comisiones || prevForm.comisiones,
-        
+
         // ✅ CARGAR: Ganancia
         ganancia: existingCalculation.ganancia || prevForm.ganancia,
-        
+
         // ✅ CARGAR: Totales calculados
         costo_base: existingCalculation.costo_base || 0,
         total_comisiones: existingCalculation.total_comisiones || 0,
         total_ganancia: existingCalculation.total_ganancia || 0,
         precio_final_total: existingCalculation.precio_final_total || 0,
         precio_final_por_persona: existingCalculation.precio_final_por_persona || 0,
-        
+
         // ✅ CARGAR: Estados y observaciones
         estado: existingCalculation.estado || 'draft',
         observaciones_generales: existingCalculation.observaciones_generales || ''
       }));
-      
+
       console.log('✅ CALCULADORA: Datos cargados exitosamente');
+      // ✅ MARCAR: Necesita recalcular después de que calcularTotales esté disponible
+      setShouldRecalculate(true);
     } else {
       console.log('ℹ️ CALCULADORA: No hay datos existentes, usando valores por defecto');
-      
+
       // ✅ CARGAR: Al menos datos básicos de la cotización
       if (quoteData) {
         setForm(prevForm => ({
@@ -264,34 +374,36 @@ const AdvancedQuoteCalculator = ({ quote_id,
           edades_menores: quoteData.edades_menores || [],
           edades_infantes: quoteData.edades_infantes || [],
           personas_atencion_especial: quoteData.personas_atencion_especial || 0,
-          trip_type: quoteData.trip_type || 'nacional',
+          trip_type: quoteData.trip_type || '',
         }));
       }
     }
-  }, [existingCalculation, quoteData, quote_id]);
+  }, [existingCalculation, quoteData, quote_id, resetFormToDefault]);
 
   // Sincronizar número de personas y tipo de viaje desde backend al cargar datos base
   useEffect(() => {
-    if (baseData && baseData.quote_info) {
+    // ✅ Solo sincronizar si no es nueva cotización
+    if (baseData && baseData.quote_info && quote_id && quote_id !== 'new') {
       setForm(prev => ({
         ...prev,
         num_personas: baseData.quote_info.numero_personas || 1,
         // ✅ NUEVOS: Cargar datos detallados desde baseData con lógica mejorada
-        adultos: baseData.quote_info.adultos || 
-                 Math.max(1, (baseData.quote_info.numero_personas - (baseData.quote_info.ninos || 0))),
+        adultos: baseData.quote_info.adultos ||
+          Math.max(1, (baseData.quote_info.numero_personas - (baseData.quote_info.ninos || 0))),
         menores: baseData.quote_info.menores || baseData.quote_info.ninos || 0,
         infantes: baseData.quote_info.infantes || 0,
         edades_menores: baseData.quote_info.edades_menores || [],
         edades_infantes: baseData.quote_info.edades_infantes || [],
         personas_atencion_especial: baseData.quote_info.personas_atencion_especial || 0,
-        trip_type: baseData.quote_info.trip_type || 'nacional',
+        trip_type: baseData.quote_info.trip_type || '',
       }));
     }
-  }, [baseData]);
+  }, [baseData, quote_id]);
 
   // Pre-llenar formulario con datos base y comisiones configuradas
   useEffect(() => {
-    if (baseData && baseData.calculadora_defaults) {
+    // ✅ Solo pre-llenar si no es nueva cotización
+    if (baseData && baseData.calculadora_defaults && quote_id && quote_id !== 'new') {
       setForm(prev => ({
         ...prev,
         // Pre-llenar tiquetes
@@ -321,7 +433,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
         fecha_viaje_fin: baseData.calculadora_defaults.fecha_viaje_fin
       }));
     }
-  }, [baseData]);
+  }, [baseData, quote_id]);
 
   // ✅ DEBUG: useEffect para monitorear cambios en datos de personas
   useEffect(() => {
@@ -338,9 +450,9 @@ const AdvancedQuoteCalculator = ({ quote_id,
   useEffect(() => {
     if (form.trip_type && quote_id) {
       console.log('🔄 Trip type cambió, recargando comisiones para:', form.trip_type);
-      dispatch(fetchCommissionsByTripType({ 
-        quoteId: quote_id, 
-        tripType: form.trip_type 
+      dispatch(fetchCommissionsByTripType({
+        quoteId: quote_id,
+        tripType: form.trip_type
       }));
     }
   }, [form.trip_type, quote_id, dispatch]);
@@ -356,13 +468,38 @@ const AdvancedQuoteCalculator = ({ quote_id,
     }
   }, [configuredCommissions]);
 
+  // ✅ NUEVO: Detectar cambio de cotización y resetear formulario para nueva cotización
+  useEffect(() => {
+    // Si cambia quote_id y es una nueva cotización, resetear completamente
+    if (quote_id && prevQuoteIdRef.current && quote_id !== prevQuoteIdRef.current && quote_id === 'new') {
+      console.log('🔄 CALCULADORA: Detectado cambio a nueva cotización, reseteando formulario');
+      resetFormToDefault();
+    }
+    
+    // Si no hay cálculo existente y es una nueva cotización, asegurar reset limpio
+    if (quote_id === 'new' && !existingCalculation) {
+      console.log('🔄 CALCULADORA: Nueva cotización sin datos existentes, aplicando reset limpio');
+      resetFormToDefault();
+    }
+    
+    // Actualizar referencia
+    prevQuoteIdRef.current = quote_id;
+  }, [quote_id, existingCalculation, resetFormToDefault]);
+
   // Calcular totales automáticamente, solo sumar comisiones si costo base > 0
   const calcularTotales = useCallback(() => {
     let costoBase = 0;
     const numPersonas = parseInt(form.num_personas || 1);
     const personasQuePagan = calcularPersonasQuePagan(); // ✅ Solo adultos + menores
 
-    // Sumar todos los costos (por persona y multiplicar por número de personas QUE PAGAN)
+    console.log('🧮 DEBUGGING CALCULAR TOTALES:');
+    console.log('Personas que pagan:', personasQuePagan);
+    console.log('Tiquetes costo_total (por persona):', form.tiquetes.costo_total);
+    console.log('Hotel costo_total (por persona):', form.hotel.costo_total);
+    console.log('Traslados costo_total (por persona):', form.traslados.costo_total);
+    console.log('Alimentacion costo_total (por persona):', form.alimentacion.costo_total);
+
+    // ✅ CORREGIDO: Los costos son POR PERSONA, necesitamos multiplicar por personas que pagan
     costoBase += parseFloat(form.tiquetes.costo_total || 0) * personasQuePagan;
     costoBase += parseFloat(form.traslados.costo_total || 0) * personasQuePagan;
     costoBase += parseFloat(form.hotel.costo_total || 0) * personasQuePagan;
@@ -370,11 +507,21 @@ const AdvancedQuoteCalculator = ({ quote_id,
     costoBase += parseFloat(form.equipaje.costo_total || 0) * personasQuePagan;
     costoBase += parseFloat(form.seguros.costo_total || 0) * personasQuePagan;
     costoBase += parseFloat(form.seguros?.asistencia_medica?.costo || 0) * personasQuePagan;
+    
+    console.log('🎯 COSTO BASE DESPUÉS DE SERVICIOS BÁSICOS:');
+    console.log('- Tiquetes total:', parseFloat(form.tiquetes.costo_total || 0) * personasQuePagan);
+    console.log('- Hotel total:', parseFloat(form.hotel.costo_total || 0) * personasQuePagan);
+    console.log('- Traslados total:', parseFloat(form.traslados.costo_total || 0) * personasQuePagan);
+    console.log('- Alimentación total:', parseFloat(form.alimentacion.costo_total || 0) * personasQuePagan);
+    console.log('- Equipaje total:', parseFloat(form.equipaje.costo_total || 0) * personasQuePagan);
+    console.log('- Seguros total:', parseFloat(form.seguros.costo_total || 0) * personasQuePagan);
+    console.log('- Asistencia médica total:', parseFloat(form.seguros?.asistencia_medica?.costo || 0) * personasQuePagan);
+    console.log('- Costo base parcial:', costoBase);
 
     // ✅ ACTUALIZADO: Calcular extras combinados según el nuevo sistema
     let totalExtrasPersonas = 0;
     let totalExtrasGenerales = 0;
-    
+
     if (form.actividades_adicionales?.incluidas) {
       // Actividades básicas agregadas (por persona)
       if (form.actividades_adicionales?.actividades?.length > 0) {
@@ -383,7 +530,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
         }, 0);
         totalExtrasPersonas += totalActividades;
       }
-      
+
       // Excursiones (por persona)
       if (form.excursiones?.length > 0) {
         const totalExcursiones = form.excursiones.reduce((acc, exc) => {
@@ -391,7 +538,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
         }, 0);
         totalExtrasPersonas += totalExcursiones;
       }
-      
+
       // Extras/servicios (costo total, no por persona)
       if (form.extras?.length > 0) {
         const totalServicios = form.extras.reduce((acc, extra) => {
@@ -400,9 +547,13 @@ const AdvancedQuoteCalculator = ({ quote_id,
         totalExtrasGenerales += totalServicios;
       }
     }
-    
-    // Sumar al costo base
+
+    // Sumar al costo base: extras por persona se multiplican por personas que pagan
     costoBase += (totalExtrasPersonas * personasQuePagan) + totalExtrasGenerales;
+
+    console.log('🎯 COSTO BASE FINAL (después de actividades):', costoBase);
+    console.log('- Total extras por persona:', totalExtrasPersonas, 'x', personasQuePagan, '=', totalExtrasPersonas * personasQuePagan);
+    console.log('- Total extras generales:', totalExtrasGenerales);
 
     // Calcular comisiones sobre el costo base SOLO si costoBase > 0
     let totalComisiones = 0;
@@ -443,12 +594,12 @@ const AdvancedQuoteCalculator = ({ quote_id,
     }
     comisionesActualizadas.total_comisiones = totalComisiones;
 
-    // Calcular ganancia
+    // Calcular ganancia sobre el costo base (sin comisiones)
     const porcentajeGanancia = parseFloat(form.ganancia.porcentaje || 0);
     const valorFijoGanancia = parseFloat(form.ganancia.valor_fijo || 0);
     const totalGanancia = (costoBase * porcentajeGanancia / 100) + valorFijoGanancia;
 
-    // Precio final
+    // Precio final = costo base + comisiones + ganancia
     const precioFinalTotal = costoBase + totalComisiones + totalGanancia;
     const precioFinalPorPersona = personasQuePagan > 0 ? precioFinalTotal / personasQuePagan : 0; // ✅ Dividir por personas que pagan
 
@@ -465,6 +616,13 @@ const AdvancedQuoteCalculator = ({ quote_id,
       precio_final_total: precioFinalTotal,
       precio_final_por_persona: precioFinalPorPersona
     }));
+    
+    console.log('🎯 RESULTADO FINAL CALCULAR TOTALES:');
+    console.log('- Costo Base (total para', personasQuePagan, 'personas):', costoBase);
+    console.log('- Total Comisiones:', totalComisiones);
+    console.log('- Total Ganancia:', totalGanancia);
+    console.log('- Precio Final Total:', precioFinalTotal);
+    console.log('- Precio Final Por Persona (', personasQuePagan, 'que pagan):', precioFinalPorPersona);
   }, [
     form.tiquetes.costo_total,
     form.traslados.costo_total,
@@ -499,6 +657,15 @@ const AdvancedQuoteCalculator = ({ quote_id,
     form.infantes
   ]);
 
+  // ✅ RECALCULAR: Cuando se cargan datos existentes
+  useEffect(() => {
+    if (shouldRecalculate) {
+      console.log('🔄 CALCULADORA: Recalculando totales después de cargar datos existentes...');
+      calcularTotales();
+      setShouldRecalculate(false);
+    }
+  }, [shouldRecalculate, calcularTotales]);
+
   // Pre-llenar formulario con datos base
   useEffect(() => {
     if (baseData && baseData.calculadora_defaults) {
@@ -509,28 +676,28 @@ const AdvancedQuoteCalculator = ({ quote_id,
           ...prev.tiquetes,
           ...baseData.calculadora_defaults.tiquetes
         },
-        
+
         // Pre-llenar hotel
         hotel: {
           ...prev.hotel,
           ...baseData.calculadora_defaults.hotel
         },
-        
+
         // Pre-llenar traslados
         traslados: {
           ...prev.traslados,
           ...baseData.calculadora_defaults.traslados
         },
-        
+
         // Pre-llenar alimentación
         alimentacion: {
           ...prev.alimentacion,
           ...baseData.calculadora_defaults.alimentacion
         },
-        
+
         // Pre-llenar comisiones configuradas
         comisiones: JSON.parse(JSON.stringify(baseData.comisiones_configuradas)),
-        
+
         // Fechas
         fecha_viaje_inicio: baseData.calculadora_defaults.fecha_viaje_inicio,
         fecha_viaje_fin: baseData.calculadora_defaults.fecha_viaje_fin
@@ -548,9 +715,9 @@ const AdvancedQuoteCalculator = ({ quote_id,
   useEffect(() => {
     if (quote_id && form.trip_type) {
       console.log('🔄 Tipo de viaje cambió a:', form.trip_type, '- Obteniendo nuevas comisiones...');
-      dispatch(fetchCommissionsByTripType({ 
-        quoteId: quote_id, 
-        tripType: form.trip_type 
+      dispatch(fetchCommissionsByTripType({
+        quoteId: quote_id,
+        tripType: form.trip_type
       }));
     }
   }, [form.trip_type, quote_id, dispatch]);
@@ -569,57 +736,82 @@ const AdvancedQuoteCalculator = ({ quote_id,
   const handleInputChange = (categoria, campo, valor, subcampo = null) => {
     setForm(prev => {
       const newForm = JSON.parse(JSON.stringify(prev));
-      
+
       if (!categoria) {
         // Para campos del nivel raíz como trip_type, num_personas, estado
         newForm[campo] = valor;
       } else if (subcampo) {
         newForm[categoria][campo][subcampo] = valor;
-        
+
         // Recalcular totales de categoría específica
         if (categoria === 'tiquetes') {
-          newForm.tiquetes.costo_total = 
-            parseFloat(newForm.tiquetes.costo_ida || 0) + 
+          newForm.tiquetes.costo_total =
+            parseFloat(newForm.tiquetes.costo_ida || 0) +
             parseFloat(newForm.tiquetes.costo_vuelta || 0);
         } else if (categoria === 'hotel') {
-          newForm.hotel.costo_total = 
-            parseFloat(newForm.hotel.noches || 0) * 
+          newForm.hotel.costo_total =
+            parseFloat(newForm.hotel.noches || 0) *
             parseFloat(newForm.hotel.costo_noche || 0);
         } else if (categoria === 'traslados') {
           let totalTraslados = 0;
-          
+
           // Sumar aeropuerto_hotel_ida si está incluido
           if (newForm.traslados.aeropuerto_hotel_ida.incluido) {
             totalTraslados += parseFloat(newForm.traslados.aeropuerto_hotel_ida.costo || 0);
           }
-          
+
           // Sumar hotel_aeropuerto_vuelta si está incluido
           if (newForm.traslados.hotel_aeropuerto_vuelta.incluido) {
             totalTraslados += parseFloat(newForm.traslados.hotel_aeropuerto_vuelta.costo || 0);
           }
-          
+
           // Sumar otros traslados
           newForm.traslados.otros.forEach(traslado => {
             totalTraslados += parseFloat(traslado.costo || 0);
           });
-          
+
           newForm.traslados.costo_total = totalTraslados;
         }
       } else {
         newForm[categoria][campo] = valor;
-        
+
+        // ✅ NUEVO: Calcular automáticamente noches del hotel cuando cambien las fechas
+        if (categoria === 'tiquetes' && (campo === 'fecha_ida' || campo === 'fecha_vuelta')) {
+          const fechaIda = newForm.tiquetes.fecha_ida;
+          const fechaVuelta = newForm.tiquetes.fecha_vuelta;
+          
+          if (fechaIda && fechaVuelta) {
+            const fechaIdaDate = new Date(fechaIda);
+            const fechaVueltaDate = new Date(fechaVuelta);
+            
+            if (fechaVueltaDate > fechaIdaDate) {
+              const diffTime = fechaVueltaDate.getTime() - fechaIdaDate.getTime();
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+              const noches = Math.max(0, diffDays - 1);
+              
+              // Actualizar automáticamente las noches del hotel
+              newForm.hotel.noches = noches;
+              
+              // Recalcular costo total del hotel si ya hay costo por noche
+              if (newForm.hotel.costo_noche) {
+                newForm.hotel.costo_total = noches * parseFloat(newForm.hotel.costo_noche || 0);
+              }
+            }
+          }
+        }
+
         // Recalcular totales cuando cambian campos directos de categoría
         if (categoria === 'tiquetes' && (campo === 'costo_ida' || campo === 'costo_vuelta')) {
-          newForm.tiquetes.costo_total = 
-            parseFloat(newForm.tiquetes.costo_ida || 0) + 
+          newForm.tiquetes.costo_total =
+            parseFloat(newForm.tiquetes.costo_ida || 0) +
             parseFloat(newForm.tiquetes.costo_vuelta || 0);
         } else if (categoria === 'hotel' && (campo === 'noches' || campo === 'costo_noche')) {
-          newForm.hotel.costo_total = 
-            parseFloat(newForm.hotel.noches || 0) * 
+          newForm.hotel.costo_total =
+            parseFloat(newForm.hotel.noches || 0) *
             parseFloat(newForm.hotel.costo_noche || 0);
         }
       }
-      
+
       return newForm;
     });
   };
@@ -628,13 +820,13 @@ const AdvancedQuoteCalculator = ({ quote_id,
   const addExcursion = () => {
     setForm(prev => ({
       ...prev,
-      excursiones: [...prev.excursiones, { 
-        nombre: '', 
-        descripcion: '', 
-        duracion: '', 
-        costo: 0, 
-        proveedor: '', 
-        obligatoria: false 
+      excursiones: [...prev.excursiones, {
+        nombre: '',
+        descripcion: '',
+        duracion: '',
+        costo: 0,
+        proveedor: '',
+        obligatoria: false
       }]
     }));
   };
@@ -661,11 +853,11 @@ const AdvancedQuoteCalculator = ({ quote_id,
   const addExtra = () => {
     setForm(prev => ({
       ...prev,
-      extras: [...prev.extras, { 
-        nombre: '', 
-        descripcion: '', 
-        costo: 0, 
-        proveedor: '' 
+      extras: [...prev.extras, {
+        nombre: '',
+        descripcion: '',
+        costo: 0,
+        proveedor: ''
       }]
     }));
   };
@@ -689,175 +881,229 @@ const AdvancedQuoteCalculator = ({ quote_id,
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  console.log("📤 COMPONENTE: Iniciando envío de datos al backend");
-  console.log("📋 COMPONENTE: Datos del formulario completo:", form);
-  
-  // ✅ AGREGAR: Log detallado de cada sección
-  console.log("✈️ COMPONENTE: Tiquetes:", form.tiquetes);
-  console.log("🏨 COMPONENTE: Hotel:", form.hotel);
-  console.log("🚗 COMPONENTE: Traslados:", form.traslados);
-  console.log("🍽️ COMPONENTE: Alimentación:", form.alimentacion);
-  console.log("🛡️ COMPONENTE: Seguros:", form.seguros);
-  console.log("🎒 COMPONENTE: Equipaje:", form.equipaje);
-  console.log("🏥 COMPONENTE: Asistencia médica:", form.seguros?.asistencia_medica);
-  console.log("🎯 COMPONENTE: Excursiones:", form.excursiones);
-  console.log("🎪 COMPONENTE: Actividades adicionales:", form.actividades_adicionales);
-  console.log("➕ COMPONENTE: Extras:", form.extras);
-  
-  // ✅ AGREGAR: Log de comisiones y totales
-  console.log("💼 COMPONENTE: Comisiones:", form.comisiones);
-  console.log("💰 COMPONENTE: Ganancia:", form.ganancia);
-  
-  // ✅ AGREGAR: Log de totales calculados
-  console.log("📊 COMPONENTE: Totales calculados:");
-  console.log("  - Costo base:", form.costo_base);
-  console.log("  - Total comisiones:", form.total_comisiones);
-  console.log("  - Total ganancia:", form.total_ganancia);
-  console.log("  - Precio final total:", form.precio_final_total);
-  console.log("  - Precio final por persona:", form.precio_final_por_persona);
-  
-  // ✅ AGREGAR: Log de configuración
-  console.log("⚙️ COMPONENTE: Configuración:");
-  console.log("  - Quote ID:", form.quote_id);
-  console.log("  - User ID:", form.user_id);
-  console.log("  - Número de personas:", form.num_personas);
-  console.log("  - Tipo de viaje:", form.trip_type);
-  console.log("  - Estado:", form.estado);
-  
-  // ✅ AGREGAR: Validaciones básicas antes de enviar
-  if (!form.quote_id) {
-    console.error("❌ COMPONENTE: Error - No hay quote_id");
-    alert("Error: No se encontró el ID de la cotización");
+    e.preventDefault();
+
+    console.log("📤 COMPONENTE: Iniciando envío de datos al backend");
+    console.log("📋 COMPONENTE: Datos del formulario completo:", form);
+
+    // ✅ AGREGAR: Log detallado de cada sección
+    console.log("✈️ COMPONENTE: Tiquetes:", form.tiquetes);
+    console.log("🏨 COMPONENTE: Hotel:", form.hotel);
+    console.log("🚗 COMPONENTE: Traslados:", form.traslados);
+    console.log("🍽️ COMPONENTE: Alimentación:", form.alimentacion);
+    console.log("🛡️ COMPONENTE: Seguros:", form.seguros);
+    console.log("🎒 COMPONENTE: Equipaje:", form.equipaje);
+    console.log("🏥 COMPONENTE: Asistencia médica:", form.seguros?.asistencia_medica);
+    console.log("🎯 COMPONENTE: Excursiones:", form.excursiones);
+    console.log("🎪 COMPONENTE: Actividades adicionales:", form.actividades_adicionales);
+    console.log("➕ COMPONENTE: Extras:", form.extras);
+
+    // ✅ AGREGAR: Log de comisiones y totales
+    console.log("💼 COMPONENTE: Comisiones:", form.comisiones);
+    console.log("💰 COMPONENTE: Ganancia:", form.ganancia);
+
+    // ✅ AGREGAR: Log de totales calculados
+    console.log("📊 COMPONENTE: Totales calculados:");
+    console.log("  - Costo base:", form.costo_base);
+    console.log("  - Total comisiones:", form.total_comisiones);
+    console.log("  - Total ganancia:", form.total_ganancia);
+    console.log("  - Precio final total:", form.precio_final_total);
+    console.log("  - Precio final por persona:", form.precio_final_por_persona);
+
+    // ✅ AGREGAR: Log de configuración
+    console.log("⚙️ COMPONENTE: Configuración:");
+    console.log("  - Quote ID:", form.quote_id);
+    console.log("  - User ID:", form.user_id);
+    console.log("  - Número de personas:", form.num_personas);
+    console.log("  - Tipo de viaje:", form.trip_type);
+    console.log("  - Estado:", form.estado);
+
+    // ✅ AGREGAR: Validaciones básicas antes de enviar
+    if (!form.quote_id) {
+      console.error("❌ COMPONENTE: Error - No hay quote_id");
+      alert("Error: No se encontró el ID de la cotización");
+      return;
+    }
+
+    if (!form.user_id) {
+      console.error("❌ COMPONENTE: Error - No hay user_id");
+      alert("Error: No se encontró el ID del usuario");
+      return;
+    }
+
+   // ✅ VALIDACIÓN: Verificar que trip_type esté seleccionado
+  if (!form.trip_type) {
+    alert("Por favor selecciona el tipo de viaje antes de guardar la cotización");
     return;
   }
   
-  if (!form.user_id) {
-    console.error("❌ COMPONENTE: Error - No hay user_id");
-    alert("Error: No se encontró el ID del usuario");
-    return;
-  }
-  
+  // ✅ VALIDACIÓN: Verificar que hay un precio calculado
   if (form.precio_final_total <= 0) {
     console.warn("⚠️ COMPONENTE: Advertencia - El precio final es 0 o negativo");
-  }
-  
-  console.log("📤 COMPONENTE: Enviando datos vía dispatch...");
-  
-  // ✅ NUEVO: Log específico para debugging de excursiones/extras antes de enviar
-  console.log("🔍 DEBUGGING EXCURSIONES/EXTRAS ANTES DE ENVIAR:");
-  console.log("  - Excursiones:", {
-    length: form.excursiones?.length || 0,
-    data: form.excursiones,
-    isArray: Array.isArray(form.excursiones)
-  });
-  console.log("  - Extras:", {
-    length: form.extras?.length || 0,
-    data: form.extras,
-    isArray: Array.isArray(form.extras)
-  });
-  console.log("  - Actividades adicionales:", {
-    incluidas: form.actividades_adicionales?.incluidas,
-    data: form.actividades_adicionales,
-  });
-  
-  // ✅ NUEVO: Combinar todas las actividades en un solo array de "extras"
-  const combinedExtras = [];
-  
-  // Solo incluir si actividades están habilitadas
-  if (form.actividades_adicionales?.incluidas) {
-    // Agregar actividades básicas si existen
-    if (form.actividades_adicionales?.actividades?.length > 0) {
-      form.actividades_adicionales.actividades.forEach(actividad => {
-        if (actividad.descripcion && actividad.costo > 0) {
-          combinedExtras.push({
-            nombre: actividad.descripcion,
-            descripcion: actividad.descripcion,
-            costo: parseFloat(actividad.costo),
-            proveedor: actividad.proveedor || '',
-            tipo: 'actividad_basica'
-          });
-        }
-      });
-    }
-    
-    // Agregar excursiones
-    if (form.excursiones?.length > 0) {
-      form.excursiones.forEach(excursion => {
-        if (excursion.nombre && excursion.costo > 0) {
-          combinedExtras.push({
-            nombre: excursion.nombre,
-            descripcion: excursion.descripcion || '',
-            costo: parseFloat(excursion.costo),
-            proveedor: excursion.proveedor || '',
-            tipo: 'excursion'
-          });
-        }
-      });
-    }
-    
-    // Agregar extras
-    if (form.extras?.length > 0) {
-      form.extras.forEach(extra => {
-        if (extra.nombre && extra.costo > 0) {
-          combinedExtras.push({
-            nombre: extra.nombre,
-            descripcion: extra.descripcion || '',
-            costo: parseFloat(extra.costo),
-            proveedor: extra.proveedor || '',
-            tipo: 'servicio_extra'
-          });
-        }
-      });
+    if (!confirm("El precio final es $0. ¿Deseas continuar?")) {
+      return;
     }
   }
-  
-  console.log("🔄 COMBINANDO ACTIVIDADES EN EXTRAS:");
-  console.log("  - Total items combinados:", combinedExtras.length);
-  console.log("  - Array combinado:", combinedExtras);
-  
-  // ✅ NUEVO: Preparar datos modificados para enviar
-  const dataToSend = {
-    ...form,
-    extras: combinedExtras, // ✅ Solo enviar el array combinado como "extras"
-    excursiones: [], // ✅ Vaciar excursiones porque van en extras
-    actividades_adicionales: { // ✅ Mantener solo el flag de inclusión
-      incluidas: form.actividades_adicionales?.incluidas || false,
-      detalle: '',
-      costo_por_persona: 0,
-      proveedor: ''
+
+    console.log("📤 COMPONENTE: Enviando datos vía dispatch...");
+
+    // ✅ NUEVO: Log específico para debugging de excursiones/extras antes de enviar
+    console.log("🔍 DEBUGGING EXCURSIONES/EXTRAS ANTES DE ENVIAR:");
+    console.log("  - Excursiones:", {
+      length: form.excursiones?.length || 0,
+      data: form.excursiones,
+      isArray: Array.isArray(form.excursiones)
+    });
+    console.log("  - Extras:", {
+      length: form.extras?.length || 0,
+      data: form.extras,
+      isArray: Array.isArray(form.extras)
+    });
+    console.log("  - Actividades adicionales:", {
+      incluidas: form.actividades_adicionales?.incluidas,
+      data: form.actividades_adicionales,
+    });
+
+    // ✅ NUEVO: Combinar todas las actividades en un solo array de "extras"
+    const combinedExtras = [];
+
+    // Solo incluir si actividades están habilitadas
+    if (form.actividades_adicionales?.incluidas) {
+      // Agregar actividades básicas si existen
+      if (form.actividades_adicionales?.actividades?.length > 0) {
+        form.actividades_adicionales.actividades.forEach(actividad => {
+          if (actividad.descripcion && actividad.costo > 0) {
+            combinedExtras.push({
+              nombre: actividad.descripcion,
+              descripcion: actividad.descripcion,
+              costo: parseFloat(actividad.costo),
+              proveedor: actividad.proveedor || '',
+              tipo: 'actividad_basica'
+            });
+          }
+        });
+      }
+
+      // Agregar excursiones
+      if (form.excursiones?.length > 0) {
+        form.excursiones.forEach(excursion => {
+          if (excursion.nombre && excursion.costo > 0) {
+            combinedExtras.push({
+              nombre: excursion.nombre,
+              descripcion: excursion.descripcion || '',
+              costo: parseFloat(excursion.costo),
+              proveedor: excursion.proveedor || '',
+              tipo: 'excursion'
+            });
+          }
+        });
+      }
+
+      // Agregar extras
+      if (form.extras?.length > 0) {
+        form.extras.forEach(extra => {
+          if (extra.nombre && extra.costo > 0) {
+            combinedExtras.push({
+              nombre: extra.nombre,
+              descripcion: extra.descripcion || '',
+              costo: parseFloat(extra.costo),
+              proveedor: extra.proveedor || '',
+              tipo: 'servicio_extra'
+            });
+          }
+        });
+      }
     }
-  };
-  
-  console.log("📤 DATOS FINALES A ENVIAR:", dataToSend);
-  console.log("📤 EXTRAS FINALES:", dataToSend.extras);
-  console.log("🏥 ASISTENCIA MÉDICA ENVIADA:", dataToSend.seguros?.asistencia_medica);
-  console.log("🍽️ ALIMENTACIÓN ENVIADA:", dataToSend.alimentacion);
-  console.log("🛡️ SEGUROS COMPLETO:", dataToSend.seguros);
-  
-  try {
-   console.log("💾 CALCULADORA: Usando upsertQuoteCalculation para guardar/actualizar");
+
+    console.log("🔄 COMBINANDO ACTIVIDADES EN EXTRAS:");
+    console.log("  - Total items combinados:", combinedExtras.length);
+    console.log("  - Array combinado:", combinedExtras);
+
+    // ✅ NUEVO: Preparar datos modificados para enviar
+    const dataToSend = {
+      ...form,
+      extras: combinedExtras, // ✅ Solo enviar el array combinado como "extras"
+      excursiones: [], // ✅ Vaciar excursiones porque van en extras
+      actividades_adicionales: { // ✅ Mantener solo el flag de inclusión
+        incluidas: form.actividades_adicionales?.incluidas || false,
+        detalle: '',
+        costo_por_persona: 0,
+        proveedor: ''
+      },
+      trip_type: form.trip_type,
+      // ✅ NUEVO: Asegurar que las fechas se envíen correctamente
+      fecha_viaje_inicio: form.tiquetes?.fecha_ida || null,
+      fecha_viaje_fin: form.tiquetes?.fecha_vuelta || null,
+      // ✅ NUEVO: Marcar que la cotización está lista para ser completada
+      ready_for_completion: form.trip_type && form.precio_final_total > 0
+    };
+
+    console.log('🗓️ FECHAS ENVIADAS AL BACKEND:', {
+      fecha_ida_calculadora: form.tiquetes?.fecha_ida,
+      fecha_vuelta_calculadora: form.tiquetes?.fecha_vuelta,
+      fecha_viaje_inicio: dataToSend.fecha_viaje_inicio,
+      fecha_viaje_fin: dataToSend.fecha_viaje_fin
+    });
+
+    console.log("📤 DATOS FINALES A ENVIAR:", dataToSend);
+    console.log("📤 EXTRAS FINALES:", dataToSend.extras);
+    console.log("🏥 ASISTENCIA MÉDICA ENVIADA:", dataToSend.seguros?.asistencia_medica);
+    console.log("🍽️ ALIMENTACIÓN ENVIADA:", dataToSend.alimentacion);
+    console.log("🛡️ SEGUROS COMPLETO:", dataToSend.seguros);
+
+    try {
+      console.log("💾 CALCULADORA: Usando upsertQuoteCalculation para guardar/actualizar");
+      
+      // ✅ NUEVO: Mostrar notificación de inicio de guardado
+      const toastId = toast.loading("Guardando calculadora de presupuesto...");
+      
       const result = await dispatch(upsertQuoteCalculation(dataToSend));
       console.log("📨 CALCULADORA: Resultado del dispatch:", result);
-      
-    
-    if (result.meta.requestStatus === 'fulfilled') {
-      console.log("✅ COMPONENTE: Cálculo guardado exitosamente");
-      console.log("✅ COMPONENTE: Payload de respuesta:", result.payload);
-      
-      if (onContinue) {
-        console.log("🔄 COMPONENTE: Ejecutando callback onContinue...");
-        onContinue(result.payload);
+
+      if (result.meta.requestStatus === 'fulfilled') {
+        console.log("✅ COMPONENTE: Cálculo guardado exitosamente");
+        console.log("✅ COMPONENTE: Payload de respuesta:", result.payload);
+
+        // ✅ NUEVO: Actualizar notificación de éxito
+        toast.update(toastId, {
+          render: "✅ Presupuesto guardado exitosamente",
+          type: "success",
+          isLoading: false,
+          autoClose: 3000,
+        });
+
+        // ✅ NUEVO: Alert de confirmación adicional
+        alert(`✅ Presupuesto guardado correctamente\n\n` +
+              `💰 Precio final: $${form.precio_final_total?.toLocaleString()}\n` +
+              `👥 Por persona: $${form.precio_final_por_persona?.toLocaleString()}\n` +
+              `🧑‍🤝‍🧑 Personas que pagan: ${calcularPersonasQuePagan()}`);
+
+        if (onContinue) {
+          console.log("🔄 COMPONENTE: Ejecutando callback onContinue...");
+          onContinue(result.payload);
+        }
+      } else {
+        console.error("❌ COMPONENTE: El dispatch fue rechazado:", result.error);
+        
+        // ✅ NUEVO: Actualizar notificación de error
+        toast.update(toastId, {
+          render: "❌ Error al guardar el presupuesto",
+          type: "error",
+          isLoading: false,
+          autoClose: 5000,
+        });
+        
+        alert("❌ Error al guardar el presupuesto. Por favor intenta nuevamente.");
       }
-    } else {
-      console.error("❌ COMPONENTE: El dispatch fue rechazado:", result.error);
+    } catch (error) {
+      console.error("❌ COMPONENTE: Error en try-catch del handleSubmit:", error);
+      console.error("❌ COMPONENTE: Error stack:", error.stack);
+      
+      // ✅ NUEVO: Notificación de error en catch
+      toast.error("❌ Error inesperado al guardar el presupuesto");
+      alert("❌ Error inesperado al guardar el presupuesto. Revisa la consola para más detalles.");
     }
-  } catch (error) {
-    console.error("❌ COMPONENTE: Error en try-catch del handleSubmit:", error);
-    console.error("❌ COMPONENTE: Error stack:", error.stack);
-  }
-};
+  };
 
   const tabs = [
     { id: 'transporte', label: 'Transporte', icon: '✈️' },
@@ -880,7 +1126,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
       <h2 className="text-2xl font-bold mb-6">Calculadora de Presupuesto</h2>
-      
+
       {/* Información de la cotización */}
       {baseData && (
         <div className="bg-gray-50 rounded-lg p-4 mb-6">
@@ -901,11 +1147,10 @@ const AdvancedQuoteCalculator = ({ quote_id,
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === tab.id
+              className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${activeTab === tab.id
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+                }`}
             >
               {tab.icon} {tab.label}
             </button>
@@ -915,7 +1160,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
 
       {/* Configuración general */}
       <div className="bg-gray-50 p-4 rounded-lg mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <div>
             <label className="block text-sm font-medium mb-1">Tipo de Viaje</label>
             <select
@@ -923,10 +1168,39 @@ const AdvancedQuoteCalculator = ({ quote_id,
               onChange={(e) => handleInputChange('', 'trip_type', e.target.value)}
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="nacional">Nacional</option>
-              <option value="internacional">Internacional</option>
+              <option value="">-- Seleccionar tipo de viaje --</option>
+              <option value="nacional">Viaje Nacional</option>
+              <option value="internacional">Viaje Internacional</option>
+              <option value="operadorLlano">Operador Llano</option>
+              <option value="hotel">Hotel</option>
             </select>
+            {!form.trip_type && (
+              <p className="text-sm text-amber-600 mt-1">
+                ⚠️ Selecciona el tipo de viaje para calcular comisiones correctamente
+              </p>
+            )}
           </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Fecha de Ida</label>
+            <input
+              type="date"
+              value={form.tiquetes?.fecha_ida || ''}
+              onChange={(e) => handleInputChange('tiquetes', 'fecha_ida', e.target.value)}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Fecha de Regreso</label>
+            <input
+              type="date"
+              value={form.tiquetes?.fecha_vuelta || ''}
+              onChange={(e) => handleInputChange('tiquetes', 'fecha_vuelta', e.target.value)}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
           <div>
             <label className="block text-sm font-medium mb-1">Número de Personas</label>
             <input
@@ -937,35 +1211,100 @@ const AdvancedQuoteCalculator = ({ quote_id,
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          
-          {/* ✅ NUEVA: Información sobre personas que pagan */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Desglose de Costos</label>
-            <div className="text-sm bg-blue-50 border border-blue-200 rounded-md p-2">
-              <div className="font-medium text-blue-800">
-                {calcularPersonasQuePagan()} persona(s) que pagan
+        </div>
+
+        {/* ✅ MEJORADA: Información detallada sobre viaje y pasajeros */}
+        <div className="bg-white p-4 rounded-lg border border-gray-200">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <h4 className="font-medium text-gray-700 mb-2">Tipo de Viaje</h4>
+              <div className="text-sm">
+                {form.trip_type ? (
+                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-md font-medium">
+                    {form.trip_type === 'nacional' && 'Viaje Nacional'}
+                    {form.trip_type === 'internacional' && 'Viaje Internacional'}
+                    {form.trip_type === 'operadorLlano' && 'Operador Llano'}
+                    {form.trip_type === 'hotel' && 'Hotel'}
+                  </span>
+                ) : (
+                  <span className="text-gray-500 italic">No seleccionado</span>
+                )}
               </div>
-              {form.infantes > 0 && (
-                <div className="text-blue-600">
-                  + {form.infantes} infante(s) (gratis)
+            </div>
+
+            <div>
+              <h4 className="font-medium text-gray-700 mb-2">Número de Personas</h4>
+              <div className="text-lg font-semibold text-gray-900">{form.num_personas}</div>
+            </div>
+
+            <div>
+              <h4 className="font-medium text-gray-700 mb-2">Desglose de Costos</h4>
+              <div className="text-sm">
+                <div className="flex items-center">
+                  <span className="font-medium text-green-700">
+                    {calcularPersonasQuePagan()} persona(s) que pagan
+                  </span>
                 </div>
-              )}
-              <div className="text-xs text-gray-600 mt-1">
-                Los costos se calculan solo para adultos y menores
+                {form.infantes > 0 && (
+                  <div className="text-blue-600 mt-1">
+                    + {form.infantes} infante(s) (gratis)
+                  </div>
+                )}
+                <div className="text-xs text-gray-500 mt-1">
+                  Los costos se calculan solo para adultos y menores
+                </div>
               </div>
             </div>
           </div>
-          {/* <div>
-            <label className="block text-sm font-medium mb-1">Estado</label>
-            <select
-              value={form.estado}
-              onChange={(e) => handleInputChange('', 'estado', e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="temporal">Temporal</option>
-              <option value="confirmado">Confirmado</option>
-            </select>
-          </div> */}
+
+          {/* ✅ NUEVA: Información de fechas y duración */}
+          {(form.tiquetes?.fecha_ida || form.tiquetes?.fecha_vuelta) && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <h4 className="font-medium text-gray-700 mb-2">Información del Viaje</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                {form.tiquetes?.fecha_ida && (
+                  <div>
+                    <span className="text-gray-600">Fecha de ida:</span>
+                    <div className="font-medium">
+                      {new Date(form.tiquetes.fecha_ida).toLocaleDateString('es-ES', {
+                        weekday: 'short',
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })}
+                    </div>
+                  </div>
+                )}
+                {form.tiquetes?.fecha_vuelta && (
+                  <div>
+                    <span className="text-gray-600">Fecha de regreso:</span>
+                    <div className="font-medium">
+                      {new Date(form.tiquetes.fecha_vuelta).toLocaleDateString('es-ES', {
+                        weekday: 'short',
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })}
+                    </div>
+                  </div>
+                )}
+                {form.tiquetes?.fecha_ida && form.tiquetes?.fecha_vuelta && (
+                  <div>
+                    <span className="text-gray-600">Duración:</span>
+                    <div className="font-medium">
+                      {(() => {
+                        const fechaIda = new Date(form.tiquetes.fecha_ida);
+                        const fechaVuelta = new Date(form.tiquetes.fecha_vuelta);
+                        const diffTime = fechaVuelta.getTime() - fechaIda.getTime();
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        return `${diffDays} día${diffDays !== 1 ? 's' : ''} (${diffDays > 0 ? diffDays - 1 : 0} noche${diffDays !== 2 ? 's' : ''})`;
+                      })()}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -984,7 +1323,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
                     onChange={e => handleInputChange('tiquetes', 'tipo', e.target.value)}
                     className="w-full border rounded px-3 py-2"
                   >
-                    
+
                     <option value="ida_vuelta">Ida y Vuelta</option>
                     <option value="sin_tiquetes">Sin Tiquetes</option>
                   </select>
@@ -1276,7 +1615,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
                     />
                     <label className="text-sm font-medium">Equipaje Extra</label>
                   </div>
-                 
+
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Valor Total Equipaje (por persona)</label>
@@ -1348,7 +1687,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
           <div className="space-y-6">
             <div className="border rounded-lg p-4">
               <h4 className="font-semibold mb-3">Actividades Adicionales</h4>
-              
+
               {/* ✅ NUEVO: Checkbox para incluir actividades */}
               <div className="flex items-center mb-4">
                 <input
@@ -1366,13 +1705,13 @@ const AdvancedQuoteCalculator = ({ quote_id,
               {/* ✅ NUEVO: Campos de actividades cuando está habilitado */}
               {form.actividades_adicionales?.incluidas && (
                 <div className="space-y-4">
-             
-               
-                  
+
+
+
                   {/* ✅ SECCIÓN: Excursiones */}
                   <div className="mt-6 border rounded-lg p-4 bg-gray-50">
                     <h5 className="font-medium mb-3 text-gray-700">Excursiones Específicas</h5>
-                    
+
                     {form.excursiones.map((excursion, idx) => (
                       <div key={idx} className="mb-4 p-4 border rounded-lg bg-white">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
@@ -1388,7 +1727,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
                               className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500"
                             />
                           </div>
-                          
+
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                               Valor por persona *
@@ -1402,7 +1741,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
                             />
                           </div>
                         </div>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1416,7 +1755,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
                               className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500"
                             />
                           </div>
-                          
+
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                               Proveedor
@@ -1430,7 +1769,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
                             />
                           </div>
                         </div>
-                        
+
                         <div className="flex justify-between items-center">
                           <div className="text-sm text-gray-600">
                             Total para {calcularPersonasQuePagan()} persona(s): ${Number((excursion.costo || 0) * calcularPersonasQuePagan()).toLocaleString()}
@@ -1445,7 +1784,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
                         </div>
                       </div>
                     ))}
-                    
+
                     <button
                       type="button"
                       onClick={addExcursion}
@@ -1453,7 +1792,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
                     >
                       + Agregar Excursión
                     </button>
-                    
+
                     {form.excursiones.length > 0 && (
                       <div className="mt-3 p-2 bg-green-50 rounded">
                         <strong>Total Excursiones: ${form.excursiones.reduce((acc, exc) => acc + Number(exc.costo || 0), 0).toLocaleString()} por persona</strong>
@@ -1462,11 +1801,11 @@ const AdvancedQuoteCalculator = ({ quote_id,
                       </div>
                     )}
                   </div>
-                  
+
                   {/* ✅ SECCIÓN: Servicios Extras */}
                   <div className="mt-6 border rounded-lg p-4 bg-gray-50">
                     <h5 className="font-medium mb-3 text-gray-700">Servicios Extras</h5>
-                    
+
                     {form.extras.map((extra, idx) => (
                       <div key={idx} className="mb-4 p-4 border rounded-lg bg-white">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
@@ -1482,7 +1821,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
                               className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500"
                             />
                           </div>
-                          
+
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                               Valor total del servicio *
@@ -1496,7 +1835,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
                             />
                           </div>
                         </div>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1510,7 +1849,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
                               className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500"
                             />
                           </div>
-                          
+
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                               Proveedor
@@ -1524,7 +1863,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
                             />
                           </div>
                         </div>
-                        
+
                         <div className="flex justify-between items-center">
                           <div className="text-sm text-gray-600">
                             Costo total del servicio: ${Number(extra.costo || 0).toLocaleString()}
@@ -1539,7 +1878,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
                         </div>
                       </div>
                     ))}
-                    
+
                     <button
                       type="button"
                       onClick={addExtra}
@@ -1547,7 +1886,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
                     >
                       + Agregar Servicio Extra
                     </button>
-                    
+
                     {form.extras.length > 0 && (
                       <div className="mt-3 p-2 bg-blue-50 rounded">
                         <strong>Total Servicios Extras: ${form.extras.reduce((acc, ext) => acc + Number(ext.costo || 0), 0).toLocaleString()}</strong>
@@ -1557,17 +1896,17 @@ const AdvancedQuoteCalculator = ({ quote_id,
                 </div>
               )}
             </div>
-               {/* ✅ NUEVO: Mostrar total calculado */}
-                  <div className="mt-3 p-2 bg-blue-50 rounded">
-                    <strong>Total Actividades por persona: ${Number(calcularTotalActividadesExtras()).toLocaleString()}</strong>
-                    <br />
-                    <strong>Total para {calcularPersonasQuePagan()} persona(s) que pagan: ${Number(calcularTotalActividadesExtras() * calcularPersonasQuePagan()).toLocaleString()}</strong>
-                    {form.infantes > 0 && (
-                      <div className="text-sm text-gray-600 mt-1">
-                        + {form.infantes} infante(s) (gratis)
-                      </div>
-                    )}
-                  </div>
+            {/* ✅ NUEVO: Mostrar total calculado */}
+            <div className="mt-3 p-2 bg-blue-50 rounded">
+              <strong>Total Actividades por persona: ${Number(calcularTotalActividadesExtras()).toLocaleString()}</strong>
+              <br />
+              <strong>Total para {calcularPersonasQuePagan()} persona(s) que pagan: ${Number(calcularTotalActividadesExtras() * calcularPersonasQuePagan()).toLocaleString()}</strong>
+              {form.infantes > 0 && (
+                <div className="text-sm text-gray-600 mt-1">
+                  + {form.infantes} infante(s) (gratis)
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -1576,7 +1915,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
           <div className="space-y-6">
             <div className="border rounded-lg p-4">
               <h4 className="font-semibold mb-3">Comisiones por Jerarquía</h4>
-              
+
               {/* ✅ NUEVA: Información sobre cálculo de comisiones */}
               <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <div className="text-sm text-yellow-800">
@@ -1584,20 +1923,20 @@ const AdvancedQuoteCalculator = ({ quote_id,
                   {form.infantes > 0 && ` Los ${form.infantes} infante(s) no generan comisión.`}
                 </div>
               </div>
-              
+
               {baseData && baseData.comisiones_configuradas && (
                 <div className="space-y-3">
-                  {Object.entries(baseData.comisiones_configuradas).map(([rol, datos]) => 
+                  {Object.entries(baseData.comisiones_configuradas).map(([rol, datos]) =>
                     rol !== 'total_comisiones' && datos && (
                       <div key={rol} className="flex items-center justify-between p-3 bg-gray-50 rounded">
                         <div>
                           <span className="font-medium capitalize">{rol}:</span>
                           <span className="ml-2 text-sm text-gray-600">
-                            {datos.tipo_calculo === 'fixed_per_person' 
+                            {datos.tipo_calculo === 'fixed_per_person'
                               ? `$${Number(datos.valor_por_persona || 0).toLocaleString()} por persona`
                               : datos.tipo_calculo === 'percentage'
-                              ? `${datos.porcentaje}%`
-                              : `$${Number(datos.valor_fijo || 0).toLocaleString()} fijo`
+                                ? `${datos.porcentaje}%`
+                                : `$${Number(datos.valor_fijo || 0).toLocaleString()} fijo`
                             }
                           </span>
                         </div>
@@ -1655,29 +1994,30 @@ const AdvancedQuoteCalculator = ({ quote_id,
             <div className="border rounded-lg p-4">
               <h4 className="font-semibold mb-3">Resumen del Presupuesto</h4>
               <div className="space-y-2">
+                {/* ✅ CORREGIDO: Los costo_total ya son por persona, mostrarlos directamente */}
                 <div className="flex justify-between">
                   <span>Tiquetes (por persona):</span>
-                  <span>${Number(form.tiquetes.costo_total).toLocaleString()}</span>
+                  <span>${Number(form.tiquetes.costo_total || 0).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Hotel (por persona):</span>
-                  <span>${Number(form.hotel.costo_total).toLocaleString()}</span>
+                  <span>${Number(form.hotel.costo_total || 0).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Traslados (por persona):</span>
-                  <span>${Number(form.traslados.costo_total).toLocaleString()}</span>
+                  <span>${Number(form.traslados.costo_total || 0).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Alimentación (por persona):</span>
-                  <span>${Number(form.alimentacion.costo_total).toLocaleString()}</span>
+                  <span>${Number(form.alimentacion.costo_total || 0).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Seguros (por persona):</span>
-                  <span>${Number(form.seguros.costo_total).toLocaleString()}</span>
+                  <span>${Number(form.seguros.costo_total || 0).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Equipaje (por persona):</span>
-                  <span>${Number(form.equipaje.costo_total).toLocaleString()}</span>
+                  <span>${Number(form.equipaje.costo_total || 0).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Asistencia Médica (por persona):</span>
@@ -1688,7 +2028,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
                   <>
                     <div className="border-t pt-2 mt-2">
                       <h5 className="font-medium text-gray-700 mb-2">Actividades Extras Incluidas:</h5>
-                      
+
                       {/* Actividades Básicas */}
                       {form.actividades_adicionales?.actividades?.length > 0 && (
                         <div className="ml-4 mb-2">
@@ -1701,7 +2041,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
                           ))}
                         </div>
                       )}
-                      
+
                       {/* Excursiones */}
                       {form.excursiones?.length > 0 && (
                         <div className="ml-4 mb-2">
@@ -1714,7 +2054,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
                           ))}
                         </div>
                       )}
-                      
+
                       {/* Servicios Extras */}
                       {form.extras?.length > 0 && (
                         <div className="ml-4 mb-2">
@@ -1727,7 +2067,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
                           ))}
                         </div>
                       )}
-                      
+
                       {/* Total de actividades */}
                       <div className="flex justify-between font-medium text-orange-600 mt-2 pt-2 border-t">
                         <span>Total Actividades Extras (por persona):</span>
