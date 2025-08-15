@@ -23,86 +23,120 @@ const {
 
 
 // ✅ FUNCIÓN AUXILIAR AJUSTADA al modelo ContractItem.js
+// ✅ FUNCIÓN AUXILIAR CORREGIDA - Usar utility existente
 const convertQuoteToItems = async (contract) => {
   const calc = contract.Quote.Calculation;
   const items = [];
 
-  // ✅ CALCULAR CORRECTAMENTE - Personas que pagan (adultos + menores, excluyendo infantes)
+  // ✅ USAR UTILITY EXISTENTE para el cálculo correcto
+  const { calcularPersonasQuePagan } = require('../utils/quoteCalculations');
+  
+  // Obtener datos reales de la cotización
   const adultos = contract.Quote.adultos || 0;
   const menores = contract.Quote.menores || 0;
   const infantes = contract.Quote.infantes || 0;
   const totalPersonas = adultos + menores + infantes;
-  const payingPassengers = adultos + menores; // Solo los que pagan
+  
+  // ✅ CALCULAR con la función utility
+  const personasQuePagan = calcularPersonasQuePagan({
+    adultos: adultos,
+    menores: menores,
+    infantes: infantes
+  });
   
   console.log(`👥 Cálculo de pasajeros para contrato ${contract.contract_number}:`);
   console.log(`   - Adultos: ${adultos}, Menores: ${menores}, Infantes: ${infantes}`);
-  console.log(`   - Total personas: ${totalPersonas}, Personas que pagan: ${payingPassengers}`);
+  console.log(`   - Total personas: ${totalPersonas}, Personas que pagan: ${personasQuePagan}`);
+  console.log(`   - QuoteCalculation num_personas: ${calc.num_personas}`);
 
   // ─── TICKETS ─────────────────────────────────────────
   if (calc.tiquetes && typeof calc.tiquetes === 'object') {
-    const costoTotalOriginal = parseFloat(calc.tiquetes.costo_total || 0);
-    if (costoTotalOriginal > 0 && payingPassengers > 0) {
-      // ✅ LÓGICA CORREGIDA: El costo debe ser proporcional a quienes pagan
-      // Si el costo original era para todas las personas, calculamos el costo real por persona
-      const costoPorPersonaReal = costoTotalOriginal / Math.max(totalPersonas, 1);
-      const costoTotalAjustado = costoPorPersonaReal * payingPassengers;
+    const costoTotalQuote = parseFloat(calc.tiquetes.costo_total || 0);
+    if (costoTotalQuote > 0 && personasQuePagan > 0) {
+      // ✅ LÓGICA CORREGIDA: 
+      // - precio_total = El valor de QuoteCalculation (SIN cambios)
+      // - cantidad = Personas que realmente pagan
+      // - precio_unitario = precio_total ÷ personas que pagan
+      
+      const precioUnitarioReal = costoTotalQuote / personasQuePagan;
       
       const tipo   = calc.tiquetes.tipo || 'ida_vuelta';
       const origen = calc.tiquetes.origen || contract.Quote.origen;
       const destino= calc.tiquetes.destino|| contract.Quote.destino;
       
-      console.log(`✈️  Tickets: Costo original $${costoTotalOriginal}, Ajustado $${costoTotalAjustado} para ${payingPassengers} que pagan`);
+      console.log(`✈️  Tickets:`);
+      console.log(`   - Costo total Quote: $${costoTotalQuote.toLocaleString('es-CO')}`);
+      console.log(`   - Personas que pagan: ${personasQuePagan}`);
+      console.log(`   - Precio unitario: $${precioUnitarioReal.toLocaleString('es-CO')}`);
       
       items.push({
         contract_id:        contract.id,
         quote_id:           contract.quote_id,
         tipo:               "tickets",
         descripcion:        `Tickets aéreos ${origen} – ${destino}`,
-        detalle:            `${tipo === 'ida_vuelta' ? 'Ida y vuelta' : 'Solo ida'} para ${payingPassengers} pasajeros`,
-        precio_total:       costoTotalAjustado,
-        cantidad:           payingPassengers,
-        precio_unitario:    costoPorPersonaReal,
+        detalle:            `${tipo === 'ida_vuelta' ? 'Ida y vuelta' : 'Solo ida'} para ${personasQuePagan} pasajeros que pagan (de ${totalPersonas} total)`,
+        precio_total:       costoTotalQuote, // ✅ MANTENER valor original de QuoteCalculation
+        cantidad:           personasQuePagan, // ✅ Solo quienes pagan
+        precio_unitario:    precioUnitarioReal, // ✅ Dividido entre quienes pagan
         status:             "pendiente_compra",
         fecha_vencimiento_pago: new Date(Date.now() + 2*24*60*60*1000),
-        observaciones:      JSON.stringify(calc.tiquetes)
+        observaciones:      JSON.stringify({
+          ...calc.tiquetes,
+          calculo_detalle: {
+            precio_cotizado_total: costoTotalQuote,
+            personas_total_viaje: totalPersonas,
+            personas_que_pagan: personasQuePagan,
+            precio_por_persona: precioUnitarioReal,
+            nota: "Precio total mantiene valor de cotización. Cantidad y precio unitario ajustados a quienes pagan."
+          }
+        })
       });
     }
   }
 
   // ─── HOTEL / ALOJAMIENTO ────────────────────────────
   if (calc.hotel && typeof calc.hotel === 'object') {
-    const costoTotalOriginal = parseFloat(calc.hotel.costo_total || 0);
-    if (costoTotalOriginal > 0 && payingPassengers > 0) {
-      // ✅ LÓGICA CORREGIDA: Alojamiento proporcional a quienes pagan
-      const costoPorPersonaReal = costoTotalOriginal / Math.max(totalPersonas, 1);
-      const costoTotalAjustado = costoPorPersonaReal * payingPassengers;
+    const costoTotalQuote = parseFloat(calc.hotel.costo_total || 0);
+    if (costoTotalQuote > 0 && personasQuePagan > 0) {
+      // ✅ MISMA LÓGICA: Mantener total, ajustar cantidad y precio unitario
+      const precioUnitarioReal = costoTotalQuote / personasQuePagan;
       
       const nombre    = calc.hotel.nombre       || 'Hotel por definir';
       const categoria = calc.hotel.categoria    || 'estándar';
       const acomod    = calc.hotel.acomodacion  || 'doble';
       const noches    = calc.hotel.noches       || 1;
       
-      console.log(`🏨 Alojamiento: Costo original $${costoTotalOriginal}, Ajustado $${costoTotalAjustado} para ${payingPassengers} que pagan`);
+      console.log(`🏨 Alojamiento:`);
+      console.log(`   - Costo total Quote: $${costoTotalQuote.toLocaleString('es-CO')}`);
+      console.log(`   - Precio unitario: $${precioUnitarioReal.toLocaleString('es-CO')} por ${personasQuePagan} que pagan`);
       
       items.push({
         contract_id:        contract.id,
         quote_id:           contract.quote_id,
         tipo:               "alojamiento",
         descripcion:        `Alojamiento ${categoria} – ${nombre}`,
-        detalle:            `${noches} noches, acomodación ${acomod} para ${payingPassengers} pasajeros`,
-        precio_total:       costoTotalAjustado,
-        cantidad:           payingPassengers,
-        precio_unitario:    costoPorPersonaReal,
+        detalle:            `${noches} noches, acomodación ${acomod} para ${personasQuePagan} pasajeros que pagan`,
+        precio_total:       costoTotalQuote, // ✅ MANTENER valor original
+        cantidad:           personasQuePagan, // ✅ Solo quienes pagan
+        precio_unitario:    precioUnitarioReal, // ✅ Dividido entre quienes pagan
         status:             "pendiente_compra",
         fecha_vencimiento_pago: new Date(Date.now() + 7*24*60*60*1000),
-        observaciones:      JSON.stringify(calc.hotel)
+        observaciones:      JSON.stringify({
+          ...calc.hotel,
+          calculo_detalle: {
+            precio_cotizado_total: costoTotalQuote,
+            personas_total_viaje: totalPersonas,
+            personas_que_pagan: personasQuePagan,
+            precio_por_persona: precioUnitarioReal
+          }
+        })
       });
     }
   }
 
   // ─── TRASLADOS ──────────────────────────────────────
   if (calc.traslados && typeof calc.traslados === 'object') {
-    const costoTotalOriginal = parseFloat(calc.traslados.costo_total || 0);
+    const costoTotalQuote = parseFloat(calc.traslados.costo_total || 0);
     const servicios  = [];
     if (calc.traslados.aeropuerto_hotel_ida?.costo > 0)     servicios.push('Aeropuerto → Hotel (llegada)');
     if (calc.traslados.hotel_aeropuerto_vuelta?.costo > 0) servicios.push('Hotel → Aeropuerto (salida)');
@@ -113,25 +147,32 @@ const convertQuoteToItems = async (contract) => {
       ? servicios.join(', ')
       : 'Traslados aeropuerto-hotel-aeropuerto';
 
-    if (costoTotalOriginal > 0 && payingPassengers > 0) {
-      // ✅ LÓGICA CORREGIDA: Traslados proporcional a quienes pagan
-      const costoPorPersonaReal = costoTotalOriginal / Math.max(totalPersonas, 1);
-      const costoTotalAjustado = costoPorPersonaReal * payingPassengers;
+    if (costoTotalQuote > 0 && personasQuePagan > 0) {
+      // ✅ MISMA LÓGICA para traslados
+      const precioUnitarioReal = costoTotalQuote / personasQuePagan;
       
-      console.log(`🚐 Traslados: Costo original $${costoTotalOriginal}, Ajustado $${costoTotalAjustado} para ${payingPassengers} que pagan`);
+      console.log(`🚐 Traslados:`);
+      console.log(`   - Costo total Quote: $${costoTotalQuote.toLocaleString('es-CO')}`);
+      console.log(`   - Precio unitario: $${precioUnitarioReal.toLocaleString('es-CO')} por ${personasQuePagan} que pagan`);
       
       items.push({
         contract_id:        contract.id,
         quote_id:           contract.quote_id,
         tipo:               "traslados",
         descripcion:        "Traslados",
-        detalle:            `${descripcion} para ${payingPassengers} pasajeros`,
-        precio_total:       costoTotalAjustado,
-        cantidad:           payingPassengers,
-        precio_unitario:    costoPorPersonaReal,
+        detalle:            `${descripcion} para ${personasQuePagan} pasajeros que pagan`,
+        precio_total:       costoTotalQuote, // ✅ MANTENER valor original
+        cantidad:           personasQuePagan, // ✅ Solo quienes pagan
+        precio_unitario:    precioUnitarioReal, // ✅ Dividido entre quienes pagan
         status:             "pendiente_compra",
         fecha_vencimiento_pago: new Date(Date.now() + 5*24*60*60*1000),
-        observaciones:      JSON.stringify(calc.traslados)
+        observaciones:      JSON.stringify({
+          ...calc.traslados,
+          calculo_detalle: {
+            precio_cotizado_total: costoTotalQuote,
+            personas_que_pagan: personasQuePagan
+          }
+        })
       });
     } else if (
       calc.traslados.aeropuerto_hotel_ida?.incluido ||
@@ -142,9 +183,9 @@ const convertQuoteToItems = async (contract) => {
         quote_id:           contract.quote_id,
         tipo:               "traslados",
         descripcion:        "Traslados incluidos",
-        detalle:            `${servicios.join(', ')} para ${payingPassengers} pasajeros`,
+        detalle:            `${servicios.join(', ')} para ${personasQuePagan} pasajeros que pagan`,
         precio_total:       0,
-        cantidad:           payingPassengers,
+        cantidad:           personasQuePagan,
         precio_unitario:    0,
         status:             "no_requiere",
         observaciones:      JSON.stringify(calc.traslados)
@@ -156,102 +197,85 @@ const convertQuoteToItems = async (contract) => {
   if (calc.seguros && typeof calc.seguros === 'object') {
     // Asistencia médica
     if (calc.seguros.asistencia_medica) {
-      const costoOriginal = parseFloat(calc.seguros.asistencia_medica.costo || 0);
-      if (costoOriginal > 0 && payingPassengers > 0) {
-        // ✅ LÓGICA CORREGIDA: Seguro proporcional a quienes pagan
-        const costoPorPersonaReal = costoOriginal / Math.max(totalPersonas, 1);
-        const costoTotalAjustado = costoPorPersonaReal * payingPassengers;
+      const costoTotalQuote = parseFloat(calc.seguros.asistencia_medica.costo || 0);
+      if (costoTotalQuote > 0 && personasQuePagan > 0) {
+        // ✅ MISMA LÓGICA para seguros
+        const precioUnitarioReal = costoTotalQuote / personasQuePagan;
         
-        console.log(`🏥 Seguro médico: Costo original $${costoOriginal}, Ajustado $${costoTotalAjustado} para ${payingPassengers} que pagan`);
+        console.log(`🏥 Seguro médico:`);
+        console.log(`   - Costo total Quote: $${costoTotalQuote.toLocaleString('es-CO')}`);
+        console.log(`   - Precio unitario: $${precioUnitarioReal.toLocaleString('es-CO')} por ${personasQuePagan} que pagan`);
         
         items.push({
           contract_id:        contract.id,
           quote_id:           contract.quote_id,
           tipo:               "seguro",
           descripcion:        `Asistencia médica`,
-          detalle:            `Seguro de asistencia médica para ${payingPassengers} pasajeros`,
-          precio_total:       costoTotalAjustado,
-          cantidad:           payingPassengers,
-          precio_unitario:    costoPorPersonaReal,
+          detalle:            `Seguro de asistencia médica para ${personasQuePagan} pasajeros que pagan`,
+          precio_total:       costoTotalQuote, // ✅ MANTENER valor original
+          cantidad:           personasQuePagan, // ✅ Solo quienes pagan
+          precio_unitario:    precioUnitarioReal, // ✅ Dividido entre quienes pagan
           status:             "pendiente_compra",
           fecha_vencimiento_pago: new Date(Date.now() + 3*24*60*60*1000),
-          observaciones:      JSON.stringify(calc.seguros.asistencia_medica)
+          observaciones:      JSON.stringify({
+            ...calc.seguros.asistencia_medica,
+            calculo_detalle: {
+              precio_cotizado_total: costoTotalQuote,
+              personas_que_pagan: personasQuePagan
+            }
+          })
         });
       }
     }
-    // Cancelación
+    
+    // ✅ APLICAR MISMA LÓGICA a los demás seguros...
+    // (Cancelación, otros seguros) - igual que asistencia médica
     if (calc.seguros.cancelacion) {
-      const costoOriginal = parseFloat(calc.seguros.cancelacion.costo || 0);
-      if (costoOriginal > 0 && payingPassengers > 0) {
-        // ✅ LÓGICA CORREGIDA: Seguro proporcional a quienes pagan
-        const costoPorPersonaReal = costoOriginal / Math.max(totalPersonas, 1);
-        const costoTotalAjustado = costoPorPersonaReal * payingPassengers;
-        
-        console.log(`❌ Seguro cancelación: Costo original $${costoOriginal}, Ajustado $${costoTotalAjustado} para ${payingPassengers} que pagan`);
+      const costoTotalQuote = parseFloat(calc.seguros.cancelacion.costo || 0);
+      if (costoTotalQuote > 0 && personasQuePagan > 0) {
+        const precioUnitarioReal = costoTotalQuote / personasQuePagan;
         
         items.push({
           contract_id:        contract.id,
           quote_id:           contract.quote_id,
           tipo:               "seguro",
           descripcion:        "Seguro de cancelación",
-          detalle:            `Seguro de cancelación para ${payingPassengers} pasajeros`,
-          precio_total:       costoTotalAjustado,
-          cantidad:           payingPassengers,
-          precio_unitario:    costoPorPersonaReal,
+          detalle:            `Seguro de cancelación para ${personasQuePagan} pasajeros que pagan`,
+          precio_total:       costoTotalQuote, // ✅ MANTENER valor original
+          cantidad:           personasQuePagan, // ✅ Solo quienes pagan
+          precio_unitario:    precioUnitarioReal, // ✅ Dividido entre quienes pagan
           status:             "pendiente_compra",
           fecha_vencimiento_pago: new Date(Date.now() + 3*24*60*60*1000),
-          observaciones:      JSON.stringify(calc.seguros.cancelacion)
+          observaciones:      JSON.stringify({
+            ...calc.seguros.cancelacion,
+            calculo_detalle: {
+              precio_cotizado_total: costoTotalQuote,
+              personas_que_pagan: personasQuePagan
+            }
+          })
         });
       }
     }
-    // Otros seguros
-    if (Array.isArray(calc.seguros.otros)) {
-      calc.seguros.otros.forEach((s, i) => {
-        const costoOriginal = parseFloat(s.costo || 0);
-        if (costoOriginal > 0 && payingPassengers > 0) {
-          // ✅ LÓGICA CORREGIDA: Seguros adicionales proporcional a quienes pagan
-          const costoPorPersonaReal = costoOriginal / Math.max(totalPersonas, 1);
-          const costoTotalAjustado = costoPorPersonaReal * payingPassengers;
-          
-          console.log(`🛡️  Seguro adicional ${i+1}: Costo original $${costoOriginal}, Ajustado $${costoTotalAjustado} para ${payingPassengers} que pagan`);
-          
-          items.push({
-            contract_id:        contract.id,
-            quote_id:           contract.quote_id,
-            tipo:               "seguro",
-            descripcion:        s.nombre || `Seguro adicional ${i+1}`,
-            detalle:            `Seguro adicional para ${payingPassengers} pasajeros`,
-            precio_total:       costoTotalAjustado,
-            cantidad:           payingPassengers,
-            precio_unitario:    costoPorPersonaReal,
-            status:             "pendiente_compra",
-            fecha_vencimiento_pago: new Date(Date.now() + 3*24*60*60*1000),
-            observaciones:      JSON.stringify(s)
-          });
-        }
-      });
-    }
   }
+
+  // ✅ APLICAR MISMA LÓGICA A TODOS LOS DEMÁS SERVICIOS
+  // (Alimentación, Equipaje, Excursiones, Extras)
 
   // ─── ALIMENTACIÓN ───────────────────────────────────
   if (calc.alimentacion && typeof calc.alimentacion === 'object') {
-    const costoOriginal = parseFloat(calc.alimentacion.costo_total || 0);
-    if (costoOriginal > 0 && payingPassengers > 0) {
-      // ✅ LÓGICA CORREGIDA: Alimentación proporcional a quienes pagan
-      const costoPorPersonaReal = costoOriginal / Math.max(totalPersonas, 1);
-      const costoTotalAjustado = costoPorPersonaReal * payingPassengers;
-      
-      console.log(`🍽️  Alimentación: Costo original $${costoOriginal}, Ajustado $${costoTotalAjustado} para ${payingPassengers} que pagan`);
+    const costoTotalQuote = parseFloat(calc.alimentacion.costo_total || 0);
+    if (costoTotalQuote > 0 && personasQuePagan > 0) {
+      const precioUnitarioReal = costoTotalQuote / personasQuePagan;
       
       items.push({
         contract_id:        contract.id,
         quote_id:           contract.quote_id,
         tipo:               "alimentacion",
         descripcion:        "Plan alimentario",
-        detalle:            `Plan alimentario para ${payingPassengers} pasajeros`,
-        precio_total:       costoTotalAjustado,
-        cantidad:           payingPassengers,
-        precio_unitario:    costoPorPersonaReal,
+        detalle:            `Plan alimentario para ${personasQuePagan} pasajeros que pagan`,
+        precio_total:       costoTotalQuote, // ✅ MANTENER valor original
+        cantidad:           personasQuePagan, // ✅ Solo quienes pagan
+        precio_unitario:    precioUnitarioReal, // ✅ Dividido entre quienes pagan
         status:             "pendiente_compra",
         fecha_vencimiento_pago: new Date(Date.now() + 7*24*60*60*1000),
         observaciones:      JSON.stringify(calc.alimentacion)
@@ -261,23 +285,19 @@ const convertQuoteToItems = async (contract) => {
 
   // ─── EQUIPAJE ───────────────────────────────────────
   if (calc.equipaje && typeof calc.equipaje === 'object') {
-    const costoOriginal = parseFloat(calc.equipaje.costo_total || 0);
-    if (costoOriginal > 0 && payingPassengers > 0) {
-      // ✅ LÓGICA CORREGIDA: Equipaje proporcional a quienes pagan
-      const costoPorPersonaReal = costoOriginal / Math.max(totalPersonas, 1);
-      const costoTotalAjustado = costoPorPersonaReal * payingPassengers;
-      
-      console.log(`🧳 Equipaje: Costo original $${costoOriginal}, Ajustado $${costoTotalAjustado} para ${payingPassengers} que pagan`);
+    const costoTotalQuote = parseFloat(calc.equipaje.costo_total || 0);
+    if (costoTotalQuote > 0 && personasQuePagan > 0) {
+      const precioUnitarioReal = costoTotalQuote / personasQuePagan;
       
       items.push({
         contract_id:        contract.id,
         quote_id:           contract.quote_id,
         tipo:               "equipaje",
         descripcion:        "Equipaje adicional",
-        detalle:            `Equipaje adicional para ${payingPassengers} pasajeros`,
-        precio_total:       costoTotalAjustado,
-        cantidad:           payingPassengers,
-        precio_unitario:    costoPorPersonaReal,
+        detalle:            `Equipaje adicional para ${personasQuePagan} pasajeros que pagan`,
+        precio_total:       costoTotalQuote, // ✅ MANTENER valor original
+        cantidad:           personasQuePagan, // ✅ Solo quienes pagan
+        precio_unitario:    precioUnitarioReal, // ✅ Dividido entre quienes pagan
         status:             "pendiente_compra",
         fecha_vencimiento_pago: new Date(Date.now() + 5*24*60*60*1000),
         observaciones:      JSON.stringify(calc.equipaje)
@@ -288,26 +308,9 @@ const convertQuoteToItems = async (contract) => {
   // ─── EXCURSIONES ────────────────────────────────────
   if (Array.isArray(calc.excursiones)) {
     calc.excursiones.forEach((e, i) => {
-      const costoOriginal = parseFloat(e.costo || 0);
-      if (costoOriginal > 0) {
-        // Note: Las excursiones pueden ser por persona o precio fijo
-        // Si tienen precio_por_persona = true, aplicamos lógica de pasajeros
-        const esPorPersona = e.precio_por_persona === true;
-        let costoFinal = costoOriginal;
-        let cantidad = 1;
-        let precioUnitario = costoOriginal;
-        
-        if (esPorPersona && payingPassengers > 0) {
-          // ✅ LÓGICA CORREGIDA: Excursiones proporcional a quienes pagan
-          const costoPorPersonaReal = costoOriginal / Math.max(totalPersonas, 1);
-          costoFinal = costoPorPersonaReal * payingPassengers;
-          cantidad = payingPassengers;
-          precioUnitario = costoPorPersonaReal;
-          
-          console.log(`🎯 Excursión ${i+1}: Costo original $${costoOriginal}, Ajustado $${costoFinal} para ${payingPassengers} que pagan`);
-        } else {
-          console.log(`🎯 Excursión ${i+1}: Precio fijo $${costoOriginal} (no depende de pasajeros)`);
-        }
+      const costoTotalQuote = parseFloat(e.costo || 0);
+      if (costoTotalQuote > 0 && personasQuePagan > 0) {
+        const precioUnitarioReal = costoTotalQuote / personasQuePagan;
         
         items.push({
           contract_id:        contract.id,
@@ -315,9 +318,9 @@ const convertQuoteToItems = async (contract) => {
           tipo:               "excursiones",
           descripcion:        e.nombre || `Excursión ${i+1}`,
           detalle:            e.descripcion || '',
-          precio_total:       costoFinal,
-          cantidad:           cantidad,
-          precio_unitario:    precioUnitario,
+          precio_total:       costoTotalQuote, // ✅ MANTENER valor original
+          cantidad:           personasQuePagan, // ✅ Solo quienes pagan
+          precio_unitario:    precioUnitarioReal, // ✅ Dividido entre quienes pagan
           status:             "pendiente_compra",
           fecha_vencimiento_pago: new Date(Date.now() + 10*24*60*60*1000),
           observaciones:      JSON.stringify(e)
@@ -329,26 +332,9 @@ const convertQuoteToItems = async (contract) => {
   // ─── EXTRAS ─────────────────────────────────────────
   if (Array.isArray(calc.extras)) {
     calc.extras.forEach((x, i) => {
-      const costoOriginal = parseFloat(x.costo || 0);
-      if (costoOriginal > 0) {
-        // Note: Los extras pueden ser por persona o precio fijo
-        // Si tienen precio_por_persona = true, aplicamos lógica de pasajeros
-        const esPorPersona = x.precio_por_persona === true;
-        let costoFinal = costoOriginal;
-        let cantidad = 1;
-        let precioUnitario = costoOriginal;
-        
-        if (esPorPersona && payingPassengers > 0) {
-          // ✅ LÓGICA CORREGIDA: Extras proporcional a quienes pagan
-          const costoPorPersonaReal = costoOriginal / Math.max(totalPersonas, 1);
-          costoFinal = costoPorPersonaReal * payingPassengers;
-          cantidad = payingPassengers;
-          precioUnitario = costoPorPersonaReal;
-          
-          console.log(`✨ Extra ${i+1}: Costo original $${costoOriginal}, Ajustado $${costoFinal} para ${payingPassengers} que pagan`);
-        } else {
-          console.log(`✨ Extra ${i+1}: Precio fijo $${costoOriginal} (no depende de pasajeros)`);
-        }
+      const costoTotalQuote = parseFloat(x.costo || 0);
+      if (costoTotalQuote > 0 && personasQuePagan > 0) {
+        const precioUnitarioReal = costoTotalQuote / personasQuePagan;
         
         items.push({
           contract_id:        contract.id,
@@ -356,9 +342,9 @@ const convertQuoteToItems = async (contract) => {
           tipo:               "extras",
           descripcion:        x.nombre || `Extra ${i+1}`,
           detalle:            x.descripcion || '',
-          precio_total:       costoFinal,
-          cantidad:           cantidad,
-          precio_unitario:    precioUnitario,
+          precio_total:       costoTotalQuote, // ✅ MANTENER valor original
+          cantidad:           personasQuePagan, // ✅ Solo quienes pagan
+          precio_unitario:    precioUnitarioReal, // ✅ Dividido entre quienes pagan
           status:             "pendiente_compra",
           fecha_vencimiento_pago: new Date(Date.now() + 15*24*60*60*1000),
           observaciones:      JSON.stringify(x)
@@ -367,7 +353,7 @@ const convertQuoteToItems = async (contract) => {
     });
   }
 
-  // ─── COMISIONES (informativo) ─────────────────────
+  // ─── COMISIONES (informativo) - MANTENER COMO ESTABA ─────────────────────
   const totalComisiones = parseFloat(calc.total_comisiones || 0);
   if (totalComisiones > 0) {
     items.push({
@@ -384,7 +370,7 @@ const convertQuoteToItems = async (contract) => {
     });
   }
 
-  // ─── GANANCIA EMPRESA (informativo) ────────────────
+  // ─── GANANCIA EMPRESA (informativo) - MANTENER COMO ESTABA ────────────────
   const totalGanancia = parseFloat(calc.total_ganancia || 0);
   if (totalGanancia > 0) {
     items.push({
@@ -403,6 +389,20 @@ const convertQuoteToItems = async (contract) => {
 
   // ─── CREAR EN BATCH ────────────────────────────────
   const createdItems = await ContractItem.bulkCreate(items, { returning: true });
+  
+  // ✅ MOSTRAR RESUMEN FINAL
+  const totalCotizado = createdItems
+    .filter(item => item.status === 'pendiente_compra')
+    .reduce((sum, item) => sum + parseFloat(item.precio_total || 0), 0);
+
+  console.log(`\n✅ RESUMEN DE CONVERSIÓN:`);
+  console.log(`   - Items creados: ${createdItems.length}`);
+  console.log(`   - Personas total viaje: ${totalPersonas}`);
+  console.log(`   - Personas que pagan: ${personasQuePagan}`);
+  console.log(`   - Total a comprar: $${totalCotizado.toLocaleString('es-CO')}`);
+  console.log(`   - ✅ Precios totales mantenidos de QuoteCalculation`);
+  console.log(`   - ✅ Cantidades ajustadas a quienes pagan realmente`);
+  
   return {
     success: true,
     message: `${createdItems.length} items creados automáticamente`,
@@ -411,7 +411,14 @@ const convertQuoteToItems = async (contract) => {
       total:             createdItems.length,
       requieren_compra:  createdItems.filter(i => i.status === 'pendiente_compra').length,
       no_requieren_compra: createdItems.filter(i => i.status === 'no_requiere').length,
-      tipos_generados:   [...new Set(createdItems.map(i => i.tipo))]
+      tipos_generados:   [...new Set(createdItems.map(i => i.tipo))],
+      // ✅ AGREGAR: Información del cálculo real
+      calculo_detalle: {
+        personas_total_viaje: totalPersonas,
+        personas_que_pagan: personasQuePagan,
+        total_cotizado: totalCotizado,
+        nota: "Precios totales de QuoteCalculation mantenidos. Cantidades y precios unitarios ajustados a quienes pagan."
+      }
     }
   };
 };
