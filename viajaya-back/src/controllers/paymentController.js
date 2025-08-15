@@ -266,37 +266,65 @@ const paymentController = {
 
   // Obtener pagos por contrato
   getPaymentsByContract: async (req, res) => {
-    try {
-      const { contract_id } = req.params;
-      const { status, page = 1, limit = 10 } = req.query;
+  try {
+    const { contract_id } = req.params;
+    const { status, page = 1, limit = 10 } = req.query;
 
-      const offset = (page - 1) * limit;
-      const where = { contract_id };
+    console.log('🔍 Buscando pagos para contrato:', {
+      contract_id,
+      status,
+      page,
+      limit
+    });
 
-      if (status) where.status = status;
+    const offset = (page - 1) * limit;
+    const where = { contract_id };
 
-      const payments = await Payment.findAndCountAll({
-        where,
-        order: [['created_at', 'DESC']],
-        limit: parseInt(limit),
-        offset: parseInt(offset)
+    if (status) where.status = status;
+
+    console.log('📊 Filtros de búsqueda:', where);
+
+    const payments = await Payment.findAndCountAll({
+      where,
+      order: [['created_at', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    console.log('💳 Pagos encontrados:', {
+      count: payments.count,
+      rows: payments.rows.length,
+      contractId: contract_id
+    });
+
+    // ✅ AGREGAR: Log detallado de cada pago
+    payments.rows.forEach((payment, index) => {
+      console.log(`  Pago ${index + 1}:`, {
+        id: payment.id,
+        monto: payment.monto,
+        status: payment.status,
+        fecha: payment.fecha_pago,
+        tipo: payment.tipo_pago
       });
+    });
 
-      res.json({
-        payments: payments.rows,
-        total: payments.count,
-        totalPages: Math.ceil(payments.count / limit),
-        currentPage: parseInt(page)
-      });
+    res.json({
+      success: true,
+      payments: payments.rows,
+      total: payments.count,
+      totalPages: Math.ceil(payments.count / limit),
+      currentPage: parseInt(page)
+    });
 
-    } catch (error) {
-      console.error('Error fetching payments by contract:', error);
-      res.status(500).json({ 
-        message: 'Error al obtener los pagos del contrato', 
-        error: error.message 
-      });
-    }
-  },
+  } catch (error) {
+    console.error('❌ Error fetching payments by contract:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error al obtener los pagos del contrato', 
+      error: error.message 
+    });
+  }
+},
 
   // Procesar pago con Wompi
   processWompiPayment: async (req, res) => {

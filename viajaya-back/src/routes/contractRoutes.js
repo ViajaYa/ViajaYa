@@ -43,6 +43,9 @@ router.patch('/:id/complete', contractController.completeContract);
 // Obtener contratos por cliente
 router.get('/cliente/:cliente_id', contractController.getContractsByCliente);
 
+// ✅ NUEVA RUTA: Obtener detalles de pagos del contrato
+router.get('/:contract_id/payment-details', contractController.getContractPaymentDetails);
+
 // ================== ITEMS DEL CONTRATO ==================
 router.post('/:contractId/convert-quote-items', contractController.convertQuoteToContractItems);
 

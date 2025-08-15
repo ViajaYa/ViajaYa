@@ -13,6 +13,7 @@ import documentReducer from '../slices/documentSlice';
 import toastMiddleware from '../../utils/toastMiddleware';
 import reservationReducer from '../slices/reservationSlice'; 
 import quoteCalculationReducer from '../slices/quoteCalculationSlice'; // Importar el slice de quoteCalculation
+import contractPaymentReducer from '../slices/contractPaymentSlice'; // ✅ NUEVO: Importar contract payment slice
 
 export const store = configureStore({
   reducer: {
@@ -29,6 +30,7 @@ export const store = configureStore({
     document: documentReducer,
     reservation: reservationReducer,
     quoteCalculation: quoteCalculationReducer,
+    contractPayment: contractPaymentReducer, // ✅ NUEVO: Agregar contract payment reducer
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

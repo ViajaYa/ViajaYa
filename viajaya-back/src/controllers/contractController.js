@@ -3360,6 +3360,196 @@ servePDF: async (req, res) => {
       });
     }
   },
+
+  // ✅ NUEVO: Obtener detalles completos de pagos del contrato
+  getContractPaymentDetails: async (req, res) => {
+    try {
+      const { contract_id } = req.params;
+
+      console.log('🔍 Obteniendo detalles de pagos para contrato:', contract_id);
+
+      // ✅ OBTENER CONTRATO CON TODAS LAS RELACIONES
+      const contract = await Contract.findByPk(contract_id, {
+        include: [
+          {
+            model: Quote,
+            as: 'Quote',
+            include: [
+              {
+                model: User,
+                as: 'Cliente',
+                attributes: ['id', 'name', 'lastname', 'email', 'phone']
+              },
+              {
+                model: QuoteCalculation,
+                as: 'Calculation',
+                attributes: ['precio_final_total', 'total_comisiones', 'total_ganancia', 'costo_base']
+              }
+            ]
+          },
+          {
+            model: Payment,
+            as: 'Payments',
+            order: [['fecha_pago', 'DESC']]
+          }
+        ]
+      });
+
+      if (!contract) {
+        return res.status(404).json({
+          success: false,
+          message: 'Contrato no encontrado'
+        });
+      }
+
+      // ✅ CALCULAR DATOS FINANCIEROS
+      const precioTotal = parseFloat(contract.precio_total || 0);
+      const totalPagado = parseFloat(contract.total_pagado || 0);
+      const saldoPendiente = parseFloat(contract.saldo_pendiente || precioTotal);
+
+      // ✅ GENERAR PLAN DE PAGOS SUGERIDO
+      const generarPlanPagos = (montoTotal, fechaInicioViaje) => {
+        // Plan de 4 pagos: Cuota inicial (30%) + 3 cuotas del saldo restante
+        const cuotaInicial = Math.round(montoTotal * 0.3); // 30% - Cuota inicial/reserva
+        const saldoRestante = montoTotal - cuotaInicial; // 70% restante
+        const valorCuotaRegular = Math.round(saldoRestante / 3); // Dividir el 70% en 3 cuotas
+        const ultimaCuota = saldoRestante - (valorCuotaRegular * 2); // Saldo final exacto
+
+        const fechaBase = fechaInicioViaje ? new Date(fechaInicioViaje) : new Date();
+        
+        // Calcular fechas de vencimiento
+        const fechaInicial = new Date(); // Cuota inicial - inmediata
+        
+        const fecha1 = new Date(fechaBase);
+        fecha1.setDate(fecha1.getDate() - 60); // 60 días antes del viaje
+
+        const fecha2 = new Date(fechaBase);
+        fecha2.setDate(fecha2.getDate() - 30); // 30 días antes del viaje
+
+        const fecha3 = new Date(fechaBase);
+        fecha3.setDate(fecha3.getDate() - 7); // 7 días antes del viaje
+
+        // 🔧 FUNCIÓN MEJORADA para calcular estado de cada cuota
+        const calcularEstadoCuota = (numeroCuota, totalPagado) => {
+          let montoAcumuladoHastaCuota = 0;
+          
+          if (numeroCuota >= 0) montoAcumuladoHastaCuota += cuotaInicial; // Cuota inicial
+          if (numeroCuota >= 1) montoAcumuladoHastaCuota += valorCuotaRegular; // Primera cuota regular
+          if (numeroCuota >= 2) montoAcumuladoHastaCuota += valorCuotaRegular; // Segunda cuota regular  
+          if (numeroCuota >= 3) montoAcumuladoHastaCuota += ultimaCuota; // Tercera cuota (saldo final)
+          
+          if (totalPagado >= montoAcumuladoHastaCuota) {
+            return 'pagada';
+          } else if (totalPagado > 0) {
+            // Verificar si esta cuota específica puede estar en estado parcial
+            let montoAcumuladoAnterior = 0;
+            if (numeroCuota >= 1) montoAcumuladoAnterior += cuotaInicial;
+            if (numeroCuota >= 2) montoAcumuladoAnterior += valorCuotaRegular;
+            if (numeroCuota >= 3) montoAcumuladoAnterior += valorCuotaRegular;
+            
+            // Si se pagó más que las cuotas anteriores pero menos que esta cuota
+            if (totalPagado > montoAcumuladoAnterior) {
+              return 'parcial';
+            } else {
+              return 'pendiente';
+            }
+          } else {
+            return 'pendiente';
+          }
+        };
+
+        return [
+          {
+            numero: 0, // Cuota inicial
+            descripcion: "Cuota inicial - Reserva (30%)",
+            monto: cuotaInicial,
+            fecha_vencimiento: fechaInicial,
+            estado: calcularEstadoCuota(0, totalPagado),
+            porcentaje: 30,
+            es_cuota_inicial: true
+          },
+          {
+            numero: 1,
+            descripcion: "Primera cuota regular",
+            monto: valorCuotaRegular,
+            fecha_vencimiento: fecha1,
+            estado: calcularEstadoCuota(1, totalPagado),
+            porcentaje: Math.round(((valorCuotaRegular / montoTotal) * 100)),
+            es_cuota_inicial: false
+          },
+          {
+            numero: 2,
+            descripcion: "Segunda cuota regular",
+            monto: valorCuotaRegular,
+            fecha_vencimiento: fecha2,
+            estado: calcularEstadoCuota(2, totalPagado),
+            porcentaje: Math.round(((valorCuotaRegular / montoTotal) * 100)),
+            es_cuota_inicial: false
+          },
+          {
+            numero: 3,
+            descripcion: "Cuota final - Saldo restante",
+            monto: ultimaCuota,
+            fecha_vencimiento: fecha3,
+            estado: calcularEstadoCuota(3, totalPagado),
+            porcentaje: Math.round(((ultimaCuota / montoTotal) * 100)),
+            es_cuota_inicial: false
+          }
+        ];
+      };
+
+      const planPagos = generarPlanPagos(precioTotal, contract.fecha_inicio_viaje);
+
+      // ✅ RESUMEN FINANCIERO DETALLADO
+      const resumenFinanciero = {
+        precio_total: precioTotal,
+        total_pagado: totalPagado,
+        saldo_pendiente: saldoPendiente,
+        porcentaje_pagado: precioTotal > 0 ? parseFloat(((totalPagado / precioTotal) * 100).toFixed(2)) : 0,
+        numero_pagos_realizados: contract.Payments ? contract.Payments.length : 0,
+        ultimo_pago: contract.Payments && contract.Payments.length > 0 ? contract.Payments[0] : null,
+        fecha_inicio_viaje: contract.fecha_inicio_viaje,
+        fecha_fin_viaje: contract.fecha_fin_viaje,
+        dias_hasta_viaje: contract.fecha_inicio_viaje ? 
+          Math.ceil((new Date(contract.fecha_inicio_viaje) - new Date()) / (1000 * 60 * 60 * 24)) : null
+      };
+
+      console.log('📊 Detalles de pago calculados:', {
+        contract_number: contract.contract_number,
+        cuotas_planificadas: planPagos.length,
+        pagos_realizados: contract.Payments ? contract.Payments.length : 0,
+        precio_total: precioTotal,
+        total_pagado: totalPagado,
+        saldo_pendiente: saldoPendiente
+      });
+
+      res.json({
+        success: true,
+        contract: {
+          id: contract.id,
+          contract_number: contract.contract_number,
+          status: contract.status,
+          fecha_inicio_viaje: contract.fecha_inicio_viaje,
+          fecha_fin_viaje: contract.fecha_fin_viaje,
+          precio_total: contract.precio_total,
+          total_pagado: contract.total_pagado,
+          saldo_pendiente: contract.saldo_pendiente,
+          Quote: contract.Quote
+        },
+        plan_pagos: planPagos,
+        pagos_realizados: contract.Payments || [],
+        resumen_financiero: resumenFinanciero
+      });
+
+    } catch (error) {
+      console.error('❌ Error obteniendo detalles de pagos del contrato:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al obtener los detalles de pagos del contrato',
+        error: error.message
+      });
+    }
+  },
 };
 
  

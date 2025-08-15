@@ -1,4 +1,4 @@
-import  { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { 
   fetchContracts,
@@ -21,6 +21,7 @@ const ContractPaymentsManager = () => {
   // Estados locales
   const [selectedContract, setSelectedContract] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showPaymentDetail, setShowPaymentDetail] = useState(false);
   const [filters, setFilters] = useState({
     paymentStatus: 'all',
     sortBy: 'priority',
@@ -41,7 +42,7 @@ const ContractPaymentsManager = () => {
 
   // Cargar contratos al montar
   useEffect(() => {
-    dispatch(fetchContracts());
+    dispatch(fetchContracts({ page: 1, limit: 50, filters: {} }));
   }, [dispatch]);
 
   // Función para calcular estado de pagos
@@ -70,7 +71,8 @@ const ContractPaymentsManager = () => {
     if (contract.forma_pago === 'cuotas') {
       const alerts = [];
       
-      if (contract.tiene_cuota_inicial && !contract.cuota_inicial_pagada) {
+      // 🔧 Solo mostrar alertas de cuota inicial si no tiene pagos realizados (sistema nuevo)
+      if (contract.tiene_cuota_inicial && !contract.cuota_inicial_pagada && totalPagado === 0) {
         const vencimientoInicial = new Date(contract.fecha_vencimiento_inicial);
         const diffTime = vencimientoInicial.getTime() - today.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -236,7 +238,7 @@ const ContractPaymentsManager = () => {
   // Handlers
   const handleContractSelect = (contract) => {
     setSelectedContract(contract);
-    dispatch(fetchPaymentsByContract(contract.id));
+    setShowPaymentDetail(true);
   };
 
   const handlePaymentUpload = (contract) => {
@@ -401,24 +403,31 @@ const ContractPaymentsManager = () => {
 
       {/* Contenido principal */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {!selectedContract ? (
-          <ContractsPaymentList
-            contracts={filteredContracts}
-            loading={loading}
-            onContractSelect={handleContractSelect}
-            onPaymentUpload={handlePaymentUpload}
-          />
-        ) : (
-          <ContractPaymentDetail
-            contract={selectedContract}
-            payments={contractPayments}
-            loading={loading}
-            onBack={() => setSelectedContract(null)}
-            onPaymentUpload={() => handlePaymentUpload(selectedContract)}
-            onPaymentRegister={handlePaymentSubmit}
-          />
-        )}
+        <ContractsPaymentList
+          contracts={filteredContracts}
+          loading={loading}
+          onContractSelect={handleContractSelect}
+          onPaymentUpload={handlePaymentUpload}
+        />
       </div>
+
+      {/* Modal de detalles de pago */}
+      {showPaymentDetail && selectedContract && (
+        <ContractPaymentDetail
+          contractId={selectedContract.id}
+          isOpen={showPaymentDetail}
+          onClose={() => {
+            setShowPaymentDetail(false);
+            setSelectedContract(null);
+            // 🔄 Recargar contratos cuando se cierre el modal
+            dispatch(fetchContracts({ page: 1, limit: 50, filters: {} }));
+          }}
+          onPaymentSuccess={() => {
+            // 🔄 Recargar contratos inmediatamente cuando se registre un pago
+            dispatch(fetchContracts({ page: 1, limit: 50, filters: {} }));
+          }}
+        />
+      )}
 
       {/* Modal de carga de pagos */}
       {showPaymentModal && (

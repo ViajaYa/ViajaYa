@@ -81,7 +81,7 @@ export const registerClientPayment = createAsyncThunk(
         formData.append('comprobante', comprobante);
       }
 
-      const response = await fetch(`${BASE_URL}/api/payments/register-client-payment`, {
+      const response = await fetch(`${BASE_URL}/payments/register-client-payment`, {
         method: 'POST',
         headers: getMultipartAuthHeaders(auth.token),
         body: formData
@@ -110,7 +110,7 @@ export const fetchPaymentsByContract = createAsyncThunk(
     try {
       const { auth } = getState();
       
-      const response = await fetch(`${BASE_URL}/api/payments/contract/${contractId}`, {
+      const response = await fetch(`${BASE_URL}/payments/contract/${contractId}`, {
         method: 'GET',
         headers: getAuthHeaders(auth.token)
       });
@@ -143,7 +143,7 @@ export const fetchPayments = createAsyncThunk(
         ...filters
       });
 
-      const response = await fetch(`${BASE_URL}/api/payments?${queryParams}`, {
+      const response = await fetch(`${BASE_URL}/payments?${queryParams}`, {
         method: 'GET',
         headers: getAuthHeaders(auth.token)
       });
@@ -170,7 +170,7 @@ export const verifyPayment = createAsyncThunk(
     try {
       const { auth } = getState();
       
-      const response = await fetch(`${BASE_URL}/api/payments/${paymentId}/verify`, {
+      const response = await fetch(`${BASE_URL}/payments/${paymentId}/verify`, {
         method: 'PATCH',
         headers: getAuthHeaders(auth.token),
         body: JSON.stringify({ status, observaciones })
@@ -197,7 +197,7 @@ export const fetchContractPaymentInfo = createAsyncThunk(
   async (contractId, { rejectWithValue }) => {
     try {
       // Esta ruta puede ser pública o con auth según tu implementación
-      const response = await fetch(`${BASE_URL}/api/payments/contract/${contractId}/payment-info`, {
+      const response = await fetch(`${BASE_URL}/payments/contract/${contractId}/payment-info`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
@@ -228,7 +228,7 @@ export const fetchPaymentReports = createAsyncThunk(
       
       const queryParams = new URLSearchParams(filters);
 
-      const response = await fetch(`${BASE_URL}/api/payments/reports/summary?${queryParams}`, {
+      const response = await fetch(`${BASE_URL}/payments/reports/summary?${queryParams}`, {
         method: 'GET',
         headers: getAuthHeaders(auth.token)
       });
@@ -255,7 +255,7 @@ export const processPayment = createAsyncThunk(
     try {
       const { auth } = getState();
       
-      const response = await fetch(`${BASE_URL}/api/payments`, {
+      const response = await fetch(`${BASE_URL}/payments`, {
         method: 'POST',
         headers: getAuthHeaders(auth.token),
         body: JSON.stringify(paymentData)
@@ -280,7 +280,7 @@ export const processWompiPayment = createAsyncThunk(
   'payment/processWompiPayment',
   async (wompiData, { rejectWithValue }) => {
     try {
-      const response = await fetch(`${BASE_URL}/api/payments/wompi`, {
+      const response = await fetch(`${BASE_URL}/payments/wompi`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
