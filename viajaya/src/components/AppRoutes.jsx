@@ -46,6 +46,7 @@ const CommissionsList = lazy(() => import("./Panel/Commissions/CommissionsList")
 const ContractCommissions = lazy(() => import("./Panel/Contracts/ContractCommissions"));
 const CommissionConfigManager = lazy(() => import("./Panel/Commissions/CommissionConfigManager"));
 const DocumentsReview = lazy(() => import("./Panel/DocumentsReview"));
+const FacturasPendientes = lazy(() => import("./Panel/FacturasPendientes"));
 const OrganizationView = lazy(() => import("./pages/Organization/OrganizationView"));
 const AllTeamsView = lazy(() => import("./pages/Organization/AllTeamsView"));
 const PassengerForm = lazy(() => import("./Panel/Quotes/PassengerForm"));
@@ -276,6 +277,14 @@ const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
   <RoleRoute allowedRoles={[USER_ROLES.OWNER]}>
     <Suspense fallback={<LoadingSpinner />}>
       <ContractPaymentsManager />
+    </Suspense>
+  </RoleRoute>
+} />
+
+<Route path="/facturas-pendientes" element={
+  <RoleRoute allowedRoles={[USER_ROLES.OWNER]}>
+    <Suspense fallback={<LoadingSpinner />}>
+      <FacturasPendientes />
     </Suspense>
   </RoleRoute>
 } />

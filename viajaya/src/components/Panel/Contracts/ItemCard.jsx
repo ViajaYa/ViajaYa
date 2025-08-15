@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import  { useState } from 'react';
 import PropTypes from 'prop-types';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -7,6 +7,7 @@ import {
   faExclamationTriangle, faClock, faEye, faTrash,
   faSpinner, faBell
 } from '@fortawesome/free-solid-svg-icons';
+import ComprobanteViewerModal from './ComprobanteViewerModal';
 
 const ItemCard = ({
   item,
@@ -22,6 +23,7 @@ const ItemCard = ({
 }) => {
   const [showDetails, setShowDetails] = useState(false);
   const [showConfirmPayment, setShowConfirmPayment] = useState(false);
+  const [showComprobanteModal, setShowComprobanteModal] = useState(false);
 
   // ✅ FORMATEAR FECHA - USAR CAMPO CORRECTO
   const formatDate = (dateString) => {
@@ -36,12 +38,12 @@ const ItemCard = ({
     });
   };
 
-  // ✅ CALCULAR TIEMPO RESTANTE - USAR CAMPO CORRECTO
+  // ✅ CALCULAR TIEMPO RESTANTE - USAR CAMPO CORRECTO DEL BACKEND
   const getTimeRemaining = () => {
-    if (!item.fecha_vencimiento_pago) return null; // ✅ CORREGIDO
+    if (!item.fecha_limite_compra) return null; // ✅ CORREGIDO: usar campo del backend
     
     const now = new Date();
-    const deadline = new Date(item.fecha_vencimiento_pago); // ✅ CORREGIDO
+    const deadline = new Date(item.fecha_limite_compra); // ✅ CORREGIDO: usar campo del backend
     const diff = deadline - now;
     
     if (diff < 0) return 'Vencido';
@@ -116,15 +118,27 @@ const ItemCard = ({
           </div>
         </div>
 
-        {/* ✅ INFORMACIÓN DE FECHA - CAMPO CORREGIDO */}
-        {item.fecha_vencimiento_pago && ( // ✅ CORREGIDO
-          <div className="bg-gray-50 rounded-lg p-3 mb-4">
+        {/* ✅ INFORMACIÓN DE FECHA - CAMPO CORREGIDO PARA COINCIDIR CON BACKEND */}
+        {item.fecha_limite_compra && ( // ✅ CORREGIDO: usar campo del backend
+          <div className={`rounded-lg p-3 mb-4 ${
+            item.tipo === 'tickets' && (alertStatus === 'critical' || alertStatus === 'warning') 
+              ? 'bg-red-50 border border-red-200' 
+              : 'bg-gray-50'
+          }`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-gray-500 uppercase tracking-wide">Fecha Límite de Pago</p>
-                <p className="font-medium text-gray-900">
-                  {formatDate(item.fecha_vencimiento_pago)} {/* ✅ CORREGIDO */}
+                <p className="text-xs text-gray-500 uppercase tracking-wide">
+                  {item.tipo === 'tickets' ? '✈️ Fecha Límite Tickets' : 'Fecha Límite de Compra'}
                 </p>
+                <p className="font-medium text-gray-900">
+                  {formatDate(item.fecha_limite_compra)} {/* ✅ CORREGIDO: usar campo del backend */}
+                </p>
+                {/* ✅ MEJORA: Nota especial para tickets críticos */}
+                {item.tipo === 'tickets' && alertStatus === 'critical' && (
+                  <p className="text-xs text-red-600 mt-1 font-medium">
+                    ⚡ Tickets críticos - Comprar urgentemente
+                  </p>
+                )}
               </div>
               <div className="text-right">
                 <p className="text-xs text-gray-500 uppercase tracking-wide">Tiempo Restante</p>
@@ -267,14 +281,25 @@ const ItemCard = ({
           )}
 
           {purchaseInfo?.comprobante_url && (
+            <button
+              onClick={() => setShowComprobanteModal(true)}
+              className="flex items-center px-3 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              <FontAwesomeIcon icon={faEye} className="mr-2" />
+              Ver Comprobante
+            </button>
+          )}
+
+          {/* ✅ BOTÓN DESCARGAR DIRECTO */}
+          {purchaseInfo?.comprobante_url && (
             <a
               href={purchaseInfo.comprobante_url}
-              target="_blank"
-              rel="noopener noreferrer"
+              download
               className="flex items-center px-3 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors"
+              title="Descargar comprobante directamente"
             >
               <FontAwesomeIcon icon={faDownload} className="mr-2" />
-              Ver Comprobante
+              Descargar
             </a>
           )}
         </div>
@@ -309,6 +334,14 @@ const ItemCard = ({
             </div>
           </div>
         )}
+
+        {/* ✅ MODAL PARA VER COMPROBANTE */}
+        {showComprobanteModal && purchaseInfo && (
+          <ComprobanteViewerModal
+            purchase={purchaseInfo}
+            onClose={() => setShowComprobanteModal(false)}
+          />
+        )}
       </div>
     </div>
   );
@@ -324,7 +357,8 @@ ItemCard.propTypes = {
     cantidad: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     precio_unitario: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     status: PropTypes.string.isRequired,
-    fecha_vencimiento_pago: PropTypes.string, // ✅ CORREGIDO
+    fecha_limite_compra: PropTypes.string, // ✅ CORREGIDO: usar campo correcto del backend
+    requiere_compra: PropTypes.bool, // ✅ AGREGADO: campo del backend
     observaciones: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
     Purchases: PropTypes.arrayOf(PropTypes.shape({
       id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),

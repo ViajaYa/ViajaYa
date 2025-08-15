@@ -62,6 +62,9 @@ router.delete('/items/:itemId', contractController.deleteContractItem);
 
 router.post('/items/:itemId/purchases', purchaseController.createPurchase);
 
+// ✅ NUEVA RUTA: Subir comprobante de compra
+router.post('/items/:itemId/upload-receipt', uploadComprobante.single('comprobante'), purchaseController.uploadPurchaseReceipt);
+
 // Listar compras de un item
 router.get('/items/:itemId/purchases', purchaseController.getPurchasesByItem);
 

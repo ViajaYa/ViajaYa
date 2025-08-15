@@ -11,6 +11,7 @@ export const fetchQuoteCalculationByQuoteId = createAsyncThunk(
   }
 );
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSelector } from '@reduxjs/toolkit';
 import api from '../../utils/api';
 
 // ✅ NUEVO: Obtener datos base para calculadora desde un Quote
@@ -182,6 +183,161 @@ export const selectCalculation = (state) => state.quoteCalculation.calculation;
 export const selectCalculationLoading = (state) => state.quoteCalculation.loading;
 export const selectCalculationError = (state) => state.quoteCalculation.error;
 export const selectBaseData = (state) => state.quoteCalculation.baseData;
+
+// ✅ NUEVO: Selectores calculados adicionales
+export const selectCalculationItems = createSelector(
+  selectCalculation,
+  calculation => {
+    if (!calculation) return [];
+    
+    // Extraer items desde la estructura JSONB del cálculo
+    const items = [];
+    
+    // Tickets
+    if (calculation.tiquetes && calculation.tiquetes.costo_total > 0) {
+      items.push({
+        tipo: 'tickets',
+        descripcion: `Tickets ${calculation.tiquetes.origen || ''} - ${calculation.tiquetes.destino || ''}`,
+        precio_total: calculation.tiquetes.costo_total,
+        requiere_compra: true,
+        prioridad: 'critica',
+        detalles: calculation.tiquetes
+      });
+    }
+    
+    // Hotel
+    if (calculation.hotel && calculation.hotel.costo_total > 0) {
+      items.push({
+        tipo: 'alojamiento',
+        descripcion: `Alojamiento ${calculation.hotel.categoria || ''} - ${calculation.hotel.nombre || ''}`,
+        precio_total: calculation.hotel.costo_total,
+        requiere_compra: true,
+        prioridad: 'alta',
+        detalles: calculation.hotel
+      });
+    }
+    
+    // Traslados
+    if (calculation.traslados && calculation.traslados.costo_total > 0) {
+      items.push({
+        tipo: 'traslados',
+        descripcion: 'Traslados',
+        precio_total: calculation.traslados.costo_total,
+        requiere_compra: true,
+        prioridad: 'media',
+        detalles: calculation.traslados
+      });
+    }
+    
+    // Alimentación
+    if (calculation.alimentacion && calculation.alimentacion.costo_total > 0) {
+      items.push({
+        tipo: 'alimentacion',
+        descripcion: `Alimentación ${calculation.alimentacion.tipo || ''}`,
+        precio_total: calculation.alimentacion.costo_total,
+        requiere_compra: true,
+        prioridad: 'media',
+        detalles: calculation.alimentacion
+      });
+    }
+    
+    // Equipaje
+    if (calculation.equipaje && calculation.equipaje.costo_total > 0) {
+      items.push({
+        tipo: 'equipaje',
+        descripcion: 'Equipaje adicional',
+        precio_total: calculation.equipaje.costo_total,
+        requiere_compra: true,
+        prioridad: 'baja',
+        detalles: calculation.equipaje
+      });
+    }
+    
+    // Seguros
+    if (calculation.seguros) {
+      if (calculation.seguros.asistencia_medica && calculation.seguros.asistencia_medica.costo > 0) {
+        items.push({
+          tipo: 'seguro',
+          descripcion: `Asistencia médica ${calculation.seguros.asistencia_medica.tipo || ''}`,
+          precio_total: calculation.seguros.asistencia_medica.costo,
+          requiere_compra: true,
+          prioridad: 'alta',
+          detalles: calculation.seguros.asistencia_medica
+        });
+      }
+      
+      if (calculation.seguros.cancelacion && calculation.seguros.cancelacion.costo > 0) {
+        items.push({
+          tipo: 'seguro',
+          descripcion: 'Seguro de cancelación',
+          precio_total: calculation.seguros.cancelacion.costo,
+          requiere_compra: true,
+          prioridad: 'media',
+          detalles: calculation.seguros.cancelacion
+        });
+      }
+    }
+    
+    // Excursiones
+    if (calculation.excursiones && Array.isArray(calculation.excursiones)) {
+      calculation.excursiones.forEach((excursion, index) => {
+        if (excursion.costo > 0) {
+          items.push({
+            tipo: 'excursiones',
+            descripcion: excursion.nombre || `Excursión ${index + 1}`,
+            precio_total: excursion.costo,
+            requiere_compra: true,
+            prioridad: 'media',
+            detalles: excursion
+          });
+        }
+      });
+    }
+    
+    // Extras
+    if (calculation.extras && Array.isArray(calculation.extras)) {
+      calculation.extras.forEach((extra, index) => {
+        if (extra.costo > 0) {
+          items.push({
+            tipo: 'extras',
+            descripcion: extra.nombre || `Extra ${index + 1}`,
+            precio_total: extra.costo,
+            requiere_compra: true,
+            prioridad: 'baja',
+            detalles: extra
+          });
+        }
+      });
+    }
+    
+    return items;
+  }
+);
+
+export const selectItemsRequiringPurchase = createSelector(
+  selectCalculationItems,
+  items => items.filter(item => item.requiere_compra)
+);
+
+export const selectItemsRequiringPurchaseCount = createSelector(
+  selectItemsRequiringPurchase,
+  items => items.length
+);
+
+export const selectTotalPurchaseAmount = createSelector(
+  selectItemsRequiringPurchase,
+  items => items.reduce((total, item) => total + (parseFloat(item.precio_total) || 0), 0)
+);
+
+export const selectCriticalPurchaseItems = createSelector(
+  selectItemsRequiringPurchase,
+  items => items.filter(item => item.prioridad === 'critica')
+);
+
+export const selectHighPriorityPurchaseItems = createSelector(
+  selectItemsRequiringPurchase,
+  items => items.filter(item => ['critica', 'alta'].includes(item.prioridad))
+);
 
 export default quoteCalculationSlice.reducer;
 // ✅ Exportar thunk nuevo

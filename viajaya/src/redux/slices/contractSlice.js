@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk, createSelector } from "@reduxjs/toolkit";
 import { getApiUrl } from "../../utils/env";
 
 // Estado inicial
@@ -1603,6 +1603,11 @@ export const selectIsSignedWithItems = (state) => {
   const contract = state.contract.currentContract?.contract || state.contract.currentContract;
   return contract?.status === 'signed' && contract?.auto_conversion_success;
 };
+
+export const selectItemsToPurchaseCount = createSelector(
+  state => state.contract.purchaseManagement.items,
+  items => items.filter(item => item.status === 'pendiente_compra').length
+);
 
 export const selectContractSummary = (state) => {
   const contracts = state.contract.contracts;
