@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import  { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -7,6 +7,7 @@ import {
   registerPayment, 
   uploadPaymentReceipt 
 } from '../../../../redux/slices/contractPaymentSlice';
+import PropTypes from 'prop-types';
 
 const ContractPaymentDetail = ({ contractId, isOpen, onClose, onPaymentSuccess }) => {
   const dispatch = useDispatch();
@@ -520,5 +521,12 @@ const ContractPaymentDetail = ({ contractId, isOpen, onClose, onPaymentSuccess }
     </div>
   );
 };
+ContractPaymentDetail.propTypes = {
+  contractId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+  isOpen: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  onPaymentSuccess: PropTypes.func
+};
 
 export default ContractPaymentDetail;
+

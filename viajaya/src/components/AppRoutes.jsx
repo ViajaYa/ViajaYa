@@ -47,6 +47,7 @@ const ContractCommissions = lazy(() => import("./Panel/Contracts/ContractCommiss
 const CommissionConfigManager = lazy(() => import("./Panel/Commissions/CommissionConfigManager"));
 const DocumentsReview = lazy(() => import("./Panel/DocumentsReview"));
 const FacturasPendientes = lazy(() => import("./Panel/FacturasPendientes"));
+const FinancialDashboard = lazy(() => import("./pages/Financial/FinancialDashboard"));
 const OrganizationView = lazy(() => import("./pages/Organization/OrganizationView"));
 const AllTeamsView = lazy(() => import("./pages/Organization/AllTeamsView"));
 const PassengerForm = lazy(() => import("./Panel/Quotes/PassengerForm"));
@@ -397,6 +398,15 @@ const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
         <RoleRoute allowedRoles={[USER_ROLES.ASESOR, USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.CONTADOR, USER_ROLES.OWNER]}>
           <Suspense fallback={<LoadingSpinner />}>
             <CommissionsList />
+          </Suspense>
+        </RoleRoute>
+      } />
+
+      {/* ✅ DASHBOARD FINANCIERO */}
+      <Route path="/financial-dashboard" element={
+        <RoleRoute allowedRoles={[USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.CONTADOR, USER_ROLES.OWNER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <FinancialDashboard />
           </Suspense>
         </RoleRoute>
       } />

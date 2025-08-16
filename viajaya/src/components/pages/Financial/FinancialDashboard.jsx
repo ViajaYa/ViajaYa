@@ -1,0 +1,249 @@
+import { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  fetchFinancialSummary,
+  fetchPaymentsList,
+  fetchPurchasesList,
+  updatePaymentsFilters,
+  updatePurchasesFilters,
+  updatePaymentsPage,
+  updatePurchasesPage
+} from '../../../redux/slices/financialSlice';
+
+import FinancialSummaryCards from './FinancialSummaryCards';
+import FinancialChart from './FinancialChart';
+import PaymentsList from './PaymentsList';
+import PurchasesList from './PurchasesList';
+import FinancialFilters from './FinancialFilters';
+import ReceiptModal from './ReceiptModal';
+
+const FinancialDashboard = () => {
+  const dispatch = useDispatch();
+  const { summary, payments, purchases } = useSelector(state => state.financial);
+  const [activeTab, setActiveTab] = useState('resumen');
+  const [receiptModal, setReceiptModal] = useState({
+    isOpen: false,
+    receiptUrl: '',
+    title: ''
+  });
+
+  // 🔄 CARGAR DATOS INICIALES
+  useEffect(() => {
+    dispatch(fetchFinancialSummary());
+    dispatch(fetchPaymentsList());
+    dispatch(fetchPurchasesList());
+  }, [dispatch]);
+
+  // 📊 MANEJAR ACTUALIZACIÓN DE FILTROS DE PAGOS
+  const handlePaymentsFilterChange = (filters) => {
+    dispatch(updatePaymentsFilters(filters));
+    dispatch(fetchPaymentsList({ 
+      page: 1, 
+      limit: payments.pagination.itemsPerPage,
+      ...filters 
+    }));
+  };
+
+  // 🛒 MANEJAR ACTUALIZACIÓN DE FILTROS DE COMPRAS
+  const handlePurchasesFilterChange = (filters) => {
+    dispatch(updatePurchasesFilters(filters));
+    dispatch(fetchPurchasesList({ 
+      page: 1, 
+      limit: purchases.pagination.itemsPerPage,
+      ...filters 
+    }));
+  };
+
+  // 📄 MANEJAR CAMBIO DE PÁGINA DE PAGOS
+  const handlePaymentsPageChange = (page) => {
+    dispatch(updatePaymentsPage(page));
+    dispatch(fetchPaymentsList({ 
+      page, 
+      limit: payments.pagination.itemsPerPage,
+      ...payments.filters 
+    }));
+  };
+
+  // 📄 MANEJAR CAMBIO DE PÁGINA DE COMPRAS
+  const handlePurchasesPageChange = (page) => {
+    dispatch(updatePurchasesPage(page));
+    dispatch(fetchPurchasesList({ 
+      page, 
+      limit: purchases.pagination.itemsPerPage,
+      ...purchases.filters 
+    }));
+  };
+
+  // 🔄 MANEJAR ACTUALIZACIÓN MANUAL
+  const handleRefresh = () => {
+    switch (activeTab) {
+      case 'resumen':
+        dispatch(fetchFinancialSummary());
+        break;
+      case 'pagos':
+        dispatch(fetchPaymentsList({ 
+          page: payments.pagination.currentPage,
+          limit: payments.pagination.itemsPerPage,
+          ...payments.filters 
+        }));
+        break;
+      case 'compras':
+        dispatch(fetchPurchasesList({ 
+          page: purchases.pagination.currentPage,
+          limit: purchases.pagination.itemsPerPage,
+          ...purchases.filters 
+        }));
+        break;
+      default:
+        break;
+    }
+  };
+
+  // 📄 MANEJAR VISUALIZACIÓN DE COMPROBANTE
+  const handleReceiptView = (receiptUrl, itemId, type = 'comprobante') => {
+    console.log('🔍 FinancialDashboard handleReceiptView Debug:');
+    console.log('🔗 Receipt URL:', receiptUrl);
+    console.log('📋 Item ID:', itemId);
+    console.log('📝 Type:', type);
+    console.log('✅ URL Valid:', !!receiptUrl && receiptUrl.trim() !== '');
+    
+    setReceiptModal({
+      isOpen: true,
+      receiptUrl: receiptUrl,
+      title: `${type} #${itemId}`
+    });
+  };
+
+  // 🚪 CERRAR MODAL DE COMPROBANTE
+  const handleCloseReceiptModal = () => {
+    setReceiptModal({
+      isOpen: false,
+      receiptUrl: '',
+      title: ''
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      {/* 📋 ENCABEZADO */}
+      <div className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-6">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Dashboard Financiero</h1>
+              <p className="mt-1 text-sm text-gray-600">
+                Monitorea ingresos, gastos y ganancias en tiempo real
+              </p>
+            </div>
+            <button
+              onClick={handleRefresh}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Actualizar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 📊 CONTENIDO PRINCIPAL */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* 🔗 NAVEGACIÓN POR PESTAÑAS */}
+        <div className="mb-8">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8">
+              {[
+                { id: 'resumen', name: 'Resumen General', icon: '📊' },
+                { id: 'pagos', name: 'Historial de Pagos', icon: '💰' },
+                { id: 'compras', name: 'Historial de Compras', icon: '🛒' }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
+                    activeTab === tab.id
+                      ? 'border-indigo-500 text-indigo-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <span className="mr-2">{tab.icon}</span>
+                  {tab.name}
+                </button>
+              ))}
+            </nav>
+          </div>
+        </div>
+
+        {/* 📊 CONTENIDO DE PESTAÑAS */}
+        {activeTab === 'resumen' && (
+          <div className="space-y-8">
+            {/* 📈 TARJETAS DE RESUMEN */}
+            <FinancialSummaryCards summary={summary} />
+
+            {/* 📊 GRÁFICO FINANCIERO */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-6">
+                Tendencia Financiera Mensual
+              </h3>
+              <FinancialChart data={summary.monthlyData} loading={summary.loading} />
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'pagos' && (
+          <div className="space-y-6">
+            {/* 🔍 FILTROS DE PAGOS */}
+            <FinancialFilters
+              filters={payments.filters}
+              onFilterChange={handlePaymentsFilterChange}
+              type="payments"
+            />
+
+            {/* 💰 LISTA DE PAGOS */}
+            <PaymentsList
+              payments={payments.data}
+              pagination={payments.pagination}
+              loading={payments.loading}
+              error={payments.error}
+              onPageChange={handlePaymentsPageChange}
+              onReceiptView={(receiptUrl, paymentId) => handleReceiptView(receiptUrl, paymentId, 'Pago')}
+            />
+          </div>
+        )}
+
+        {activeTab === 'compras' && (
+          <div className="space-y-6">
+            {/* 🔍 FILTROS DE COMPRAS */}
+            <FinancialFilters
+              filters={purchases.filters}
+              onFilterChange={handlePurchasesFilterChange}
+              type="purchases"
+            />
+
+            {/* 🛒 LISTA DE COMPRAS */}
+            <PurchasesList
+              purchases={purchases.data}
+              pagination={purchases.pagination}
+              loading={purchases.loading}
+              error={purchases.error}
+              onPageChange={handlePurchasesPageChange}
+              onReceiptView={(receiptUrl, purchaseId) => handleReceiptView(receiptUrl, purchaseId, 'Compra')}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* 📄 MODAL DE COMPROBANTES */}
+      <ReceiptModal
+        isOpen={receiptModal.isOpen}
+        onClose={handleCloseReceiptModal}
+        receiptUrl={receiptModal.receiptUrl}
+        title={receiptModal.title}
+      />
+    </div>
+  );
+};
+
+export default FinancialDashboard;

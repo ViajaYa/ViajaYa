@@ -18,6 +18,7 @@ const commissionRoutes = require("./commissionRoutes")
 const commissionConfigRoutes = require("./commissionConfigRoutes")
 const quoteCalculationRoutes = require("./quoteCalculationRoutes")
 const invoiceRoutes = require("./invoiceRoutes")
+const financialRoutes = require("./financialRoutes")
 const routes = Router()
 
 routes
@@ -40,4 +41,5 @@ routes
 .use("/passengers", passengerRoutes)
 .use("/quote-calculations", quoteCalculationRoutes)
 .use("/invoices", invoiceRoutes)
+.use("/financial", financialRoutes)
 module.exports = routes
