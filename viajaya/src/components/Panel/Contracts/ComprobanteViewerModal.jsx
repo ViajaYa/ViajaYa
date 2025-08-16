@@ -5,6 +5,7 @@ import {
   faTimes, faDownload, faExternalLinkAlt, faSpinner,
   faFilePdf, faFileImage
 } from '@fortawesome/free-solid-svg-icons';
+import { formatDateDisplay } from '../../../utils/dateUtils';
 
 const ComprobanteViewerModal = ({ purchase, onClose }) => {
   const [loading, setLoading] = useState(true);
@@ -108,10 +109,9 @@ const ComprobanteViewerModal = ({ purchase, onClose }) => {
     setLoading(false);
   };
 
-  // ✅ FORMATEAR FECHA
+  // ✅ FORMATEAR FECHA CON LUXON
   const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('es-CO', {
+    return formatDateDisplay(dateString, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',

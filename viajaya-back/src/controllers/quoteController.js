@@ -9,7 +9,9 @@ const {
   convertirDatosLegacy 
 } = require("../utils/quoteCalculations");
 const path = require("path");
-const crypto = require('crypto'); 
+const crypto = require('crypto');
+// ✅ Importar utilidades de fecha con Luxon para Colombia
+const { formatForPDF, nowInColombia, toFrontend } = require("../utils/dateUtils"); 
 
 // ✅ Función auxiliar para convertir trip_type a etiqueta legible
 const getTripTypeLabel = (tripType) => {
@@ -300,10 +302,11 @@ const quoteController = {
       }
 
       // ✅ Generar número de cotización único
-      const currentDate = new Date();
-      const year = currentDate.getFullYear();
-      const month = String(currentDate.getMonth() + 1).padStart(2, "0");
-      const day = String(currentDate.getDate()).padStart(2, "0");
+      // ✅ Usar Luxon para generar número de cotización con fecha consistente en Colombia
+      const currentDate = nowInColombia();
+      const year = currentDate.toFormat('yyyy');
+      const month = currentDate.toFormat('LL');
+      const day = currentDate.toFormat('dd');
 
       const lastQuote = await Quote.findOne({
         where: {
@@ -587,7 +590,8 @@ const quoteController = {
         offset: parseInt(offset),
       });
 
-      const now = new Date();
+      // ✅ Usar Luxon para verificar quotas expiradas con zona horaria de Colombia
+      const now = nowInColombia().toJSDate();
       const expiredQuotes = quotes.rows.filter(
         (q) =>
           q.status === "sent" && q.expires_at && new Date(q.expires_at) < now
@@ -713,8 +717,9 @@ getQuoteById: async (req, res) => {
       pdf_data: {
         precio_total_cop: quote.precio_total ? `$${parseFloat(quote.precio_total).toLocaleString('es-CO')}` : null,
         precio_por_persona_cop: precio_por_persona > 0 ? `$${precio_por_persona.toLocaleString('es-CO')}` : null,
-        fecha_ida_formatted: quote.fecha_ida ? new Date(quote.fecha_ida).toLocaleDateString('es-ES') : null,
-        fecha_regreso_formatted: quote.fecha_regreso ? new Date(quote.fecha_regreso).toLocaleDateString('es-ES') : null,
+        // ✅ Formatear fechas usando Luxon para mantener consistencia con zona horaria de Colombia
+        fecha_ida_formatted: quote.fecha_ida ? formatForPDF(quote.fecha_ida) : null,
+        fecha_regreso_formatted: quote.fecha_regreso ? formatForPDF(quote.fecha_regreso) : null,
         trip_type_label: getTripTypeLabel(quote.trip_type),
       },
 
@@ -869,7 +874,8 @@ getQuoteById: async (req, res) => {
 
       await quote.update({
         ...newAssignment,
-        reassigned_at: new Date(),
+        // ✅ Usar Luxon para fecha de reasignación en zona horaria de Colombia
+        reassigned_at: nowInColombia().toJSDate(),
         reassignment_reason: reason || "Reasignación desde Owner a vendedor",
       });
 

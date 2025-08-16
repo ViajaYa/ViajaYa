@@ -1,30 +1,20 @@
-import React from 'react';
 
-const PassengerCard = ({ passenger, index, onUpdate, isFirst }) => {
- const tiposDocumento = [
-    { value: 'cc', label: 'Cédula de Ciudadanía' },
-    { value: 'ce', label: 'Cédula de Extranjería' },
-    { value: 'ti', label: 'Tarjeta de Identidad' },
-    { value: 'rc', label: 'Registro Civil' },
-    { value: 'passport', label: 'Pasaporte' },
-    { value: 'pep', label: 'Permiso Especial de Permanencia' },
-    { value: 'ppt', label: 'Permiso por Protección Temporal' },
-    { value: 'nit', label: 'NIT' },
-    { value: 'nuip', label: 'NUIP' },
-    { value: 'dni', label: 'DNI' },
-    { value: 'salvoconducto', label: 'Salvoconducto' },
-    { value: 'cedula_diplomatica', label: 'Cédula Diplomática' },
-  ];
+import PropTypes from 'prop-types';
+import { toDateInput } from '../../../utils/dateUtils';
+// ✅ Importar validaciones colombianas para documentos y nombres
+import { validateDocument, validateName, getDocumentTypes } from '../../../utils/validations';
 
+const PassengerCard = ({ passenger, index, onUpdate }) => {
+ // ✅ Usar tipos de documento estándar de Colombia
+ const tiposDocumento = getDocumentTypes().map(doc => ({
+   value: doc.value.toLowerCase(),
+   label: doc.label
+ }));
+
+  // 📅 FECHA MEJORADA CON LUXON - SIN PROBLEMAS DE ZONA HORARIA
   const getDateInputValue = (date) => {
-  if (!date) return '';
-  // Si ya está en formato YYYY-MM-DD, úsalo directo
-  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
-  // Si viene en formato ISO, conviértelo
-  const d = new Date(date);
-  if (isNaN(d.getTime())) return '';
-  return d.toISOString().split('T')[0];
-};
+    return toDateInput(date); // Usa la utilidad de Luxon
+  };
 
   const handleInputChange = (field, value) => {
     onUpdate(index, field, value);
@@ -261,6 +251,11 @@ const PassengerCard = ({ passenger, index, onUpdate, isFirst }) => {
       )}
     </div>
   );
+};
+PassengerCard.propTypes = {
+  passenger: PropTypes.object.isRequired,
+  index: PropTypes.number.isRequired,
+  onUpdate: PropTypes.func.isRequired
 };
 
 export default PassengerCard;

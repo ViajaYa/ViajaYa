@@ -6,6 +6,11 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTimes, faUser, faCalendarAlt, faMapMarkerAlt, 
   faExclamationTriangle, faCheck, faSearch  } from '@fortawesome/free-solid-svg-icons';
 import { useRolePermissions } from '../../redux/hooks/hooks';
+// ✅ Importar utilidades de fecha con Luxon para manejar zona horaria de Colombia
+import { toDateInput, nowInColombia } from '../../utils/dateUtils';
+// ✅ Importar validaciones colombianas
+import { validatePhoneNumber, validateEmail, validateName } from '../../utils/validations';
+import { DateTime } from 'luxon';
 
 const QuotePopup = ({ isOpen, onClose, prefilledData = {} }) => {
   const dispatch = useDispatch();
@@ -141,21 +146,28 @@ useEffect(() => {
     return null;
   };
 
-  // ✅ Validación del formulario
+  // ✅ Validación del formulario con validaciones colombianas
   const validateForm = () => {
     const newErrors = {};
 
-    if (!form.nombre_cliente.trim()) {
-      newErrors.nombre_cliente = 'El nombre del cliente es requerido';
+    // Validar nombre del cliente
+    const nameValidation = validateName(form.nombre_cliente, 'nombre del cliente');
+    if (!nameValidation.isValid) {
+      newErrors.nombre_cliente = nameValidation.message;
     }
-    if (!form.email_cliente.trim()) {
-      newErrors.email_cliente = 'El email del cliente es requerido';
-    } else if (!/\S+@\S+\.\S+/.test(form.email_cliente)) {
-      newErrors.email_cliente = 'El email no es válido';
+
+    // Validar email del cliente
+    const emailValidation = validateEmail(form.email_cliente);
+    if (!emailValidation.isValid) {
+      newErrors.email_cliente = emailValidation.message;
     }
-    if (!form.telefono_cliente.trim()) {
-      newErrors.telefono_cliente = 'El teléfono es requerido';
+
+    // Validar teléfono del cliente
+    const phoneValidation = validatePhoneNumber(form.telefono_cliente);
+    if (!phoneValidation.isValid) {
+      newErrors.telefono_cliente = phoneValidation.message;
     }
+
     if (!form.destino.trim()) {
       newErrors.destino = 'El destino es requerido';
     }
@@ -204,8 +216,14 @@ useEffect(() => {
       newErrors.personas_atencion_especial = 'No puede haber más personas con atención especial que el total de pasajeros';
     }
     
-    if (form.fecha_ida && form.fecha_regreso && new Date(form.fecha_ida) >= new Date(form.fecha_regreso)) {
-      newErrors.fecha_regreso = 'La fecha de regreso debe ser posterior a la fecha de ida';
+    // ✅ Validar fechas usando Luxon para evitar problemas de zona horaria
+    if (form.fecha_ida && form.fecha_regreso) {
+      const fechaIda = DateTime.fromISO(form.fecha_ida);
+      const fechaRegreso = DateTime.fromISO(form.fecha_regreso);
+      
+      if (fechaIda >= fechaRegreso) {
+        newErrors.fecha_regreso = 'La fecha de regreso debe ser posterior a la fecha de ida';
+      }
     }
 
     setErrors(newErrors);

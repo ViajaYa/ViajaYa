@@ -1,22 +1,23 @@
-import React from 'react';
 
-const DocumentPreview = ({ document, isOpen, onClose }) => {
-  if (!isOpen || !document) return null;
+import PropTypes from 'prop-types';
+
+const DocumentPreview = ({ doc, isOpen, onClose }) => {
+  if (!isOpen || !doc) return null;
 
   const handleDownload = () => {
     // Crear un enlace temporal para descargar
     const link = document.createElement('a');
-    link.href = document.file_url;
-    link.download = document.document_name;
+    link.href = doc.file_url;
+    link.download = doc.document_name;
     link.target = '_blank';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  const isPDF = document.file_type === 'pdf' || document.file_url?.includes('.pdf');
-  const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(document.file_type?.toLowerCase()) || 
-                  /\.(jpg|jpeg|png|gif|webp)$/i.test(document.file_url);
+  const isPDF = doc.file_type === 'pdf' || doc.file_url?.includes('.pdf');
+  const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(doc.file_type?.toLowerCase()) || 
+                  /\.(jpg|jpeg|png|gif|webp)$/i.test(doc.file_url);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
@@ -25,10 +26,10 @@ const DocumentPreview = ({ document, isOpen, onClose }) => {
         <div className="flex items-center justify-between p-4 border-b">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">
-              {document.document_name}
+              {doc.document_name}
             </h3>
             <p className="text-sm text-gray-500">
-              {document.Owner?.name} {document.Owner?.lastname} • {document.file_type?.toUpperCase()}
+              {doc.Owner?.name} {doc.Owner?.lastname} • {doc.file_type?.toUpperCase()}
             </p>
           </div>
           <div className="flex items-center space-x-2">
@@ -52,15 +53,15 @@ const DocumentPreview = ({ document, isOpen, onClose }) => {
         <div className="flex-1 p-4 overflow-hidden">
           {isPDF ? (
             <iframe
-              src={document.file_url}
+              src={doc.file_url}
               className="w-full h-full border rounded-lg"
-              title={document.document_name}
+              title={doc.document_name}
             />
           ) : isImage ? (
             <div className="h-full flex items-center justify-center">
               <img
-                src={document.file_url}
-                alt={document.document_name}
+                src={doc.file_url}
+                alt={doc.document_name}
                 className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
               />
             </div>
@@ -72,7 +73,7 @@ const DocumentPreview = ({ document, isOpen, onClose }) => {
                   Vista previa no disponible
                 </p>
                 <p className="text-sm text-gray-500 mb-4">
-                  Tipo de archivo: {document.file_type?.toUpperCase()}
+                  Tipo de archivo: {doc.file_type?.toUpperCase()}
                 </p>
                 <button
                   onClick={handleDownload}
@@ -87,15 +88,29 @@ const DocumentPreview = ({ document, isOpen, onClose }) => {
         </div>
 
         {/* Document Info */}
-        {document.description && (
+        {doc.description && (
           <div className="p-4 border-t bg-gray-50">
             <h4 className="font-medium text-gray-900 mb-1">Descripción:</h4>
-            <p className="text-sm text-gray-600">{document.description}</p>
+            <p className="text-sm text-gray-600">{doc.description}</p>
           </div>
         )}
       </div>
     </div>
   );
+};
+DocumentPreview.propTypes = {
+  doc: PropTypes.shape({
+    document_name: PropTypes.string,
+    file_url: PropTypes.string,
+    file_type: PropTypes.string,
+    description: PropTypes.string,
+    Owner: PropTypes.shape({
+      name: PropTypes.string,
+      lastname: PropTypes.string,
+    }),
+  }),
+  isOpen: PropTypes.bool,
+  onClose: PropTypes.func,
 };
 
 export default DocumentPreview;

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
+import { formatDateDisplay } from '../../../utils/dateUtils';
 
 const PurchasesList = ({ purchases, loading, pagination, onPageChange, onReceiptView }) => {
   const [expandedPurchases, setExpandedPurchases] = useState(new Set());
@@ -56,15 +57,15 @@ const PurchasesList = ({ purchases, loading, pagination, onPageChange, onReceipt
     }).format(amount);
   };
 
-  // 📅 FORMATEAR FECHA
+  // 📅 FORMATEAR FECHA CON LUXON - SIN PROBLEMAS DE ZONA HORARIA
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('es-CO', {
+    return formatDateDisplay(dateString, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
-    });
+    }) || 'N/A';
   };
 
   // 🏷️ OBTENER CATEGORÍA COLOR

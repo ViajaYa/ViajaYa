@@ -1,6 +1,8 @@
 import PropTypes from 'prop-types';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
+// ✅ Importar utilidades de fecha con Luxon para manejar zona horaria de Colombia
+import { formatDateDisplay } from '../../../../utils/dateUtils';
 
 const ContractsPaymentList = ({ contracts, loading, onContractSelect, onPaymentUpload }) => {
   if (loading) {
@@ -100,7 +102,7 @@ const ContractsPaymentList = ({ contracts, loading, onContractSelect, onPaymentU
               <p className="text-gray-600 mb-3">{contract.Quote?.destino}</p>
               <div className="flex items-center justify-between text-sm text-gray-500">
                 <span className="flex items-center">
-                  🗓️ {new Date(contract.fecha_inicio_viaje).toLocaleDateString()}
+                  🗓️ {formatDateDisplay(contract.fecha_inicio_viaje)}
                 </span>
                 {contract.numero_pasajeros && (
                   <span className="flex items-center">
