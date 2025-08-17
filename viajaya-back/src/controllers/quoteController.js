@@ -1616,16 +1616,30 @@ getQuoteById: async (req, res) => {
       });
     }
 
-    // ✅ NUEVO: Enriquecer cotización con cálculos (IGUAL QUE EN getQuoteById)
+    // ✅ NUEVO: Enriquecer cotización con cálculos (CORREGIDO - Solo personas que pagan)
     let precio_por_persona = 0;
-    if (quote.precio_total && quote.numero_personas && quote.numero_personas > 0) {
-      precio_por_persona = parseFloat(quote.precio_total) / parseInt(quote.numero_personas);
+    let personasQuePagan = 0;
+    
+    if (quote.precio_total) {
+      // Calcular personas que pagan (excluyendo infantes)
+      personasQuePagan = calcularPersonasQuePagan({
+        adultos: quote.adultos,
+        menores: quote.menores,
+        infantes: quote.infantes
+      });
       
-      console.log('💰 SENDQUOTE - CÁLCULO DE PRECIO POR PERSONA:', {
+      if (personasQuePagan > 0) {
+        precio_por_persona = parseFloat(quote.precio_total) / personasQuePagan;
+      }
+      
+      console.log('💰 SENDQUOTE - CÁLCULO DE PRECIO POR PERSONA QUE PAGA:', {
         precio_total: quote.precio_total,
-        numero_personas: quote.numero_personas,
-        precio_por_persona: precio_por_persona,
-        precio_por_persona_formateado: precio_por_persona.toFixed(2)
+        total_pasajeros: quote.numero_personas,
+        personas_que_pagan: personasQuePagan,
+        adultos: quote.adultos,
+        menores: quote.menores,
+        infantes: quote.infantes,
+        precio_por_persona_que_paga: precio_por_persona.toFixed(2)
       });
     }
 
@@ -1636,12 +1650,14 @@ getQuoteById: async (req, res) => {
       // ✅ AGREGAR: Campos calculados
       precio_por_persona: precio_por_persona,
       precio_por_persona_formateado: precio_por_persona.toFixed(2),
+      personas_que_pagan: personasQuePagan,
       
       // ✅ AGREGAR: Metadatos útiles
       calculation_metadata: {
         has_price: !!quote.precio_total,
         has_passengers: quote.numero_personas > 0,
-        price_per_person_available: !!(quote.precio_total && quote.numero_personas > 0),
+        price_per_person_available: !!(quote.precio_total && personasQuePagan > 0),
+        infants_dont_pay: true, // ✅ Indicar que infantes no pagan
       },
 
       // ✅ AGREGAR: Datos formateados para PDF
@@ -1965,20 +1981,33 @@ getQuoteById: async (req, res) => {
       });
     }
 
-    // ✅ NUEVO: Enriquecer cotización (IGUAL QUE EN sendQuote)
+    // ✅ NUEVO: Enriquecer cotización (CORREGIDO - Solo personas que pagan)
     let precio_por_persona = 0;
-    if (quote.precio_total && quote.numero_personas && quote.numero_personas > 0) {
-      precio_por_persona = parseFloat(quote.precio_total) / parseInt(quote.numero_personas);
+    let personasQuePagan = 0;
+    
+    if (quote.precio_total) {
+      // Calcular personas que pagan (excluyendo infantes)
+      personasQuePagan = calcularPersonasQuePagan({
+        adultos: quote.adultos,
+        menores: quote.menores,
+        infantes: quote.infantes
+      });
+      
+      if (personasQuePagan > 0) {
+        precio_por_persona = parseFloat(quote.precio_total) / personasQuePagan;
+      }
     }
 
     const enrichedQuote = {
       ...quote.toJSON(),
       precio_por_persona: precio_por_persona,
       precio_por_persona_formateado: precio_por_persona.toFixed(2),
+      personas_que_pagan: personasQuePagan,
       calculation_metadata: {
         has_price: !!quote.precio_total,
         has_passengers: quote.numero_personas > 0,
-        price_per_person_available: !!(quote.precio_total && quote.numero_personas > 0),
+        price_per_person_available: !!(quote.precio_total && personasQuePagan > 0),
+        infants_dont_pay: true, // ✅ Indicar que infantes no pagan
       },
       pdf_data: {
         precio_total_cop: quote.precio_total ? `$${parseFloat(quote.precio_total).toLocaleString('es-CO')}` : null,

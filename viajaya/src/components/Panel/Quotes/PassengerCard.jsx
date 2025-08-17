@@ -2,7 +2,7 @@
 import PropTypes from 'prop-types';
 import { toDateInput } from '../../../utils/dateUtils';
 // ✅ Importar validaciones colombianas para documentos y nombres
-import { validateDocument, validateName, getDocumentTypes } from '../../../utils/validations';
+import { getDocumentTypes } from '../../../utils/validations';
 
 const PassengerCard = ({ passenger, index, onUpdate, isFirst }) => {
  // ✅ Usar tipos de documento estándar de Colombia

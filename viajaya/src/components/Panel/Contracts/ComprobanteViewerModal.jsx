@@ -26,16 +26,36 @@ const ComprobanteViewerModal = ({ purchase, onClose }) => {
       
       // Si hay cualquier indicación de que es PDF, tratarlo como tal
       if (isPDFByType || isPDFByUrl || isPDFByPath) {
-        // Para PDFs, usar raw/upload simple (sin parámetros complejos)
-        let pdfUrl = url;
-        if (url.includes('/image/upload/')) {
-          pdfUrl = url.replace('/image/upload/', '/raw/upload/').replace('/f_auto,q_auto,w_800/', '/');
-        } else if (url.includes('/video/upload/')) {
-          pdfUrl = url.replace('/video/upload/', '/raw/upload/');
+        // 🔧 USAR PROXY DEL BACKEND PARA PDFs
+        try {
+          // Extraer public_id de la URL de Cloudinary
+          let publicId = '';
+          
+          if (url.includes('/raw/upload/')) {
+            const parts = url.split('/raw/upload/');
+            if (parts.length > 1) {
+              publicId = parts[1];
+              // Remover versión si existe (v1234567890/)
+              if (publicId.startsWith('v') && publicId.includes('/')) {
+                publicId = publicId.split('/').slice(1).join('/');
+              }
+            }
+          }
+          
+          if (publicId) {
+            const proxyUrl = `${import.meta.env.VITE_API_URL}/contracts/serve-pdf/${encodeURIComponent(publicId)}`;
+            console.log('🔧 Using backend proxy for PDF:', proxyUrl);
+            console.log('📎 Original Cloudinary URL:', url);
+            console.log('🆔 Extracted public_id:', publicId);
+            return proxyUrl;
+          } else {
+            console.warn('⚠️ Could not extract public_id from URL:', url);
+            return url;
+          }
+        } catch (error) {
+          console.error('❌ Error creating proxy URL:', error);
+          return url;
         }
-        
-        console.log('📄 PDF URL simplificada:', pdfUrl);
-        return pdfUrl;
       } else {
         // Para imágenes confirmadas, optimizar para visualización web
         if (url.includes('/raw/upload/')) {
@@ -250,26 +270,81 @@ const ComprobanteViewerModal = ({ purchase, onClose }) => {
             </div>
           )}
 
-          {/* ✅ VISOR PARA PDFs - ENFOQUE SIMPLE */}
+          {/* ✅ VISOR PARA PDFs - ESTRATEGIA MÚLTIPLE */}
           {isPDF && !error && (
             <div className="space-y-4">
-              <div className="w-full h-[600px] border rounded-lg overflow-hidden">
+              {/* Estrategia 1: Mostrar directamente sin iframe complejo */}
+              <div className="w-full h-[600px] border rounded-lg overflow-hidden bg-gray-50 relative">
+                {/* Botón para forzar visualización */}
+                <div className="absolute top-4 right-4 z-10">
+                  <button
+                    onClick={() => {
+                      // Abrir en nueva pestaña como solución inmediata
+                      window.open(optimizedUrl, '_blank');
+                    }}
+                    className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                  >
+                    <FontAwesomeIcon icon={faExternalLinkAlt} className="mr-2" />
+                    Ver PDF
+                  </button>
+                </div>
+
+                {/* Iframe simple sin restricciones */}
                 <iframe
                   src={optimizedUrl}
-                  className={`w-full h-full border-0 ${loading ? 'hidden' : 'block'}`}
+                  className="w-full h-full border-0"
                   title="Comprobante PDF"
-                  onLoad={handleImageLoad}
+                  onLoad={() => {
+                    console.log('✅ PDF iframe cargado exitosamente');
+                    setLoading(false);
+                    setError(false);
+                  }}
                   onError={() => {
-                    console.log('❌ Error cargando PDF en iframe');
+                    console.log('❌ Error en iframe, mostrando controles alternativos');
                     setError(true);
                     setLoading(false);
                   }}
+                  style={{ display: loading ? 'none' : 'block' }}
                 />
+
+                {/* Loading state */}
                 {loading && (
                   <div className="flex items-center justify-center h-full bg-gray-50">
                     <div className="text-center">
                       <FontAwesomeIcon icon={faSpinner} className="text-4xl text-gray-400 animate-spin mb-4" />
                       <p className="text-gray-600">Cargando PDF...</p>
+                      <p className="text-xs text-gray-500 mt-2">Si no carga, usa el botón &quot;Ver PDF&quot;</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Error state con instrucciones claras */}
+                {error && (
+                  <div className="flex items-center justify-center h-full bg-gray-50">
+                    <div className="text-center p-8">
+                      <FontAwesomeIcon icon={faFilePdf} className="text-6xl text-gray-300 mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">PDF Disponible</h3>
+                      <p className="text-gray-600 mb-6">
+                        El navegador bloqueó la visualización directa del PDF.<br/>
+                        Usa una de estas opciones para verlo:
+                      </p>
+                      <div className="space-y-3">
+                        <button
+                          onClick={() => window.open(optimizedUrl, '_blank')}
+                          className="w-full inline-flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          <FontAwesomeIcon icon={faExternalLinkAlt} className="mr-2" />
+                          Abrir en Nueva Pestaña
+                        </button>
+                        <a
+                          href={purchase.comprobante_url}
+                          download={`comprobante_${Date.now()}.pdf`}
+                          className="w-full inline-flex items-center justify-center px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                        >
+                          <FontAwesomeIcon icon={faDownload} className="mr-2" />
+                          Descargar PDF
+                        </a>
+                      </div>
                     </div>
                   </div>
                 )}

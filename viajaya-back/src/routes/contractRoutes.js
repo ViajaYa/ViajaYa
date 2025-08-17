@@ -68,6 +68,9 @@ router.post('/items/:itemId/purchases', purchaseController.createPurchase);
 // ✅ NUEVA RUTA: Subir comprobante de compra
 router.post('/items/:itemId/upload-receipt', uploadComprobante.single('comprobante'), purchaseController.uploadPurchaseReceipt);
 
+// 🔧 NUEVA RUTA: Proxy para servir PDFs con headers correctos
+router.get('/serve-pdf/:public_id(*)', purchaseController.servePDFFile);
+
 // Listar compras de un item
 router.get('/items/:itemId/purchases', purchaseController.getPurchasesByItem);
 

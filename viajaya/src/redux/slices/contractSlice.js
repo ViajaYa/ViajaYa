@@ -1,4 +1,5 @@
 import { createSlice, createAsyncThunk, createSelector } from "@reduxjs/toolkit";
+import axios from "axios";
 import { getApiUrl } from "../../utils/env";
 
 // Estado inicial
@@ -63,22 +64,18 @@ export const fetchContracts = createAsyncThunk(
         ...filters,
       });
 
-      const response = await fetch(getApiUrl(`/contracts?${queryParams}`), {
-        method: "GET",
+      const response = await axios.get(getApiUrl(`/contracts?${queryParams}`), {
         headers: {
           Authorization: `Bearer ${auth.token}`,
           "Content-Type": "application/json",
         },
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        return rejectWithValue(data.message || "Error obteniendo contratos");
-      }
-
-      return data;
+      return response.data;
     } catch (error) {
+      if (error.response) {
+        return rejectWithValue(error.response.data.message || "Error obteniendo contratos");
+      }
       return rejectWithValue(error.message || "Error de conexión");
     }
   }
@@ -89,22 +86,18 @@ export const fetchContractById = createAsyncThunk(
   async (contractId, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl(`/contracts/${contractId}`), {
-        method: "GET",
+      const response = await axios.get(getApiUrl(`/contracts/${contractId}`), {
         headers: {
           Authorization: `Bearer ${auth.token}`,
           "Content-Type": "application/json",
         },
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        return rejectWithValue(data.message || "Error obteniendo contrato");
-      }
-
-      return data;
+      return response.data;
     } catch (error) {
+      if (error.response) {
+        return rejectWithValue(error.response.data.message || "Error obteniendo contrato");
+      }
       return rejectWithValue(error.message || "Error de conexión");
     }
   }
@@ -115,23 +108,18 @@ export const createContract = createAsyncThunk(
   async (contractData, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl("/contracts"), {
-        method: "POST",
+      const response = await axios.post(getApiUrl("/contracts"), contractData, {
         headers: {
           Authorization: `Bearer ${auth.token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(contractData),
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        return rejectWithValue(data.message || "Error creando contrato");
-      }
-
-      return data;
+      return response.data;
     } catch (error) {
+      if (error.response) {
+        return rejectWithValue(error.response.data.message || "Error creando contrato");
+      }
       return rejectWithValue(error.message || "Error de conexión");
     }
   }
@@ -142,24 +130,18 @@ export const fetchContractItems = createAsyncThunk(
   async (contractId, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(
-        getApiUrl(`/contracts/${contractId}/items`),
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${auth.token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      const data = await response.json();
-      if (!response.ok) {
-        return rejectWithValue(
-          data.message || "Error obteniendo items del contrato"
-        );
-      }
-      return data.items;
+      const response = await axios.get(getApiUrl(`/contracts/${contractId}/items`), {
+        headers: {
+          Authorization: `Bearer ${auth.token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      return response.data.items;
     } catch (error) {
+      if (error.response) {
+        return rejectWithValue(error.response.data.message || "Error obteniendo items del contrato");
+      }
       return rejectWithValue(error.message || "Error de conexión");
     }
   }
@@ -172,29 +154,20 @@ export const fetchContractItemsWithPurchases = createAsyncThunk(
       const { auth } = getState();
       console.log('🔍 Fetching contract items with purchases for:', contractId);
 
-      const response = await fetch(
-        getApiUrl(`/contracts/${contractId}/items-with-purchases`),
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${auth.token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const response = await axios.get(getApiUrl(`/contracts/${contractId}/items-with-purchases`), {
+        headers: {
+          Authorization: `Bearer ${auth.token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
-      const data = await response.json();
-      console.log('📦 Items with purchases response:', data);
-
-      if (!response.ok) {
-        return rejectWithValue(
-          data.message || "Error obteniendo items con compras"
-        );
-      }
-
-      return data;
+      console.log('📦 Items with purchases response:', response.data);
+      return response.data;
     } catch (error) {
       console.error('❌ Error fetching items with purchases:', error);
+      if (error.response) {
+        return rejectWithValue(error.response.data.message || "Error obteniendo items con compras");
+      }
       return rejectWithValue(error.message || "Error de conexión");
     }
   }
@@ -207,30 +180,24 @@ export const uploadPurchaseReceipt = createAsyncThunk(
       const { auth } = getState();
       console.log('📎 Uploading receipt for item:', itemId);
 
-      const response = await fetch(
+      const response = await axios.post(
         getApiUrl(`/contracts/items/${itemId}/upload-receipt`),
+        formData,
         {
-          method: "POST",
           headers: {
             Authorization: `Bearer ${auth.token}`,
-            // ✅ NO agregar Content-Type para FormData - el browser lo hace automáticamente
+            // ✅ NO agregar Content-Type para FormData - axios lo hace automáticamente
           },
-          body: formData,
         }
       );
 
-      const data = await response.json();
-      console.log('📎 Upload receipt response:', data);
-
-      if (!response.ok) {
-        return rejectWithValue(
-          data.message || "Error subiendo comprobante"
-        );
-      }
-
-      return data;
+      console.log('📎 Upload receipt response:', response.data);
+      return response.data;
     } catch (error) {
       console.error('❌ Error uploading receipt:', error);
+      if (error.response) {
+        return rejectWithValue(error.response.data.message || "Error subiendo comprobante");
+      }
       return rejectWithValue(error.message || "Error de conexión");
     }
   }
@@ -239,35 +206,29 @@ export const uploadPurchaseReceipt = createAsyncThunk(
 // ✅ NUEVO: Actualizar fecha límite de compra
 export const updateItemDeadline = createAsyncThunk(
   "contract/updateItemDeadline",
-  async ({ itemId, fecha_vencimiento_pago }, { rejectWithValue, getState }) => { // ✅ CORREGIDO
+  async ({ itemId, fecha_vencimiento_pago }, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      console.log('📅 Updating deadline for item:', itemId, 'to:', fecha_vencimiento_pago); // ✅ CORREGIDO
+      console.log('📅 Updating deadline for item:', itemId, 'to:', fecha_vencimiento_pago);
 
-      const response = await fetch(
+      const response = await axios.patch(
         getApiUrl(`/contracts/items/${itemId}/deadline`),
+        { fecha_vencimiento_pago },
         {
-          method: "PATCH",
           headers: {
             Authorization: `Bearer ${auth.token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ fecha_vencimiento_pago }), // ✅ CORREGIDO
         }
       );
 
-      const data = await response.json();
-      console.log('📅 Update deadline response:', data);
-
-      if (!response.ok) {
-        return rejectWithValue(
-          data.message || "Error actualizando fecha límite"
-        );
-      }
-
-      return data;
+      console.log('📅 Update deadline response:', response.data);
+      return response.data;
     } catch (error) {
       console.error('❌ Error updating deadline:', error);
+      if (error.response) {
+        return rejectWithValue(error.response.data.message || "Error actualizando fecha límite");
+      }
       return rejectWithValue(error.message || "Error de conexión");
     }
   }
@@ -283,25 +244,21 @@ export const signContractWithAutoConversion = createAsyncThunk(
       const { auth } = getState();
       
       // ✅ PASO 1: Firmar el contrato
-      const response = await fetch(getApiUrl(`/contracts/${contractId}/sign`), {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${auth.token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(signatureData),
-      });
+      const response = await axios.post(
+        getApiUrl(`/contracts/${contractId}/sign`),
+        signatureData,
+        {
+          headers: {
+            Authorization: `Bearer ${auth.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        return rejectWithValue(data.message || "Error firmando contrato");
-      }
-
-      console.log('✅ Contrato firmado exitosamente:', data);
+      console.log('✅ Contrato firmado exitosamente:', response.data);
 
       // ✅ PASO 2: Verificar si hubo conversión automática
-      const { automatic_conversion } = data;
+      const { automatic_conversion } = response.data;
       
       if (automatic_conversion?.attempted) {
         console.log('🔄 Conversión automática intentada:', automatic_conversion);
@@ -324,13 +281,16 @@ export const signContractWithAutoConversion = createAsyncThunk(
       }
 
       return {
-        ...data,
+        ...response.data,
         contractId,
         autoConversionResult: automatic_conversion
       };
       
     } catch (error) {
       console.error('❌ Error en signContractWithAutoConversion:', error);
+      if (error.response) {
+        return rejectWithValue(error.response.data.message || "Error firmando contrato");
+      }
       return rejectWithValue(error.message || "Error de conexión");
     }
   }
@@ -344,30 +304,24 @@ export const markPaymentCompleted = createAsyncThunk(
       const { auth } = getState();
       console.log('💳 Marking payment completed for purchase:', purchaseId);
 
-      const response = await fetch(
+      const response = await axios.patch(
         getApiUrl(`/contracts/purchases/${purchaseId}/mark-paid`),
+        { observaciones },
         {
-          method: "PATCH",
           headers: {
             Authorization: `Bearer ${auth.token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ observaciones }),
         }
       );
 
-      const data = await response.json();
-      console.log('💳 Mark payment response:', data);
-
-      if (!response.ok) {
-        return rejectWithValue(
-          data.message || "Error marcando pago como completado"
-        );
-      }
-
-      return data;
+      console.log('💳 Mark payment response:', response.data);
+      return response.data;
     } catch (error) {
       console.error('❌ Error marking payment completed:', error);
+      if (error.response) {
+        return rejectWithValue(error.response.data.message || "Error marcando pago como completado");
+      }
       return rejectWithValue(error.message || "Error de conexión");
     }
   }
@@ -381,29 +335,20 @@ export const fetchContractPurchaseStats = createAsyncThunk(
       const { auth } = getState();
       console.log('📊 Fetching purchase stats for contract:', contractId);
 
-      const response = await fetch(
-        getApiUrl(`/contracts/${contractId}/purchase-stats`),
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${auth.token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const response = await axios.get(getApiUrl(`/contracts/${contractId}/purchase-stats`), {
+        headers: {
+          Authorization: `Bearer ${auth.token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
-      const data = await response.json();
-      console.log('📊 Purchase stats response:', data);
-
-      if (!response.ok) {
-        return rejectWithValue(
-          data.message || "Error obteniendo estadísticas de compras"
-        );
-      }
-
-      return data;
+      console.log('📊 Purchase stats response:', response.data);
+      return response.data;
     } catch (error) {
       console.error('❌ Error fetching purchase stats:', error);
+      if (error.response) {
+        return rejectWithValue(error.response.data.message || "Error obteniendo estadísticas de compras");
+      }
       return rejectWithValue(error.message || "Error de conexión");
     }
   }
@@ -425,8 +370,7 @@ export const convertQuoteToContractItems = createAsyncThunk(
       console.log('📡 SLICE: URL completa:', url);
       
       console.log('📤 SLICE: Enviando petición POST...');
-      const response = await fetch(url, {
-        method: "POST",
+      const response = await axios.post(url, {}, {
         headers: {
           Authorization: `Bearer ${auth.token}`,
           "Content-Type": "application/json",
@@ -435,43 +379,24 @@ export const convertQuoteToContractItems = createAsyncThunk(
 
       console.log('📨 SLICE: Respuesta recibida');
       console.log('📨 SLICE: Status:', response.status);
-      console.log('📨 SLICE: Status Text:', response.statusText);
-      console.log('📨 SLICE: Headers:', Object.fromEntries(response.headers.entries()));
-
-      // ✅ AGREGAR: Verificar si la respuesta es JSON válida
-      const contentType = response.headers.get('content-type');
-      console.log('📨 SLICE: Content-Type:', contentType);
-      
-      let data;
-      try {
-        data = await response.json();
-        console.log('✅ SLICE: JSON parseado exitosamente:', data);
-      } catch (jsonError) {
-        console.error('❌ SLICE: Error parseando JSON:', jsonError);
-        const textResponse = await response.text();
-        console.error('❌ SLICE: Respuesta como texto:', textResponse.substring(0, 500));
-        throw new Error('La respuesta del servidor no es JSON válido');
-      }
-
-      if (!response.ok) {
-        console.error('❌ SLICE: Respuesta no exitosa');
-        console.error('❌ SLICE: Error data:', data);
-        return rejectWithValue(
-          data.message || "Error convirtiendo cotización a items"
-        );
-      }
+      console.log('📨 SLICE: Headers:', response.headers);
+      console.log('✅ SLICE: JSON parseado exitosamente:', response.data);
 
       console.log('✅ SLICE: Conversión exitosa');
-      console.log('✅ SLICE: Items creados:', data.items?.length || 0);
-      console.log('✅ SLICE: Datos completos:', data);
+      console.log('✅ SLICE: Items creados:', response.data.items?.length || 0);
+      console.log('✅ SLICE: Datos completos:', response.data);
       
-      return data;
+      return response.data;
       
     } catch (error) {
       console.error('❌ SLICE: Error en catch block');
       console.error('❌ SLICE: Error type:', error.constructor.name);
       console.error('❌ SLICE: Error message:', error.message);
-      console.error('❌ SLICE: Error stack:', error.stack);
+      
+      if (error.response) {
+        console.error('❌ SLICE: Response error data:', error.response.data);
+        return rejectWithValue(error.response.data.message || "Error convirtiendo cotización a items");
+      }
       
       return rejectWithValue(error.message || "Error de conexión");
     }
@@ -483,23 +408,18 @@ export const updateContract = createAsyncThunk(
   async ({ id, updates }, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl(`/contracts/${id}`), {
-        method: "PUT",
+      const response = await axios.put(getApiUrl(`/contracts/${id}`), updates, {
         headers: {
           Authorization: `Bearer ${auth.token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(updates),
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        return rejectWithValue(data.message || "Error actualizando contrato");
-      }
-
-      return data;
+      return response.data;
     } catch (error) {
+      if (error.response) {
+        return rejectWithValue(error.response.data.message || "Error actualizando contrato");
+      }
       return rejectWithValue(error.message || "Error de conexión");
     }
   }
@@ -510,21 +430,18 @@ export const deleteContract = createAsyncThunk(
   async (contractId, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl(`/contracts/${contractId}`), {
-        method: "DELETE",
+      await axios.delete(getApiUrl(`/contracts/${contractId}`), {
         headers: {
           Authorization: `Bearer ${auth.token}`,
           "Content-Type": "application/json",
         },
       });
 
-      if (!response.ok) {
-        const data = await response.json();
-        return rejectWithValue(data.message || "Error eliminando contrato");
-      }
-
       return contractId;
     } catch (error) {
+      if (error.response) {
+        return rejectWithValue(error.response.data.message || "Error eliminando contrato");
+      }
       return rejectWithValue(error.message || "Error de conexión");
     }
   }
@@ -532,7 +449,7 @@ export const deleteContract = createAsyncThunk(
 
 export const signContract = createAsyncThunk(
   "contract/signContract",
-  async ({ contractId, signatureData }, { rejectWithValue, getState, dispatch }) => {
+  async ({ contractId, signatureData }, { dispatch }) => {
     console.log('🖋️ Usando signContract wrapper - redirigiendo a signContractWithAutoConversion');
     
     // ✅ DELEGAR: Al nuevo thunk con conversión automática
@@ -552,42 +469,27 @@ export const generateContractPDF = createAsyncThunk(
       console.log("🔄 Generando PDF para contrato:", contractId);
 
       const { auth } = getState();
-      const response = await fetch(
+      const response = await axios.post(
         getApiUrl(`/contracts/${contractId}/generate-pdf`),
+        {},
         {
-          // ✅ CORREGIR: Ruta correcta
-          method: "POST",
           headers: {
             Authorization: `Bearer ${auth.token}`,
-            "Content-Type": "application/json", // ✅ AGREGAR: Content-Type
+            "Content-Type": "application/json",
           },
         }
       );
 
       console.log("📡 Status de respuesta:", response.status);
-      console.log("📡 Content-Type:", response.headers.get("content-type"));
-
-      // ✅ VERIFICAR: Si la respuesta es JSON (no blob)
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        const textResponse = await response.text();
-        console.error(
-          "❌ Respuesta no es JSON:",
-          textResponse.substring(0, 200)
-        );
-        throw new Error("El servidor no devolvió una respuesta JSON válida");
-      }
-
-      const data = await response.json(); // ✅ CAMBIAR: Manejar como JSON
-
-      if (!response.ok) {
-        return rejectWithValue(data.message || "Error generando PDF");
-      }
-
-      console.log("✅ PDF generado exitosamente:", data);
-      return data; // ✅ RETORNAR: Datos del PDF generado
+      console.log("📡 Content-Type:", response.headers['content-type']);
+      console.log("✅ PDF generado exitosamente:", response.data);
+      
+      return response.data;
     } catch (error) {
       console.error("❌ Error en generateContractPDF:", error);
+      if (error.response) {
+        return rejectWithValue(error.response.data.message || "Error generando PDF");
+      }
       return rejectWithValue(error.message || "Error de conexión");
     }
   }
@@ -598,27 +500,18 @@ export const previewContractEmail = createAsyncThunk(
   async (contractId, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(
-        getApiUrl(`/contracts/${contractId}/email-preview`),
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${auth.token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const response = await axios.get(getApiUrl(`/contracts/${contractId}/email-preview`), {
+        headers: {
+          Authorization: `Bearer ${auth.token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        return rejectWithValue(
-          data.message || "Error obteniendo preview del email"
-        );
-      }
-
-      return data;
+      return response.data;
     } catch (error) {
+      if (error.response) {
+        return rejectWithValue(error.response.data.message || "Error obteniendo preview del email");
+      }
       return rejectWithValue(error.message || "Error de conexión");
     }
   }
@@ -629,25 +522,22 @@ export const sendContractForSignature = createAsyncThunk(
   async ({ contractId, emailData }, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl(`/contracts/${contractId}/send`), {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${auth.token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(emailData),
-      });
+      const response = await axios.patch(
+        getApiUrl(`/contracts/${contractId}/send`),
+        emailData,
+        {
+          headers: {
+            Authorization: `Bearer ${auth.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        return rejectWithValue(
-          data.message || "Error enviando contrato para firma"
-        );
-      }
-
-      return data;
+      return response.data;
     } catch (error) {
+      if (error.response) {
+        return rejectWithValue(error.response.data.message || "Error enviando contrato para firma");
+      }
       return rejectWithValue(error.message || "Error de conexión");
     }
   }
@@ -658,22 +548,18 @@ export const fetchContractTemplates = createAsyncThunk(
   async (_, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl("/contracts/templates"), {
-        method: "GET",
+      const response = await axios.get(getApiUrl("/contracts/templates"), {
         headers: {
           Authorization: `Bearer ${auth.token}`,
           "Content-Type": "application/json",
         },
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        return rejectWithValue(data.message || "Error obteniendo plantillas");
-      }
-
-      return data;
+      return response.data;
     } catch (error) {
+      if (error.response) {
+        return rejectWithValue(error.response.data.message || "Error obteniendo plantillas");
+      }
       return rejectWithValue(error.message || "Error de conexión");
     }
   }
@@ -684,28 +570,22 @@ export const createContractFromTemplate = createAsyncThunk(
   async ({ templateId, contractData }, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(
+      const response = await axios.post(
         getApiUrl(`/contracts/from-template/${templateId}`),
+        contractData,
         {
-          method: "POST",
           headers: {
             Authorization: `Bearer ${auth.token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(contractData),
         }
       );
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        return rejectWithValue(
-          data.message || "Error creando contrato desde plantilla"
-        );
-      }
-
-      return data;
+      return response.data;
     } catch (error) {
+      if (error.response) {
+        return rejectWithValue(error.response.data.message || "Error creando contrato desde plantilla");
+      }
       return rejectWithValue(error.message || "Error de conexión");
     }
   }
@@ -716,22 +596,18 @@ export const fetchContractStats = createAsyncThunk(
   async (_, { rejectWithValue, getState }) => {
     try {
       const { auth } = getState();
-      const response = await fetch(getApiUrl("/contracts/stats"), {
-        method: "GET",
+      const response = await axios.get(getApiUrl("/contracts/stats"), {
         headers: {
           Authorization: `Bearer ${auth.token}`,
           "Content-Type": "application/json",
         },
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        return rejectWithValue(data.message || "Error obteniendo estadísticas");
-      }
-
-      return data;
+      return response.data;
     } catch (error) {
+      if (error.response) {
+        return rejectWithValue(error.response.data.message || "Error obteniendo estadísticas");
+      }
       return rejectWithValue(error.message || "Error de conexión");
     }
   }
@@ -744,29 +620,20 @@ export const fetchContractPayments = createAsyncThunk(
       const { auth } = getState();
       console.log('💰 Fetching contract payments for:', contractId);
 
-      const response = await fetch(
-        getApiUrl(`/contracts/${contractId}/payments`),
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${auth.token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const response = await axios.get(getApiUrl(`/contracts/${contractId}/payments`), {
+        headers: {
+          Authorization: `Bearer ${auth.token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
-      const data = await response.json();
-      console.log('💰 Contract payments response:', data);
-
-      if (!response.ok) {
-        return rejectWithValue(
-          data.message || "Error obteniendo pagos del contrato"
-        );
-      }
-
-      return data;
+      console.log('💰 Contract payments response:', response.data);
+      return response.data;
     } catch (error) {
       console.error('❌ Error fetching contract payments:', error);
+      if (error.response) {
+        return rejectWithValue(error.response.data.message || "Error obteniendo pagos del contrato");
+      }
       return rejectWithValue(error.message || "Error de conexión");
     }
   }
@@ -813,7 +680,7 @@ const contractSlice = createSlice({
     },
 
      updateAfterAutoConversion: (state, action) => {
-      const { contractId, itemsCreated, summary } = action.payload;
+      const { contractId, itemsCreated } = action.payload;
       
       // Actualizar currentContract
       if (state.currentContract?.id === contractId || 

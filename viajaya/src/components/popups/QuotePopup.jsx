@@ -58,6 +58,27 @@ const QuotePopup = ({ isOpen, onClose, prefilledData = {} }) => {
     }
   }, [form.adultos, form.menores, form.infantes]);
 
+  // ✅ Función para calcular la diferencia de tiempo hasta el viaje
+  const getTravelDateInfo = () => {
+    if (!form.fecha_ida) return null;
+    
+    const travelDate = DateTime.fromISO(form.fecha_ida).setZone('America/Bogota');
+    const now = nowInColombia();
+    
+    if (!travelDate.isValid) return null;
+    
+    const diff = travelDate.diff(now, ['months', 'days']).toObject();
+    const monthsUntilTravel = Math.floor(diff.months || 0);
+    const daysUntilTravel = Math.floor(diff.days || 0);
+    
+    return {
+      travelDate,
+      monthsUntilTravel,
+      daysUntilTravel,
+      formattedDate: travelDate.toFormat('dd/MM/yyyy')
+    };
+  };
+
   // ✅ Función para agregar/quitar edades de menores
   const handleEdadMenor = (index, edad) => {
     const nuevasEdades = [...form.edades_menores];
@@ -83,6 +104,7 @@ const QuotePopup = ({ isOpen, onClose, prefilledData = {} }) => {
    useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (form.email_cliente && form.email_cliente.trim() && /\S+@\S+\.\S+/.test(form.email_cliente)) {
+        console.log('🔍 Verificando email:', form.email_cliente.trim().toLowerCase());
         dispatch(checkEmailExists(form.email_cliente.trim().toLowerCase()));
       } else {
         dispatch(clearEmailValidation());
@@ -95,7 +117,9 @@ const QuotePopup = ({ isOpen, onClose, prefilledData = {} }) => {
   // ✅ Autocompletar cuando se encuentra usuario
   // ✅ Autocompletar cuando se encuentra usuario
 useEffect(() => {
+  console.log('📧 Email validation state changed:', JSON.stringify(emailValidation, null, 2));
   if (emailValidation.exists && emailValidation.userData) {
+    console.log('✅ Cliente encontrado, autocompletando datos:', emailValidation.userData);
     const userData = emailValidation.userData;
     setForm(prev => ({
       ...prev,
@@ -106,13 +130,14 @@ useEffect(() => {
       telefono_cliente: userData.phone || prev.telefono_cliente
     }));
   } else {
+    console.log('❌ Cliente no encontrado o datos no disponibles. exists:', emailValidation.exists, 'userData:', emailValidation.userData);
     // ✅ AGREGAR: Limpiar cliente_id si no existe el usuario
     setForm(prev => ({
       ...prev,
       cliente_id: null
     }));
   }
-}, [emailValidation.exists, emailValidation.userData]);
+}, [emailValidation]);
 
   // ✅ Renderizar indicador de estado del email
   const renderEmailStatus = () => {
@@ -199,7 +224,7 @@ useEffect(() => {
     }
     
     if (form.edades_menores.some(edad => edad < 2 || edad > 14)) {
-      newErrors.edades_menores = 'Las edades de menores deben estar entre 2 y 14 años';
+      newErrors.edades_menores = 'Las edades de menores deben estar entre 2 y 14 años EN LA FECHA DEL VIAJE';
     }
     
     // ✅ Validar edades de infantes
@@ -208,7 +233,7 @@ useEffect(() => {
     }
     
     if (form.edades_infantes.some(meses => meses < 0 || meses >= 24)) {
-      newErrors.edades_infantes = 'Las edades de infantes deben estar entre 0 y 23 meses';
+      newErrors.edades_infantes = 'Las edades de infantes deben estar entre 0 y 23 meses EN LA FECHA DEL VIAJE';
     }
     
     // ✅ Validar personas con atención especial
@@ -330,13 +355,22 @@ const handleSubmit = async (e) => {
 
     // ✅ CLAVE: Preparar datos del cliente (desde DB si existe, sino desde el formulario)
     const getClientData = () => {
+      // ✅ Convertir fechas a zona horaria de Colombia para evitar problemas de UTC
+      const fechaIdaColombia = form.fecha_ida ? 
+        DateTime.fromISO(form.fecha_ida).setZone('America/Bogota').toISODate() : 
+        form.fecha_ida;
+      
+      const fechaRegresoColombia = form.fecha_regreso ? 
+        DateTime.fromISO(form.fecha_regreso).setZone('America/Bogota').toISODate() : 
+        form.fecha_regreso;
+
       // ✅ Usar cliente_id del estado (ya se setea en useEffect)
       const baseData = {
         cliente_id: form.cliente_id, // ✅ Usar del estado
         destino: form.destino,
         origen: form.origen,
-        fecha_ida: form.fecha_ida,
-        fecha_regreso: form.fecha_regreso,
+        fecha_ida: fechaIdaColombia,
+        fecha_regreso: fechaRegresoColombia,
         numero_personas: form.numero_personas,
         // ✅ NUEVOS CAMPOS DETALLADOS DE PASAJEROS
         adultos: form.adultos,
@@ -578,6 +612,47 @@ const handleSubmit = async (e) => {
             </div>
           </div>
 
+          {/* ✅ MENSAJE IMPORTANTE SOBRE EDADES EN FECHA DEL VIAJE */}
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+            <div className="flex items-start">
+              <div className="text-amber-600 text-xl mr-3 mt-0.5">
+                <FontAwesomeIcon icon={faExclamationTriangle} />
+              </div>
+              <div className="flex-1">
+                <h4 className="text-amber-800 font-semibold text-sm mb-2">
+                  📅 IMPORTANTE: Edades en la fecha del viaje
+                </h4>
+                <div className="text-amber-700 text-xs space-y-1">
+                  {form.fecha_ida ? (
+                    <>
+                      <p><strong>Fecha del viaje:</strong> {DateTime.fromISO(form.fecha_ida).toFormat('dd/MM/yyyy')}</p>
+                      <p>• Las edades deben ser las que tendrán los pasajeros <strong>el día del viaje</strong>, no la edad actual</p>
+                      <p>• Si un menor cumple años antes del viaje, use la edad que tendrá en esa fecha</p>
+                      <p>• Esto afecta el precio final y la categorización de pasajeros</p>
+                      <div className="mt-2 p-2 bg-amber-100 rounded text-amber-800">
+                        <p className="font-medium">📋 Ejemplo:</p>
+                        <p>Si hoy un niño tiene 13 años pero cumple 14 antes del viaje → ingrese como <strong>adulto</strong></p>
+                        <p>Si un bebé tiene 20 meses hoy pero tendrá 24 meses en el viaje → ingrese como <strong>menor</strong></p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p>• Primero seleccione la fecha de ida para calcular las edades correctamente</p>
+                      <p>• Las edades deben ser las que tendrán los pasajeros <strong>el día del viaje</strong></p>
+                      <p>• Esto afecta el precio final y la categorización de pasajeros</p>
+                      <div className="mt-2 p-2 bg-amber-100 rounded text-amber-800">
+                        <p className="font-medium">🎯 Categorías de edad:</p>
+                        <p>• <strong>Infantes:</strong> 0-23 meses (no pagan)</p>
+                        <p>• <strong>Menores:</strong> 2-14 años (pagan precio completo)</p>
+                        <p>• <strong>Adultos:</strong> 14+ años (pagan precio completo)</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* ✅ NUEVA SECCIÓN: Información detallada de pasajeros */}
           <div className="bg-blue-50 p-4 rounded-lg">
             <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center">
@@ -609,7 +684,7 @@ const handleSubmit = async (e) => {
                     errors.adultos ? 'border-red-500' : 'border-gray-300'
                   }`}
                 />
-                <label className="text-xs text-gray-500">Adultos (14+ años) *</label>
+                <label className="text-xs text-gray-500">Adultos (14+ años en fecha del viaje) *</label>
                 {errors.adultos && <p className="text-red-500 text-xs mt-1">{errors.adultos}</p>}
               </div>
 
@@ -625,7 +700,7 @@ const handleSubmit = async (e) => {
                     errors.menores ? 'border-red-500' : 'border-gray-300'
                   }`}
                 />
-                <label className="text-xs text-gray-500">Menores (2-14 años)</label>
+                <label className="text-xs text-gray-500">Menores (2-14 años en fecha del viaje)</label>
                 {errors.menores && <p className="text-red-500 text-xs mt-1">{errors.menores}</p>}
               </div>
 
@@ -641,7 +716,7 @@ const handleSubmit = async (e) => {
                     errors.infantes ? 'border-red-500' : 'border-gray-300'
                   }`}
                 />
-                <label className="text-xs text-gray-500">Infantes (&lt;2 años)</label>
+                <label className="text-xs text-gray-500">Infantes (&lt;2 años en fecha del viaje)</label>
                 {errors.infantes && <p className="text-red-500 text-xs mt-1">{errors.infantes}</p>}
               </div>
             </div>
@@ -650,8 +725,13 @@ const handleSubmit = async (e) => {
             {form.menores > 0 && (
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Edades específicas de menores (2-14 años):
+                  📅 Edades específicas de menores en la fecha del viaje:
                 </label>
+                {form.fecha_ida && (
+                  <p className="text-xs text-blue-600 mb-2">
+                    💡 Calcule las edades para el {DateTime.fromISO(form.fecha_ida).toFormat('dd/MM/yyyy')}
+                  </p>
+                )}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {Array.from({ length: form.menores }, (_, index) => (
                     <div key={index}>
@@ -664,7 +744,7 @@ const handleSubmit = async (e) => {
                         max={14}
                         className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
-                      <label className="text-xs text-gray-500">años</label>
+                      <label className="text-xs text-gray-500">años en el viaje</label>
                     </div>
                   ))}
                 </div>
@@ -676,8 +756,13 @@ const handleSubmit = async (e) => {
             {form.infantes > 0 && (
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Edades específicas de infantes (en meses):
+                  📅 Edades específicas de infantes en la fecha del viaje:
                 </label>
+                {form.fecha_ida && (
+                  <p className="text-xs text-blue-600 mb-2">
+                    💡 Calcule los meses de edad para el {DateTime.fromISO(form.fecha_ida).toFormat('dd/MM/yyyy')}
+                  </p>
+                )}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {Array.from({ length: form.infantes }, (_, index) => (
                     <div key={index}>
@@ -690,7 +775,7 @@ const handleSubmit = async (e) => {
                         max={23}
                         className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
-                      <label className="text-xs text-gray-500">meses</label>
+                      <label className="text-xs text-gray-500">meses en el viaje</label>
                     </div>
                   ))}
                 </div>

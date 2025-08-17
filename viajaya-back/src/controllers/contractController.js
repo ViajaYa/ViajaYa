@@ -13,6 +13,7 @@ const {
 
 const { generateContractPDF } = require("../utils/generateContractPDF");
 const commissionController = require("./commissionController");
+const { calcularPersonasQuePagan } = require("../utils/quoteCalculations"); // ✅ AGREGADO
 const {
   generateSignatureToken,
   verifySignatureToken,
@@ -618,6 +619,9 @@ const contractController = {
               "origen",
               "precio_total",
               "numero_personas",
+              "adultos", // ✅ AGREGADO: Para calcular personas que pagan
+              "menores", // ✅ AGREGADO: Para calcular personas que pagan
+              "infantes", // ✅ AGREGADO: Para calcular personas que pagan
             ],
             include: [
               // ✅ Jerarquía de ventas desde la cotización
@@ -658,9 +662,42 @@ const contractController = {
         order: [["created_at", "DESC"]],
       });
 
+      // ✅ Enriquecer contratos con cálculo correcto de precio por persona
+      const enrichedContracts = contracts.rows.map(contract => {
+        const contractObj = contract.toJSON();
+        
+        // Calcular personas que pagan (excluyendo infantes)
+        let personasQuePagan = 0;
+        let precio_por_persona = 0;
+        
+        if (contractObj.Quote) {
+          personasQuePagan = calcularPersonasQuePagan({
+            adultos: contractObj.Quote.adultos || 0,
+            menores: contractObj.Quote.menores || 0,
+            infantes: contractObj.Quote.infantes || 0
+          });
+          
+          if (contractObj.Quote.precio_total && personasQuePagan > 0) {
+            precio_por_persona = parseFloat(contractObj.Quote.precio_total) / personasQuePagan;
+          }
+        }
+        
+        return {
+          ...contractObj,
+          // ✅ Agregar campos calculados
+          personas_que_pagan: personasQuePagan,
+          precio_por_persona: precio_por_persona,
+          precio_por_persona_formateado: precio_por_persona.toFixed(2),
+          calculation_metadata: {
+            infants_dont_pay: true,
+            price_per_person_available: !!(contractObj.Quote?.precio_total && personasQuePagan > 0)
+          }
+        };
+      });
+
       res.json({
         success: true,
-        contracts: contracts.rows,
+        contracts: enrichedContracts,
         total: contracts.count,
       });
     } catch (error) {

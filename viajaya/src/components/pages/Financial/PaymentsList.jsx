@@ -5,15 +5,6 @@ import { formatDateDisplay } from '../../../utils/dateUtils';
 const PaymentsList = ({ payments, loading, pagination, onPageChange, onReceiptView }) => {
   const [expandedPayments, setExpandedPayments] = useState(new Set());
 
-  // 🐛 DEBUG: Log para diagnosticar datos de pagos
-  console.log('🔍 PaymentsList Debug:');
-  console.log('💰 Payments received:', payments);
-  console.log('📊 Loading:', loading);
-  if (payments && payments.length > 0) {
-    console.log('📄 First payment receiptUrl:', payments[0]?.receiptUrl);
-    console.log('🔗 URLs found:', payments.filter(p => p.receiptUrl).length, 'of', payments.length);
-  }
-
   // 🔄 TOGGLE DETALLES DE PAGO
   const togglePaymentDetails = (paymentId) => {
     const newExpanded = new Set(expandedPayments);
@@ -38,11 +29,6 @@ const PaymentsList = ({ payments, loading, pagination, onPageChange, onReceiptVi
 
   // 📄 VER COMPROBANTE
   const handleReceiptView = (receiptUrl, paymentId) => {
-    console.log('🔍 PaymentsList handleReceiptView Debug:');
-    console.log('💰 Payment ID:', paymentId);
-    console.log('🔗 Receipt URL:', receiptUrl);
-    console.log('✅ URL Valid:', !!receiptUrl && receiptUrl.trim() !== '');
-    
     if (receiptUrl) {
       onReceiptView(receiptUrl, paymentId);
     }
@@ -108,7 +94,7 @@ const PaymentsList = ({ payments, loading, pagination, onPageChange, onReceiptVi
       {/* 📊 HEADER */}
       <div className="p-6 border-b border-gray-200">
         <h3 className="text-lg font-medium text-gray-900">
-          💳 Lista de Pagos ({pagination.total} total)
+          💳 Lista de Pagos ({pagination.totalItems} total)
         </h3>
       </div>
 
@@ -223,7 +209,7 @@ const PaymentsList = ({ payments, loading, pagination, onPageChange, onReceiptVi
         <div className="px-6 py-4 border-t border-gray-200">
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-500">
-              Mostrando {((pagination.currentPage - 1) * pagination.limit) + 1} - {Math.min(pagination.currentPage * pagination.limit, pagination.total)} de {pagination.total} pagos
+              Mostrando {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} - {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} de {pagination.totalItems} pagos
             </div>
             <div className="flex space-x-2">
               <button
@@ -253,7 +239,7 @@ const PaymentsList = ({ payments, loading, pagination, onPageChange, onReceiptVi
 
 PaymentsList.propTypes = {
   payments: PropTypes.arrayOf(PropTypes.shape({
-    id: PropTypes.number.isRequired,
+    id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
     amount: PropTypes.number.isRequired,
     status: PropTypes.string.isRequired,
     paymentMethod: PropTypes.string.isRequired,
@@ -263,8 +249,8 @@ PaymentsList.propTypes = {
     notes: PropTypes.string,
     receiptUrl: PropTypes.string,
     paymentDate: PropTypes.string.isRequired,
-    createdAt: PropTypes.string.isRequired,
-    updatedAt: PropTypes.string.isRequired,
+    createdAt: PropTypes.string,
+    updatedAt: PropTypes.string,
     Contract: PropTypes.shape({
       contractNumber: PropTypes.string.isRequired,
       totalPrice: PropTypes.number,
@@ -278,8 +264,8 @@ PaymentsList.propTypes = {
   pagination: PropTypes.shape({
     currentPage: PropTypes.number.isRequired,
     totalPages: PropTypes.number.isRequired,
-    total: PropTypes.number.isRequired,
-    limit: PropTypes.number.isRequired
+    totalItems: PropTypes.number.isRequired,
+    itemsPerPage: PropTypes.number.isRequired
   }),
   onPageChange: PropTypes.func.isRequired,
   onReceiptView: PropTypes.func.isRequired

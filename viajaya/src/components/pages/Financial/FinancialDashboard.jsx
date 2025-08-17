@@ -101,12 +101,6 @@ const FinancialDashboard = () => {
 
   // 📄 MANEJAR VISUALIZACIÓN DE COMPROBANTE
   const handleReceiptView = (receiptUrl, itemId, type = 'comprobante') => {
-    console.log('🔍 FinancialDashboard handleReceiptView Debug:');
-    console.log('🔗 Receipt URL:', receiptUrl);
-    console.log('📋 Item ID:', itemId);
-    console.log('📝 Type:', type);
-    console.log('✅ URL Valid:', !!receiptUrl && receiptUrl.trim() !== '');
-    
     setReceiptModal({
       isOpen: true,
       receiptUrl: receiptUrl,

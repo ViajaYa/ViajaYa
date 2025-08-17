@@ -752,6 +752,8 @@ getUserByEmail: async (email) => {
         try {
             const { email } = req.params;
             
+            console.log('🔍 Buscando email en BD:', email);
+            
             if (!email) {
                 return res.status(400).json({
                     success: false,
@@ -763,6 +765,11 @@ getUserByEmail: async (email) => {
                 where: { email: email.toLowerCase() },
                 attributes: ['id', 'name', 'lastname', 'email', 'phone', 'documento_identidad', 'fecha_nacimiento']
             });
+
+            console.log('🔍 Usuario encontrado en BD:', user ? 'SÍ' : 'NO');
+            if (user) {
+                console.log('👤 Datos del usuario:', { id: user.id, email: user.email, name: user.name });
+            }
 
             if (user) {
                 return res.json({

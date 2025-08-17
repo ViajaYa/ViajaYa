@@ -5,15 +5,6 @@ import { formatDateDisplay } from '../../../utils/dateUtils';
 const PurchasesList = ({ purchases, loading, pagination, onPageChange, onReceiptView }) => {
   const [expandedPurchases, setExpandedPurchases] = useState(new Set());
 
-  // 🐛 DEBUG: Log para diagnosticar datos de compras
-  console.log('🔍 PurchasesList Debug:');
-  console.log('🛒 Purchases received:', purchases);
-  console.log('📊 Loading:', loading);
-  if (purchases && purchases.length > 0) {
-    console.log('📄 First purchase receiptUrl:', purchases[0]?.receiptUrl);
-    console.log('🔗 URLs found:', purchases.filter(p => p.receiptUrl).length, 'of', purchases.length);
-  }
-
   // 🔄 TOGGLE DETALLES DE COMPRA
   const togglePurchaseDetails = (purchaseId) => {
     const newExpanded = new Set(expandedPurchases);
@@ -38,11 +29,6 @@ const PurchasesList = ({ purchases, loading, pagination, onPageChange, onReceipt
 
   // 📄 VER COMPROBANTE
   const handleReceiptView = (receiptUrl, purchaseId) => {
-    console.log('🔍 PurchasesList handleReceiptView Debug:');
-    console.log('🛒 Purchase ID:', purchaseId);
-    console.log('🔗 Receipt URL:', receiptUrl);
-    console.log('✅ URL Valid:', !!receiptUrl && receiptUrl.trim() !== '');
-    
     if (receiptUrl) {
       onReceiptView(receiptUrl, purchaseId);
     }
@@ -121,7 +107,7 @@ const PurchasesList = ({ purchases, loading, pagination, onPageChange, onReceipt
       {/* 📊 HEADER */}
       <div className="p-6 border-b border-gray-200">
         <h3 className="text-lg font-medium text-gray-900">
-          🛒 Lista de Compras ({pagination.total} total)
+          🛒 Lista de Compras ({pagination.totalItems} total)
         </h3>
       </div>
 
@@ -244,7 +230,7 @@ const PurchasesList = ({ purchases, loading, pagination, onPageChange, onReceipt
         <div className="px-6 py-4 border-t border-gray-200">
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-500">
-              Mostrando {((pagination.currentPage - 1) * pagination.limit) + 1} - {Math.min(pagination.currentPage * pagination.limit, pagination.total)} de {pagination.total} compras
+              Mostrando {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} - {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} de {pagination.totalItems} compras
             </div>
             <div className="flex space-x-2">
               <button
@@ -274,7 +260,7 @@ const PurchasesList = ({ purchases, loading, pagination, onPageChange, onReceipt
 
 PurchasesList.propTypes = {
   purchases: PropTypes.arrayOf(PropTypes.shape({
-    id: PropTypes.number.isRequired,
+    id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
     amount: PropTypes.number.isRequired,
     status: PropTypes.string.isRequired,
     category: PropTypes.string.isRequired,
@@ -299,8 +285,8 @@ PurchasesList.propTypes = {
   pagination: PropTypes.shape({
     currentPage: PropTypes.number.isRequired,
     totalPages: PropTypes.number.isRequired,
-    total: PropTypes.number.isRequired,
-    limit: PropTypes.number.isRequired
+    totalItems: PropTypes.number.isRequired,
+    itemsPerPage: PropTypes.number.isRequired
   }),
   onPageChange: PropTypes.func.isRequired,
   onReceiptView: PropTypes.func.isRequired

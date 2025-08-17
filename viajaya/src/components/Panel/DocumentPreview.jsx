@@ -1,7 +1,7 @@
 
 import PropTypes from 'prop-types';
 
-const DocumentPreview = ({ doc, isOpen, onClose }) => {
+const DocumentPreview = ({ document: doc, isOpen, onClose }) => {
   if (!isOpen || !doc) return null;
 
   const handleDownload = () => {
@@ -63,6 +63,20 @@ const DocumentPreview = ({ doc, isOpen, onClose }) => {
                 src={doc.file_url}
                 alt={doc.document_name}
                 className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+                onError={(e) => {
+                  // Mostrar mensaje de error si falla la carga de imagen
+                  e.target.style.display = 'none';
+                  e.target.parentNode.innerHTML = `
+                    <div class="text-center p-8">
+                      <i class="fas fa-exclamation-triangle text-6xl text-red-400 mb-4"></i>
+                      <p class="text-lg text-red-600 mb-2">Error al cargar la imagen</p>
+                      <p class="text-sm text-gray-500 mb-4">El archivo puede estar dañado o no disponible</p>
+                      <button onclick="window.open('${doc.file_url}', '_blank')" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
+                        Intentar abrir en nueva pestaña
+                      </button>
+                    </div>
+                  `;
+                }}
               />
             </div>
           ) : (
@@ -99,7 +113,7 @@ const DocumentPreview = ({ doc, isOpen, onClose }) => {
   );
 };
 DocumentPreview.propTypes = {
-  doc: PropTypes.shape({
+  document: PropTypes.shape({
     document_name: PropTypes.string,
     file_url: PropTypes.string,
     file_type: PropTypes.string,

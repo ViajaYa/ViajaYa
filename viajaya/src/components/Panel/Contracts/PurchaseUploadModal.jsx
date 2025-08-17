@@ -119,13 +119,35 @@ const PurchaseUploadModal = ({ item, onClose, onSubmit, uploading }) => {
 
     const submitFormData = new FormData();
     
-    // Agregar datos del formulario
+    // Agregar datos del formulario con validación de fechas
     Object.keys(formData).forEach(key => {
-      submitFormData.append(key, formData[key]);
+      let value = formData[key];
+      
+      // ✅ VALIDAR FECHAS VACÍAS
+      if ((key === 'fecha_vencimiento_pago' || key === 'fecha_compra') && value === '') {
+        // No agregar campos de fecha vacíos al FormData
+        return;
+      }
+      
+      submitFormData.append(key, value);
     });
     
-    // Agregar archivo
+    // Agregar archivo con debug
     submitFormData.append('comprobante', selectedFile);
+    
+    // 🐛 DEBUG: Log del archivo que se está subiendo
+    console.log('📤 Uploading file:', {
+      name: selectedFile.name,
+      type: selectedFile.type,
+      size: selectedFile.size,
+      isPDF: selectedFile.type === 'application/pdf'
+    });
+
+    // 🐛 DEBUG: Log de los datos del formulario
+    console.log('📤 Form data being sent:');
+    for (let [key, value] of submitFormData.entries()) {
+      console.log(`${key}:`, value);
+    }
 
     try {
       await onSubmit(submitFormData);

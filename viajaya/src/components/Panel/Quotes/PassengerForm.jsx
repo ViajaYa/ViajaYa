@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import  { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
@@ -39,6 +39,141 @@ const PassengerForm = () => {
 
   // Cargar datos iniciales
   useEffect(() => {
+    // ✅ FUNCIÓN AUXILIAR: Validar datos precargados (independiente del estado)
+    const validatePreloadedData = (passengerData) => {
+      const validatedData = { ...passengerData };
+      
+      // Validar cada campo que tenga datos
+      const fieldsToValidate = [
+        { field: 'nombre', validator: validateName },
+        { field: 'apellido', validator: validateName },
+        { field: 'email', validator: validateEmail },
+        { field: 'telefono', validator: validatePhoneNumber }
+      ];
+      
+      fieldsToValidate.forEach(({ field, validator }) => {
+        const value = passengerData[field];
+        if (value && value.trim && value.trim()) {
+          const validation = validator(value, field);
+          
+          // Agregar estado de validación
+          validatedData[`${field}_validation`] = {
+            isValid: validation.isValid,
+            message: validation.message
+          };
+          
+          // Usar valor formateado si está disponible
+          if (validation.formatted !== undefined) {
+            validatedData[field] = validation.formatted;
+          }
+        }
+      });
+      
+      // Validación especial para documento
+      const docValue = passengerData.documento_identidad;
+      const docType = passengerData.tipo_documento;
+      if (docValue && docValue.trim && docValue.trim()) {
+        const docValidation = validateDocument(docType, docValue);
+        
+        validatedData[`documento_identidad_validation`] = {
+          isValid: docValidation.isValid,
+          message: docValidation.message
+        };
+        
+        if (docValidation.isValid && docValidation.formatted) {
+          validatedData.documento_identidad = docValidation.formatted;
+        }
+      }
+      
+      // Validación especial para fecha de nacimiento
+      const birthDate = passengerData.fecha_nacimiento;
+      if (birthDate) {
+        // Intentar validar como adulto primero, luego menor, luego infante
+        let ageValidation = validateAge(birthDate, 'adulto');
+        if (!ageValidation.isValid) {
+          ageValidation = validateAge(birthDate, 'menor');
+          if (!ageValidation.isValid) {
+            ageValidation = validateAge(birthDate, 'infante');
+          }
+        }
+        
+        validatedData[`fecha_nacimiento_validation`] = {
+          isValid: ageValidation.isValid,
+          message: ageValidation.message
+        };
+      }
+      
+      return validatedData;
+    };
+
+    // ✅ MODIFICADO: Inicializar formulario vacío con datos del cliente precargados
+    const initializeEmptyForm = (numPersonas, clientData = null) => {
+      console.log('🚀 initializeEmptyForm llamada con:', { numPersonas, clientData });
+      console.log('🔍 clientData detallado:', {
+        existe: !!clientData,
+        nombre: clientData?.nombre,
+        apellido: clientData?.apellido,
+        email: clientData?.email,
+        telefono: clientData?.telefono,
+        tipo_documento: clientData?.tipo_documento,
+        documento_identidad: clientData?.documento_identidad
+      });
+      
+      const emptyPassengers = Array.from({ length: numPersonas }, (_, index) => {
+        const esTitular = index === 0;
+        const tieneClientData = esTitular && clientData;
+        
+        console.log(`🔍 Procesando pasajero ${index}:`, { esTitular, tieneClientData });
+        
+        let passengerData = {
+          id: `temp-${index}`,
+          nombre: tieneClientData ? clientData.nombre : '',
+          apellido: tieneClientData ? clientData.apellido : '',
+          documento_identidad: tieneClientData ? clientData.documento_identidad : '',
+          tipo_documento: tieneClientData ? (clientData.tipo_documento || 'CC').toUpperCase() : 'CC',
+          fecha_nacimiento: tieneClientData ? clientData.fecha_nacimiento : '',
+          titular: esTitular, // Primer pasajero como titular por defecto
+          // ✅ AGREGADO: Campos adicionales para el titular precargados
+          ...(tieneClientData ? {
+            email: clientData.email || '',
+            telefono: clientData.telefono || '',
+            direccion: clientData.direccion || '',
+            ciudad: clientData.ciudad || '',
+            pais: clientData.pais || 'Colombia'
+          } : {})
+        };
+        
+        // ✅ NUEVO: Validar datos precargados para el titular
+        if (tieneClientData) {
+          console.log('🔍 Validando datos precargados para titular...');
+          console.log('📋 Datos antes de validar:', {
+            documento_identidad: passengerData.documento_identidad,
+            tipo_documento: passengerData.tipo_documento,
+            nombre: passengerData.nombre,
+            email: passengerData.email
+          });
+          
+          passengerData = validatePreloadedData(passengerData);
+          
+          console.log('✅ Datos después de validar:', {
+            documento_identidad: passengerData.documento_identidad,
+            documento_identidad_validation: passengerData.documento_identidad_validation,
+            nombre_validation: passengerData.nombre_validation,
+            email_validation: passengerData.email_validation
+          });
+        }
+        
+        if (index === 0) {
+          console.log(`✅ Pasajero titular creado:`, passengerData);
+        }
+        
+        return passengerData;
+      });
+      
+      console.log('✅ Array completo de pasajeros:', emptyPassengers);
+      setFormPassengers(emptyPassengers);
+    };
+
     if (quoteId) {
       dispatch(fetchPassengersByQuote(quoteId))
         .unwrap()
@@ -60,52 +195,6 @@ const PassengerForm = () => {
         });
     }
   }, [quoteId, dispatch]);
-
-  // ✅ MODIFICADO: Inicializar formulario vacío con datos del cliente precargados
-  const initializeEmptyForm = (numPersonas, clientData = null) => {
-    console.log('🚀 initializeEmptyForm llamada con:', { numPersonas, clientData });
-    console.log('🔍 clientData detallado:', {
-      existe: !!clientData,
-      nombre: clientData?.nombre,
-      apellido: clientData?.apellido,
-      email: clientData?.email,
-      telefono: clientData?.telefono
-    });
-    
-    const emptyPassengers = Array.from({ length: numPersonas }, (_, index) => {
-      const esTitular = index === 0;
-      const tieneClientData = esTitular && clientData;
-      
-      console.log(`🔍 Procesando pasajero ${index}:`, { esTitular, tieneClientData });
-      
-      const passengerData = {
-        id: `temp-${index}`,
-        nombre: tieneClientData ? clientData.nombre : '',
-        apellido: tieneClientData ? clientData.apellido : '',
-        documento_identidad: tieneClientData ? clientData.documento_identidad : '',
-        tipo_documento: tieneClientData ? clientData.tipo_documento : 'CC',
-        fecha_nacimiento: tieneClientData ? clientData.fecha_nacimiento : '',
-        titular: esTitular, // Primer pasajero como titular por defecto
-        // ✅ AGREGADO: Campos adicionales para el titular precargados
-        ...(tieneClientData ? {
-          email: clientData.email || '',
-          telefono: clientData.telefono || '',
-          direccion: clientData.direccion || '',
-          ciudad: clientData.ciudad || '',
-          pais: clientData.pais || 'Colombia'
-        } : {})
-      };
-      
-      if (index === 0) {
-        console.log(`✅ Pasajero titular creado:`, passengerData);
-      }
-      
-      return passengerData;
-    });
-    
-    console.log('✅ Array completo de pasajeros:', emptyPassengers);
-    setFormPassengers(emptyPassengers);
-  };
 
   // ✅ NUEVA: Función para validar y formatear en tiempo real
   const validateAndFormatField = (field, value, passengerIndex) => {

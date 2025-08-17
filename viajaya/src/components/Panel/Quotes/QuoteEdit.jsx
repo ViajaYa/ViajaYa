@@ -1321,7 +1321,7 @@ const handleCalculationSave = async (calculationData) => {
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <button
-                onClick={() => navigate("/panel/quotes")}
+                onClick={() => navigate("/panel")}
                 className="mr-4 p-2 text-gray-600 hover:text-gray-800 transition-colors"
               >
                 <FontAwesomeIcon icon={faArrowLeft} size="lg" />
