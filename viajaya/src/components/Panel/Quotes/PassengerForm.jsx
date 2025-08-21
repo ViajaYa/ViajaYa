@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import  { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
@@ -11,6 +11,14 @@ import {
 } from '../../../redux/slices/quoteSlice';
 import PassengerCard from './PassengerCard';
 import LoadingSpinner from '../../LoadingSpinner';
+// ✅ Importar validaciones colombianas
+import { 
+  validateDocument, 
+  validateName, 
+  validateEmail, 
+  validatePhoneNumber,
+  validateAge 
+} from '../../../utils/validations';
 
 const PassengerForm = () => {
   const { quoteId } = useParams();
@@ -31,6 +39,141 @@ const PassengerForm = () => {
 
   // Cargar datos iniciales
   useEffect(() => {
+    // ✅ FUNCIÓN AUXILIAR: Validar datos precargados (independiente del estado)
+    const validatePreloadedData = (passengerData) => {
+      const validatedData = { ...passengerData };
+      
+      // Validar cada campo que tenga datos
+      const fieldsToValidate = [
+        { field: 'nombre', validator: validateName },
+        { field: 'apellido', validator: validateName },
+        { field: 'email', validator: validateEmail },
+        { field: 'telefono', validator: validatePhoneNumber }
+      ];
+      
+      fieldsToValidate.forEach(({ field, validator }) => {
+        const value = passengerData[field];
+        if (value && value.trim && value.trim()) {
+          const validation = validator(value, field);
+          
+          // Agregar estado de validación
+          validatedData[`${field}_validation`] = {
+            isValid: validation.isValid,
+            message: validation.message
+          };
+          
+          // Usar valor formateado si está disponible
+          if (validation.formatted !== undefined) {
+            validatedData[field] = validation.formatted;
+          }
+        }
+      });
+      
+      // Validación especial para documento
+      const docValue = passengerData.documento_identidad;
+      const docType = passengerData.tipo_documento;
+      if (docValue && docValue.trim && docValue.trim()) {
+        const docValidation = validateDocument(docType, docValue);
+        
+        validatedData[`documento_identidad_validation`] = {
+          isValid: docValidation.isValid,
+          message: docValidation.message
+        };
+        
+        if (docValidation.isValid && docValidation.formatted) {
+          validatedData.documento_identidad = docValidation.formatted;
+        }
+      }
+      
+      // Validación especial para fecha de nacimiento
+      const birthDate = passengerData.fecha_nacimiento;
+      if (birthDate) {
+        // Intentar validar como adulto primero, luego menor, luego infante
+        let ageValidation = validateAge(birthDate, 'adulto');
+        if (!ageValidation.isValid) {
+          ageValidation = validateAge(birthDate, 'menor');
+          if (!ageValidation.isValid) {
+            ageValidation = validateAge(birthDate, 'infante');
+          }
+        }
+        
+        validatedData[`fecha_nacimiento_validation`] = {
+          isValid: ageValidation.isValid,
+          message: ageValidation.message
+        };
+      }
+      
+      return validatedData;
+    };
+
+    // ✅ MODIFICADO: Inicializar formulario vacío con datos del cliente precargados
+    const initializeEmptyForm = (numPersonas, clientData = null) => {
+      console.log('🚀 initializeEmptyForm llamada con:', { numPersonas, clientData });
+      console.log('🔍 clientData detallado:', {
+        existe: !!clientData,
+        nombre: clientData?.nombre,
+        apellido: clientData?.apellido,
+        email: clientData?.email,
+        telefono: clientData?.telefono,
+        tipo_documento: clientData?.tipo_documento,
+        documento_identidad: clientData?.documento_identidad
+      });
+      
+      const emptyPassengers = Array.from({ length: numPersonas }, (_, index) => {
+        const esTitular = index === 0;
+        const tieneClientData = esTitular && clientData;
+        
+        console.log(`🔍 Procesando pasajero ${index}:`, { esTitular, tieneClientData });
+        
+        let passengerData = {
+          id: `temp-${index}`,
+          nombre: tieneClientData ? clientData.nombre : '',
+          apellido: tieneClientData ? clientData.apellido : '',
+          documento_identidad: tieneClientData ? clientData.documento_identidad : '',
+          tipo_documento: tieneClientData ? (clientData.tipo_documento || 'CC').toUpperCase() : 'CC',
+          fecha_nacimiento: tieneClientData ? clientData.fecha_nacimiento : '',
+          titular: esTitular, // Primer pasajero como titular por defecto
+          // ✅ AGREGADO: Campos adicionales para el titular precargados
+          ...(tieneClientData ? {
+            email: clientData.email || '',
+            telefono: clientData.telefono || '',
+            direccion: clientData.direccion || '',
+            ciudad: clientData.ciudad || '',
+            pais: clientData.pais || 'Colombia'
+          } : {})
+        };
+        
+        // ✅ NUEVO: Validar datos precargados para el titular
+        if (tieneClientData) {
+          console.log('🔍 Validando datos precargados para titular...');
+          console.log('📋 Datos antes de validar:', {
+            documento_identidad: passengerData.documento_identidad,
+            tipo_documento: passengerData.tipo_documento,
+            nombre: passengerData.nombre,
+            email: passengerData.email
+          });
+          
+          passengerData = validatePreloadedData(passengerData);
+          
+          console.log('✅ Datos después de validar:', {
+            documento_identidad: passengerData.documento_identidad,
+            documento_identidad_validation: passengerData.documento_identidad_validation,
+            nombre_validation: passengerData.nombre_validation,
+            email_validation: passengerData.email_validation
+          });
+        }
+        
+        if (index === 0) {
+          console.log(`✅ Pasajero titular creado:`, passengerData);
+        }
+        
+        return passengerData;
+      });
+      
+      console.log('✅ Array completo de pasajeros:', emptyPassengers);
+      setFormPassengers(emptyPassengers);
+    };
+
     if (quoteId) {
       dispatch(fetchPassengersByQuote(quoteId))
         .unwrap()
@@ -53,54 +196,89 @@ const PassengerForm = () => {
     }
   }, [quoteId, dispatch]);
 
-  // ✅ MODIFICADO: Inicializar formulario vacío con datos del cliente precargados
-  const initializeEmptyForm = (numPersonas, clientData = null) => {
-    console.log('🚀 initializeEmptyForm llamada con:', { numPersonas, clientData });
-    console.log('🔍 clientData detallado:', {
-      existe: !!clientData,
-      nombre: clientData?.nombre,
-      apellido: clientData?.apellido,
-      email: clientData?.email,
-      telefono: clientData?.telefono
-    });
-    
-    const emptyPassengers = Array.from({ length: numPersonas }, (_, index) => {
-      const esTitular = index === 0;
-      const tieneClientData = esTitular && clientData;
-      
-      console.log(`🔍 Procesando pasajero ${index}:`, { esTitular, tieneClientData });
-      
-      const passengerData = {
-        id: `temp-${index}`,
-        nombre: tieneClientData ? clientData.nombre : '',
-        apellido: tieneClientData ? clientData.apellido : '',
-        documento_identidad: tieneClientData ? clientData.documento_identidad : '',
-        tipo_documento: tieneClientData ? clientData.tipo_documento : 'CC',
-        fecha_nacimiento: tieneClientData ? clientData.fecha_nacimiento : '',
-        titular: esTitular, // Primer pasajero como titular por defecto
-        // ✅ AGREGADO: Campos adicionales para el titular precargados
-        ...(tieneClientData ? {
-          email: clientData.email || '',
-          telefono: clientData.telefono || '',
-          direccion: clientData.direccion || '',
-          ciudad: clientData.ciudad || '',
-          pais: clientData.pais || 'Colombia'
-        } : {})
-      };
-      
-      if (index === 0) {
-        console.log(`✅ Pasajero titular creado:`, passengerData);
+  // ✅ NUEVA: Función para validar y formatear en tiempo real
+  const validateAndFormatField = (field, value, passengerIndex) => {
+    const passenger = formPassengers[passengerIndex];
+    let formattedValue = value;
+    let isValid = true;
+    let errorMessage = '';
+
+    switch (field) {
+      case 'nombre':
+      case 'apellido': {
+        const nameValidation = validateName(value, field);
+        isValid = nameValidation.isValid;
+        errorMessage = nameValidation.message;
+        if (nameValidation.isValid) {
+          formattedValue = nameValidation.formatted;
+        }
+        break;
       }
-      
-      return passengerData;
-    });
-    
-    console.log('✅ Array completo de pasajeros:', emptyPassengers);
-    setFormPassengers(emptyPassengers);
+        
+      case 'documento_identidad': {
+        if (value.trim()) {
+          const documentValidation = validateDocument(passenger.tipo_documento, value);
+          isValid = documentValidation.isValid;
+          errorMessage = documentValidation.message;
+          if (documentValidation.isValid && documentValidation.formatted) {
+            formattedValue = documentValidation.formatted;
+          }
+        }
+        break;
+      }
+        
+      case 'email': {
+        if (value.trim()) {
+          const emailValidation = validateEmail(value);
+          isValid = emailValidation.isValid;
+          errorMessage = emailValidation.message;
+          if (emailValidation.isValid) {
+            formattedValue = emailValidation.formatted;
+          }
+        }
+        break;
+      }
+        
+      case 'telefono': {
+        if (value.trim()) {
+          const phoneValidation = validatePhoneNumber(value);
+          isValid = phoneValidation.isValid;
+          errorMessage = phoneValidation.message;
+          if (phoneValidation.isValid) {
+            formattedValue = phoneValidation.formatted;
+          }
+        }
+        break;
+      }
+        
+      case 'fecha_nacimiento': {
+        if (value) {
+          // Intentar validar como adulto primero, luego menor, luego infante
+          let ageValidation = validateAge(value, 'adulto');
+          if (!ageValidation.isValid) {
+            ageValidation = validateAge(value, 'menor');
+            if (!ageValidation.isValid) {
+              ageValidation = validateAge(value, 'infante');
+            }
+          }
+          isValid = ageValidation.isValid;
+          errorMessage = ageValidation.message;
+        }
+        break;
+      }
+        
+      default:
+        break;
+    }
+
+    return { formattedValue, isValid, errorMessage };
   };
 
-  // Actualizar datos de un pasajero
+  // ✅ MODIFICADA: Actualizar datos de un pasajero con validación en tiempo real
   const updatePassenger = (index, field, value) => {
+    // Validar y formatear el campo
+    const validation = validateAndFormatField(field, value, index);
+    
     setFormPassengers(prev => {
       const updated = [...prev];
       
@@ -110,7 +288,20 @@ const PassengerForm = () => {
           updated[i] = { ...p, titular: i === index };
         });
       } else {
-        updated[index] = { ...updated[index], [field]: value };
+        // Usar el valor formateado si la validación fue exitosa
+        const finalValue = validation.formattedValue !== undefined ? validation.formattedValue : value;
+        updated[index] = { ...updated[index], [field]: finalValue };
+        
+        // Agregar información de validación al estado (opcional, para mostrar errores en tiempo real)
+        if (field !== 'titular') {
+          updated[index] = { 
+            ...updated[index], 
+            [`${field}_validation`]: {
+              isValid: validation.isValid,
+              message: validation.errorMessage
+            }
+          };
+        }
       }
       
       return updated;
@@ -121,7 +312,7 @@ const PassengerForm = () => {
     if (error) dispatch(clearPassengerError());
   };
 
-  // Validar formulario
+  // ✅ Validar formulario con validaciones colombianas
   const validateForm = () => {
     const errors = [];
     const titulares = formPassengers.filter(p => p.titular).length;
@@ -131,41 +322,103 @@ const PassengerForm = () => {
     }
     
     formPassengers.forEach((passenger, index) => {
-      // ✅ MODIFICADO: Solo validar campos obligatorios para el titular
+      // ✅ MODIFICADO: Validaciones mejoradas para el titular
       if (passenger.titular) {
-        // Validaciones obligatorias para TITULAR
-        if (!passenger.nombre?.trim()) {
-          errors.push(`Pasajero titular: El nombre es obligatorio`);
+        // Validar nombre
+        const nameValidation = validateName(passenger.nombre, 'nombre');
+        if (!nameValidation.isValid) {
+          errors.push(`Pasajero titular: ${nameValidation.message}`);
         }
-        if (!passenger.apellido?.trim()) {
-          errors.push(`Pasajero titular: El apellido es obligatorio`);
+        
+        // Validar apellido
+        const lastNameValidation = validateName(passenger.apellido, 'apellido');
+        if (!lastNameValidation.isValid) {
+          errors.push(`Pasajero titular: ${lastNameValidation.message}`);
         }
-        if (!passenger.documento_identidad?.trim()) {
-          errors.push(`Pasajero titular: El documento es obligatorio`);
+        
+        // Validar documento
+        const documentValidation = validateDocument(
+          passenger.tipo_documento, 
+          passenger.documento_identidad
+        );
+        if (!documentValidation.isValid) {
+          errors.push(`Pasajero titular: ${documentValidation.message}`);
         }
+        
+        // Validar fecha de nacimiento/edad
         if (!passenger.fecha_nacimiento) {
           errors.push(`Pasajero titular: La fecha de nacimiento es obligatoria`);
+        } else {
+          const ageValidation = validateAge(passenger.fecha_nacimiento, 'adulto');
+          if (!ageValidation.isValid) {
+            errors.push(`Pasajero titular: ${ageValidation.message}`);
+          }
         }
-        if (!passenger.email?.trim()) {
-          errors.push(`Pasajero titular: El email es obligatorio`);
-        } else if (!/\S+@\S+\.\S+/.test(passenger.email)) {
-          errors.push(`Pasajero titular: El email no es válido`);
+        
+        // Validar email
+        const emailValidation = validateEmail(passenger.email);
+        if (!emailValidation.isValid) {
+          errors.push(`Pasajero titular: ${emailValidation.message}`);
         }
-        if (!passenger.telefono?.trim()) {
-          errors.push(`Pasajero titular: El teléfono es obligatorio`);
+        
+        // Validar teléfono
+        const phoneValidation = validatePhoneNumber(passenger.telefono);
+        if (!phoneValidation.isValid) {
+          errors.push(`Pasajero titular: ${phoneValidation.message}`);
         }
+        
       } else {
-        // ✅ NUEVO: Para NO TITULARES, solo validar si hay datos parciales
+        // ✅ MEJORADO: Para NO TITULARES, validar solo si hay datos parciales
         const hasPartialData = passenger.nombre?.trim() || passenger.apellido?.trim() || 
                                passenger.documento_identidad?.trim() || passenger.fecha_nacimiento;
         
         if (hasPartialData) {
-          // Si empezó a llenar datos, validar que al menos tenga nombre y apellido
-          if (!passenger.nombre?.trim()) {
+          // Validar nombre si está presente
+          if (passenger.nombre?.trim()) {
+            const nameValidation = validateName(passenger.nombre, 'nombre');
+            if (!nameValidation.isValid) {
+              errors.push(`Pasajero ${index + 1}: ${nameValidation.message}`);
+            }
+          } else {
             errors.push(`Pasajero ${index + 1}: Si ingresa datos, el nombre es obligatorio`);
           }
-          if (!passenger.apellido?.trim()) {
+          
+          // Validar apellido si está presente
+          if (passenger.apellido?.trim()) {
+            const lastNameValidation = validateName(passenger.apellido, 'apellido');
+            if (!lastNameValidation.isValid) {
+              errors.push(`Pasajero ${index + 1}: ${lastNameValidation.message}`);
+            }
+          } else {
             errors.push(`Pasajero ${index + 1}: Si ingresa datos, el apellido es obligatorio`);
+          }
+          
+          // Validar documento si está presente
+          if (passenger.documento_identidad?.trim()) {
+            const documentValidation = validateDocument(
+              passenger.tipo_documento, 
+              passenger.documento_identidad
+            );
+            if (!documentValidation.isValid) {
+              errors.push(`Pasajero ${index + 1}: ${documentValidation.message}`);
+            }
+          }
+          
+          // Validar fecha de nacimiento si está presente
+          if (passenger.fecha_nacimiento) {
+            // Determinar tipo de pasajero basado en la edad
+            const ageValidation = validateAge(passenger.fecha_nacimiento, 'adulto');
+            if (!ageValidation.isValid) {
+              // Intentar como menor
+              const minorValidation = validateAge(passenger.fecha_nacimiento, 'menor');
+              if (!minorValidation.isValid) {
+                // Intentar como infante
+                const infantValidation = validateAge(passenger.fecha_nacimiento, 'infante');
+                if (!infantValidation.isValid) {
+                  errors.push(`Pasajero ${index + 1}: Edad no válida para ninguna categoría`);
+                }
+              }
+            }
           }
         }
       }
@@ -276,7 +529,7 @@ const PassengerForm = () => {
               </div>
             </div>
             
-            {/* ✅ AGREGADO: Mensaje informativo */}
+            {/* ✅ AGREGADO: Mensaje informativo sobre validaciones */}
             <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
               <div className="flex items-start">
                 <div className="text-yellow-600 text-lg mr-2">💡</div>
@@ -287,6 +540,23 @@ const PassengerForm = () => {
                     <li>Solo los datos del titular son obligatorios inicialmente</li>
                     <li>Los datos de otros pasajeros pueden completarse después en la edición</li>
                     <li>El titular se registrará automáticamente como usuario del sistema</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            
+            {/* ✅ NUEVO: Información sobre validaciones colombianas */}
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-start">
+                <div className="text-blue-600 text-lg mr-2">🔍</div>
+                <div className="text-sm text-blue-800">
+                  <p className="font-medium mb-1">Validaciones aplicadas:</p>
+                  <ul className="list-disc list-inside space-y-1 text-xs">
+                    <li><strong>Documentos:</strong> Formatos válidos colombianos (CC, TI, CE, PA, RC)</li>
+                    <li><strong>Teléfonos:</strong> Celulares (3XXXXXXX) y fijos (601XXXXXX) con auto-formato</li>
+                    <li><strong>Emails:</strong> Validación estricta de formato y dominio</li>
+                    <li><strong>Nombres:</strong> Solo letras, espacios y acentos permitidos</li>
+                    <li><strong>Edades:</strong> Validación automática por categoría (adulto/menor/infante)</li>
                   </ul>
                 </div>
               </div>

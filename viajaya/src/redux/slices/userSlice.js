@@ -148,8 +148,10 @@ export const checkEmailExists = createAsyncThunk(
   async (email, { rejectWithValue }) => {
     try {
       const response = await axios.get(`${BASE_URL}/user/check-email/${encodeURIComponent(email)}`);
+      console.log('🔍 Check email response:', JSON.stringify(response.data, null, 2));
       return response.data;
     } catch (error) {
+      console.error('❌ Check email error:', error.response?.data);
       return rejectWithValue(
         error.response?.data?.message || 'Error al verificar email'
       );

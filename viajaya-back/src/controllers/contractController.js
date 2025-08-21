@@ -13,6 +13,7 @@ const {
 
 const { generateContractPDF } = require("../utils/generateContractPDF");
 const commissionController = require("./commissionController");
+const { calcularPersonasQuePagan } = require("../utils/quoteCalculations"); // ✅ AGREGADO
 const {
   generateSignatureToken,
   verifySignatureToken,
@@ -23,232 +24,403 @@ const {
 
 
 // ✅ FUNCIÓN AUXILIAR AJUSTADA al modelo ContractItem.js
+// ✅ FUNCIÓN AUXILIAR CORREGIDA - Usar utility existente
 const convertQuoteToItems = async (contract) => {
   const calc = contract.Quote.Calculation;
   const items = [];
 
-  console.log('🔍 Procesando cálculo:', calc.id);
+  // ✅ USAR UTILITY EXISTENTE para el cálculo correcto
+  const { calcularPersonasQuePagan } = require('../utils/quoteCalculations');
+  
+  // Obtener datos reales de la cotización
+  const adultos = contract.Quote.adultos || 0;
+  const menores = contract.Quote.menores || 0;
+  const infantes = contract.Quote.infantes || 0;
+  const totalPersonas = adultos + menores + infantes;
+  
+  // ✅ CALCULAR con la función utility
+  const personasQuePagan = calcularPersonasQuePagan({
+    adultos: adultos,
+    menores: menores,
+    infantes: infantes
+  });
+  
+  console.log(`👥 Cálculo de pasajeros para contrato ${contract.contract_number}:`);
+  console.log(`   - Adultos: ${adultos}, Menores: ${menores}, Infantes: ${infantes}`);
+  console.log(`   - Total personas: ${totalPersonas}, Personas que pagan: ${personasQuePagan}`);
+  console.log(`   - QuoteCalculation num_personas: ${calc.num_personas}`);
 
-  // ✅ TICKETS - Estructura JSONB
+  // ─── TICKETS ─────────────────────────────────────────
   if (calc.tiquetes && typeof calc.tiquetes === 'object') {
-    const tiquetesCosto = parseFloat(calc.tiquetes.costo_total || 0);
-    if (tiquetesCosto > 0) {
+    const costoTotalQuote = parseFloat(calc.tiquetes.costo_total || 0);
+    if (costoTotalQuote > 0 && personasQuePagan > 0) {
+      // ✅ LÓGICA CORREGIDA: 
+      // - precio_total = El valor de QuoteCalculation (SIN cambios)
+      // - cantidad = Personas que realmente pagan
+      // - precio_unitario = precio_total ÷ personas que pagan
+      
+      const precioUnitarioReal = costoTotalQuote / personasQuePagan;
+      
+      const tipo   = calc.tiquetes.tipo || 'ida_vuelta';
+      const origen = calc.tiquetes.origen || contract.Quote.origen;
+      const destino= calc.tiquetes.destino|| contract.Quote.destino;
+      
+      console.log(`✈️  Tickets:`);
+      console.log(`   - Costo total Quote: $${costoTotalQuote.toLocaleString('es-CO')}`);
+      console.log(`   - Personas que pagan: ${personasQuePagan}`);
+      console.log(`   - Precio unitario: $${precioUnitarioReal.toLocaleString('es-CO')}`);
+      
       items.push({
-        contract_id: contract.id,
-        quote_id: contract.quote_id,
-        // ❌ REMOVER: quote_calculation_id (no existe en el modelo)
-        tipo: "tickets", // ✅ Coincide con ENUM
-        descripcion: `Tickets aéreos ${calc.tiquetes.origen || contract.Quote.origen} - ${calc.tiquetes.destino || contract.Quote.destino}`,
-        detalle: `${calc.tiquetes.tipo || 'ida_vuelta'} para ${calc.num_personas} personas`,
-        precio_total: tiquetesCosto,
-        // ❌ REMOVER: precio_cotizado (no existe en el modelo)
-        cantidad: calc.num_personas,
-        precio_unitario: tiquetesCosto / calc.num_personas,
-        status: "pendiente_compra", // ✅ Coincide con ENUM
-        // ❌ REMOVER: requiere_compra, prioridad, fecha_limite_compra (no existen)
-        // ✅ USAR: fecha_vencimiento_pago (que sí existe)
-        fecha_vencimiento_pago: new Date(Date.now() + (2 * 24 * 60 * 60 * 1000)), // 2 días
-        observaciones: JSON.stringify(calc.tiquetes)
+        contract_id:        contract.id,
+        quote_id:           contract.quote_id,
+        tipo:               "tickets",
+        descripcion:        `Tickets aéreos ${origen} – ${destino}`,
+        detalle:            `${tipo === 'ida_vuelta' ? 'Ida y vuelta' : 'Solo ida'} para ${personasQuePagan} pasajeros que pagan (de ${totalPersonas} total)`,
+        precio_total:       costoTotalQuote, // ✅ MANTENER valor original de QuoteCalculation
+        cantidad:           personasQuePagan, // ✅ Solo quienes pagan
+        precio_unitario:    precioUnitarioReal, // ✅ Dividido entre quienes pagan
+        status:             "pendiente_compra",
+        fecha_vencimiento_pago: new Date(Date.now() + 2*24*60*60*1000),
+        observaciones:      JSON.stringify({
+          ...calc.tiquetes,
+          calculo_detalle: {
+            precio_cotizado_total: costoTotalQuote,
+            personas_total_viaje: totalPersonas,
+            personas_que_pagan: personasQuePagan,
+            precio_por_persona: precioUnitarioReal,
+            nota: "Precio total mantiene valor de cotización. Cantidad y precio unitario ajustados a quienes pagan."
+          }
+        })
       });
     }
   }
 
-  // ✅ HOTEL/ALOJAMIENTO - Estructura JSONB  
+  // ─── HOTEL / ALOJAMIENTO ────────────────────────────
   if (calc.hotel && typeof calc.hotel === 'object') {
-    const hotelCosto = parseFloat(calc.hotel.costo_total || 0);
-    if (hotelCosto > 0) {
+    const costoTotalQuote = parseFloat(calc.hotel.costo_total || 0);
+    if (costoTotalQuote > 0 && personasQuePagan > 0) {
+      // ✅ MISMA LÓGICA: Mantener total, ajustar cantidad y precio unitario
+      const precioUnitarioReal = costoTotalQuote / personasQuePagan;
+      
+      const nombre    = calc.hotel.nombre       || 'Hotel por definir';
+      const categoria = calc.hotel.categoria    || 'estándar';
+      const acomod    = calc.hotel.acomodacion  || 'doble';
+      const noches    = calc.hotel.noches       || 1;
+      
+      console.log(`🏨 Alojamiento:`);
+      console.log(`   - Costo total Quote: $${costoTotalQuote.toLocaleString('es-CO')}`);
+      console.log(`   - Precio unitario: $${precioUnitarioReal.toLocaleString('es-CO')} por ${personasQuePagan} que pagan`);
+      
       items.push({
-        contract_id: contract.id,
-        quote_id: contract.quote_id,
-        tipo: "alojamiento", // ✅ Usar ENUM correcto
-        descripcion: `Alojamiento ${calc.hotel.categoria || calc.hotel.nombre || 'N/A'}`,
-        detalle: `${calc.hotel.noches || 0} noches, acomodación ${calc.hotel.acomodacion || 'N/A'}`,
-        precio_total: hotelCosto,
-        cantidad: calc.hotel.noches || 1,
-        precio_unitario: hotelCosto / (calc.hotel.noches || 1),
-        status: "pendiente_compra",
-        fecha_vencimiento_pago: new Date(Date.now() + (7 * 24 * 60 * 60 * 1000)), // 7 días
-        observaciones: JSON.stringify(calc.hotel)
+        contract_id:        contract.id,
+        quote_id:           contract.quote_id,
+        tipo:               "alojamiento",
+        descripcion:        `Alojamiento ${categoria} – ${nombre}`,
+        detalle:            `${noches} noches, acomodación ${acomod} para ${personasQuePagan} pasajeros que pagan`,
+        precio_total:       costoTotalQuote, // ✅ MANTENER valor original
+        cantidad:           personasQuePagan, // ✅ Solo quienes pagan
+        precio_unitario:    precioUnitarioReal, // ✅ Dividido entre quienes pagan
+        status:             "pendiente_compra",
+        fecha_vencimiento_pago: new Date(Date.now() + 7*24*60*60*1000),
+        observaciones:      JSON.stringify({
+          ...calc.hotel,
+          calculo_detalle: {
+            precio_cotizado_total: costoTotalQuote,
+            personas_total_viaje: totalPersonas,
+            personas_que_pagan: personasQuePagan,
+            precio_por_persona: precioUnitarioReal
+          }
+        })
       });
     }
   }
 
-  // ✅ TRASLADOS - Estructura JSONB
+  // ─── TRASLADOS ──────────────────────────────────────
   if (calc.traslados && typeof calc.traslados === 'object') {
-    const trasladosCosto = parseFloat(calc.traslados.costo_total || 0);
-    if (trasladosCosto > 0) {
+    const costoTotalQuote = parseFloat(calc.traslados.costo_total || 0);
+    const servicios  = [];
+    if (calc.traslados.aeropuerto_hotel_ida?.costo > 0)     servicios.push('Aeropuerto → Hotel (llegada)');
+    if (calc.traslados.hotel_aeropuerto_vuelta?.costo > 0) servicios.push('Hotel → Aeropuerto (salida)');
+    if (Array.isArray(calc.traslados.otros)) {
+      calc.traslados.otros.forEach(o => o.descripcion && servicios.push(o.descripcion));
+    }
+    const descripcion = servicios.length > 0
+      ? servicios.join(', ')
+      : 'Traslados aeropuerto-hotel-aeropuerto';
+
+    if (costoTotalQuote > 0 && personasQuePagan > 0) {
+      // ✅ MISMA LÓGICA para traslados
+      const precioUnitarioReal = costoTotalQuote / personasQuePagan;
+      
+      console.log(`🚐 Traslados:`);
+      console.log(`   - Costo total Quote: $${costoTotalQuote.toLocaleString('es-CO')}`);
+      console.log(`   - Precio unitario: $${precioUnitarioReal.toLocaleString('es-CO')} por ${personasQuePagan} que pagan`);
+      
       items.push({
-        contract_id: contract.id,
-        quote_id: contract.quote_id,
-        tipo: "traslados", // ✅ Coincide con ENUM
-        descripcion: "Traslados",
-        detalle: "Traslados aeropuerto-hotel-aeropuerto",
-        precio_total: trasladosCosto,
-        cantidad: 1,
-        precio_unitario: trasladosCosto,
-        status: "pendiente_compra",
-        fecha_vencimiento_pago: new Date(Date.now() + (5 * 24 * 60 * 60 * 1000)), // 5 días
-        observaciones: JSON.stringify(calc.traslados)
+        contract_id:        contract.id,
+        quote_id:           contract.quote_id,
+        tipo:               "traslados",
+        descripcion:        "Traslados",
+        detalle:            `${descripcion} para ${personasQuePagan} pasajeros que pagan`,
+        precio_total:       costoTotalQuote, // ✅ MANTENER valor original
+        cantidad:           personasQuePagan, // ✅ Solo quienes pagan
+        precio_unitario:    precioUnitarioReal, // ✅ Dividido entre quienes pagan
+        status:             "pendiente_compra",
+        fecha_vencimiento_pago: new Date(Date.now() + 5*24*60*60*1000),
+        observaciones:      JSON.stringify({
+          ...calc.traslados,
+          calculo_detalle: {
+            precio_cotizado_total: costoTotalQuote,
+            personas_que_pagan: personasQuePagan
+          }
+        })
+      });
+    } else if (
+      calc.traslados.aeropuerto_hotel_ida?.incluido ||
+      calc.traslados.hotel_aeropuerto_vuelta?.incluido
+    ) {
+      items.push({
+        contract_id:        contract.id,
+        quote_id:           contract.quote_id,
+        tipo:               "traslados",
+        descripcion:        "Traslados incluidos",
+        detalle:            `${servicios.join(', ')} para ${personasQuePagan} pasajeros que pagan`,
+        precio_total:       0,
+        cantidad:           personasQuePagan,
+        precio_unitario:    0,
+        status:             "no_requiere",
+        observaciones:      JSON.stringify(calc.traslados)
       });
     }
   }
 
-  // ✅ SEGUROS - Estructura JSONB
+  // ─── SEGUROS ────────────────────────────────────────
   if (calc.seguros && typeof calc.seguros === 'object') {
-    const segurosCosto = parseFloat(calc.seguros.costo_total || 0);
-    if (segurosCosto > 0) {
-      items.push({
-        contract_id: contract.id,
-        quote_id: contract.quote_id,
-        tipo: "seguro", // ✅ Usar ENUM correcto (singular)
-        descripcion: "Seguros de viaje",
-        detalle: `Cobertura para ${calc.num_personas} personas`,
-        precio_total: segurosCosto,
-        cantidad: calc.num_personas,
-        precio_unitario: segurosCosto / calc.num_personas,
-        status: "pendiente_compra",
-        fecha_vencimiento_pago: new Date(Date.now() + (3 * 24 * 60 * 60 * 1000)), // 3 días
-        observaciones: JSON.stringify(calc.seguros)
-      });
+    // Asistencia médica
+    if (calc.seguros.asistencia_medica) {
+      const costoTotalQuote = parseFloat(calc.seguros.asistencia_medica.costo || 0);
+      if (costoTotalQuote > 0 && personasQuePagan > 0) {
+        // ✅ MISMA LÓGICA para seguros
+        const precioUnitarioReal = costoTotalQuote / personasQuePagan;
+        
+        console.log(`🏥 Seguro médico:`);
+        console.log(`   - Costo total Quote: $${costoTotalQuote.toLocaleString('es-CO')}`);
+        console.log(`   - Precio unitario: $${precioUnitarioReal.toLocaleString('es-CO')} por ${personasQuePagan} que pagan`);
+        
+        items.push({
+          contract_id:        contract.id,
+          quote_id:           contract.quote_id,
+          tipo:               "seguro",
+          descripcion:        `Asistencia médica`,
+          detalle:            `Seguro de asistencia médica para ${personasQuePagan} pasajeros que pagan`,
+          precio_total:       costoTotalQuote, // ✅ MANTENER valor original
+          cantidad:           personasQuePagan, // ✅ Solo quienes pagan
+          precio_unitario:    precioUnitarioReal, // ✅ Dividido entre quienes pagan
+          status:             "pendiente_compra",
+          fecha_vencimiento_pago: new Date(Date.now() + 3*24*60*60*1000),
+          observaciones:      JSON.stringify({
+            ...calc.seguros.asistencia_medica,
+            calculo_detalle: {
+              precio_cotizado_total: costoTotalQuote,
+              personas_que_pagan: personasQuePagan
+            }
+          })
+        });
+      }
+    }
+    
+    // ✅ APLICAR MISMA LÓGICA a los demás seguros...
+    // (Cancelación, otros seguros) - igual que asistencia médica
+    if (calc.seguros.cancelacion) {
+      const costoTotalQuote = parseFloat(calc.seguros.cancelacion.costo || 0);
+      if (costoTotalQuote > 0 && personasQuePagan > 0) {
+        const precioUnitarioReal = costoTotalQuote / personasQuePagan;
+        
+        items.push({
+          contract_id:        contract.id,
+          quote_id:           contract.quote_id,
+          tipo:               "seguro",
+          descripcion:        "Seguro de cancelación",
+          detalle:            `Seguro de cancelación para ${personasQuePagan} pasajeros que pagan`,
+          precio_total:       costoTotalQuote, // ✅ MANTENER valor original
+          cantidad:           personasQuePagan, // ✅ Solo quienes pagan
+          precio_unitario:    precioUnitarioReal, // ✅ Dividido entre quienes pagan
+          status:             "pendiente_compra",
+          fecha_vencimiento_pago: new Date(Date.now() + 3*24*60*60*1000),
+          observaciones:      JSON.stringify({
+            ...calc.seguros.cancelacion,
+            calculo_detalle: {
+              precio_cotizado_total: costoTotalQuote,
+              personas_que_pagan: personasQuePagan
+            }
+          })
+        });
+      }
     }
   }
 
-  // ✅ ALIMENTACIÓN - Estructura JSONB
+  // ✅ APLICAR MISMA LÓGICA A TODOS LOS DEMÁS SERVICIOS
+  // (Alimentación, Equipaje, Excursiones, Extras)
+
+  // ─── ALIMENTACIÓN ───────────────────────────────────
   if (calc.alimentacion && typeof calc.alimentacion === 'object') {
-    const alimentacionCosto = parseFloat(calc.alimentacion.costo_total || 0);
-    if (alimentacionCosto > 0) {
+    const costoTotalQuote = parseFloat(calc.alimentacion.costo_total || 0);
+    if (costoTotalQuote > 0 && personasQuePagan > 0) {
+      const precioUnitarioReal = costoTotalQuote / personasQuePagan;
+      
       items.push({
-        contract_id: contract.id,
-        quote_id: contract.quote_id,
-        tipo: "alimentacion", // ✅ Coincide con ENUM
-        descripcion: "Plan alimentario",
-        detalle: `${calc.alimentacion.tipo || 'Plan alimentario'} para ${calc.num_personas} personas`,
-        precio_total: alimentacionCosto,
-        cantidad: calc.num_personas,
-        precio_unitario: alimentacionCosto / calc.num_personas,
-        status: "pendiente_compra",
-        fecha_vencimiento_pago: new Date(Date.now() + (7 * 24 * 60 * 60 * 1000)), // 7 días
-        observaciones: JSON.stringify(calc.alimentacion)
+        contract_id:        contract.id,
+        quote_id:           contract.quote_id,
+        tipo:               "alimentacion",
+        descripcion:        "Plan alimentario",
+        detalle:            `Plan alimentario para ${personasQuePagan} pasajeros que pagan`,
+        precio_total:       costoTotalQuote, // ✅ MANTENER valor original
+        cantidad:           personasQuePagan, // ✅ Solo quienes pagan
+        precio_unitario:    precioUnitarioReal, // ✅ Dividido entre quienes pagan
+        status:             "pendiente_compra",
+        fecha_vencimiento_pago: new Date(Date.now() + 7*24*60*60*1000),
+        observaciones:      JSON.stringify(calc.alimentacion)
       });
     }
   }
 
-  // ✅ EQUIPAJE - Estructura JSONB
+  // ─── EQUIPAJE ───────────────────────────────────────
   if (calc.equipaje && typeof calc.equipaje === 'object') {
-    const equipajeCosto = parseFloat(calc.equipaje.costo_total || 0);
-    if (equipajeCosto > 0) {
+    const costoTotalQuote = parseFloat(calc.equipaje.costo_total || 0);
+    if (costoTotalQuote > 0 && personasQuePagan > 0) {
+      const precioUnitarioReal = costoTotalQuote / personasQuePagan;
+      
       items.push({
-        contract_id: contract.id,
-        quote_id: contract.quote_id,
-        tipo: "equipaje", // ✅ Coincide con ENUM
-        descripcion: "Equipaje adicional",
-        detalle: `${calc.equipaje.tipo || 'Equipaje adicional'} para ${calc.num_personas} personas`,
-        precio_total: equipajeCosto,
-        cantidad: calc.num_personas,
-        precio_unitario: equipajeCosto / calc.num_personas,
-        status: "pendiente_compra",
-        fecha_vencimiento_pago: new Date(Date.now() + (5 * 24 * 60 * 60 * 1000)), // 5 días
-        observaciones: JSON.stringify(calc.equipaje)
+        contract_id:        contract.id,
+        quote_id:           contract.quote_id,
+        tipo:               "equipaje",
+        descripcion:        "Equipaje adicional",
+        detalle:            `Equipaje adicional para ${personasQuePagan} pasajeros que pagan`,
+        precio_total:       costoTotalQuote, // ✅ MANTENER valor original
+        cantidad:           personasQuePagan, // ✅ Solo quienes pagan
+        precio_unitario:    precioUnitarioReal, // ✅ Dividido entre quienes pagan
+        status:             "pendiente_compra",
+        fecha_vencimiento_pago: new Date(Date.now() + 5*24*60*60*1000),
+        observaciones:      JSON.stringify(calc.equipaje)
       });
     }
   }
 
-  // ✅ EXCURSIONES - Array JSONB
-  if (calc.excursiones && Array.isArray(calc.excursiones)) {
-    calc.excursiones.forEach((excursion, index) => {
-      const excursionCosto = parseFloat(excursion.costo || 0);
-      if (excursionCosto > 0) {
+  // ─── EXCURSIONES ────────────────────────────────────
+  if (Array.isArray(calc.excursiones)) {
+    calc.excursiones.forEach((e, i) => {
+      const costoTotalQuote = parseFloat(e.costo || 0);
+      if (costoTotalQuote > 0 && personasQuePagan > 0) {
+        const precioUnitarioReal = costoTotalQuote / personasQuePagan;
+        
         items.push({
-          contract_id: contract.id,
-          quote_id: contract.quote_id,
-          tipo: "excursiones", // ✅ Coincide con ENUM
-          descripcion: excursion.nombre || `Excursión ${index + 1}`,
-          detalle: excursion.descripcion || `Excursión incluida en el paquete`,
-          precio_total: excursionCosto,
-          cantidad: 1,
-          precio_unitario: excursionCosto,
-          status: "pendiente_compra",
-          fecha_vencimiento_pago: new Date(Date.now() + (10 * 24 * 60 * 60 * 1000)), // 10 días
-          observaciones: JSON.stringify(excursion)
+          contract_id:        contract.id,
+          quote_id:           contract.quote_id,
+          tipo:               "excursiones",
+          descripcion:        e.nombre || `Excursión ${i+1}`,
+          detalle:            e.descripcion || '',
+          precio_total:       costoTotalQuote, // ✅ MANTENER valor original
+          cantidad:           personasQuePagan, // ✅ Solo quienes pagan
+          precio_unitario:    precioUnitarioReal, // ✅ Dividido entre quienes pagan
+          status:             "pendiente_compra",
+          fecha_vencimiento_pago: new Date(Date.now() + 10*24*60*60*1000),
+          observaciones:      JSON.stringify(e)
         });
       }
     });
   }
 
-  // ✅ EXTRAS - Array JSONB
-  if (calc.extras && Array.isArray(calc.extras)) {
-    calc.extras.forEach((extra, index) => {
-      const extraCosto = parseFloat(extra.costo || 0);
-      if (extraCosto > 0) {
+  // ─── EXTRAS ─────────────────────────────────────────
+  if (Array.isArray(calc.extras)) {
+    calc.extras.forEach((x, i) => {
+      const costoTotalQuote = parseFloat(x.costo || 0);
+      if (costoTotalQuote > 0 && personasQuePagan > 0) {
+        const precioUnitarioReal = costoTotalQuote / personasQuePagan;
+        
         items.push({
-          contract_id: contract.id,
-          quote_id: contract.quote_id,
-          tipo: "extras", // ✅ Coincide con ENUM
-          descripcion: extra.nombre || `Extra ${index + 1}`,
-          detalle: extra.descripcion || `Servicio extra incluido`,
-          precio_total: extraCosto,
-          cantidad: 1,
-          precio_unitario: extraCosto,
-          status: "pendiente_compra",
-          fecha_vencimiento_pago: new Date(Date.now() + (15 * 24 * 60 * 60 * 1000)), // 15 días
-          observaciones: JSON.stringify(extra)
+          contract_id:        contract.id,
+          quote_id:           contract.quote_id,
+          tipo:               "extras",
+          descripcion:        x.nombre || `Extra ${i+1}`,
+          detalle:            x.descripcion || '',
+          precio_total:       costoTotalQuote, // ✅ MANTENER valor original
+          cantidad:           personasQuePagan, // ✅ Solo quienes pagan
+          precio_unitario:    precioUnitarioReal, // ✅ Dividido entre quienes pagan
+          status:             "pendiente_compra",
+          fecha_vencimiento_pago: new Date(Date.now() + 15*24*60*60*1000),
+          observaciones:      JSON.stringify(x)
         });
       }
     });
   }
 
-  // ✅ COMISIONES - NO requieren compra
+  // ─── COMISIONES (informativo) - MANTENER COMO ESTABA ─────────────────────
   const totalComisiones = parseFloat(calc.total_comisiones || 0);
   if (totalComisiones > 0) {
     items.push({
-      contract_id: contract.id,
-      quote_id: contract.quote_id,
-      tipo: "comisiones", // ✅ Coincide con ENUM
-      descripcion: "Comisiones de ventas",
-      detalle: `Comisiones para el equipo de ventas`,
-      precio_total: totalComisiones,
-      cantidad: 1,
-      precio_unitario: totalComisiones,
-      status: "no_requiere", // ✅ Usar status correcto para items informativos
-      // ❌ No fecha_vencimiento_pago para items que no requieren compra
-      observaciones: JSON.stringify(calc.comisiones || {})
+      contract_id:        contract.id,
+      quote_id:           contract.quote_id,
+      tipo:               "comisiones",
+      descripcion:        "Comisiones de ventas",
+      detalle:            "Comisiones para el equipo de ventas",
+      precio_total:       totalComisiones,
+      cantidad:           1,
+      precio_unitario:    totalComisiones,
+      status:             "no_requiere",
+      observaciones:      JSON.stringify(calc.comisiones || {})
     });
   }
 
-  // ✅ GANANCIA EMPRESA - NO requiere compra
+  // ─── GANANCIA EMPRESA (informativo) - MANTENER COMO ESTABA ────────────────
   const totalGanancia = parseFloat(calc.total_ganancia || 0);
   if (totalGanancia > 0) {
     items.push({
-      contract_id: contract.id,
-      quote_id: contract.quote_id,
-      tipo: "ganancia_empresa", // ✅ Coincide con ENUM
-      descripcion: "Ganancia Empresa",
-      detalle: "Margen de ganancia para la empresa",
-      precio_total: totalGanancia,
-      cantidad: 1,
-      precio_unitario: totalGanancia,
-      status: "no_requiere", // ✅ Usar status correcto
-      observaciones: JSON.stringify(calc.ganancia || {})
+      contract_id:        contract.id,
+      quote_id:           contract.quote_id,
+      tipo:               "ganancia_empresa",
+      descripcion:        "Ganancia Empresa",
+      detalle:            "Margen de ganancia para la empresa",
+      precio_total:       totalGanancia,
+      cantidad:           1,
+      precio_unitario:    totalGanancia,
+      status:             "no_requiere",
+      observaciones:      JSON.stringify(calc.ganancia || {})
     });
   }
 
-  // ✅ CREAR items en batch
-  console.log(`📦 Creando ${items.length} items para contrato ${contract.contract_number}`);
+  // ─── CREAR EN BATCH ────────────────────────────────
+  const createdItems = await ContractItem.bulkCreate(items, { returning: true });
   
-  const createdItems = await ContractItem.bulkCreate(items, {
-    returning: true,
-  });
+  // ✅ MOSTRAR RESUMEN FINAL
+  const totalCotizado = createdItems
+    .filter(item => item.status === 'pendiente_compra')
+    .reduce((sum, item) => sum + parseFloat(item.precio_total || 0), 0);
 
+  console.log(`\n✅ RESUMEN DE CONVERSIÓN:`);
+  console.log(`   - Items creados: ${createdItems.length}`);
+  console.log(`   - Personas total viaje: ${totalPersonas}`);
+  console.log(`   - Personas que pagan: ${personasQuePagan}`);
+  console.log(`   - Total a comprar: $${totalCotizado.toLocaleString('es-CO')}`);
+  console.log(`   - ✅ Precios totales mantenidos de QuoteCalculation`);
+  console.log(`   - ✅ Cantidades ajustadas a quienes pagan realmente`);
+  
   return {
     success: true,
     message: `${createdItems.length} items creados automáticamente`,
     items: createdItems,
     summary: {
-      total: createdItems.length,
-      requieren_compra: createdItems.filter((item) => item.status === 'pendiente_compra').length,
-      no_requieren_compra: createdItems.filter((item) => item.status === 'no_requiere').length,
-      tipos_generados: [...new Set(createdItems.map(item => item.tipo))]
-    },
+      total:             createdItems.length,
+      requieren_compra:  createdItems.filter(i => i.status === 'pendiente_compra').length,
+      no_requieren_compra: createdItems.filter(i => i.status === 'no_requiere').length,
+      tipos_generados:   [...new Set(createdItems.map(i => i.tipo))],
+      // ✅ AGREGAR: Información del cálculo real
+      calculo_detalle: {
+        personas_total_viaje: totalPersonas,
+        personas_que_pagan: personasQuePagan,
+        total_cotizado: totalCotizado,
+        nota: "Precios totales de QuoteCalculation mantenidos. Cantidades y precios unitarios ajustados a quienes pagan."
+      }
+    }
   };
 };
 
@@ -447,6 +619,9 @@ const contractController = {
               "origen",
               "precio_total",
               "numero_personas",
+              "adultos", // ✅ AGREGADO: Para calcular personas que pagan
+              "menores", // ✅ AGREGADO: Para calcular personas que pagan
+              "infantes", // ✅ AGREGADO: Para calcular personas que pagan
             ],
             include: [
               // ✅ Jerarquía de ventas desde la cotización
@@ -487,9 +662,42 @@ const contractController = {
         order: [["created_at", "DESC"]],
       });
 
+      // ✅ Enriquecer contratos con cálculo correcto de precio por persona
+      const enrichedContracts = contracts.rows.map(contract => {
+        const contractObj = contract.toJSON();
+        
+        // Calcular personas que pagan (excluyendo infantes)
+        let personasQuePagan = 0;
+        let precio_por_persona = 0;
+        
+        if (contractObj.Quote) {
+          personasQuePagan = calcularPersonasQuePagan({
+            adultos: contractObj.Quote.adultos || 0,
+            menores: contractObj.Quote.menores || 0,
+            infantes: contractObj.Quote.infantes || 0
+          });
+          
+          if (contractObj.Quote.precio_total && personasQuePagan > 0) {
+            precio_por_persona = parseFloat(contractObj.Quote.precio_total) / personasQuePagan;
+          }
+        }
+        
+        return {
+          ...contractObj,
+          // ✅ Agregar campos calculados
+          personas_que_pagan: personasQuePagan,
+          precio_por_persona: precio_por_persona,
+          precio_por_persona_formateado: precio_por_persona.toFixed(2),
+          calculation_metadata: {
+            infants_dont_pay: true,
+            price_per_person_available: !!(contractObj.Quote?.precio_total && personasQuePagan > 0)
+          }
+        };
+      });
+
       res.json({
         success: true,
-        contracts: contracts.rows,
+        contracts: enrichedContracts,
         total: contracts.count,
       });
     } catch (error) {
@@ -718,10 +926,61 @@ const contractController = {
         }
       }
 
-      // ✅ SEGUROS - Estructura JSONB correcta
+      // ✅ SEGUROS - Estructura JSONB correcta MEJORADA
       if (calc.seguros && typeof calc.seguros === 'object') {
         const segurosCosto = parseFloat(calc.seguros.costo_total || 0);
-        if (segurosCosto > 0) {
+        
+        // ✅ ASISTENCIA MÉDICA - Análisis específico
+        if (calc.seguros.asistencia_medica && typeof calc.seguros.asistencia_medica === 'object') {
+          const asistenciaCosto = parseFloat(calc.seguros.asistencia_medica.costo || 0);
+          const tipoAsistencia = calc.seguros.asistencia_medica.tipo || 'básica';
+          const proveedorAsistencia = calc.seguros.asistencia_medica.proveedor || 'Por confirmar';
+          
+          if (asistenciaCosto > 0 || calc.seguros.asistencia_medica.incluido) {
+            potentialItems.push({
+              tipo: "seguros",
+              descripcion: `Asistencia médica ${tipoAsistencia}`,
+              valor: asistenciaCosto,
+              requiere_compra: asistenciaCosto > 0,
+              prioridad: "alta",
+              detalles: {
+                tipo: tipoAsistencia,
+                proveedor: proveedorAsistencia,
+                incluido: calc.seguros.asistencia_medica.incluido || false,
+                costo: asistenciaCosto,
+                cobertura: calc.seguros.asistencia_medica.cobertura || 'Estándar'
+              }
+            });
+            if (asistenciaCosto > 0) totalItemsValue += asistenciaCosto;
+          }
+        }
+        
+        // ✅ SEGURO DE CANCELACIÓN - Análisis específico
+        if (calc.seguros.cancelacion && typeof calc.seguros.cancelacion === 'object') {
+          const cancelacionCosto = parseFloat(calc.seguros.cancelacion.costo || 0);
+          
+          if (cancelacionCosto > 0 || calc.seguros.cancelacion.incluido) {
+            potentialItems.push({
+              tipo: "seguros",
+              descripcion: "Seguro de cancelación",
+              valor: cancelacionCosto,
+              requiere_compra: cancelacionCosto > 0,
+              prioridad: "media",
+              detalles: {
+                tipo: 'cancelacion',
+                proveedor: calc.seguros.cancelacion.proveedor || 'Por confirmar',
+                incluido: calc.seguros.cancelacion.incluido || false,
+                costo: cancelacionCosto
+              }
+            });
+            if (cancelacionCosto > 0) totalItemsValue += cancelacionCosto;
+          }
+        }
+
+        // ✅ SEGUROS GENERALES - Solo si no hay componentes específicos
+        if (segurosCosto > 0 && 
+            (!calc.seguros.asistencia_medica || (!calc.seguros.asistencia_medica.costo && !calc.seguros.asistencia_medica.incluido)) &&
+            (!calc.seguros.cancelacion || (!calc.seguros.cancelacion.costo && !calc.seguros.cancelacion.incluido))) {
           potentialItems.push({
             tipo: "seguros",
             descripcion: "Seguros de viaje",
@@ -1911,27 +2170,46 @@ const contractController = {
         }
       }
 
-      // ✅ ALIMENTACIÓN - Estructura JSONB (SIN PRECIOS)
+      // ✅ ALIMENTACIÓN - Estructura JSONB (SIN PRECIOS) MEJORADA
       if (calc.alimentacion && typeof calc.alimentacion === 'object') {
         const alimentacionCosto = parseFloat(calc.alimentacion.costo_total || 0);
+        const tipoAlimentacion = calc.alimentacion.tipo || 'no especificado';
+        const proveedorAlimentacion = calc.alimentacion.proveedor || 'Por confirmar';
+        
         if (alimentacionCosto > 0) {
+          // ✅ ALIMENTACIÓN CON COSTO (INCLUIDA EN EL PAQUETE)
           serviciosIncluidos.push({
             tipo: "alimentacion",
-            descripcion: `Alimentación ${calc.alimentacion.tipo || 'incluida'}`,
+            descripcion: `Alimentación ${tipoAlimentacion}`,
             incluido: true,
             detalles: {
-              tipo: calc.alimentacion.tipo,
-              proveedor: calc.alimentacion.proveedor || 'Por confirmar',
-              observaciones: calc.alimentacion.observaciones
+              tipo: tipoAlimentacion,
+              proveedor: proveedorAlimentacion,
+              observaciones: calc.alimentacion.observaciones || `Plan alimentario ${tipoAlimentacion}`,
+              descripcion: `Plan alimentario ${tipoAlimentacion} - ${proveedorAlimentacion}`
             }
           });
-        } else if (calc.alimentacion.tipo === 'ninguna') {
+        } else if (tipoAlimentacion && tipoAlimentacion !== 'ninguna') {
+          // ✅ ALIMENTACIÓN SIN COSTO PERO INCLUIDA
+          serviciosIncluidos.push({
+            tipo: "alimentacion",
+            descripcion: `Alimentación ${tipoAlimentacion} incluida`,
+            incluido: true,
+            detalles: {
+              tipo: tipoAlimentacion,
+              nota: "Incluida en el paquete sin costo adicional",
+              descripcion: `Alimentación ${tipoAlimentacion} incluida en el paquete`
+            }
+          });
+        } else if (tipoAlimentacion === 'ninguna') {
+          // ✅ ALIMENTACIÓN NO INCLUIDA
           serviciosIncluidos.push({
             tipo: "alimentacion",
             descripcion: "Alimentación no incluida",
             incluido: false,
             detalles: {
-              nota: "La alimentación no está incluida en este paquete"
+              nota: "La alimentación no está incluida en este paquete. El cliente debe gestionar sus comidas.",
+              descripcion: "Alimentación por cuenta del cliente"
             }
           });
         }
@@ -1964,31 +2242,81 @@ const contractController = {
         }
       }
 
-      // ✅ SEGUROS - Estructura JSONB (SIN PRECIOS)
+      // ✅ SEGUROS - Estructura JSONB (SIN PRECIOS) MEJORADA
       if (calc.seguros && typeof calc.seguros === 'object') {
         const segurosCosto = parseFloat(calc.seguros.costo_total || 0);
-        if (segurosCosto > 0) {
-          const segurosDetalles = [];
+        
+        // ✅ ASISTENCIA MÉDICA - Análisis específico para email
+        if (calc.seguros.asistencia_medica && typeof calc.seguros.asistencia_medica === 'object') {
+          const asistenciaCosto = parseFloat(calc.seguros.asistencia_medica.costo || 0);
+          const tipoAsistencia = calc.seguros.asistencia_medica.tipo || 'básica';
+          const proveedorAsistencia = calc.seguros.asistencia_medica.proveedor || 'Por confirmar';
           
-          if (calc.seguros.asistencia_medica?.tipo) {
-            segurosDetalles.push(`Asistencia médica: ${calc.seguros.asistencia_medica.tipo}`);
-          }
-          if (calc.seguros.cancelacion?.incluido) {
-            segurosDetalles.push('Seguro de cancelación');
-          }
-          if (calc.seguros.otros && calc.seguros.otros.length > 0) {
-            calc.seguros.otros.forEach(seguro => {
-              segurosDetalles.push(seguro.descripcion);
+          if (asistenciaCosto > 0 || calc.seguros.asistencia_medica.incluido) {
+            serviciosIncluidos.push({
+              tipo: "seguros",
+              descripcion: `Asistencia médica ${tipoAsistencia}`,
+              incluido: true,
+              detalles: {
+                tipo: tipoAsistencia,
+                proveedor: proveedorAsistencia,
+                cobertura: calc.seguros.asistencia_medica.cobertura || 'Cobertura médica estándar',
+                descripcion: `Asistencia médica ${tipoAsistencia} - Proveedor: ${proveedorAsistencia}`
+              }
             });
           }
+        }
+        
+        // ✅ SEGURO DE CANCELACIÓN - Análisis específico para email
+        if (calc.seguros.cancelacion && typeof calc.seguros.cancelacion === 'object') {
+          const cancelacionCosto = parseFloat(calc.seguros.cancelacion.costo || 0);
           
+          if (cancelacionCosto > 0 || calc.seguros.cancelacion.incluido) {
+            serviciosIncluidos.push({
+              tipo: "seguros",
+              descripcion: "Seguro de cancelación",
+              incluido: true,
+              detalles: {
+                tipo: 'cancelacion',
+                proveedor: calc.seguros.cancelacion.proveedor || 'Por confirmar',
+                cobertura: calc.seguros.cancelacion.cobertura || 'Cancelación por enfermedad o emergencia',
+                descripcion: `Seguro de cancelación - ${calc.seguros.cancelacion.proveedor || 'Por confirmar'}`
+              }
+            });
+          }
+        }
+
+        // ✅ OTROS SEGUROS - Array de seguros adicionales
+        if (calc.seguros.otros && Array.isArray(calc.seguros.otros)) {
+          calc.seguros.otros.forEach(seguro => {
+            const seguroCosto = parseFloat(seguro.costo || 0);
+            if (seguroCosto > 0) {
+              serviciosIncluidos.push({
+                tipo: "seguros",
+                descripcion: seguro.nombre || 'Seguro adicional',
+                incluido: true,
+                detalles: {
+                  tipo: 'adicional',
+                  nombre: seguro.nombre,
+                  descripcion: seguro.descripcion || seguro.nombre,
+                  proveedor: seguro.proveedor || 'Por confirmar'
+                }
+              });
+            }
+          });
+        }
+
+        // ✅ SEGUROS GENERALES - Solo si no hay componentes específicos
+        if (segurosCosto > 0 && 
+            (!calc.seguros.asistencia_medica || (!calc.seguros.asistencia_medica.costo && !calc.seguros.asistencia_medica.incluido)) &&
+            (!calc.seguros.cancelacion || (!calc.seguros.cancelacion.costo && !calc.seguros.cancelacion.incluido)) &&
+            (!calc.seguros.otros || calc.seguros.otros.length === 0)) {
           serviciosIncluidos.push({
             tipo: "seguros",
             descripcion: "Seguros de viaje",
             incluido: true,
             detalles: {
-              servicios: segurosDetalles,
-              descripcion: segurosDetalles.join(', ')
+              descripcion: "Cobertura general de seguros de viaje"
             }
           });
         }
@@ -2201,8 +2529,29 @@ const contractController = {
                       ${servicio.tipo === 'traslados' && servicio.detalles?.descripcion ? `
                         • ${servicio.detalles.descripcion}
                       ` : ''}
-                      ${servicio.tipo === 'seguros' && servicio.detalles?.descripcion ? `
+                      ${servicio.tipo === 'alimentacion' && servicio.detalles ? `
+                        ${servicio.detalles.tipo ? `• Tipo: ${servicio.detalles.tipo}<br>` : ''}
+                        ${servicio.detalles.proveedor ? `• Proveedor: ${servicio.detalles.proveedor}<br>` : ''}
+                        ${servicio.detalles.nota ? `• Nota: ${servicio.detalles.nota}<br>` : ''}
+                        ${servicio.detalles.observaciones ? `• ${servicio.detalles.observaciones}` : ''}
+                      ` : ''}
+                      ${servicio.tipo === 'seguros' && servicio.detalles ? `
+                        ${servicio.detalles.tipo ? `• Tipo: ${servicio.detalles.tipo}<br>` : ''}
+                        ${servicio.detalles.proveedor ? `• Proveedor: ${servicio.detalles.proveedor}<br>` : ''}
+                        ${servicio.detalles.cobertura ? `• Cobertura: ${servicio.detalles.cobertura}<br>` : ''}
+                        ${servicio.detalles.descripcion ? `• ${servicio.detalles.descripcion}` : ''}
+                      ` : ''}
+                      ${servicio.tipo === 'equipaje' && servicio.detalles?.descripcion ? `
                         • ${servicio.detalles.descripcion}
+                      ` : ''}
+                      ${servicio.tipo === 'excursiones' && servicio.detalles ? `
+                        ${servicio.detalles.nombre ? `• Nombre: ${servicio.detalles.nombre}<br>` : ''}
+                        ${servicio.detalles.descripcion ? `• ${servicio.detalles.descripcion}<br>` : ''}
+                        ${servicio.detalles.duracion ? `• Duración: ${servicio.detalles.duracion}` : ''}
+                      ` : ''}
+                      ${servicio.tipo === 'extras' && servicio.detalles ? `
+                        ${servicio.detalles.nombre ? `• ${servicio.detalles.nombre}<br>` : ''}
+                        ${servicio.detalles.descripcion ? `• ${servicio.detalles.descripcion}` : ''}
                       ` : ''}
                     </div>
                   ` : ''}
@@ -3045,6 +3394,196 @@ servePDF: async (req, res) => {
       res.status(500).json({
         message: "Error al aprobar el contrato",
         error: error.message,
+      });
+    }
+  },
+
+  // ✅ NUEVO: Obtener detalles completos de pagos del contrato
+  getContractPaymentDetails: async (req, res) => {
+    try {
+      const { contract_id } = req.params;
+
+      console.log('🔍 Obteniendo detalles de pagos para contrato:', contract_id);
+
+      // ✅ OBTENER CONTRATO CON TODAS LAS RELACIONES
+      const contract = await Contract.findByPk(contract_id, {
+        include: [
+          {
+            model: Quote,
+            as: 'Quote',
+            include: [
+              {
+                model: User,
+                as: 'Cliente',
+                attributes: ['id', 'name', 'lastname', 'email', 'phone']
+              },
+              {
+                model: QuoteCalculation,
+                as: 'Calculation',
+                attributes: ['precio_final_total', 'total_comisiones', 'total_ganancia', 'costo_base']
+              }
+            ]
+          },
+          {
+            model: Payment,
+            as: 'Payments',
+            order: [['fecha_pago', 'DESC']]
+          }
+        ]
+      });
+
+      if (!contract) {
+        return res.status(404).json({
+          success: false,
+          message: 'Contrato no encontrado'
+        });
+      }
+
+      // ✅ CALCULAR DATOS FINANCIEROS
+      const precioTotal = parseFloat(contract.precio_total || 0);
+      const totalPagado = parseFloat(contract.total_pagado || 0);
+      const saldoPendiente = parseFloat(contract.saldo_pendiente || precioTotal);
+
+      // ✅ GENERAR PLAN DE PAGOS SUGERIDO
+      const generarPlanPagos = (montoTotal, fechaInicioViaje) => {
+        // Plan de 4 pagos: Cuota inicial (30%) + 3 cuotas del saldo restante
+        const cuotaInicial = Math.round(montoTotal * 0.3); // 30% - Cuota inicial/reserva
+        const saldoRestante = montoTotal - cuotaInicial; // 70% restante
+        const valorCuotaRegular = Math.round(saldoRestante / 3); // Dividir el 70% en 3 cuotas
+        const ultimaCuota = saldoRestante - (valorCuotaRegular * 2); // Saldo final exacto
+
+        const fechaBase = fechaInicioViaje ? new Date(fechaInicioViaje) : new Date();
+        
+        // Calcular fechas de vencimiento
+        const fechaInicial = new Date(); // Cuota inicial - inmediata
+        
+        const fecha1 = new Date(fechaBase);
+        fecha1.setDate(fecha1.getDate() - 60); // 60 días antes del viaje
+
+        const fecha2 = new Date(fechaBase);
+        fecha2.setDate(fecha2.getDate() - 30); // 30 días antes del viaje
+
+        const fecha3 = new Date(fechaBase);
+        fecha3.setDate(fecha3.getDate() - 7); // 7 días antes del viaje
+
+        // 🔧 FUNCIÓN MEJORADA para calcular estado de cada cuota
+        const calcularEstadoCuota = (numeroCuota, totalPagado) => {
+          let montoAcumuladoHastaCuota = 0;
+          
+          if (numeroCuota >= 0) montoAcumuladoHastaCuota += cuotaInicial; // Cuota inicial
+          if (numeroCuota >= 1) montoAcumuladoHastaCuota += valorCuotaRegular; // Primera cuota regular
+          if (numeroCuota >= 2) montoAcumuladoHastaCuota += valorCuotaRegular; // Segunda cuota regular  
+          if (numeroCuota >= 3) montoAcumuladoHastaCuota += ultimaCuota; // Tercera cuota (saldo final)
+          
+          if (totalPagado >= montoAcumuladoHastaCuota) {
+            return 'pagada';
+          } else if (totalPagado > 0) {
+            // Verificar si esta cuota específica puede estar en estado parcial
+            let montoAcumuladoAnterior = 0;
+            if (numeroCuota >= 1) montoAcumuladoAnterior += cuotaInicial;
+            if (numeroCuota >= 2) montoAcumuladoAnterior += valorCuotaRegular;
+            if (numeroCuota >= 3) montoAcumuladoAnterior += valorCuotaRegular;
+            
+            // Si se pagó más que las cuotas anteriores pero menos que esta cuota
+            if (totalPagado > montoAcumuladoAnterior) {
+              return 'parcial';
+            } else {
+              return 'pendiente';
+            }
+          } else {
+            return 'pendiente';
+          }
+        };
+
+        return [
+          {
+            numero: 0, // Cuota inicial
+            descripcion: "Cuota inicial - Reserva (30%)",
+            monto: cuotaInicial,
+            fecha_vencimiento: fechaInicial,
+            estado: calcularEstadoCuota(0, totalPagado),
+            porcentaje: 30,
+            es_cuota_inicial: true
+          },
+          {
+            numero: 1,
+            descripcion: "Primera cuota regular",
+            monto: valorCuotaRegular,
+            fecha_vencimiento: fecha1,
+            estado: calcularEstadoCuota(1, totalPagado),
+            porcentaje: Math.round(((valorCuotaRegular / montoTotal) * 100)),
+            es_cuota_inicial: false
+          },
+          {
+            numero: 2,
+            descripcion: "Segunda cuota regular",
+            monto: valorCuotaRegular,
+            fecha_vencimiento: fecha2,
+            estado: calcularEstadoCuota(2, totalPagado),
+            porcentaje: Math.round(((valorCuotaRegular / montoTotal) * 100)),
+            es_cuota_inicial: false
+          },
+          {
+            numero: 3,
+            descripcion: "Cuota final - Saldo restante",
+            monto: ultimaCuota,
+            fecha_vencimiento: fecha3,
+            estado: calcularEstadoCuota(3, totalPagado),
+            porcentaje: Math.round(((ultimaCuota / montoTotal) * 100)),
+            es_cuota_inicial: false
+          }
+        ];
+      };
+
+      const planPagos = generarPlanPagos(precioTotal, contract.fecha_inicio_viaje);
+
+      // ✅ RESUMEN FINANCIERO DETALLADO
+      const resumenFinanciero = {
+        precio_total: precioTotal,
+        total_pagado: totalPagado,
+        saldo_pendiente: saldoPendiente,
+        porcentaje_pagado: precioTotal > 0 ? parseFloat(((totalPagado / precioTotal) * 100).toFixed(2)) : 0,
+        numero_pagos_realizados: contract.Payments ? contract.Payments.length : 0,
+        ultimo_pago: contract.Payments && contract.Payments.length > 0 ? contract.Payments[0] : null,
+        fecha_inicio_viaje: contract.fecha_inicio_viaje,
+        fecha_fin_viaje: contract.fecha_fin_viaje,
+        dias_hasta_viaje: contract.fecha_inicio_viaje ? 
+          Math.ceil((new Date(contract.fecha_inicio_viaje) - new Date()) / (1000 * 60 * 60 * 24)) : null
+      };
+
+      console.log('📊 Detalles de pago calculados:', {
+        contract_number: contract.contract_number,
+        cuotas_planificadas: planPagos.length,
+        pagos_realizados: contract.Payments ? contract.Payments.length : 0,
+        precio_total: precioTotal,
+        total_pagado: totalPagado,
+        saldo_pendiente: saldoPendiente
+      });
+
+      res.json({
+        success: true,
+        contract: {
+          id: contract.id,
+          contract_number: contract.contract_number,
+          status: contract.status,
+          fecha_inicio_viaje: contract.fecha_inicio_viaje,
+          fecha_fin_viaje: contract.fecha_fin_viaje,
+          precio_total: contract.precio_total,
+          total_pagado: contract.total_pagado,
+          saldo_pendiente: contract.saldo_pendiente,
+          Quote: contract.Quote
+        },
+        plan_pagos: planPagos,
+        pagos_realizados: contract.Payments || [],
+        resumen_financiero: resumenFinanciero
+      });
+
+    } catch (error) {
+      console.error('❌ Error obteniendo detalles de pagos del contrato:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al obtener los detalles de pagos del contrato',
+        error: error.message
       });
     }
   },

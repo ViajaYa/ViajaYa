@@ -22,7 +22,9 @@ const storage = new CloudinaryStorage({
         ];
       }
       return []; // No transformaciones para PDFs
-    }
+    },
+    // 🔑 CLAVE: Hacer archivos públicos
+    access_mode: 'public'
   },
 });
 
@@ -70,7 +72,9 @@ const paymentProofStorage = new CloudinaryStorage({
         ];
       }
       return [];
-    }
+    },
+    // 🔑 CLAVE: Hacer archivos públicos
+    access_mode: 'public'
   },
 });
 
@@ -89,7 +93,9 @@ const comprobantesStorage = new CloudinaryStorage({
     folder: 'viajaya/comprobantes-compras', // Carpeta específica para comprobantes de compra
     allowedFormats: ['jpg', 'jpeg', 'png', 'pdf'],
     resource_type: (req, file) => {
-      return file.mimetype === 'application/pdf' ? 'raw' : 'image';
+      const resourceType = file.mimetype === 'application/pdf' ? 'raw' : 'image';
+      console.log(`🔧 Setting resource_type for ${file.originalname}:`, resourceType);
+      return resourceType;
     },
     transformation: (req, file) => {
       if (file.mimetype.startsWith('image/')) {
@@ -98,8 +104,26 @@ const comprobantesStorage = new CloudinaryStorage({
           { fetch_format: 'auto' }
         ];
       }
-      return [];
-    }
+      return []; // No transformaciones para PDFs
+    },
+    // ✅ AGREGAR: Configuración adicional para PDFs
+    format: (req, file) => {
+      if (file.mimetype === 'application/pdf') {
+        return 'pdf'; // Forzar formato PDF
+      }
+      return undefined; // Auto-detect para imágenes
+    },
+    // ✅ AGREGAR: Public ID personalizado para mejor organización
+    public_id: (req, file) => {
+      const timestamp = Date.now();
+      const safeName = file.originalname.replace(/[^a-zA-Z0-9]/g, '_');
+      return `comprobante_${timestamp}_${safeName}`;
+    },
+    // 🔑 CLAVE: Hacer archivos públicos para evitar error 401
+    access_mode: 'public',
+    // ✅ AGREGAR: Headers adicionales para PDFs
+    use_filename: true,
+    unique_filename: false
   },
 });
 

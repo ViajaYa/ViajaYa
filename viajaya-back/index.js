@@ -3,11 +3,13 @@ const {conn} = require("./src/db.js")
 
 const insertNumbers = require('./src/scripts/InsertNumbers.js')
 const assignInitialRoles = require('./src/scripts/assignInitialRoles.js')
+const seedCommissionConfigs = require('./src/seedCommissionConfigs.js')
 
 conn.sync({ alter: true })
     .then(async () => {
         await insertNumbers();
         await assignInitialRoles(); // Verificar/crear usuarios con roles
+        await seedCommissionConfigs(); // Cargar comisiones por defecto si no existen
         
         app.listen(3001, () => {
             console.log("🚀 Server listening on port 3001");

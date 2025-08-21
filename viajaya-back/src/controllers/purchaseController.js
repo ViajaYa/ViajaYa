@@ -220,7 +220,65 @@ const uploadPurchaseReceipt = async (req, res) => {
     } = req.body;
 
     console.log('📎 Subiendo comprobante para item:', itemId);
-    console.log('📎 Archivo recibido:', req.file);
+    console.log('📎 Datos recibidos:', {
+      proveedor,
+      costo,
+      fecha_compra,
+      fecha_vencimiento_pago,
+      tipo_comprobante,
+      moneda,
+      observaciones
+    });
+
+    // ✅ VALIDAR Y CONVERTIR FECHAS
+    let fechaCompraFinal = fecha_compra;
+    let fechaVencimientoFinal = fecha_vencimiento_pago;
+
+    // Validar fecha_compra
+    if (fecha_compra) {
+      const fechaCompraDate = new Date(fecha_compra);
+      if (isNaN(fechaCompraDate.getTime())) {
+        console.warn('⚠️ fecha_compra inválida, usando fecha actual');
+        fechaCompraFinal = new Date();
+      } else {
+        fechaCompraFinal = fechaCompraDate;
+      }
+    } else {
+      fechaCompraFinal = new Date();
+    }
+
+    // Validar fecha_vencimiento_pago
+    if (fecha_vencimiento_pago) {
+      const fechaVencimientoDate = new Date(fecha_vencimiento_pago);
+      if (isNaN(fechaVencimientoDate.getTime())) {
+        console.warn('⚠️ fecha_vencimiento_pago inválida, usando null');
+        fechaVencimientoFinal = null;
+      } else {
+        fechaVencimientoFinal = fechaVencimientoDate;
+      }
+    } else {
+      fechaVencimientoFinal = null;
+    }
+
+    console.log('📅 Fechas procesadas:', {
+      fechaCompraFinal,
+      fechaVencimientoFinal
+    });
+    
+    // 🐛 DEBUG DETALLADO: Analizar el archivo de Cloudinary
+    if (req.file) {
+      console.log('🔍 Cloudinary File Details:', {
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        path: req.file.path,
+        public_id: req.file.public_id,
+        filename: req.file.filename,
+        format: req.file.format,
+        resource_type: req.file.resource_type,
+        secure_url: req.file.secure_url
+      });
+    }
 
     // Verificar que se haya subido archivo
     if (!req.file) {
@@ -244,15 +302,47 @@ const uploadPurchaseReceipt = async (req, res) => {
     const precioReal = parseFloat(costo || 0);
     const diferenciaPrecio = precioReal - precioCotizado;
 
+    // ✅ MEJORAR: URL del comprobante con mejor manejo
+    const comprobanteUrl = req.file.secure_url || req.file.path;
+    const publicId = req.file.public_id || req.file.filename;
+    
+    // 🔑 GENERAR URL PÚBLICA para archivos privados
+    let finalUrl = comprobanteUrl;
+    if (req.file.resource_type === 'raw' && req.file.format === 'pdf') {
+      try {
+        // Generar URL firmada con acceso público por 7 días
+        const cloudinary = require('../config/cloudinaryConfig');
+        finalUrl = cloudinary.utils.private_download_url(
+          publicId, 
+          'pdf',
+          {
+            resource_type: 'raw',
+            expires_at: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7 días
+          }
+        );
+        console.log('� Generated signed URL for PDF:', finalUrl);
+      } catch (error) {
+        console.log('⚠️ Could not generate signed URL, using original:', error.message);
+        finalUrl = comprobanteUrl;
+      }
+    }
+    
+    console.log('�💾 Saving purchase with:', {
+      comprobanteUrl: finalUrl,
+      publicId,
+      resourceType: req.file.resource_type,
+      format: req.file.format
+    });
+
     // Crear la compra
     const purchase = await Purchase.create({
       contract_item_id: itemId,
       proveedor,
       costo: precioReal,
-      fecha_compra: fecha_compra || new Date(),
-      fecha_vencimiento_pago,
-      comprobante_url: req.file.path,
-      cloudinary_public_id: req.file.public_id || req.file.filename,
+      fecha_compra: fechaCompraFinal,
+      fecha_vencimiento_pago: fechaVencimientoFinal,
+      comprobante_url: comprobanteUrl, // Usar URL original
+      cloudinary_public_id: publicId,
       tipo_comprobante: tipo_comprobante || 'factura',
       moneda: moneda || 'COP',
       diferencia_precio: diferenciaPrecio,
@@ -500,6 +590,79 @@ const calculateContractSummary = (items) => {
   });
 };
 
+// 🔧 NUEVO: Proxy para servir archivos PDF con headers correctos
+const servePDFFile = async (req, res) => {
+  try {
+    const { public_id } = req.params;
+    
+    console.log('� servePDFFile called with params:', req.params);
+    console.log('�📄 Serving PDF file:', public_id);
+    console.log('🔗 Full request URL:', req.originalUrl);
+    
+    // Decodificar el public_id si viene codificado
+    const decodedPublicId = decodeURIComponent(public_id);
+    console.log('🔓 Decoded public_id:', decodedPublicId);
+    
+    // 🔧 GENERAR URL DE CLOUDINARY - SIMPLIFICADO
+    const cloudinary = require('../config/cloudinaryConfig');
+    
+    // Construir URL manualmente usando la configuración de cloudinary
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    const url = `https://res.cloudinary.com/${cloudName}/raw/upload/v1/${decodedPublicId}`;
+    
+    console.log('📄 Cloudinary URL:', url);
+    
+    // Hacer request del archivo desde Cloudinary usando axios
+    const axios = require('axios');
+    const response = await axios.get(url, {
+      responseType: 'stream', // Importante: usar stream para archivos binarios
+      timeout: 30000 // 30 segundos timeout
+    });
+    
+    console.log('✅ Cloudinary response OK:', response.status);
+    console.log('📋 Response headers:', response.headers);
+    
+    // 🔧 HEADERS OPTIMIZADOS PARA VISUALIZACIÓN EN IFRAME
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'inline; filename="document.pdf"');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    // Remover X-Frame-Options para permitir iframe desde cualquier origen
+    // res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    
+    console.log('📤 Setting response headers for PDF viewing in iframe');
+    
+    // Hacer stream del archivo
+    response.data.pipe(res);
+    
+  } catch (error) {
+    console.error('❌ Error serving PDF:', error.message);
+    console.error('❌ Error details:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      url: error.config?.url,
+      method: error.config?.method
+    });
+    
+    if (error.response && error.response.status === 404) {
+      return res.status(404).json({
+        success: false,
+        message: 'Archivo no encontrado en Cloudinary',
+        public_id: req.params.public_id,
+        decoded_public_id: decodeURIComponent(req.params.public_id)
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: 'Error al servir el archivo',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   // ✅ FUNCIONES EXISTENTES
   createPurchase,
@@ -512,5 +675,8 @@ module.exports = {
   uploadPurchaseReceipt,
   updateItemDeadline,
   markPaymentCompleted,
-  getContractPurchaseStats
+  getContractPurchaseStats,
+  
+  // 🔧 PROXY PARA SERVIR PDFs
+  servePDFFile
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCalendarAlt, faSpinner, faTimes } from '@fortawesome/free-solid-svg-icons';
@@ -9,23 +9,23 @@ const DeadlineUpdateModal = ({
   onSubmit, 
   updating = false 
 }) => {
-  const [fecha_vencimiento_pago, setFechaVencimientoPago] = useState(''); // ✅ CORREGIDO NOMBRE
+  const [fecha_limite_compra, setFechaLimiteCompra] = useState(''); // ✅ CORREGIDO: usar campo del backend
   const [error, setError] = useState('');
 
   // ✅ INICIALIZAR CON FECHA ACTUAL
   useEffect(() => {
-    if (item?.fecha_vencimiento_pago) { // ✅ CORREGIDO
+    if (item?.fecha_limite_compra) { // ✅ CORREGIDO: usar campo del backend
       // Convertir a formato datetime-local
-      const date = new Date(item.fecha_vencimiento_pago); // ✅ CORREGIDO
+      const date = new Date(item.fecha_limite_compra); // ✅ CORREGIDO: usar campo del backend
       const localDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
-      setFechaVencimientoPago(localDate.toISOString().slice(0, 16));
+      setFechaLimiteCompra(localDate.toISOString().slice(0, 16));
     } else {
       // Valor por defecto: mañana a las 09:00
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       tomorrow.setHours(9, 0, 0, 0);
       const localDate = new Date(tomorrow.getTime() - (tomorrow.getTimezoneOffset() * 60000));
-      setFechaVencimientoPago(localDate.toISOString().slice(0, 16));
+      setFechaLimiteCompra(localDate.toISOString().slice(0, 16));
     }
   }, [item]);
 
@@ -56,7 +56,7 @@ const DeadlineUpdateModal = ({
   // ✅ MANEJAR CAMBIO DE FECHA
   const handleDateChange = (e) => {
     const newDate = e.target.value;
-    setFechaVencimientoPago(newDate);
+    setFechaLimiteCompra(newDate); // ✅ CORREGIDO: usar función correcta
     setError(validateDate(newDate));
   };
 
@@ -64,14 +64,14 @@ const DeadlineUpdateModal = ({
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    const validationError = validateDate(fecha_vencimiento_pago); // ✅ CORREGIDO
+    const validationError = validateDate(fecha_limite_compra); // ✅ CORREGIDO: usar variable correcta
     if (validationError) {
       setError(validationError);
       return;
     }
 
     // Convertir a UTC para envío
-    const dateToSend = new Date(fecha_vencimiento_pago).toISOString(); // ✅ CORREGIDO
+    const dateToSend = new Date(fecha_limite_compra).toISOString(); // ✅ CORREGIDO: usar variable correcta
     onSubmit(dateToSend);
   };
 
@@ -120,10 +120,10 @@ const DeadlineUpdateModal = ({
               <p><span className="font-medium">Tipo:</span> {item.tipo}</p>
               <p><span className="font-medium">Precio:</span> ${parseFloat(item.precio_total || 0).toLocaleString('es-CO')}</p>
               <p><span className="font-medium">Estado:</span> {item.status?.replace('_', ' ')}</p>
-              {item.fecha_vencimiento_pago && ( // ✅ CORREGIDO
+              {item.fecha_limite_compra && ( // ✅ CORREGIDO: usar campo del backend
                 <p>
                   <span className="font-medium">Fecha actual:</span>{' '}
-                  {new Date(item.fecha_vencimiento_pago).toLocaleDateString('es-CO', { // ✅ CORREGIDO
+                  {new Date(item.fecha_limite_compra).toLocaleDateString('es-CO', { // ✅ CORREGIDO: usar campo del backend
                     year: 'numeric',
                     month: 'long',
                     day: 'numeric',
@@ -133,16 +133,27 @@ const DeadlineUpdateModal = ({
                 </p>
               )}
             </div>
+            {/* ✅ MEJORA: Nota especial para tickets */}
+            {item.tipo === 'tickets' && (
+              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="flex items-center">
+                  <FontAwesomeIcon icon={faCalendarAlt} className="text-amber-600 mr-2" />
+                  <p className="text-sm text-amber-800 font-medium">
+                    ⚡ Tickets Aéreos: Se recomienda máximo 48h para garantizar disponibilidad y precios
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* ✅ CAMPO DE FECHA */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Nueva Fecha y Hora Límite de Pago {/* ✅ CORREGIDO LABEL */}
+              Nueva Fecha y Hora Límite de Compra {/* ✅ CORREGIDO LABEL */}
             </label>
             <input
               type="datetime-local"
-              value={fecha_vencimiento_pago} // ✅ CORREGIDO
+              value={fecha_limite_compra} // ✅ CORREGIDO: usar variable correcta
               onChange={handleDateChange}
               min={getMinDate()}
               max={getMaxDate()}
@@ -165,8 +176,15 @@ const DeadlineUpdateModal = ({
             <p className="text-sm font-medium text-gray-700 mb-3">Fechas sugeridas:</p>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { label: 'En 2 horas', hours: 2 },
-                { label: 'Mañana 9am', days: 1, hour: 9 },
+                // ✅ MEJORA: Opciones específicas para tickets
+                ...(item.tipo === 'tickets' ? [
+                  { label: '⚡ 12h (Urgente)', hours: 12 },
+                  { label: '⚡ 24h (Crítico)', hours: 24 },
+                  { label: '✈️ 48h (Recomendado)', hours: 48 }
+                ] : [
+                  { label: 'En 2 horas', hours: 2 },
+                  { label: 'Mañana 9am', days: 1, hour: 9 }
+                ]),
                 { label: 'En 3 días', days: 3 },
                 { label: 'En 1 semana', days: 7 }
               ].map((suggestion, index) => {
@@ -187,7 +205,7 @@ const DeadlineUpdateModal = ({
                     key={index}
                     type="button"
                     onClick={() => {
-                      setFechaVencimientoPago(dateValue);
+                      setFechaLimiteCompra(dateValue); // ✅ CORREGIDO: usar función correcta
                       setError(validateDate(dateValue));
                     }}
                     disabled={updating}
@@ -241,7 +259,7 @@ DeadlineUpdateModal.propTypes = {
     tipo: PropTypes.string.isRequired,
     precio_total: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     status: PropTypes.string.isRequired,
-    fecha_vencimiento_pago: PropTypes.string // ✅ CORREGIDO
+    fecha_limite_compra: PropTypes.string // ✅ CORREGIDO: usar campo correcto del backend
   }).isRequired,
   onClose: PropTypes.func.isRequired,
   onSubmit: PropTypes.func.isRequired,

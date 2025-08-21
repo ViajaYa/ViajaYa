@@ -1,4 +1,4 @@
-const { Quote, User, Contract, Passenger } = require("../db");
+const { Quote, User, Contract, Passenger, QuoteCalculation } = require("../db");
 const { Op } = require("sequelize");
 const { sendEmail } = require("../utils/emailService");
 const { generateQuotePDF } = require("../utils/generateQuotePDF");
@@ -9,8 +9,25 @@ const {
   convertirDatosLegacy 
 } = require("../utils/quoteCalculations");
 const path = require("path");
-const crypto = require('crypto'); 
+const crypto = require('crypto');
+// ✅ Importar utilidades de fecha con Luxon para Colombia
+const { formatForPDF, nowInColombia, toFrontend } = require("../utils/dateUtils"); 
 
+// ✅ Función auxiliar para convertir trip_type a etiqueta legible
+const getTripTypeLabel = (tripType) => {
+  switch (tripType) {
+    case 'nacional':
+      return 'Nacional';
+    case 'internacional':
+      return 'Internacional';
+    case 'operadorLlano':
+      return 'Operador Llano';
+    case 'hotel':
+      return 'Hotel';
+    default:
+      return tripType || 'No especificado';
+  }
+};
 
 const createClientUser = async (quoteData) => {
   try {
@@ -285,10 +302,11 @@ const quoteController = {
       }
 
       // ✅ Generar número de cotización único
-      const currentDate = new Date();
-      const year = currentDate.getFullYear();
-      const month = String(currentDate.getMonth() + 1).padStart(2, "0");
-      const day = String(currentDate.getDate()).padStart(2, "0");
+      // ✅ Usar Luxon para generar número de cotización con fecha consistente en Colombia
+      const currentDate = nowInColombia();
+      const year = currentDate.toFormat('yyyy');
+      const month = currentDate.toFormat('LL');
+      const day = currentDate.toFormat('dd');
 
       const lastQuote = await Quote.findOne({
         where: {
@@ -329,7 +347,7 @@ const quoteController = {
         fecha_ida,
         fecha_regreso,
         destino,
-        trip_type: trip_type || 'nacional', // ✅ NUEVO: Campo explícito para tipo de viaje
+        trip_type: trip_type || null, // ✅ CORREGIDO: No establecer valor por defecto
         origen,
         acomodacion: acomodacion || 'doble',
         tipo_hotel: tipo_hotel || 'basico',
@@ -572,7 +590,8 @@ const quoteController = {
         offset: parseInt(offset),
       });
 
-      const now = new Date();
+      // ✅ Usar Luxon para verificar quotas expiradas con zona horaria de Colombia
+      const now = nowInColombia().toJSDate();
       const expiredQuotes = quotes.rows.filter(
         (q) =>
           q.status === "sent" && q.expires_at && new Date(q.expires_at) < now
@@ -698,9 +717,10 @@ getQuoteById: async (req, res) => {
       pdf_data: {
         precio_total_cop: quote.precio_total ? `$${parseFloat(quote.precio_total).toLocaleString('es-CO')}` : null,
         precio_por_persona_cop: precio_por_persona > 0 ? `$${precio_por_persona.toLocaleString('es-CO')}` : null,
-        fecha_ida_formatted: quote.fecha_ida ? new Date(quote.fecha_ida).toLocaleDateString('es-ES') : null,
-        fecha_regreso_formatted: quote.fecha_regreso ? new Date(quote.fecha_regreso).toLocaleDateString('es-ES') : null,
-        trip_type_label: quote.trip_type === 'nacional' ? 'Nacional' : 'Internacional',
+        // ✅ Formatear fechas usando Luxon para mantener consistencia con zona horaria de Colombia
+        fecha_ida_formatted: quote.fecha_ida ? formatForPDF(quote.fecha_ida) : null,
+        fecha_regreso_formatted: quote.fecha_regreso ? formatForPDF(quote.fecha_regreso) : null,
+        trip_type_label: getTripTypeLabel(quote.trip_type),
       },
 
       // ✅ AGREGADO: Información del asesor responsable (para PDF)
@@ -854,7 +874,8 @@ getQuoteById: async (req, res) => {
 
       await quote.update({
         ...newAssignment,
-        reassigned_at: new Date(),
+        // ✅ Usar Luxon para fecha de reasignación en zona horaria de Colombia
+        reassigned_at: nowInColombia().toJSDate(),
         reassignment_reason: reason || "Reasignación desde Owner a vendedor",
       });
 
@@ -1595,16 +1616,30 @@ getQuoteById: async (req, res) => {
       });
     }
 
-    // ✅ NUEVO: Enriquecer cotización con cálculos (IGUAL QUE EN getQuoteById)
+    // ✅ NUEVO: Enriquecer cotización con cálculos (CORREGIDO - Solo personas que pagan)
     let precio_por_persona = 0;
-    if (quote.precio_total && quote.numero_personas && quote.numero_personas > 0) {
-      precio_por_persona = parseFloat(quote.precio_total) / parseInt(quote.numero_personas);
+    let personasQuePagan = 0;
+    
+    if (quote.precio_total) {
+      // Calcular personas que pagan (excluyendo infantes)
+      personasQuePagan = calcularPersonasQuePagan({
+        adultos: quote.adultos,
+        menores: quote.menores,
+        infantes: quote.infantes
+      });
       
-      console.log('💰 SENDQUOTE - CÁLCULO DE PRECIO POR PERSONA:', {
+      if (personasQuePagan > 0) {
+        precio_por_persona = parseFloat(quote.precio_total) / personasQuePagan;
+      }
+      
+      console.log('💰 SENDQUOTE - CÁLCULO DE PRECIO POR PERSONA QUE PAGA:', {
         precio_total: quote.precio_total,
-        numero_personas: quote.numero_personas,
-        precio_por_persona: precio_por_persona,
-        precio_por_persona_formateado: precio_por_persona.toFixed(2)
+        total_pasajeros: quote.numero_personas,
+        personas_que_pagan: personasQuePagan,
+        adultos: quote.adultos,
+        menores: quote.menores,
+        infantes: quote.infantes,
+        precio_por_persona_que_paga: precio_por_persona.toFixed(2)
       });
     }
 
@@ -1615,12 +1650,14 @@ getQuoteById: async (req, res) => {
       // ✅ AGREGAR: Campos calculados
       precio_por_persona: precio_por_persona,
       precio_por_persona_formateado: precio_por_persona.toFixed(2),
+      personas_que_pagan: personasQuePagan,
       
       // ✅ AGREGAR: Metadatos útiles
       calculation_metadata: {
         has_price: !!quote.precio_total,
         has_passengers: quote.numero_personas > 0,
-        price_per_person_available: !!(quote.precio_total && quote.numero_personas > 0),
+        price_per_person_available: !!(quote.precio_total && personasQuePagan > 0),
+        infants_dont_pay: true, // ✅ Indicar que infantes no pagan
       },
 
       // ✅ AGREGAR: Datos formateados para PDF
@@ -1629,7 +1666,7 @@ getQuoteById: async (req, res) => {
         precio_por_persona_cop: precio_por_persona > 0 ? `$${precio_por_persona.toLocaleString('es-CO')}` : null,
         fecha_ida_formatted: quote.fecha_ida ? new Date(quote.fecha_ida).toLocaleDateString('es-ES') : null,
         fecha_regreso_formatted: quote.fecha_regreso ? new Date(quote.fecha_regreso).toLocaleDateString('es-ES') : null,
-        trip_type_label: quote.trip_type === 'nacional' ? 'Nacional' : 'Internacional',
+        trip_type_label: getTripTypeLabel(quote.trip_type),
       },
 
       // ✅ AGREGAR: Información del asesor responsable
@@ -1944,27 +1981,40 @@ getQuoteById: async (req, res) => {
       });
     }
 
-    // ✅ NUEVO: Enriquecer cotización (IGUAL QUE EN sendQuote)
+    // ✅ NUEVO: Enriquecer cotización (CORREGIDO - Solo personas que pagan)
     let precio_por_persona = 0;
-    if (quote.precio_total && quote.numero_personas && quote.numero_personas > 0) {
-      precio_por_persona = parseFloat(quote.precio_total) / parseInt(quote.numero_personas);
+    let personasQuePagan = 0;
+    
+    if (quote.precio_total) {
+      // Calcular personas que pagan (excluyendo infantes)
+      personasQuePagan = calcularPersonasQuePagan({
+        adultos: quote.adultos,
+        menores: quote.menores,
+        infantes: quote.infantes
+      });
+      
+      if (personasQuePagan > 0) {
+        precio_por_persona = parseFloat(quote.precio_total) / personasQuePagan;
+      }
     }
 
     const enrichedQuote = {
       ...quote.toJSON(),
       precio_por_persona: precio_por_persona,
       precio_por_persona_formateado: precio_por_persona.toFixed(2),
+      personas_que_pagan: personasQuePagan,
       calculation_metadata: {
         has_price: !!quote.precio_total,
         has_passengers: quote.numero_personas > 0,
-        price_per_person_available: !!(quote.precio_total && quote.numero_personas > 0),
+        price_per_person_available: !!(quote.precio_total && personasQuePagan > 0),
+        infants_dont_pay: true, // ✅ Indicar que infantes no pagan
       },
       pdf_data: {
         precio_total_cop: quote.precio_total ? `$${parseFloat(quote.precio_total).toLocaleString('es-CO')}` : null,
         precio_por_persona_cop: precio_por_persona > 0 ? `$${precio_por_persona.toLocaleString('es-CO')}` : null,
         fecha_ida_formatted: quote.fecha_ida ? new Date(quote.fecha_ida).toLocaleDateString('es-ES') : null,
         fecha_regreso_formatted: quote.fecha_regreso ? new Date(quote.fecha_regreso).toLocaleDateString('es-ES') : null,
-        trip_type_label: quote.trip_type === 'nacional' ? 'Nacional' : 'Internacional',
+        trip_type_label: getTripTypeLabel(quote.trip_type),
       },
       asesor_info: {
         nombre_completo: quote.Asesor ? `${quote.Asesor.name} ${quote.Asesor.lastname}` : 
@@ -2025,6 +2075,12 @@ getQuoteById: async (req, res) => {
       } = req.body;
 
       console.log('🔍 DEBUG - updateQuote recibió trip_type:', trip_type);
+      console.log('🔍 DEBUG - updateQuote fechas recibidas:', {
+        fecha_ida,
+        fecha_regreso,
+        fecha_ida_type: typeof fecha_ida,
+        fecha_regreso_type: typeof fecha_regreso
+      });
 
       const quote = await Quote.findByPk(id);
 
@@ -2038,7 +2094,6 @@ getQuoteById: async (req, res) => {
         fecha_ida,
         fecha_regreso,
         destino,
-        trip_type, // ✅ AGREGADO: Campo faltante
         origen,
         acomodacion,
         tipo_hotel,
@@ -2047,11 +2102,78 @@ getQuoteById: async (req, res) => {
         status: status || quote.status,
       };
 
+      // ✅ CORREGIDO: Solo agregar trip_type si no está vacío
+      if (trip_type !== undefined && trip_type !== '' && trip_type !== null) {
+        updateData.trip_type = trip_type;
+      }
+
+      console.log('🔍 DEBUG - updateData antes de guardar:', {
+        fecha_ida: updateData.fecha_ida,
+        fecha_regreso: updateData.fecha_regreso,
+        trip_type: updateData.trip_type,
+        datos_completos: updateData
+      });
+
       if (status === "completed" && quote.status !== "completed") {
         updateData.completed_at = new Date();
       }
 
       await quote.update(updateData);
+
+      console.log('🔍 DEBUG - Quote actualizado, verificando fechas guardadas:', {
+        fecha_ida_guardada: quote.fecha_ida,
+        fecha_regreso_guardada: quote.fecha_regreso,
+        trip_type_guardado: quote.trip_type
+      });
+
+
+      const existingCalculation = await QuoteCalculation.findOne({ 
+        where: { quote_id: id } 
+      });
+
+      if (existingCalculation) {
+        const calculationUpdateData = {};
+        
+        // Sincronizar fechas
+        if (updateData.fecha_ida) {
+          calculationUpdateData.fecha_viaje_inicio = updateData.fecha_ida;
+          // También actualizar en la estructura de tiquetes si existe
+          if (existingCalculation.tiquetes) {
+            const tiquetesData = typeof existingCalculation.tiquetes === 'string' 
+              ? JSON.parse(existingCalculation.tiquetes) 
+              : existingCalculation.tiquetes;
+            tiquetesData.fecha_ida = updateData.fecha_ida;
+            calculationUpdateData.tiquetes = tiquetesData;
+          }
+        }
+        
+        if (updateData.fecha_regreso) {
+          calculationUpdateData.fecha_viaje_fin = updateData.fecha_regreso;
+          // También actualizar en la estructura de tiquetes si existe
+          if (existingCalculation.tiquetes) {
+            const tiquetesData = typeof existingCalculation.tiquetes === 'string' 
+              ? JSON.parse(existingCalculation.tiquetes) 
+              : existingCalculation.tiquetes;
+            tiquetesData.fecha_vuelta = updateData.fecha_regreso;
+            calculationUpdateData.tiquetes = tiquetesData;
+          }
+        }
+
+        // Sincronizar otros campos importantes
+        if (updateData.trip_type) calculationUpdateData.trip_type = updateData.trip_type;
+        if (updateData.numero_personas) calculationUpdateData.num_personas = updateData.numero_personas;
+        if (updateData.precio_total) calculationUpdateData.precio_final_total = updateData.precio_total;
+
+        if (Object.keys(calculationUpdateData).length > 0) {
+          console.log('🔄 SYNC: Sincronizando fechas de Quote a QuoteCalculation:', {
+            quote_id: id,
+            changes: calculationUpdateData
+          });
+          
+          await existingCalculation.update(calculationUpdateData);
+          console.log('✅ SYNC: QuoteCalculation actualizado exitosamente');
+        }
+      }
 
       const updatedQuote = await Quote.findByPk(id, {
         include: [

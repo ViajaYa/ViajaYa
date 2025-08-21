@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { toast } from 'react-hot-toast';
+// ✅ Importar utilidades de fecha con Luxon para manejar zona horaria de Colombia
+import { formatDateDisplay } from '../utils/dateUtils';
 import { 
   faFileUpload, 
   faFileAlt, 
@@ -394,7 +396,7 @@ const handleUpload = async () => {
                       <p className="text-sm text-gray-600">{document.description}</p>
                       {document.createdAt && (
                         <p className="text-xs text-gray-500">
-                          Subido: {new Date(document.createdAt).toLocaleDateString()}
+                          Subido: {formatDateDisplay(document.createdAt)}
                         </p>
                       )}
                     </div>

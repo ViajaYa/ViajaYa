@@ -981,8 +981,13 @@ const handleSave = async () => {
               </span>
             </div>
             <div className="flex justify-between text-xs text-gray-600">
-              <span>Por persona:</span>
-              <span>${(calculationAnalysis.financials.precio_final_total / contract.numero_pasajeros).toLocaleString()}</span>
+              <span>Por persona que paga:</span>
+              <span>
+                {contract.precio_por_persona > 0 
+                  ? `$${contract.precio_por_persona.toLocaleString()}` 
+                  : 'N/A'
+                }
+              </span>
             </div>
           </div>
         </div>

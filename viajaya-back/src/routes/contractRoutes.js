@@ -43,6 +43,9 @@ router.patch('/:id/complete', contractController.completeContract);
 // Obtener contratos por cliente
 router.get('/cliente/:cliente_id', contractController.getContractsByCliente);
 
+// ✅ NUEVA RUTA: Obtener detalles de pagos del contrato
+router.get('/:contract_id/payment-details', contractController.getContractPaymentDetails);
+
 // ================== ITEMS DEL CONTRATO ==================
 router.post('/:contractId/convert-quote-items', contractController.convertQuoteToContractItems);
 
@@ -61,6 +64,12 @@ router.patch('/items/:itemId/deadline', purchaseController.updateItemDeadline);
 router.delete('/items/:itemId', contractController.deleteContractItem);
 
 router.post('/items/:itemId/purchases', purchaseController.createPurchase);
+
+// ✅ NUEVA RUTA: Subir comprobante de compra
+router.post('/items/:itemId/upload-receipt', uploadComprobante.single('comprobante'), purchaseController.uploadPurchaseReceipt);
+
+// 🔧 NUEVA RUTA: Proxy para servir PDFs con headers correctos
+router.get('/serve-pdf/:public_id(*)', purchaseController.servePDFFile);
 
 // Listar compras de un item
 router.get('/items/:itemId/purchases', purchaseController.getPurchasesByItem);

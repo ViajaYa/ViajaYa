@@ -41,7 +41,9 @@ const CommissionConfigManager = () => {
 
   const tripTypeOptions = [
     { value: 'nacional', label: 'Viajes Nacionales', color: 'bg-emerald-100 text-emerald-800' },
-    { value: 'internacional', label: 'Viajes Internacionales', color: 'bg-indigo-100 text-indigo-800' }
+    { value: 'internacional', label: 'Viajes Internacionales', color: 'bg-indigo-100 text-indigo-800' },
+    { value: 'operadorLlano', label: 'Operador Llano', color: 'bg-purple-100 text-purple-800' },
+    { value: 'hotel', label: 'Hotel', color: 'bg-pink-100 text-pink-800' }
   ];
 
   const calculationTypeOptions = [

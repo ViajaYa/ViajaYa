@@ -1,6 +1,8 @@
 import PropTypes from 'prop-types';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
+// ✅ Importar utilidades de fecha con Luxon para manejar zona horaria de Colombia
+import { formatDateDisplay } from '../../../../utils/dateUtils';
 
 const ContractsPaymentList = ({ contracts, loading, onContractSelect, onPaymentUpload }) => {
   if (loading) {
@@ -100,7 +102,7 @@ const ContractsPaymentList = ({ contracts, loading, onContractSelect, onPaymentU
               <p className="text-gray-600 mb-3">{contract.Quote?.destino}</p>
               <div className="flex items-center justify-between text-sm text-gray-500">
                 <span className="flex items-center">
-                  🗓️ {new Date(contract.fecha_inicio_viaje).toLocaleDateString()}
+                  🗓️ {formatDateDisplay(contract.fecha_inicio_viaje)}
                 </span>
                 {contract.numero_pasajeros && (
                   <span className="flex items-center">
@@ -163,7 +165,7 @@ const ContractsPaymentList = ({ contracts, loading, onContractSelect, onPaymentU
 
             {/* Información del tipo de pago y footer */}
             <div className="p-4 bg-gray-50">
-              <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center justify-between text-sm mb-3">
                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                   {contract.forma_pago === 'cuotas' ? (
                     <>
@@ -174,7 +176,24 @@ const ContractsPaymentList = ({ contracts, loading, onContractSelect, onPaymentU
                   )}
                 </span>
               </div>
-              <div className="mt-2 text-xs text-gray-500 text-center">
+              
+              {/* Botones de acción */}
+              <div className="flex space-x-2 mb-2">
+                <button
+                  onClick={() => onContractSelect(contract)}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-3 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                >
+                  📊 Ver Plan de Pagos
+                </button>
+                <button
+                  onClick={() => onPaymentUpload(contract)}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2 px-3 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1"
+                >
+                  💳 Cargar Pago
+                </button>
+              </div>
+              
+              <div className="text-xs text-gray-500 text-center">
                 Firmado {formatDistanceToNow(new Date(contract.fecha_firma || contract.created_at), { 
                   addSuffix: true, 
                   locale: es 

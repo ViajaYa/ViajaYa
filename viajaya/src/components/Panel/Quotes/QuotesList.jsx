@@ -2,6 +2,8 @@ import  { useState, useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+// ✅ Importar utilidades de fecha con Luxon para manejar zona horaria de Colombia
+import { formatDateDisplay } from "../../../utils/dateUtils";
 import {
   faPlus,
   faPaperPlane,
@@ -1220,9 +1222,8 @@ const QuotesList = () => {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(
-                          quote.created_at || quote.fecha_creacion
-                        ).toLocaleDateString()}
+                        {/* ✅ Usar Luxon para formatear fecha manteniendo zona horaria de Colombia */}
+                        {formatDateDisplay(quote.created_at || quote.fecha_creacion)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         {renderActionButtons(quote)}

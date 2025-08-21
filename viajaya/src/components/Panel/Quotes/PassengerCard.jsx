@@ -1,33 +1,67 @@
-import React from 'react';
+
+import PropTypes from 'prop-types';
+import { toDateInput } from '../../../utils/dateUtils';
+// ✅ Importar validaciones colombianas para documentos y nombres
+import { getDocumentTypes } from '../../../utils/validations';
 
 const PassengerCard = ({ passenger, index, onUpdate, isFirst }) => {
- const tiposDocumento = [
-    { value: 'cc', label: 'Cédula de Ciudadanía' },
-    { value: 'ce', label: 'Cédula de Extranjería' },
-    { value: 'ti', label: 'Tarjeta de Identidad' },
-    { value: 'rc', label: 'Registro Civil' },
-    { value: 'passport', label: 'Pasaporte' },
-    { value: 'pep', label: 'Permiso Especial de Permanencia' },
-    { value: 'ppt', label: 'Permiso por Protección Temporal' },
-    { value: 'nit', label: 'NIT' },
-    { value: 'nuip', label: 'NUIP' },
-    { value: 'dni', label: 'DNI' },
-    { value: 'salvoconducto', label: 'Salvoconducto' },
-    { value: 'cedula_diplomatica', label: 'Cédula Diplomática' },
-  ];
+ // ✅ Usar tipos de documento estándar de Colombia
+ const tiposDocumento = getDocumentTypes().map(doc => ({
+   value: doc.value.toLowerCase(),
+   label: doc.label
+ }));
 
+  // 📅 FECHA MEJORADA CON LUXON - SIN PROBLEMAS DE ZONA HORARIA
   const getDateInputValue = (date) => {
-  if (!date) return '';
-  // Si ya está en formato YYYY-MM-DD, úsalo directo
-  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
-  // Si viene en formato ISO, conviértelo
-  const d = new Date(date);
-  if (isNaN(d.getTime())) return '';
-  return d.toISOString().split('T')[0];
-};
+    return toDateInput(date); // Usa la utilidad de Luxon
+  };
 
   const handleInputChange = (field, value) => {
     onUpdate(index, field, value);
+  };
+
+  // ✅ NUEVA: Función para obtener estilos de input basado en validación
+  const getInputClassName = (field) => {
+    const baseClass = "w-full px-3 py-2 border rounded-md shadow-sm focus:ring-2 focus:outline-none";
+    const validation = passenger[`${field}_validation`];
+    
+    if (validation) {
+      if (validation.isValid) {
+        return `${baseClass} border-green-500 focus:ring-green-500 focus:border-green-500`;
+      } else {
+        return `${baseClass} border-red-500 focus:ring-red-500 focus:border-red-500`;
+      }
+    }
+    
+    return `${baseClass} border-gray-300 focus:ring-blue-500 focus:border-blue-500`;
+  };
+
+  // ✅ NUEVA: Función para mostrar mensaje de validación
+  const renderValidationMessage = (field) => {
+    const validation = passenger[`${field}_validation`];
+    
+    if (!validation) return null;
+    
+    if (validation.isValid && passenger[field]?.trim()) {
+      return (
+        <p className="text-green-600 text-xs mt-1 flex items-center">
+          <span className="mr-1">✓</span>
+          {field === 'documento_identidad' ? 'Documento válido' :
+           field === 'telefono' ? 'Teléfono válido' :
+           field === 'email' ? 'Email válido' :
+           'Válido'}
+        </p>
+      );
+    } else if (!validation.isValid && validation.message) {
+      return (
+        <p className="text-red-600 text-xs mt-1 flex items-center">
+          <span className="mr-1">⚠️</span>
+          {validation.message}
+        </p>
+      );
+    }
+    
+    return null;
   };
 
   return (
@@ -64,10 +98,11 @@ const PassengerCard = ({ passenger, index, onUpdate, isFirst }) => {
             type="text"
             value={passenger.nombre || ''}
             onChange={(e) => handleInputChange('nombre', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+            className={getInputClassName('nombre')}
             placeholder="Ingrese el nombre"
             required={passenger.titular}
           />
+          {renderValidationMessage('nombre')}
         </div>
 
         {/* Apellido */}
@@ -79,10 +114,11 @@ const PassengerCard = ({ passenger, index, onUpdate, isFirst }) => {
             type="text"
             value={passenger.apellido || ''}
             onChange={(e) => handleInputChange('apellido', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+            className={getInputClassName('apellido')}
             placeholder="Ingrese el apellido"
             required={passenger.titular}
           />
+          {renderValidationMessage('apellido')}
         </div>
 
         {/* Tipo de documento */}
@@ -114,10 +150,15 @@ const PassengerCard = ({ passenger, index, onUpdate, isFirst }) => {
             type="text"
             value={passenger.documento_identidad || ''}
             onChange={(e) => handleInputChange('documento_identidad', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Ingrese el número"
+            className={getInputClassName('documento_identidad')}
+            placeholder={
+              passenger.tipo_documento === 'cc' ? 'Ej: 12345678' :
+              passenger.tipo_documento === 'pa' ? 'Ej: AB123456' :
+              'Número de documento'
+            }
             required={passenger.titular}
           />
+          {renderValidationMessage('documento_identidad')}
         </div>
 
         {/* Fecha de nacimiento */}
@@ -154,10 +195,11 @@ const PassengerCard = ({ passenger, index, onUpdate, isFirst }) => {
                 type="email"
                 value={passenger.email || ''}
                 onChange={(e) => handleInputChange('email', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                className={getInputClassName('email')}
                 placeholder="ejemplo@correo.com"
                 required
               />
+              {renderValidationMessage('email')}
             </div>
 
             {/* Teléfono */}
@@ -169,10 +211,11 @@ const PassengerCard = ({ passenger, index, onUpdate, isFirst }) => {
                 type="tel"
                 value={passenger.telefono || ''}
                 onChange={(e) => handleInputChange('telefono', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                placeholder="300 123 4567"
+                className={getInputClassName('telefono')}
+                placeholder="300 123 4567 o 601 123 4567"
                 required
               />
+              {renderValidationMessage('telefono')}
             </div>
 
             {/* Dirección */}
@@ -261,6 +304,11 @@ const PassengerCard = ({ passenger, index, onUpdate, isFirst }) => {
       )}
     </div>
   );
+};
+PassengerCard.propTypes = {
+  passenger: PropTypes.object.isRequired,
+  index: PropTypes.number.isRequired,
+  onUpdate: PropTypes.func.isRequired
 };
 
 export default PassengerCard;

@@ -319,6 +319,15 @@ const quoteCalculationController = {
         });
       }
       
+      // ✅ CORRECCIÓN: Mapear asistencia médica para compatibilidad con código legacy
+      if (data.seguros && data.seguros.asistencia_medica && !data.asistencia_medica) {
+        data.asistencia_medica = {
+          ...data.seguros.asistencia_medica,
+          costo_total: data.seguros.asistencia_medica.costo || 0
+        };
+        console.log('🏥 MAPEO: Asistencia médica mapeada desde seguros a campo directo:', data.asistencia_medica);
+      }
+      
       // Si viene quote_id, verificar si ya existe un cálculo para esa cotización
       if (data.quote_id) {
         const existingCalc = await QuoteCalculation.findOne({ 
@@ -351,6 +360,7 @@ const quoteCalculationController = {
       // ✅ NUEVO: Logging detallado para debugging de actividades
       console.log('📊 DATOS RECIBIDOS EN upsertCalculation:', {
         quote_id: data.quote_id,
+        trip_type: data.trip_type,
         keys: Object.keys(data),
         excursiones: data.excursiones ? 'PRESENTE' : 'AUSENTE',
         extras: data.extras ? 'PRESENTE' : 'AUSENTE',
@@ -386,6 +396,21 @@ const quoteCalculationController = {
         num_personas: data.num_personas
       });
       
+      // ✅ CORRECCIÓN: Mapear asistencia médica para compatibilidad con código legacy
+      if (data.seguros && data.seguros.asistencia_medica && !data.asistencia_medica) {
+        data.asistencia_medica = {
+          ...data.seguros.asistencia_medica,
+          costo_total: data.seguros.asistencia_medica.costo || 0
+        };
+        console.log('🏥 MAPEO UPSERT: Asistencia médica mapeada desde seguros a campo directo:', data.asistencia_medica);
+      }
+      
+      // ✅ CORRECCIÓN: Mapear datos de alimentación para mejorar compatibilidad
+      if (data.alimentacion && data.alimentacion.tipo && !data.alimentacion.detalles_tipo) {
+        data.alimentacion.detalles_tipo = data.alimentacion.tipo;
+        console.log('🍽️ MAPEO UPSERT: Alimentación tipo mapeado para compatibilidad:', data.alimentacion);
+      }
+      
       if (!data.quote_id) {
         return res.status(400).json({ message: 'quote_id es requerido para upsert' });
       }
@@ -394,6 +419,84 @@ const quoteCalculationController = {
       const existingCalc = await QuoteCalculation.findOne({ 
         where: { quote_id: data.quote_id } 
       });
+          // ✅ NUEVO: También actualizar la tabla quotes con campos básicos
+    if (data.quote_id) {
+      const quote = await Quote.findByPk(data.quote_id);
+      if (quote) {
+        const quoteUpdateData = {};
+        
+        // ✅ Agregar fechas si vienen en los datos
+        if (data.fecha_viaje_inicio) {
+          quoteUpdateData.fecha_ida = data.fecha_viaje_inicio;
+        }
+        if (data.fecha_viaje_fin) {
+          quoteUpdateData.fecha_regreso = data.fecha_viaje_fin;
+        }
+        
+        // ✅ NUEVO: También verificar fechas en la estructura de tiquetes
+        if (data.tiquetes) {
+          if (data.tiquetes.fecha_ida) {
+            quoteUpdateData.fecha_ida = data.tiquetes.fecha_ida;
+          }
+          if (data.tiquetes.fecha_vuelta) {
+            quoteUpdateData.fecha_regreso = data.tiquetes.fecha_vuelta;
+          }
+        }
+        
+        // ✅ CORREGIDO: Solo agregar trip_type si no está vacío
+        if (data.trip_type && data.trip_type !== '' && data.trip_type !== null) {
+          quoteUpdateData.trip_type = data.trip_type;
+        }
+        
+        // ✅ Agregar otros campos básicos
+        if (data.num_personas) {
+          quoteUpdateData.numero_personas = data.num_personas;
+        }
+        if (data.observaciones_generales !== undefined) {
+          quoteUpdateData.observaciones = data.observaciones_generales;
+        }
+        if (data.precio_final_total) {
+          quoteUpdateData.precio_total = data.precio_final_total;
+        }
+        
+        // ✅ Mapear estado correctamente
+        if (data.estado) {
+          const statusMapping = {
+            'draft': 'pending',
+            'temporal': 'pending',
+            'confirmado': 'completed',
+            'enviado': 'sent',
+            'aprobado': 'approved'
+          };
+          quoteUpdateData.status = statusMapping[data.estado] || data.estado;
+        }
+        
+        // ✅ Sincronizar datos de pasajeros
+        if (data.adultos !== undefined) quoteUpdateData.adultos = data.adultos;
+        if (data.menores !== undefined) quoteUpdateData.menores = data.menores;
+        if (data.infantes !== undefined) quoteUpdateData.infantes = data.infantes;
+        if (data.edades_menores !== undefined) quoteUpdateData.edades_menores = data.edades_menores;
+        if (data.edades_infantes !== undefined) quoteUpdateData.edades_infantes = data.edades_infantes;
+
+        console.log('🔄 SYNC: Sincronizando fechas desde calculadora a quote:', {
+          quote_id: data.quote_id,
+          fecha_ida_calculadora: data.tiquetes?.fecha_ida,
+          fecha_vuelta_calculadora: data.tiquetes?.fecha_vuelta,
+          fecha_ida_final: quoteUpdateData.fecha_ida,
+          fecha_regreso_final: quoteUpdateData.fecha_regreso,
+          quoteUpdateData_completo: quoteUpdateData
+        });
+
+        // ✅ Solo actualizar si hay datos para actualizar
+        if (Object.keys(quoteUpdateData).length > 0) {
+          console.log('✅ SYNC: Actualizando Quote con nuevas fechas...');
+          await quote.update(quoteUpdateData);
+          console.log('✅ SYNC: Quote actualizado exitosamente');
+        } else {
+          console.log('ℹ️ SYNC: No hay cambios de fechas para sincronizar');
+        }
+      }
+    }
 
       if (existingCalc) {
         // Actualizar existente
@@ -402,20 +505,60 @@ const quoteCalculationController = {
         // Remover id y timestamps del data para evitar conflictos
         const { id, createdAt, updatedAt, ...updateData } = data;
         
+        // ✅ MAPEAR ESTADO: Convertir estados del frontend a valores válidos del ENUM
+        if (updateData.estado) {
+          const estadoMapping = {
+            'draft': 'temporal',
+            'temporal': 'temporal',
+            'completed': 'completado',
+            'confirmed': 'confirmado'
+          };
+          updateData.estado = estadoMapping[updateData.estado] || updateData.estado;
+          console.log('🔄 Estado mapeado de', data.estado, 'a', updateData.estado);
+        }
+      
         await existingCalc.update(updateData);
-        const updatedCalc = await QuoteCalculation.findByPk(existingCalc.id);
-        return res.json(updatedCalc);
-      } else {
-        // Crear nuevo
-        console.log('✨ Creando nuevo cálculo para quote_id:', data.quote_id);
-        const calc = await QuoteCalculation.create(data);
-        return res.json(calc);
+      const updatedCalc = await QuoteCalculation.findByPk(existingCalc.id);
+      
+      return res.json({
+        success: true,
+        message: 'Cálculo actualizado exitosamente',
+        calculation: updatedCalc
+      });
+    } else {
+      // Crear nuevo
+      console.log('✨ Creando nuevo cálculo para quote_id:', data.quote_id);
+      
+      // ✅ MAPEAR ESTADO: Convertir estados del frontend a valores válidos del ENUM
+      const createData = { ...data };
+      if (createData.estado) {
+        const estadoMapping = {
+          'draft': 'temporal',
+          'temporal': 'temporal',
+          'completed': 'completado',
+          'confirmed': 'confirmado'
+        };
+        createData.estado = estadoMapping[createData.estado] || createData.estado;
+        console.log('🔄 Estado mapeado de', data.estado, 'a', createData.estado);
       }
-    } catch (error) {
-      console.error('Error en upsert de cálculo:', error);
-      res.status(500).json({ message: 'Error al crear/actualizar el cálculo', error: error.message });
+      
+      const calc = await QuoteCalculation.create(createData);
+      
+      return res.json({
+        success: true,
+        message: 'Cálculo creado exitosamente',
+        calculation: calc
+      });
     }
-  },
+  } catch (error) {
+    console.error('Error en upsert de cálculo:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error al crear/actualizar el cálculo', 
+      error: error.message 
+    });
+  }
+},
 
   // Obtener cálculo por ID
   getCalculationById: async (req, res) => {

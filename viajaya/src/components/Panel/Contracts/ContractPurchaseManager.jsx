@@ -170,20 +170,29 @@ const ContractPurchaseManager = () => {
     }
   }), []);
 
-  // ✅ FUNCIÓN PARA DETERMINAR COLOR DE ALERTA - AJUSTADA AL MODELO
+  // ✅ FUNCIÓN PARA DETERMINAR COLOR DE ALERTA - CORREGIDA CON CAMPOS REALES DEL BACKEND
   const getAlertStatus = useCallback((item) => {
-    // ✅ CORREGIDO: El modelo no tiene "requiere_compra", usar "status" para determinar si requiere compra
-    if (item.status === 'no_requiere') return 'no-required';
+    // ✅ CORREGIDO: Usar "requiere_compra" como en el backend
+    if (item.requiere_compra === false) return 'no-required';
     if (item.status === 'comprado_pagado') return 'completed';
     if (item.status === 'vencido') return 'expired';
     
-    // ✅ CORREGIDO: Usar "fecha_vencimiento_pago" en lugar de "fecha_limite_compra"
-    if (item.fecha_vencimiento_pago) {
+    // ✅ CORREGIDO: Usar "fecha_limite_compra" como viene del backend
+    if (item.fecha_limite_compra) {
       const now = new Date();
-      const deadline = new Date(item.fecha_vencimiento_pago);
+      const deadline = new Date(item.fecha_limite_compra);
       const diffHours = (deadline - now) / (1000 * 60 * 60);
       
       if (diffHours < 0) return 'expired';
+      
+      // ✅ MEJORA: Tickets tienen prioridad especial (48h límite)
+      if (item.tipo === 'tickets') {
+        if (diffHours < 12) return 'critical'; // 12h antes es crítico para tickets
+        if (diffHours < 24) return 'warning';  // 24h antes es advertencia para tickets
+        return 'normal';
+      }
+      
+      // Para otros items, usar lógica normal
       if (diffHours < 24) return 'critical';
       if (diffHours < 72) return 'warning';
       return 'normal';
@@ -259,14 +268,18 @@ const ContractPurchaseManager = () => {
     }
   }, [error]);
 
-  // ✅ FILTRAR Y ORDENAR ITEMS - AJUSTADO AL MODELO
+  // ✅ FILTRAR Y ORDENAR ITEMS - CORREGIDO CON CAMPOS REALES
   const filteredAndSortedItems = React.useMemo(() => {
     let filtered = [...items];
 
     // Aplicar filtros
     switch (filter) {
       case 'pending':
-        filtered = filtered.filter(item => item.status === 'pendiente_compra');
+        // ✅ CORREGIDO: Filtrar por items que requieren compra y están pendientes
+        filtered = filtered.filter(item => 
+          item.requiere_compra !== false && 
+          (item.status === 'pendiente_compra' || item.status === 'pendiente')
+        );
         break;
       case 'completed':
         filtered = filtered.filter(item => item.status === 'comprado_pagado');
@@ -294,11 +307,11 @@ const ContractPurchaseManager = () => {
         }
         
         case 'date': {
-          // ✅ CORREGIDO: Usar "fecha_vencimiento_pago"
-          if (!a.fecha_vencimiento_pago && !b.fecha_vencimiento_pago) return 0;
-          if (!a.fecha_vencimiento_pago) return 1;
-          if (!b.fecha_vencimiento_pago) return -1;
-          return new Date(a.fecha_vencimiento_pago) - new Date(b.fecha_vencimiento_pago);
+          // ✅ CORREGIDO: Usar "fecha_limite_compra" como viene del backend
+          if (!a.fecha_limite_compra && !b.fecha_limite_compra) return 0;
+          if (!a.fecha_limite_compra) return 1;
+          if (!b.fecha_limite_compra) return -1;
+          return new Date(a.fecha_limite_compra) - new Date(b.fecha_limite_compra);
         }
         
         case 'price': {
@@ -309,10 +322,11 @@ const ContractPurchaseManager = () => {
           const statusOrder = {
             'vencido': 0,
             'pendiente_compra': 1,
+            'pendiente': 1, // ✅ AGREGADO: Estado adicional
             'comprado_pendiente': 2,
             'comprado_pagado': 3,
             'no_requiere': 4,
-            'cancelado': 5 // ✅ AGREGADO estado que faltaba
+            'cancelado': 5
           };
           return (statusOrder[a.status] || 6) - (statusOrder[b.status] || 6);
         }
@@ -326,10 +340,10 @@ const ContractPurchaseManager = () => {
     return filtered;
   }, [items, filter, sortBy, getAlertStatus, itemConfig]);
 
-  // ✅ CALCULAR ESTADÍSTICAS DETALLADAS - AJUSTADO AL MODELO
+  // ✅ CALCULAR ESTADÍSTICAS DETALLADAS - CORREGIDO CON LÓGICA REAL DEL BACKEND
   const calculatedStats = React.useMemo(() => {
-    // ✅ CORREGIDO: Filtrar por status en lugar de "requiere_compra"
-    const itemsWithPurchase = items.filter(item => item.status !== 'no_requiere');
+    // ✅ CORREGIDO: Filtrar por requiere_compra como en el backend
+    const itemsWithPurchase = items.filter(item => item.requiere_compra !== false);
     
     const totals = itemsWithPurchase.reduce((acc, item) => {
       acc.total++;
@@ -396,6 +410,41 @@ const ContractPurchaseManager = () => {
     }
   };
 
+  // ✅ NUEVA FUNCIÓN: Calcular pasajeros que realmente generan compra
+  // Basado en la lógica del backend: payingPassengers = adultos + menores (excluyendo infantes)
+  const calculatePayingPassengers = (quote) => {
+    if (!quote) return 0;
+    
+    const adultos = parseInt(quote.adultos) || 0;
+    const menores = parseInt(quote.menores) || 0;
+    // Los infantes (<2 años) NO pagan según la lógica del sistema
+    
+    return adultos + menores;
+  };
+
+  // ✅ FUNCIÓN AUXILIAR: Mostrar desglose de pasajeros
+  const getPassengerBreakdown = (quote) => {
+    if (!quote) return 'Sin información de pasajeros';
+    
+    const adultos = parseInt(quote.adultos) || 0;
+    const menores = parseInt(quote.menores) || 0;
+    const infantes = parseInt(quote.infantes) || 0;
+    const total = adultos + menores + infantes;
+    const payingTotal = adultos + menores;
+    
+    let breakdown = `${total} pasajero${total !== 1 ? 's' : ''}`;
+    
+    if (adultos > 0) breakdown += ` • ${adultos} adulto${adultos !== 1 ? 's' : ''}`;
+    if (menores > 0) breakdown += ` • ${menores} menor${menores !== 1 ? 'es' : ''}`;
+    if (infantes > 0) breakdown += ` • ${infantes} infante${infantes !== 1 ? 's' : ''} (no pagan)`;
+    
+    if (infantes > 0 && payingTotal !== total) {
+      breakdown += ` | ${payingTotal} que pagan`;
+    }
+    
+    return breakdown;
+  };
+
   // ✅ MANEJAR SUBIDA DE COMPROBANTE
   const handleUploadReceipt = async (formData) => {
     try {
@@ -416,11 +465,11 @@ const ContractPurchaseManager = () => {
   };
 
   // ✅ MANEJAR ACTUALIZACIÓN DE FECHA LÍMITE - CORREGIDO NOMBRE DEL CAMPO
-  const handleUpdateDeadline = async (fecha_vencimiento_pago) => {
+  const handleUpdateDeadline = async (fecha_limite_compra) => {
     try {
       await dispatch(updateItemDeadline({
         itemId: selectedItem.id,
-        fecha_vencimiento_pago // ✅ CORREGIDO nombre del campo
+        fecha_limite_compra // ✅ CORREGIDO nombre del campo para coincidir con backend
       })).unwrap();
       
       toast.success('Fecha límite actualizada');
@@ -472,17 +521,26 @@ return (
             Gestión de Compras - Contrato #{contractId?.slice(-8)}
           </h1>
           
-          {/* ✅ INFORMACIÓN DE CONVERSIÓN AUTOMÁTICA */}
+          {/* ✅ INFORMACIÓN DE CONVERSIÓN AUTOMÁTICA Y PASAJEROS */}
           {hasAutoConvertedItems && autoConversionSummary && (
-            <div className="mt-2 flex items-center space-x-2">
-              <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-                ✅ Items auto-convertidos
-              </span>
-              <span className="text-sm text-gray-600">
-                Total: {autoConversionSummary.total} | 
-                Requieren compra: {autoConversionSummary.requieren_compra} |
-                Informativos: {autoConversionSummary.no_requieren_compra}
-              </span>
+            <div className="mt-4 space-y-2">
+              <div className="flex items-center space-x-2">
+                <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                  ✅ Items auto-convertidos
+                </span>
+                <span className="text-sm text-gray-600">
+                  Total: {autoConversionSummary.total} | 
+                  Requieren compra: {autoConversionSummary.requieren_compra} |
+                  Informativos: {autoConversionSummary.no_requieren_compra}
+                </span>
+              </div>
+              
+              {/* ✅ NUEVA: Información de pasajeros si está disponible */}
+              {autoConversionSummary.quote && (
+                <div className="text-sm text-gray-600">
+                  <strong>Pasajeros:</strong> {getPassengerBreakdown(autoConversionSummary.quote)}
+                </div>
+              )}
             </div>
           )}
         </div>

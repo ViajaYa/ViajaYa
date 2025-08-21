@@ -15,7 +15,8 @@ import {
   faFileInvoice,
   faUsers,
   faChartLine,
-  faCoins
+  faCoins,
+  faChartArea
 } from '@fortawesome/free-solid-svg-icons';
 
 // ✅ Importar hook de permisos desde la ubicación correcta
@@ -441,6 +442,17 @@ const Profile = () => {
                       >
                         <FontAwesomeIcon icon={faUsers} className="mr-2" />
                         Todos los Equipos
+                      </Link>
+                    )}
+
+                    {/* ✅ Dashboard Financiero - Solo para Gerente, Admin, Contador, Owner */}
+                    {user?.role >= 4 && (
+                      <Link
+                        to="/financial-dashboard"
+                        className="px-4 py-2 text-white font-nunito font-semibold rounded-lg bg-emerald-500 hover:bg-emerald-600 transition-colors flex items-center justify-center text-sm"
+                      >
+                        <FontAwesomeIcon icon={faChartArea} className="mr-2" />
+                        Dashboard Financiero
                       </Link>
                     )}
 
