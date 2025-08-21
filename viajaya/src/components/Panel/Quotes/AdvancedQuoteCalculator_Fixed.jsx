@@ -5,186 +5,33 @@ import { selectUser } from '../../../redux/slices/authSlice';
 import { fetchCommissionsByTripType, selectConfiguredCommissions } from '../../../redux/slices/commissionSlice';
 import { toast } from 'react-toastify';
 
-const AdvancedQuoteCalculator = ({ quote_id,
+// Utilidad para formatear fechas a 'YYYY-MM-DD' para inputs tipo date
+function formatDateForInput(date) {
+  if (!date) return '';
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+const AdvancedQuoteCalculator = ({
+  quote_id,
   onContinue,
   existingCalculation,
-  quoteData }) => {
+  quoteData
+}) => {
   const dispatch = useDispatch();
   const { loading, error, baseData, baseDataLoading } = useSelector(state => state.quoteCalculation || {});
   const user = useSelector(selectUser);
   const configuredCommissions = useSelector(selectConfiguredCommissions);
 
-  // ✅ REF: Para detectar cambios en quote_id
-  const prevQuoteIdRef = useRef(null);
-
-  // ✅ FUNCIÓN: Convertir fecha ISO a formato yyyy-MM-dd para inputs HTML
-  const formatDateForInput = (isoDate) => {
-    if (!isoDate) return '';
-    try {
-      const date = new Date(isoDate);
-      return date.toISOString().split('T')[0];
-    } catch (error) {
-      console.warn('Error formateando fecha:', error);
-      return '';
-    }
-  };
-
-  // ✅ FUNCIÓN: Resetear formulario a valores por defecto (para nuevas cotizaciones)
-  const resetFormToDefault = useCallback(() => {
-    console.log('🔄 CALCULADORA: Reseteando formulario a valores por defecto');
-    setForm({
-      // Datos base
-      quote_id: quote_id,
-      user_id: user?.id,
-      num_personas: 1,
-      adultos: 1,
-      menores: 0,
-      infantes: 0,
-      edades_menores: [],
-      edades_infantes: [],
-      personas_atencion_especial: 0,
-      trip_type: '',
-
-      // Categorías de costos - valores por defecto limpios
-      tiquetes: {
-        tipo: 'ida_vuelta',
-        origen: '',
-        destino: '',
-        fecha_ida: '',
-        fecha_vuelta: '',
-        costo_ida: 0,
-        costo_vuelta: 0,
-        costo_total: 0,
-        proveedor: '',
-        observaciones: ''
-      },
-      traslados: {
-        aeropuerto_hotel_ida: { incluido: false, costo: 0, proveedor: '' },
-        hotel_aeropuerto_vuelta: { incluido: false, costo: 0, proveedor: '' },
-        otros: [],
-        costo_total: 0
-      },
-      hotel: {
-        nombre: '',
-        categoria: '3_estrellas',
-        acomodacion: 'doble',
-        noches: 0,
-        costo_noche: 0,
-        costo_total: 0,
-        ubicacion: '',
-        proveedor: '',
-        observaciones: ''
-      },
-      alimentacion: {
-        tipo: 'ninguna',
-        costo_total: 0,
-        proveedor: '',
-        observaciones: ''
-      },
-      equipaje: {
-        cabina: { incluido: true, costo: 0 },
-        bodega: { incluido: false, costo: 0 },
-        equipaje_extra: { incluido: false, costo: 0 },
-        costo_total: 0
-      },
-      seguros: {
-        asistencia_medica: { incluido: false, tipo: 'ninguna', costo: 0, proveedor: '' },
-        cancelacion: { incluido: false, costo: 0, proveedor: '' },
-        otros: [],
-        costo_total: 0
-      },
-      actividades_adicionales: {
-        incluidas: false,
-        detalle: '',
-        costo_por_persona: 0,
-        proveedor: ''
-      },
-      excursiones: [],
-      extras: [],
-      comisiones: {
-        asesor: { porcentaje: 0, valor_fijo: 0, valor_por_persona: 0, tipo_calculo: 'percentage', total: 0 },
-        lider: { porcentaje: 0, valor_fijo: 0, valor_por_persona: 0, tipo_calculo: 'percentage', total: 0 },
-        gerente: { porcentaje: 0, valor_fijo: 0, valor_por_persona: 0, tipo_calculo: 'percentage', total: 0 },
-        admin: { porcentaje: 0, valor_fijo: 0, valor_por_persona: 0, tipo_calculo: 'percentage', total: 0 },
-        total_comisiones: 0
-      },
-      ganancia: {
-        porcentaje: 15,
-        valor_fijo: 0,
-        total: 0
-      },
-      costo_base: 0,
-      total_comisiones: 0,
-      total_ganancia: 0,
-      precio_final_total: 0,
-      precio_final_por_persona: 0,
-      estado: 'temporal',
-      observaciones_generales: ''
-    });
-    setShouldRecalculate(false);
-  }, [quote_id, user?.id]);
-
-  // ✅ FUNCIÓN: Calcular personas que realmente pagan (excluyendo infantes <2 años)
-  const calcularPersonasQuePagan = () => {
-    const adultos = parseInt(form.adultos) || 0;
-    const menores = parseInt(form.menores) || 0;
-    let total = adultos + menores;
-
-    // ✅ VALIDACIÓN: Si el total no coincide con numero_personas menos infantes, ajustar
-    const totalEsperado = parseInt(form.num_personas) - parseInt(form.infantes || 0);
-    if (total === 0 && totalEsperado > 0) {
-      console.log(`🔧 CORRECCIÓN: total=0 pero esperado=${totalEsperado}, usando totalEsperado`);
-      total = totalEsperado;
-    }
-
-    // ✅ DEBUG: Log para ver los valores
-    console.log(`🧮 calcularPersonasQuePagan: adultos=${adultos}, menores=${menores}, total=${total}`);
-    console.log(`🧮 form.adultos=${form.adultos}, form.menores=${form.menores}, form.infantes=${form.infantes}`);
-    console.log(`🧮 num_personas=${form.num_personas}, totalEsperado=${totalEsperado}`);
-
-    // Los infantes (<2 años) NO pagan
-    return Math.max(1, total); // Mínimo 1 persona que paga
-  };
-
-  // ✅ FUNCIÓN: Calcular total de actividades extras (por persona)
-  const calcularTotalActividadesExtras = () => {
-    if (!form.actividades_adicionales?.incluidas) return 0;
-
-    let totalPorPersona = 0;
-
-    // Actividades básicas (por persona)
-    if (form.actividades_adicionales?.actividades?.length > 0) {
-      totalPorPersona += form.actividades_adicionales.actividades.reduce((acc, actividad) => {
-        return acc + parseFloat(actividad.costo || 0);
-      }, 0);
-    }
-
-    // Excursiones (por persona)
-    if (form.excursiones?.length > 0) {
-      totalPorPersona += form.excursiones.reduce((acc, exc) => {
-        return acc + parseFloat(exc.costo || 0);
-      }, 0);
-    }
-
-    // Extras/servicios (costo total dividido entre personas que pagan)
-    if (form.extras?.length > 0) {
-      const totalServicios = form.extras.reduce((acc, extra) => {
-        return acc + parseFloat(extra.costo || 0);
-      }, 0);
-      totalPorPersona += totalServicios / calcularPersonasQuePagan();
-    }
-
-    return totalPorPersona;
-  };
-
-  const [activeTab, setActiveTab] = useState('transporte');
-  const [shouldRecalculate, setShouldRecalculate] = useState(false);
-  const [form, setForm] = useState({
-    // Datos base
-    quote_id: quote_id,
-    user_id: user?.id,
+  // Define default form values
+  const defaultForm = {
+    quote_id: quote_id || '',
+    user_id: user?.id || '',
     num_personas: 1,
-    // ✅ NUEVOS: Datos detallados de pasajeros
     adultos: 1,
     menores: 0,
     infantes: 0,
@@ -192,90 +39,63 @@ const AdvancedQuoteCalculator = ({ quote_id,
     edades_infantes: [],
     personas_atencion_especial: 0,
     trip_type: '',
-
-    // Categorías de costos
-    tiquetes: {
-      tipo: 'ida_vuelta',
-      origen: '',
-      destino: '',
-      fecha_ida: '',
-      fecha_vuelta: '',
-      costo_ida: 0,
-      costo_vuelta: 0,
-      costo_total: 0,
-      proveedor: '',
-      observaciones: ''
-    },
-    traslados: {
-      aeropuerto_hotel_ida: { incluido: false, costo: 0, proveedor: '' },
-      hotel_aeropuerto_vuelta: { incluido: false, costo: 0, proveedor: '' },
-      otros: [],
-      costo_total: 0
-    },
-    hotel: {
-      nombre: '',
-      categoria: '3_estrellas',
-      acomodacion: 'doble',
-      noches: 0,
-      costo_noche: 0,
-      costo_total: 0,
-      ubicacion: '',
-      proveedor: '',
-      observaciones: ''
-    },
-    alimentacion: {
-      tipo: 'ninguna',
-      costo_total: 0,
-      proveedor: '',
-      observaciones: ''
-    },
-    equipaje: {
-      cabina: { incluido: true, costo: 0 },
-      bodega: { incluido: false, costo: 0 },
-      equipaje_extra: { incluido: false, costo: 0 },
-      costo_total: 0
-    },
-    seguros: {
-      asistencia_medica: { incluido: false, tipo: 'ninguna', costo: 0, proveedor: '' },
-      cancelacion: { incluido: false, costo: 0, proveedor: '' },
-      otros: [],
-      costo_total: 0
-    },
-    // ✅ NUEVO: Actividades adicionales
-    actividades_adicionales: {
-      incluidas: false,
-      detalle: '',
-      costo_por_persona: 0,
-      proveedor: ''
-    },
-
+  tiquetes: { costo_total: 0, fecha_ida: '', fecha_vuelta: '' },
+  hotel: { costo_total: 0 },
+  traslados: { costo_total: 0 },
+  alimentacion: { costo_total: 0 },
+  equipaje: { costo_total: 0, equipaje_extra: { incluido: false } },
+  seguros: { costo_total: 0, asistencia_medica: { tipo: 'ninguna', costo: 0 } },
+  asistencia_medica: { tipo: 'ninguna', costo: 0 },
     excursiones: [],
+    actividades_adicionales: {},
     extras: [],
-
-    // Comisiones y ganancia
-    comisiones: {
-      asesor: { porcentaje: 0, valor_fijo: 0, valor_por_persona: 0, tipo_calculo: 'percentage', total: 0 },
-      lider: { porcentaje: 0, valor_fijo: 0, valor_por_persona: 0, tipo_calculo: 'percentage', total: 0 },
-      gerente: { porcentaje: 0, valor_fijo: 0, valor_por_persona: 0, tipo_calculo: 'percentage', total: 0 },
-      admin: { porcentaje: 0, valor_fijo: 0, valor_por_persona: 0, tipo_calculo: 'percentage', total: 0 },
-      total_comisiones: 0
-    },
-    ganancia: {
-      porcentaje: 15,
-      valor_fijo: 0,
-      total: 0
-    },
-
-    // Totales
+    comisiones: {},
+    ganancia: 0,
     costo_base: 0,
     total_comisiones: 0,
     total_ganancia: 0,
     precio_final_total: 0,
     precio_final_por_persona: 0,
+    estado: 'draft',
+    observaciones_generales: '',
+  };
 
-    estado: 'temporal',
-    observaciones_generales: ''
-  });
+  // Function to reset form to default values
+  const resetFormToDefault = useCallback(() => {
+    setForm({ ...defaultForm });
+  }, [quote_id, user]);
+
+  const [form, setForm] = useState({ ...defaultForm });
+  const [activeTab, setActiveTab] = useState('transporte');
+  const [shouldRecalculate, setShouldRecalculate] = useState(false);
+  const prevQuoteIdRef = useRef(quote_id);
+
+
+  // Calcula la cantidad de personas que pagan (adultos + menores)
+  const calcularPersonasQuePagan = useCallback(() => {
+    return (parseInt(form.adultos || 0, 10) + parseInt(form.menores || 0, 10));
+  }, [form.adultos, form.menores]);
+
+  // Stub: Calcula el total de actividades y extras por persona
+  const calcularTotalActividadesExtras = useCallback(() => {
+    // TODO: Implementar lógica real
+    // Por ahora suma todos los extras y actividades si existen
+    let total = 0;
+    if (Array.isArray(form.extras)) {
+      total += form.extras.reduce((acc, ext) => acc + Number(ext.costo || 0), 0);
+    }
+    // Si tienes actividades adicionales, súmalas aquí
+    // if (Array.isArray(form.actividades_adicionales)) { ... }
+    return total;
+  }, [form.extras]);
+
+  // Nuevo: función para pasar los datos calculados al padre
+  const handleApplyCalculation = (e) => {
+    e.preventDefault();
+    if (typeof onContinue === 'function') {
+      onContinue(form);
+    }
+  };
 
   // Cargar datos base al montar el componente
   useEffect(() => {
@@ -333,13 +153,21 @@ const AdvancedQuoteCalculator = ({ quote_id,
         alimentacion: existingCalculation.alimentacion || prevForm.alimentacion,
 
         // ✅ CARGAR: Equipaje
-        equipaje: existingCalculation.equipaje || prevForm.equipaje,
+        equipaje: {
+          ...prevForm.equipaje,
+          ...(existingCalculation.equipaje || {}),
+          equipaje_extra: existingCalculation.equipaje?.equipaje_extra || prevForm.equipaje.equipaje_extra || { incluido: false }
+        },
 
         // ✅ CARGAR: Seguros
-        seguros: existingCalculation.seguros || prevForm.seguros,
+        seguros: {
+          ...prevForm.seguros,
+          ...(existingCalculation.seguros || {}),
+          asistencia_medica: existingCalculation.seguros?.asistencia_medica || prevForm.seguros.asistencia_medica || { tipo: 'ninguna', costo: 0 }
+        },
 
         // ✅ CARGAR: Asistencia médica
-        asistencia_medica: existingCalculation.asistencia_medica || prevForm.asistencia_medica,
+  asistencia_medica: existingCalculation.asistencia_medica || prevForm.asistencia_medica || { tipo: 'ninguna', costo: 0 },
 
         // ✅ CARGAR: Excursiones
         excursiones: Array.isArray(existingCalculation.excursiones)
@@ -395,7 +223,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
         }));
       }
     }
-  }, [existingCalculation, quoteData, quote_id, resetFormToDefault]);
+  }, [existingCalculation, quoteData, quote_id]);
 
   // Sincronizar número de personas y tipo de viaje desde backend al cargar datos base
   useEffect(() => {
@@ -510,30 +338,30 @@ const AdvancedQuoteCalculator = ({ quote_id,
     const personasQuePagan = calcularPersonasQuePagan(); // ✅ Solo adultos + menores
 
     console.log('🧮 DEBUGGING CALCULAR TOTALES:');
-    console.log('Personas que pagan:', personasQuePagan);
-    console.log('Tiquetes costo_total (por persona):', form.tiquetes.costo_total);
-    console.log('Hotel costo_total (por persona):', form.hotel.costo_total);
-    console.log('Traslados costo_total (por persona):', form.traslados.costo_total);
-    console.log('Alimentacion costo_total (por persona):', form.alimentacion.costo_total);
+  console.log('Personas que pagan:', personasQuePagan);
+  console.log('Tiquetes costo_total (por persona):', form.tiquetes?.costo_total);
+  console.log('Hotel costo_total (por persona):', form.hotel?.costo_total);
+  console.log('Traslados costo_total (por persona):', form.traslados?.costo_total);
+  console.log('Alimentacion costo_total (por persona):', form.alimentacion?.costo_total);
 
-    // ✅ CORREGIDO: Los costos son POR PERSONA, necesitamos multiplicar por personas que pagan
-    costoBase += parseFloat(form.tiquetes.costo_total || 0) * personasQuePagan;
-    costoBase += parseFloat(form.traslados.costo_total || 0) * personasQuePagan;
-    costoBase += parseFloat(form.hotel.costo_total || 0) * personasQuePagan;
-    costoBase += parseFloat(form.alimentacion.costo_total || 0) * personasQuePagan;
-    costoBase += parseFloat(form.equipaje.costo_total || 0) * personasQuePagan;
-    costoBase += parseFloat(form.seguros.costo_total || 0) * personasQuePagan;
-    costoBase += parseFloat(form.seguros?.asistencia_medica?.costo || 0) * personasQuePagan;
-    
-    console.log('🎯 COSTO BASE DESPUÉS DE SERVICIOS BÁSICOS:');
-    console.log('- Tiquetes total:', parseFloat(form.tiquetes.costo_total || 0) * personasQuePagan);
-    console.log('- Hotel total:', parseFloat(form.hotel.costo_total || 0) * personasQuePagan);
-    console.log('- Traslados total:', parseFloat(form.traslados.costo_total || 0) * personasQuePagan);
-    console.log('- Alimentación total:', parseFloat(form.alimentacion.costo_total || 0) * personasQuePagan);
-    console.log('- Equipaje total:', parseFloat(form.equipaje.costo_total || 0) * personasQuePagan);
-    console.log('- Seguros total:', parseFloat(form.seguros.costo_total || 0) * personasQuePagan);
-    console.log('- Asistencia médica total:', parseFloat(form.seguros?.asistencia_medica?.costo || 0) * personasQuePagan);
-    console.log('- Costo base parcial:', costoBase);
+  // ✅ CORREGIDO: Los costos son POR PERSONA, necesitamos multiplicar por personas que pagan
+  costoBase += parseFloat(form.tiquetes?.costo_total || 0) * personasQuePagan;
+  costoBase += parseFloat(form.traslados?.costo_total || 0) * personasQuePagan;
+  costoBase += parseFloat(form.hotel?.costo_total || 0) * personasQuePagan;
+  costoBase += parseFloat(form.alimentacion?.costo_total || 0) * personasQuePagan;
+  costoBase += parseFloat(form.equipaje?.costo_total || 0) * personasQuePagan;
+  costoBase += parseFloat(form.seguros?.costo_total || 0) * personasQuePagan;
+  costoBase += parseFloat(form.seguros?.asistencia_medica?.costo || 0) * personasQuePagan;
+
+  console.log('🎯 COSTO BASE DESPUÉS DE SERVICIOS BÁSICOS:');
+  console.log('- Tiquetes total:', parseFloat(form.tiquetes?.costo_total || 0) * personasQuePagan);
+  console.log('- Hotel total:', parseFloat(form.hotel?.costo_total || 0) * personasQuePagan);
+  console.log('- Traslados total:', parseFloat(form.traslados?.costo_total || 0) * personasQuePagan);
+  console.log('- Alimentación total:', parseFloat(form.alimentacion?.costo_total || 0) * personasQuePagan);
+  console.log('- Equipaje total:', parseFloat(form.equipaje?.costo_total || 0) * personasQuePagan);
+  console.log('- Seguros total:', parseFloat(form.seguros?.costo_total || 0) * personasQuePagan);
+  console.log('- Asistencia médica total:', parseFloat(form.seguros?.asistencia_medica?.costo || 0) * personasQuePagan);
+  console.log('- Costo base parcial:', costoBase);
 
     // ✅ ACTUALIZADO: Calcular extras combinados según el nuevo sistema
     let totalExtrasPersonas = 0;
@@ -574,7 +402,14 @@ const AdvancedQuoteCalculator = ({ quote_id,
 
     // Calcular comisiones sobre el costo base SOLO si costoBase > 0
     let totalComisiones = 0;
-    const comisionesActualizadas = JSON.parse(JSON.stringify(form.comisiones));
+    // Helper: ensure all roles exist with default structure
+    const defaultRoles = {
+      asesor: { porcentaje: 0, valor_fijo: 0, valor_por_persona: 0, tipo_calculo: 'percentage', total: 0 },
+      lider: { porcentaje: 0, valor_fijo: 0, valor_por_persona: 0, tipo_calculo: 'percentage', total: 0 },
+      gerente: { porcentaje: 0, valor_fijo: 0, valor_por_persona: 0, tipo_calculo: 'percentage', total: 0 },
+      admin: { porcentaje: 0, valor_fijo: 0, valor_por_persona: 0, tipo_calculo: 'percentage', total: 0 }
+    };
+    const comisionesActualizadas = { ...defaultRoles, ...(form.comisiones || {}) };
 
     if (costoBase > 0) {
       Object.keys(comisionesActualizadas).forEach(rol => {
@@ -653,18 +488,18 @@ const AdvancedQuoteCalculator = ({ quote_id,
     form.actividades_adicionales?.costo_por_persona,
     form.actividades_adicionales?.incluidas,
     form.extras,
-    form.comisiones.asesor.porcentaje,
-    form.comisiones.asesor.valor_fijo,
-    form.comisiones.asesor.valor_por_persona,
-    form.comisiones.lider.porcentaje,
-    form.comisiones.lider.valor_fijo,
-    form.comisiones.lider.valor_por_persona,
-    form.comisiones.gerente.porcentaje,
-    form.comisiones.gerente.valor_fijo,
-    form.comisiones.gerente.valor_por_persona,
-    form.comisiones.admin.porcentaje,
-    form.comisiones.admin.valor_fijo,
-    form.comisiones.admin.valor_por_persona,
+  form.comisiones?.asesor?.porcentaje,
+  form.comisiones?.asesor?.valor_fijo,
+  form.comisiones?.asesor?.valor_por_persona,
+  form.comisiones?.lider?.porcentaje,
+  form.comisiones?.lider?.valor_fijo,
+  form.comisiones?.lider?.valor_por_persona,
+  form.comisiones?.gerente?.porcentaje,
+  form.comisiones?.gerente?.valor_fijo,
+  form.comisiones?.gerente?.valor_por_persona,
+  form.comisiones?.admin?.porcentaje,
+  form.comisiones?.admin?.valor_fijo,
+  form.comisiones?.admin?.valor_por_persona,
     form.ganancia.porcentaje,
     form.ganancia.valor_fijo,
     form.num_personas,
@@ -758,6 +593,14 @@ const AdvancedQuoteCalculator = ({ quote_id,
         // Para campos del nivel raíz como trip_type, num_personas, estado
         newForm[campo] = valor;
       } else if (subcampo) {
+        // Si el campo es 'equipaje_extra' y no existe, inicializarlo
+        if (categoria === 'equipaje' && campo === 'equipaje_extra' && !newForm.equipaje.equipaje_extra) {
+          newForm.equipaje.equipaje_extra = { incluido: false };
+        }
+        // Si el campo es 'asistencia_medica' y no existe, inicializarlo
+        if (categoria === 'seguros' && campo === 'asistencia_medica' && !newForm.seguros.asistencia_medica) {
+          newForm.seguros.asistencia_medica = { tipo: 'ninguna', costo: 0 };
+        }
         newForm[categoria][campo][subcampo] = valor;
 
         // Recalcular totales de categoría específica
@@ -783,7 +626,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
           }
 
           // Sumar otros traslados
-          newForm.traslados.otros.forEach(traslado => {
+          (newForm.traslados.otros || []).forEach(traslado => {
             totalTraslados += parseFloat(traslado.costo || 0);
           });
 
@@ -1200,22 +1043,22 @@ const AdvancedQuoteCalculator = ({ quote_id,
 
           <div>
             <label className="block text-sm font-medium mb-1">Fecha de Ida</label>
-            <input
-              type="date"
-              value={form.tiquetes?.fecha_ida || ''}
-              onChange={(e) => handleInputChange('tiquetes', 'fecha_ida', e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+              <input
+                type="date"
+                value={formatDateForInput(form.tiquetes?.fecha_ida)}
+                onChange={(e) => handleInputChange('tiquetes', 'fecha_ida', e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
           </div>
 
           <div>
             <label className="block text-sm font-medium mb-1">Fecha de Regreso</label>
-            <input
-              type="date"
-              value={form.tiquetes?.fecha_vuelta || ''}
-              onChange={(e) => handleInputChange('tiquetes', 'fecha_vuelta', e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+              <input
+                type="date"
+                value={formatDateForInput(form.tiquetes?.fecha_vuelta)}
+                onChange={(e) => handleInputChange('tiquetes', 'fecha_vuelta', e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
           </div>
 
           <div>
@@ -1325,7 +1168,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
         </div>
       </div>
 
-      <form onSubmit={handleSubmit}>
+  <form onSubmit={handleApplyCalculation}>
         {/* Sección Transporte */}
         {activeTab === 'transporte' && (
           <div className="space-y-6">
@@ -1401,7 +1244,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
                 <div className="flex items-center space-x-4">
                   <input
                     type="checkbox"
-                    checked={form.traslados.aeropuerto_hotel_ida.incluido}
+                    checked={form.traslados.aeropuerto_hotel_ida?.incluido}
                     onChange={e => handleInputChange('traslados', 'aeropuerto_hotel_ida', e.target.checked, 'incluido')}
                     className="rounded"
                   />
@@ -1409,11 +1252,11 @@ const AdvancedQuoteCalculator = ({ quote_id,
                   <div className="w-32">
                     <input
                       type="number"
-                      value={form.traslados.aeropuerto_hotel_ida.costo}
+                      value={form.traslados.aeropuerto_hotel_ida?.costo}
                       onChange={e => handleInputChange('traslados', 'aeropuerto_hotel_ida', e.target.value, 'costo')}
                       className="w-full border rounded px-2 py-1"
                       placeholder="0"
-                      disabled={!form.traslados.aeropuerto_hotel_ida.incluido}
+                      disabled={!form.traslados.aeropuerto_hotel_ida?.incluido}
                     />
                     <small className="text-gray-500">por persona</small>
                   </div>
@@ -1421,7 +1264,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
                 <div className="flex items-center space-x-4">
                   <input
                     type="checkbox"
-                    checked={form.traslados.hotel_aeropuerto_vuelta.incluido}
+                    checked={form.traslados.hotel_aeropuerto_vuelta?.incluido}
                     onChange={e => handleInputChange('traslados', 'hotel_aeropuerto_vuelta', e.target.checked, 'incluido')}
                     className="rounded"
                   />
@@ -1429,11 +1272,11 @@ const AdvancedQuoteCalculator = ({ quote_id,
                   <div className="w-32">
                     <input
                       type="number"
-                      value={form.traslados.hotel_aeropuerto_vuelta.costo}
+                      value={form.traslados.hotel_aeropuerto_vuelta?.costo}
                       onChange={e => handleInputChange('traslados', 'hotel_aeropuerto_vuelta', e.target.value, 'costo')}
                       className="w-full border rounded px-2 py-1"
                       placeholder="0"
-                      disabled={!form.traslados.hotel_aeropuerto_vuelta.incluido}
+                      disabled={!form.traslados.hotel_aeropuerto_vuelta?.incluido}
                     />
                     <small className="text-gray-500">por persona</small>
                   </div>
@@ -1627,7 +1470,7 @@ const AdvancedQuoteCalculator = ({ quote_id,
                   <div className="flex items-center space-x-2">
                     <input
                       type="checkbox"
-                      checked={form.equipaje.equipaje_extra.incluido}
+                      checked={form.equipaje.equipaje_extra?.incluido}
                       onChange={e => handleInputChange('equipaje', 'equipaje_extra', e.target.checked, 'incluido')}
                     />
                     <label className="text-sm font-medium">Equipaje Extra</label>
@@ -2163,12 +2006,12 @@ const AdvancedQuoteCalculator = ({ quote_id,
             ) : (
               <button
                 type="submit"
-                disabled={loading}
-                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
-                {loading ? 'Guardando...' : 'Guardar y Usar Presupuesto'}
+                Aplicar cálculo
               </button>
-            )}
+            )
+            }
           </div>
         </div>
 

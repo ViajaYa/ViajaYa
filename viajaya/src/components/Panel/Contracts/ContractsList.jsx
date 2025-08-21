@@ -618,15 +618,7 @@ const ContractsList = () => {
                       <div className="flex items-center gap-1">
 
                         {/* ✅ GENERAR PDF - Mostrar si no existe PDF */}
-                        {!contract.contrato_pdf_url && (
-                          <button
-                            onClick={() => handleAction("generate_pdf", contract.id)}
-                            className="p-2 text-orange-600 hover:bg-orange-50 rounded transition-colors"
-                            title="Generar PDF"
-                          >
-                            <FontAwesomeIcon icon={faFilePdf} size="sm" />
-                          </button>
-                        )}
+                       
 
                         {/* Editar */}
                         {contract.status === "draft" && (
@@ -652,18 +644,7 @@ const ContractsList = () => {
                           <FontAwesomeIcon icon={faEye} size="sm" />
                         </button>
 
-                        {/* ✅ NUEVO BOTÓN: Gestión de Compras */}
-                        {(contract.status === "active" || 
-                          contract.status === "signed" || 
-                          contract.status === "completed") && (
-                          <button
-                            onClick={() => handleAction("purchase_management", contract.id)}
-                            className="p-2 text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
-                            title="Gestión de Compras"
-                          >
-                            <FontAwesomeIcon icon={faShoppingCart} size="sm" />
-                          </button>
-                        )}
+                       
 
                         {/* Enviar */}
                         {(contract.status === "draft" ||
@@ -704,6 +685,18 @@ const ContractsList = () => {
                             title="Ver comisiones generadas"
                           >
                             <FontAwesomeIcon icon={faCoins} size="sm" />
+                          </button>
+                        )}
+                         {/* ✅ NUEVO BOTÓN: Gestión de Compras */}
+                        {(contract.status === "active" || 
+                          contract.status === "signed" || 
+                          contract.status === "completed") && (
+                          <button
+                            onClick={() => handleAction("purchase_management", contract.id)}
+                            className="p-2 text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                            title="Gestión de Compras"
+                          >
+                            <FontAwesomeIcon icon={faShoppingCart} size="sm" />
                           </button>
                         )}
 
