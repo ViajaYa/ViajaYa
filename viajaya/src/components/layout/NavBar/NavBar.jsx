@@ -10,12 +10,10 @@ import {
 } from '../../../redux/slices/authSlice';
 import useAuthGuard from '../../hooks/useAuthGuard'; // ✅ Usar el hook mejorado
 
-import logo from "../../../assets/NuevoLogo.png";
-import styles from './NavBar.module.css';
+import logo from "../../../assets/logo2.png";
 import {
   FaFacebookF, FaInstagram, FaTiktok, FaTelegramPlane, FaWhatsapp, FaBars, FaTimes, FaChevronDown
 } from 'react-icons/fa';
-
 
 const NavBar = () => {
   const navigate = useNavigate();
@@ -89,7 +87,7 @@ const NavBar = () => {
     return (
       <nav className="bg-white shadow px-4 py-2 flex items-center justify-between">
         <RouterLink to="/">
-          <img className="logo" src={logo} alt="Logo ViajaYa" />
+          <img className="h-12" src={logo} alt="Logo ViajaYa" />
         </RouterLink>
         <span className="text-gray-500">Cargando...</span>
       </nav>
@@ -100,7 +98,7 @@ const NavBar = () => {
     <nav className="bg-white shadow sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-8 flex items-center justify-between h-16">
         <RouterLink to="/" className="flex items-center">
-          <img className={styles.logo} src={logo} alt="Logo ViajaYa" />
+          <img className="h-12 w-auto" src={logo} alt="Logo ViajaYa" />
         </RouterLink>
 
         {/* Desktop menu */}
