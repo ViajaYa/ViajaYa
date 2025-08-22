@@ -1,4 +1,5 @@
-const { Commission, Contract, Quote, User, SupportDocument, CommissionConfig, conn: sequelize } = require('../db');
+const { Commission, Contract, Quote, User, SupportDocument, CommissionConfig, conn: sequelize, UserDocument } = require('../db');
+
 const { Op } = require('sequelize');
 const generatePaymentDocument = require('../utils/generatePaymentDocument');    
 const commissionConfigController = require('./commissionConfigController');
@@ -633,6 +634,7 @@ getCommissionStats: async (req, res) => {
       console.log('🔍 Datos recibidos en requestPayment:', req.body);
       console.log('🔍 Usuario autenticado:', req.user?.id);
       
+
       const { commissionId, paymentData, firma_digital_url } = req.body;
       const userId = req.user.id;
 
@@ -647,6 +649,20 @@ getCommissionStats: async (req, res) => {
         return res.status(400).json({ 
           message: 'Datos bancarios incompletos', 
           required: ['banco', 'numero_cuenta', 'nombre_titular'] 
+        });
+      }
+
+      // Validar Firma Digital aprobada
+      const firmaDigital = await UserDocument.findOne({
+        where: {
+          user_id: userId,
+          document_name: 'Firma Digital',
+          status: 'approved'
+        }
+      });
+      if (!firmaDigital) {
+        return res.status(400).json({
+          message: 'Debes tener tu Firma Digital aprobada para solicitar el pago de comisión.'
         });
       }
 
