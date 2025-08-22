@@ -22,7 +22,7 @@ const invoiceController = {
         where: {
           status: 'completed',
           fecha_fin_viaje: {
-            [Op.lte]: new Date() // Viajes ya terminados
+            [Op.lte]: new Date() // Solo viajes ya terminados (fecha de regreso pasada)
           }
         },
         include: [
@@ -41,7 +41,11 @@ const invoiceController = {
                 attributes: [
                   'precio_final_total', 
                   'total_comisiones',
-                  'total_ganancia'
+                  'total_ganancia',
+                  'precio_tickets',
+                  'precio_asistencia_medica',
+                  'precio_traslados',
+                  'precio_alojamiento'
                 ]
               }
             ]
@@ -50,12 +54,24 @@ const invoiceController = {
         order: [['fecha_fin_viaje', 'ASC']]
       });
 
-      console.log(`📊 Encontrados ${contractsPendientes.length} contratos pendientes de facturar`);
+      // ✅ FILTRAR CONTRATOS QUE YA TIENEN FACTURA
+      const contractsWithoutInvoice = [];
+      for (const contract of contractsPendientes) {
+        const existingInvoice = await Invoice.findOne({
+          where: { contract_id: contract.id }
+        });
+        
+        if (!existingInvoice) {
+          contractsWithoutInvoice.push(contract);
+        }
+      }
+
+      console.log(`📊 Encontrados ${contractsWithoutInvoice.length} contratos pendientes de facturar`);
 
       res.status(200).json({
         success: true,
-        message: `Se encontraron ${contractsPendientes.length} contratos pendientes de facturar`,
-        data: contractsPendientes
+        message: `Se encontraron ${contractsWithoutInvoice.length} contratos pendientes de facturar`,
+        data: contractsWithoutInvoice
       });
 
     } catch (error) {
@@ -142,38 +158,117 @@ const invoiceController = {
       const invoiceCount = await Invoice.count();
       const invoiceNumber = `INV-${new Date().getFullYear()}-${String(invoiceCount + 1).padStart(4, '0')}`;
 
-      // 4. Calcular totales de la factura
-      const quoteCalc = contract.Quote?.Calculation;
-      const totalAmount = quoteCalc?.precio_final_total || 0;
-      const commissionsAmount = quoteCalc?.total_comisiones || 0;
-      const companyProfit = quoteCalc?.total_ganancia || 0;
+      // 4. Extraer items de la cotización aprobada
+      const quote = contract.Quote;
+      const calculation = quote?.Calculation;
+      
+      // ✅ DESGLOSE DE ITEMS BASADO EN LA COTIZACIÓN
+      const invoiceItems = [];
+      
+      // Items principales de la cotización
+      if (calculation) {
+        // Agregar items según lo cotizado
+        if (calculation.precio_tickets > 0) {
+          invoiceItems.push({
+            descripcion: 'Tickets de transporte',
+            cantidad: 1,
+            valor_unitario: parseFloat(calculation.precio_tickets),
+            valor_total: parseFloat(calculation.precio_tickets)
+          });
+        }
+        
+        if (calculation.precio_asistencia_medica > 0) {
+          invoiceItems.push({
+            descripcion: 'Asistencia médica de viaje',
+            cantidad: 1,
+            valor_unitario: parseFloat(calculation.precio_asistencia_medica),
+            valor_total: parseFloat(calculation.precio_asistencia_medica)
+          });
+        }
+        
+        if (calculation.precio_traslados > 0) {
+          invoiceItems.push({
+            descripcion: 'Traslados y transporte local',
+            cantidad: 1,
+            valor_unitario: parseFloat(calculation.precio_traslados),
+            valor_total: parseFloat(calculation.precio_traslados)
+          });
+        }
+        
+        if (calculation.precio_alojamiento > 0) {
+          invoiceItems.push({
+            descripcion: 'Alojamiento',
+            cantidad: 1,
+            valor_unitario: parseFloat(calculation.precio_alojamiento),
+            valor_total: parseFloat(calculation.precio_alojamiento)
+          });
+        }
+        
+        if (calculation.total_comisiones > 0) {
+          invoiceItems.push({
+            descripcion: 'Comisiones de gestión',
+            cantidad: 1,
+            valor_unitario: parseFloat(calculation.total_comisiones),
+            valor_total: parseFloat(calculation.total_comisiones)
+          });
+        }
+        
+        if (calculation.total_ganancia > 0) {
+          invoiceItems.push({
+            descripcion: 'Ganancia operacional',
+            cantidad: 1,
+            valor_unitario: parseFloat(calculation.total_ganancia),
+            valor_total: parseFloat(calculation.total_ganancia)
+          });
+        }
+      }
 
-      // 5. Crear la factura
+      // 5. Calcular totales de la factura
+      const totalAmount = calculation?.precio_final_total || 0;
+      const commissionsAmount = calculation?.total_comisiones || 0;
+      const companyProfit = calculation?.total_ganancia || 0;
+      const purchasesAmount = parseFloat(totalAmount) - parseFloat(commissionsAmount) - parseFloat(companyProfit);
+
+      // 6. Crear la factura usando los nombres correctos del modelo
       const invoice = await Invoice.create({
         contract_id: contractId,
-        user_id: contract.Quote?.Cliente?.id,
-        invoice_number: invoiceNumber,
-        issue_date: new Date(),
-        due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días
-        total_amount: totalAmount,
-        tax_amount: 0, // Por definir si aplica
+        cliente_id: contract.Quote?.Cliente?.id,
+        numero_factura: invoiceNumber,
+        fecha_factura: new Date(),
+        fecha_vencimiento: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días
+        
+        // Información del cliente
+        cliente_nombre: `${contract.Quote?.Cliente?.name} ${contract.Quote?.Cliente?.lastname}`,
+        cliente_documento: contract.Quote?.Cliente?.documento || 'N/A',
+        cliente_email: contract.Quote?.Cliente?.email,
+        cliente_telefono: contract.Quote?.Cliente?.phone,
+        
+        // Montos detallados según cotización
+        monto_compras: purchasesAmount,
+        monto_comisiones: commissionsAmount,
+        monto_ganancia: companyProfit,
         subtotal: totalAmount,
-        status: 'pending',
-        notes: `Factura generada automáticamente para contrato ${contractId}`,
-        metadata: {
-          commissions_amount: commissionsAmount,
-          company_profit: companyProfit,
-          generated_by: 'system',
-          generation_date: new Date().toISOString()
-        }
+        impuestos: 0, // Por definir si aplica
+        monto_total: totalAmount,
+        
+        status: 'generated',
+        generada_por: req.user?.id || 1, // Usuario que genera
+        observaciones: `Factura generada automáticamente para contrato ${contract.contract_number}`,
+        
+        // Items detallados como JSON
+        items_factura: invoiceItems
       });
 
       console.log(`✅ Factura creada exitosamente: ${invoiceNumber}`);
+      console.log(`📋 Items de factura:`, invoiceItems);
 
       res.status(201).json({
         success: true,
         message: 'Factura generada exitosamente',
-        data: invoice
+        data: {
+          ...invoice.toJSON(),
+          items_detallados: invoiceItems
+        }
       });
 
     } catch (error) {
@@ -276,7 +371,10 @@ const invoiceController = {
 
       res.status(200).json({
         success: true,
-        data: invoice
+        data: {
+          ...invoice.toJSON(),
+          items_detallados: invoice.items_factura || []
+        }
       });
 
     } catch (error) {

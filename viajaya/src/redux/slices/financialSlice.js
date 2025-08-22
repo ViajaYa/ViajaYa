@@ -127,6 +127,38 @@ export const fetchProfitByContract = createAsyncThunk(
   }
 );
 
+// 🏆 ENDPOINT: Obtener ganancias de contratos completados
+export const fetchCompletedContractsFinancials = createAsyncThunk(
+  'financial/fetchCompletedContracts',
+  async ({ startDate, endDate } = {}, { rejectWithValue, getState }) => {
+    try {
+      const { auth } = getState();
+      const params = new URLSearchParams();
+      
+      if (startDate) params.append('start_date', startDate);
+      if (endDate) params.append('end_date', endDate);
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/financial/completed-contracts?${params}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${auth.token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al obtener ganancias de contratos completados');
+      }
+
+      const data = await response.json();
+      return data.data;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 const initialState = {
   // 📊 RESUMEN FINANCIERO
   summary: {
@@ -178,6 +210,21 @@ const initialState = {
     data: [],
     loading: false,
     error: null
+  },
+
+  // 🏆 CONTRATOS COMPLETADOS
+  completedContracts: {
+    resumen: {
+      total_contratos: 0,
+      total_ingresos: 0,
+      total_gastos: 0,
+      ganancia_total: 0,
+      margen_promedio: 0,
+      roi: 0
+    },
+    contratos: [],
+    loading: false,
+    error: null
   }
 };
 
@@ -191,6 +238,7 @@ const financialSlice = createSlice({
       state.payments = initialState.payments;
       state.purchases = initialState.purchases;
       state.profitAnalysis = initialState.profitAnalysis;
+      state.completedContracts = initialState.completedContracts;
     },
 
     // 🔍 ACTUALIZAR FILTROS DE PAGOS
@@ -297,6 +345,21 @@ const financialSlice = createSlice({
       .addCase(fetchProfitByContract.rejected, (state, action) => {
         state.profitAnalysis.loading = false;
         state.profitAnalysis.error = action.payload;
+      })
+
+      // 🏆 CONTRATOS COMPLETADOS
+      .addCase(fetchCompletedContractsFinancials.pending, (state) => {
+        state.completedContracts.loading = true;
+        state.completedContracts.error = null;
+      })
+      .addCase(fetchCompletedContractsFinancials.fulfilled, (state, action) => {
+        state.completedContracts.loading = false;
+        state.completedContracts.resumen = action.payload?.resumen || initialState.completedContracts.resumen;
+        state.completedContracts.contratos = action.payload?.contratos || [];
+      })
+      .addCase(fetchCompletedContractsFinancials.rejected, (state, action) => {
+        state.completedContracts.loading = false;
+        state.completedContracts.error = action.payload;
       });
   }
 });

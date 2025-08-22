@@ -142,6 +142,13 @@ module.exports = (sequelize) => {
     numero_autorizacion: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    
+    // ✅ DESGLOSE DETALLADO DE ITEMS
+    items_factura: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      comment: 'Desglose detallado de items de la factura basado en cotización'
     }
   }, {
     timestamps: true,
