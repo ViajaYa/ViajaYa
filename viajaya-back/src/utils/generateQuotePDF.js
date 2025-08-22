@@ -234,6 +234,7 @@ const COLORS = {
   fondoPopup: "#421261",
   ColorMorado: "#b85aa1",
   ColorAzul: "#2be0e9",
+  ColorAzul2: "#5475A8",
   textoOscuro: "#1f2937",
   textoGris: "#374151",
 };
@@ -277,12 +278,12 @@ const generateQuotePDF = async (quote, saveToFile = true) => {
 
 
   // Header mejorado: logo y datos empresa a la izquierda, número de cotización a la derecha
-  doc.rect(0, 0, pageWidth, 70).fillColor(COLORS.fondoPopup).fill();
+  doc.rect(0, 0, pageWidth, 70).fillColor(COLORS.ColorAzul2).fill();
 
   // Logo a la izquierda (intenta varios archivos y muestra error si falla)
-  let logoBottom = 10;
+  let logoBottom = 6;
   const logoCandidates = [
-    path.join(__dirname, '../assets/logoNuevo.jpg'), // tu logo adjunto
+    path.join(__dirname, '../assets/logoNuevo.png'), // tu logo adjunto
     path.join(__dirname, '../assets/NuevoLogo.png'),    // otro logo
     path.join(__dirname, '../assets/logo2.png')         // logo anterior
   ];
@@ -290,8 +291,8 @@ const generateQuotePDF = async (quote, saveToFile = true) => {
   for (const logoPath of logoCandidates) {
     try {
       if (fs.existsSync(logoPath)) {
-        doc.image(logoPath, margin, 10, { width: 48, height: 48 });
-        logoBottom = 10 + 48;
+        doc.image(logoPath, margin, 10, { width: 52, height: 52 });
+        logoBottom = 6 + 52;
         logoLoaded = true;
         break;
       }

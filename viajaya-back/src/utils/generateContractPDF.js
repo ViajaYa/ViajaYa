@@ -169,28 +169,51 @@ const numeroALetras = (numero) => {
 // ✅ Función para crear header del contrato (basado en el modelo)
 const createContractHeader = (doc) => {
   const pageWidth = doc.page.width;
-  const pageHeight = doc.page.height;
-  
-  // Crear el header colorido con gradiente
+  const margin = 40;
   const headerHeight = 80;
-  
-  // Fondo azul del header
+  // Fondo azul (mantener color original)
   doc.rect(0, 0, pageWidth, headerHeight)
-     .fillColor('#00bcd4') // Color turquesa como en el modelo
+     .fillColor('#00bcd4')
      .fill();
-  
-  // URLs en la parte superior
-  doc.fontSize(12)
-     .fillColor('#ffffff')
+
+  // Logo a la izquierda (intenta varios archivos)
+  const logoCandidates = [
+    
+    path.join(__dirname, '../assets/NuevoLogo.png'),
+    path.join(__dirname, '../assets/logo2.png')
+  ];
+  let logoLoaded = false;
+  for (const logoPath of logoCandidates) {
+    try {
+      if (fs.existsSync(logoPath)) {
+        doc.image(logoPath, margin, 16, { width: 48, height: 48 });
+        logoLoaded = true;
+        break;
+      }
+    } catch (error) {}
+  }
+  if (!logoLoaded) {
+    doc.fontSize(8).fillColor('white').text('Logo no disponible', margin, 30);
+  }
+
+  // Datos empresa a la derecha del logo
+  doc.fontSize(13)
+     .fillColor('white')
      .font('Helvetica-Bold')
-     .text('https://viajaya.com.co/', 15, 15);
-  
-  doc.fontSize(11)
-     .fillColor('#ffffff')
+     .text('VIAJA YA', margin + 60, 20)
+     .fontSize(8)
      .font('Helvetica')
-     .text('@viajaya_pagina_oficial', 15, 35);
-  
-  return headerHeight + 20; // Retorna la posición Y después del header
+     .text('Hacemos realidad tus sueños de viaje', margin + 60, 36)
+     .text('info@viajaya.com | +57 320 492 44 44', margin + 60, 48)
+     .text('Bogotá, Colombia', margin + 60, 60);
+
+  // Número de contrato a la derecha
+  if (doc._currentContractNumber) {
+    doc.fontSize(12).fillColor('white').font('Helvetica-Bold')
+      .text(`Contrato: ${doc._currentContractNumber}`, pageWidth - 180, 20, { width: 150, align: 'right' });
+  }
+
+  return headerHeight + 20;
 };
 
 // ✅ Función para crear título del contrato
@@ -843,25 +866,35 @@ const createReservaSection = (doc, contractData) => {
   
   // Información de pasajeros reales
   if (contractData.Quote?.Passengers && contractData.Quote.Passengers.length > 0) {
+    const blockHeight = 20 + 12 + 12 + 12 + 10; // Altura estimada por pasajero (66)
+    const pageHeight = doc.page.height;
+    const bottomMargin = 60;
     contractData.Quote.Passengers.forEach((passenger, index) => {
+      // Si no hay suficiente espacio, salto de página manual y header
+      if (yPos + blockHeight > pageHeight - bottomMargin) {
+        doc.addPage();
+        createContractHeader(doc);
+        yPos = 120;
+        doc.fontSize(9)
+          .fillColor('#000000')
+          .font('Helvetica-Bold')
+          .text('DATOS DE LOS VIAJEROS (continuación)', margin + 5, yPos);
+        yPos += 20;
+      }
       yPos += 20;
       doc.fontSize(8)
          .font('Helvetica-Bold')
          .text(`${passenger.nombre.toUpperCase()} ${passenger.apellido.toUpperCase()}:`, margin + 5, yPos);
-      
       yPos += 12;
       doc.fontSize(8)
          .font('Helvetica')
          .text(`${passenger.tipo_documento.toUpperCase()}. ${passenger.documento_identidad}`, margin + 5, yPos);
-      
       yPos += 12;
       doc.fontSize(8)
          .text(`Celular: ${cliente?.phone || 'No registrado'}`, margin + 5, yPos);
-      
       yPos += 12;
       doc.fontSize(8)
          .text(`Fecha de nacimiento: ${formatearFecha(passenger.fecha_nacimiento)}`, margin + 5, yPos);
-      
       // Agregar espacio entre pasajeros
       if (index < contractData.Quote.Passengers.length - 1) {
         yPos += 10;
@@ -1297,150 +1330,52 @@ const generateContractPDF = async (contractData, saveToFile = true) => {
     // ================= PÁGINA 4 - ACUERDO DE PAGO =================
     createPaymentSection(doc, contractData);
 
-    // ================= PÁGINA 5 - TÉRMINOS Y CONDICIONES =================
+
+    // ================= ÚLTIMA HOJA: DATOS DE LA EMPRESA Y FIRMA =================
     doc.addPage();
-    createContractHeader(doc);
-    
-    let yPos = 120;
-    
-    // Título de términos
+    let yPos = 100;
+
+    // Datos de la empresa
     doc.fontSize(14)
-       .fillColor('#000000')
-       .font('Helvetica-Bold')
-       .text('TÉRMINOS Y CONDICIONES GENERALES', margin, yPos, {
-         width: contentWidth,
-         align: 'center'
-       });
-    
-    yPos += 40;
-    
-    // Términos detallados
-    const terminos = [
-      '1. RESPONSABILIDADES DEL CLIENTE:',
-      '• Presentar documentación completa y vigente para el viaje.',
-      '• Realizar los pagos en las fechas establecidas.',
-      '• Cumplir con los requisitos sanitarios del destino.',
-      '',
-      '2. RESPONSABILIDADES DE VIAJA YA:',
-      '• Prestar los servicios contratados según especificaciones.',
-      '• Brindar asistencia durante el viaje.',
-      '• Informar cambios o modificaciones oportunamente.',
-      '',
-      '3. POLÍTICAS DE CANCELACIÓN:',
-      '• Cancelaciones con más de 30 días: 10% de penalidad.',
-      '• Cancelaciones entre 15-30 días: 25% de penalidad.',
-      '• Cancelaciones con menos de 15 días: 50% de penalidad.',
-      '',
-      '4. INFORMACIÓN BANCARIA:',
-      'Banco Bancolombia - Cuenta de Ahorros',
-      'No. 846-772-51165',
-      'Titular: MAYERLY ALEJANDRA HENAO HIGUERA',
-      'CC: 1032406128',
-      '',
-      '5. JURISDICCIÓN:',
-      'Este contrato se rige por las leyes colombianas y cualquier disputa será resuelta en los tribunales de Bogotá D.C.'
-    ];
+      .fillColor('#1e40af')
+      .font('Helvetica-Bold')
+      .text('VIAJA YA - OPERADOR TURÍSTICO Y AGENCIA DE VIAJES', margin, yPos, {
+        width: contentWidth,
+        align: 'center'
+      });
+    yPos += 30;
+    doc.fontSize(10)
+      .fillColor('#000000')
+      .font('Helvetica')
+      .text('NIT: 1032406128', margin, yPos, { width: contentWidth, align: 'center' });
+    yPos += 15;
+    doc.text('RNT: 122035', margin, yPos, { width: contentWidth, align: 'center' });
+    yPos += 15;
+    doc.text('Oficina principal: Centro Comercial Plaza Ensueño 2° Piso, Bogotá D.C.', margin, yPos, { width: contentWidth, align: 'center' });
+    yPos += 15;
+    doc.text('Tel: 320 492 44 44', margin, yPos, { width: contentWidth, align: 'center' });
+    yPos += 15;
+    doc.text('Email: info@viajaya.com.co', margin, yPos, { width: contentWidth, align: 'center' });
+    yPos += 30;
 
-    doc.fontSize(9)
-       .fillColor('#000000')
-       .font('Helvetica');
-
-    terminos.forEach(termino => {
-      if (termino.startsWith('•')) {
-        doc.font('Helvetica')
-           .text(termino, margin + 10, yPos);
-      } else if (termino.endsWith(':')) {
-        doc.font('Helvetica-Bold')
-           .text(termino, margin, yPos);
-      } else {
-        doc.font('Helvetica')
-           .text(termino, margin, yPos);
-      }
-      yPos += termino === '' ? 5 : 12;
-      
-      if (yPos > pageHeight - 100) {
-        doc.addPage();
-        createContractHeader(doc);
-        yPos = 120;
-      }
-    });
-
-    // ================= SECCIÓN DE FIRMAS =================
-    if (yPos > pageHeight - 200) {
-      doc.addPage();
-      createContractHeader(doc);
-      yPos = 120;
+    // Firma
+    const firmaPath = path.join(__dirname, '../assets/firma.png');
+    try {
+      doc.image(firmaPath, (pageWidth - 200) / 2, yPos, { width: 200 });
+      yPos += 90;
+    } catch (e) {
+      doc.fontSize(10).fillColor('red').text('No se pudo cargar la firma', margin, yPos);
+      yPos += 20;
     }
 
-    yPos += 40;
-    
     doc.fontSize(12)
-       .fillColor('#000000')
-       .font('Helvetica-Bold')
-       .text('FIRMAS DEL CONTRATO', margin, yPos, {
-         width: contentWidth,
-         align: 'center'
-       });
-
-    yPos += 60;
-
-    const firmaWidth = (contentWidth - 50) / 2;
-
-    // Líneas de firma
-    doc.moveTo(margin, yPos + 40)
-       .lineTo(margin + firmaWidth, yPos + 40)
-       .strokeColor('#000000')
-       .stroke();
-
-    doc.moveTo(margin + firmaWidth + 50, yPos + 40)
-       .lineTo(pageWidth - margin, yPos + 40)
-       .strokeColor('#000000')
-       .stroke();
-
-    // Etiquetas de firma
+      .fillColor('#000000')
+      .font('Helvetica-Bold')
+      .text('MAYERLY ALEJANDRA HENAO HIGUERA', margin, yPos, { width: contentWidth, align: 'center' });
+    yPos += 15;
     doc.fontSize(10)
-       .fillColor('#000000')
-       .font('Helvetica-Bold')
-       .text('VIAJA YA', margin, yPos + 50, {
-         width: firmaWidth,
-         align: 'center'
-       })
-       .text('CLIENTE', margin + firmaWidth + 50, yPos + 50, {
-         width: firmaWidth,
-         align: 'center'
-       });
-
-    doc.fontSize(9)
-       .font('Helvetica')
-       .text('MAYERLY ALEJANDRA HENAO HIGUERA', margin, yPos + 65, {
-         width: firmaWidth,
-         align: 'center'
-       })
-       .text(`${contractData.Cliente?.name || ''} ${contractData.Cliente?.lastname || ''}`, 
-             margin + firmaWidth + 50, yPos + 65, {
-         width: firmaWidth,
-         align: 'center'
-       });
-
-    doc.fontSize(8)
-       .text('CC: 1032406128', margin, yPos + 80, {
-         width: firmaWidth,
-         align: 'center'
-       })
-       .text(`${contractData.documento_titular || ''}`, 
-             margin + firmaWidth + 50, yPos + 80, {
-         width: firmaWidth,
-         align: 'center'
-       });
-
-    // Footer en todas las páginas
-    const footerY = pageHeight - 30;
-    doc.fontSize(8)
-       .fillColor('#808080')
-       .font('Helvetica')
-       .text('NIT: 1032406128', margin, footerY)
-       .text('Oficina principal centro comercial', margin, footerY + 10)
-       .text('en sueño Bogotá D.C', margin, footerY + 20);
+      .font('Helvetica')
+      .text('Representante Legal', margin, yPos, { width: contentWidth, align: 'center' });
 
     // Finalizar el documento
     doc.end();
