@@ -545,6 +545,209 @@ const financialController = {
         error: error.message
       });
     }
+  },
+
+  // 🏆 GANANCIAS DE CONTRATOS COMPLETADOS
+  getCompletedContractsFinancials: async (req, res) => {
+    try {
+      const { start_date, end_date } = req.query;
+      
+      console.log('🏆 Obteniendo ganancias de contratos completados:', { start_date, end_date });
+      
+      // ✅ CONSTRUIR FILTROS DE FECHA
+      const dateFilter = {};
+      if (start_date) dateFilter[Op.gte] = new Date(start_date);
+      if (end_date) dateFilter[Op.lte] = new Date(end_date);
+      
+      // ✅ OBTENER CONTRATOS COMPLETADOS
+      const completedContracts = await Contract.findAll({
+        where: {
+          status: 'completed',
+          ...(Object.keys(dateFilter).length > 0 && { 
+            updated_at: dateFilter  // Fecha de última actualización (cuando se completó)
+          })
+        },
+        include: [
+          {
+            model: Quote,
+            as: 'Quote',
+            attributes: ['quote_number', 'nombre_cliente', 'destino', 'precio_total']
+          },
+          {
+            model: User,
+            as: 'Cliente',
+            attributes: ['name', 'email']
+          }
+        ],
+        attributes: ['id', 'contract_number', 'status', 'fecha_firma', 'updated_at']
+      });
+      
+      console.log(`📋 Encontrados ${completedContracts.length} contratos completados`);
+      
+      if (completedContracts.length === 0) {
+        return res.json({
+          success: true,
+          data: {
+            total_contratos: 0,
+            total_ingresos: 0,
+            total_gastos: 0,
+            ganancia_total: 0,
+            margen_promedio: 0,
+            contratos: []
+          }
+        });
+      }
+      
+      // ✅ OBTENER IDS DE CONTRATOS COMPLETADOS
+      const contractIds = completedContracts.map(c => c.id);
+      
+      // ✅ OBTENER PAGOS TOTALES DE ESTOS CONTRATOS (consulta simplificada)
+      const paymentsData = [];
+      for (const contractId of contractIds) {
+        const paymentSum = await Payment.findAll({
+          where: { 
+            contract_id: contractId,
+            status: 'verified'  // Solo pagos verificados
+          },
+          attributes: [
+            [sequelize.fn('SUM', sequelize.col('monto')), 'total_pagado'],
+            [sequelize.fn('COUNT', sequelize.col('id')), 'cantidad_pagos']
+          ],
+          raw: true
+        });
+        
+        if (paymentSum[0]) {
+          paymentsData.push({
+            contract_id: contractId,
+            total_pagado: paymentSum[0].total_pagado || 0,
+            cantidad_pagos: paymentSum[0].cantidad_pagos || 0
+          });
+        }
+      }
+      
+      // ✅ OBTENER COMPRAS TOTALES DE ESTOS CONTRATOS (consulta simplificada)
+      const purchasesData = [];
+      for (const contractId of contractIds) {
+        const purchaseSum = await sequelize.query(`
+          SELECT 
+            SUM(p.costo) as total_gastos,
+            COUNT(p.id) as cantidad_compras,
+            SUM(p.diferencia_precio) as diferencia_total
+          FROM purchases p
+          INNER JOIN contract_items ci ON p.contract_item_id = ci.id
+          WHERE ci.contract_id = :contractId
+        `, {
+          replacements: { contractId },
+          type: sequelize.QueryTypes.SELECT,
+          raw: true
+        });
+        
+        if (purchaseSum[0]) {
+          purchasesData.push({
+            contract_id: contractId,
+            total_gastos: parseFloat(purchaseSum[0].total_gastos || 0),
+            cantidad_compras: parseInt(purchaseSum[0].cantidad_compras || 0),
+            diferencia_total: parseFloat(purchaseSum[0].diferencia_total || 0)
+          });
+        }
+      }
+      
+      // ✅ MAPEAR DATOS POR CONTRATO
+      const paymentsMap = new Map();
+      paymentsData.forEach(p => {
+        paymentsMap.set(p.contract_id, {
+          total_pagado: parseFloat(p.total_pagado || 0),
+          cantidad_pagos: parseInt(p.cantidad_pagos || 0)
+        });
+      });
+      
+      const purchasesMap = new Map();
+      purchasesData.forEach(p => {
+        purchasesMap.set(p.contract_id, {
+          total_gastos: parseFloat(p.total_gastos || 0),
+          cantidad_compras: parseInt(p.cantidad_compras || 0),
+          diferencia_total: parseFloat(p.diferencia_total || 0)
+        });
+      });
+      
+      // ✅ CALCULAR MÉTRICAS POR CONTRATO
+      const contractsWithFinancials = completedContracts.map(contract => {
+        const payments = paymentsMap.get(contract.id) || { total_pagado: 0, cantidad_pagos: 0 };
+        const purchases = purchasesMap.get(contract.id) || { total_gastos: 0, cantidad_compras: 0, diferencia_total: 0 };
+        
+        const precioTotal = parseFloat(contract.Quote?.precio_total || 0);
+        const totalPagado = payments.total_pagado;
+        const totalGastos = purchases.total_gastos;
+        const diferenciaPrecio = purchases.diferencia_total;
+        
+        const gananciaOperacional = totalPagado - totalGastos;
+        const gananciaNeta = gananciaOperacional + diferenciaPrecio;
+        const margenGanancia = totalPagado > 0 ? ((gananciaNeta / totalPagado) * 100) : 0;
+        
+        return {
+          id: contract.id,
+          contract_number: contract.contract_number,
+          cliente: contract.Cliente?.name || contract.Quote?.nombre_cliente || 'No especificado',
+          destino: contract.Quote?.destino || 'No especificado',
+          fecha_completado: contract.updated_at,
+          precio_cotizado: precioTotal,
+          total_pagado: totalPagado,
+          total_gastos: totalGastos,
+          diferencia_precio: diferenciaPrecio,
+          ganancia_operacional: gananciaOperacional,
+          ganancia_neta: gananciaNeta,
+          margen_ganancia: margenGanancia,
+          cantidad_pagos: payments.cantidad_pagos,
+          cantidad_compras: purchases.cantidad_compras,
+          estado_pago: totalPagado >= precioTotal ? 'completo' : 'parcial'
+        };
+      });
+      
+      // ✅ CALCULAR TOTALES GENERALES
+      const totales = contractsWithFinancials.reduce((acc, contract) => ({
+        total_contratos: acc.total_contratos + 1,
+        total_ingresos: acc.total_ingresos + contract.total_pagado,
+        total_gastos: acc.total_gastos + contract.total_gastos,
+        ganancia_total: acc.ganancia_total + contract.ganancia_neta,
+        suma_margenes: acc.suma_margenes + contract.margen_ganancia
+      }), {
+        total_contratos: 0,
+        total_ingresos: 0,
+        total_gastos: 0,
+        ganancia_total: 0,
+        suma_margenes: 0
+      });
+      
+      const margenPromedio = totales.total_contratos > 0 ? 
+        (totales.suma_margenes / totales.total_contratos) : 0;
+      
+      const resultado = {
+        resumen: {
+          total_contratos: totales.total_contratos,
+          total_ingresos: totales.total_ingresos,
+          total_gastos: totales.total_gastos,
+          ganancia_total: totales.ganancia_total,
+          margen_promedio: margenPromedio,
+          roi: totales.total_gastos > 0 ? ((totales.ganancia_total / totales.total_gastos) * 100) : 0
+        },
+        contratos: contractsWithFinancials.sort((a, b) => b.ganancia_neta - a.ganancia_neta)
+      };
+      
+      console.log('✅ Ganancias de contratos completados calculadas:', resultado.resumen);
+      
+      res.json({
+        success: true,
+        data: resultado
+      });
+      
+    } catch (error) {
+      console.error('❌ Error obteniendo ganancias de contratos completados:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al obtener ganancias de contratos completados',
+        error: error.message
+      });
+    }
   }
 };
 

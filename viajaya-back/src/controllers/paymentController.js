@@ -120,7 +120,7 @@ const paymentController = {
 
       // ✅ CAMBIAR ESTADO SI SE COMPLETÓ EL PAGO
       if (nuevoSaldo <= 0) {
-        contractChanges.status = 'paid';
+        contractChanges.status = 'completed';
       }
 
       await contract.update(contractChanges);
@@ -631,7 +631,7 @@ const paymentController = {
 
       // ✅ CAMBIAR ESTADO SI SE COMPLETÓ EL PAGO
       if (nuevoSaldoPendiente <= 0) {
-        contractUpdates.status = 'paid';
+        contractUpdates.status = 'completed';
       }
 
       // ✅ APLICAR ACTUALIZACIONES AL CONTRATO

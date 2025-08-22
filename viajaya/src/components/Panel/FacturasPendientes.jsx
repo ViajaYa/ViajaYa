@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faFileInvoice, 
@@ -17,6 +17,7 @@ const FacturasPendientes = () => {
   const [error, setError] = useState(null);
   const [generatingInvoice, setGeneratingInvoice] = useState(null);
   const [activeTab, setActiveTab] = useState('pending'); // 'pending' | 'invoices'
+  const [selectedInvoice, setSelectedInvoice] = useState(null); // Para ver detalles
 
   // ✅ FUNCIÓN PARA CARGAR TODOS LOS DATOS
   const loadData = async () => {
@@ -61,6 +62,24 @@ const FacturasPendientes = () => {
     } catch (error) {
       console.error('Error cargando facturas:', error);
     }
+  };
+
+  // ✅ VER DETALLES DE FACTURA
+  const viewInvoiceDetails = async (invoiceId) => {
+    try {
+      const response = await api.get(`/invoices/${invoiceId}`);
+      if (response.data.success) {
+        setSelectedInvoice(response.data.data);
+      }
+    } catch (error) {
+      console.error('Error cargando detalles de factura:', error);
+      alert('Error al cargar los detalles de la factura');
+    }
+  };
+
+  // ✅ CERRAR MODAL DE DETALLES
+  const closeInvoiceDetails = () => {
+    setSelectedInvoice(null);
   };
 
   // ✅ GENERAR FACTURA PARA UN CONTRATO
@@ -213,7 +232,7 @@ const FacturasPendientes = () => {
                     {/* Info del Contrato */}
                     <div>
                       <h3 className="font-semibold text-lg text-gray-800 mb-1">
-                        Contrato #{contract.id}
+                        Contrato #{contract.contract_number}
                       </h3>
                       <p className="text-sm text-gray-600 mb-1">
                         Cliente: {contract.Quote?.Cliente?.name} {contract.Quote?.Cliente?.lastname}
@@ -290,10 +309,10 @@ const FacturasPendientes = () => {
                     {/* Info de la Factura */}
                     <div>
                       <h3 className="font-semibold text-lg text-gray-800 mb-1">
-                        Factura #{invoice.invoice_number}
+                        Factura #{invoice.numero_factura}
                       </h3>
                       <p className="text-sm text-gray-600">
-                        Contrato #{invoice.Contract?.id}
+                        Contrato #{invoice.contract_id}
                       </p>
                     </div>
 
@@ -301,7 +320,7 @@ const FacturasPendientes = () => {
                     <div>
                       <p className="text-sm text-gray-600 mb-1">Cliente:</p>
                       <p className="font-medium">
-                        {invoice.Contract?.Quote?.User?.nombre} {invoice.Contract?.Quote?.User?.apellido}
+                        {invoice.cliente_nombre}
                       </p>
                     </div>
 
@@ -309,7 +328,7 @@ const FacturasPendientes = () => {
                     <div>
                       <p className="text-sm text-gray-600 mb-1">Fecha:</p>
                       <p className="font-medium">
-                        {formatDate(invoice.issue_date)}
+                        {formatDate(invoice.fecha_factura)}
                       </p>
                     </div>
 
@@ -320,11 +339,21 @@ const FacturasPendientes = () => {
                       </span>
                     </div>
 
+                    {/* Acciones */}
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => viewInvoiceDetails(invoice.id)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md text-sm transition-colors"
+                      >
+                        Ver Detalles
+                      </button>
+                    </div>
+
                     {/* Valor */}
                     <div className="text-right">
                       <p className="text-sm text-gray-600 mb-1">Total:</p>
                       <p className="text-xl font-bold text-green-600">
-                        {formatCurrency(invoice.total_amount)}
+                        {formatCurrency(invoice.monto_total)}
                       </p>
                     </div>
                   </div>
@@ -332,6 +361,144 @@ const FacturasPendientes = () => {
               ))}
             </div>
           )}
+        </div>
+      )}
+      
+      {/* ========== MODAL DE DETALLES DE FACTURA ========== */}
+      {selectedInvoice && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Header del Modal */}
+            <div className="bg-blue-600 text-white p-6 rounded-t-lg">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold">
+                  <FontAwesomeIcon icon={faFileInvoice} className="mr-3" />
+                  Factura #{selectedInvoice.numero_factura}
+                </h2>
+                <button
+                  onClick={closeInvoiceDetails}
+                  className="text-white hover:text-gray-200 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+            
+            {/* Contenido del Modal */}
+            <div className="p-6">
+              {/* Info de la Factura */}
+              <div className="grid md:grid-cols-2 gap-6 mb-6">
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Información de Factura</h3>
+                  <div className="space-y-2">
+                    <p><span className="font-medium">Número:</span> {selectedInvoice.numero_factura}</p>
+                    <p><span className="font-medium">Fecha:</span> {formatDate(selectedInvoice.fecha_factura)}</p>
+                    <p><span className="font-medium">Vencimiento:</span> {formatDate(selectedInvoice.fecha_vencimiento)}</p>
+                    <p><span className="font-medium">Estado:</span> 
+                      <span className={`ml-2 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedInvoice.status)}`}>
+                        {getStatusText(selectedInvoice.status)}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Cliente</h3>
+                  <div className="space-y-2">
+                    <p><span className="font-medium">Nombre:</span> {selectedInvoice.cliente_nombre}</p>
+                    <p><span className="font-medium">Documento:</span> {selectedInvoice.cliente_documento}</p>
+                    <p><span className="font-medium">Email:</span> {selectedInvoice.cliente_email}</p>
+                    <p><span className="font-medium">Teléfono:</span> {selectedInvoice.cliente_telefono}</p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Desglose de Items */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-4">Desglose de Items</h3>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full bg-white border border-gray-200 rounded-lg">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Descripción</th>
+                        <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">Cantidad</th>
+                        <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">Valor Unit.</th>
+                        <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {selectedInvoice.items_detallados?.map((item, index) => (
+                        <tr key={index}>
+                          <td className="px-4 py-3 text-sm text-gray-900">{item.descripcion}</td>
+                          <td className="px-4 py-3 text-sm text-gray-900 text-right">{item.cantidad}</td>
+                          <td className="px-4 py-3 text-sm text-gray-900 text-right">
+                            {formatCurrency(item.valor_unitario)}
+                          </td>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-900 text-right">
+                            {formatCurrency(item.valor_total)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              
+              {/* Resumen de Totales */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600">Compras/Servicios</p>
+                    <p className="text-lg font-bold text-blue-600">
+                      {formatCurrency(selectedInvoice.monto_compras)}
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600">Comisiones</p>
+                    <p className="text-lg font-bold text-yellow-600">
+                      {formatCurrency(selectedInvoice.monto_comisiones)}
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600">Ganancia</p>
+                    <p className="text-lg font-bold text-green-600">
+                      {formatCurrency(selectedInvoice.monto_ganancia)}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="border-t border-gray-200 mt-4 pt-4 text-center">
+                  <p className="text-sm text-gray-600">Total Factura</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {formatCurrency(selectedInvoice.monto_total)}
+                  </p>
+                </div>
+              </div>
+              
+              {/* Observaciones */}
+              {selectedInvoice.observaciones && (
+                <div className="mt-6">
+                  <h3 className="text-lg font-semibold mb-2">Observaciones</h3>
+                  <p className="text-gray-700 bg-gray-50 p-3 rounded-lg">
+                    {selectedInvoice.observaciones}
+                  </p>
+                </div>
+              )}
+            </div>
+            
+            {/* Footer del Modal */}
+            <div className="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-end space-x-3">
+              <button
+                onClick={closeInvoiceDetails}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                Cerrar
+              </button>
+              <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                Generar PDF
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

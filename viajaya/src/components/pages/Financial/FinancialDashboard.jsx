@@ -10,12 +10,14 @@ import {
   updatePurchasesPage
 } from '../../../redux/slices/financialSlice';
 
-import FinancialSummaryCards from './FinancialSummaryCards';
-import FinancialChart from './FinancialChart';
 import PaymentsList from './PaymentsList';
 import PurchasesList from './PurchasesList';
 import FinancialFilters from './FinancialFilters';
 import ReceiptModal from './ReceiptModal';
+import RealFinancialBalanceFixed from './RealFinancialBalanceFixed';
+import PeriodComparisonImproved from './PeriodComparisonImproved';
+import TrendsAnalysisImproved from './TrendsAnalysisImproved';
+import CompletedContractsFinancials from './CompletedContractsFinancials';
 
 const FinancialDashboard = () => {
   const dispatch = useDispatch();
@@ -29,9 +31,13 @@ const FinancialDashboard = () => {
 
   // 🔄 CARGAR DATOS INICIALES
   useEffect(() => {
-    dispatch(fetchFinancialSummary());
-    dispatch(fetchPaymentsList());
-    dispatch(fetchPurchasesList());
+    try {
+      dispatch(fetchFinancialSummary());
+      dispatch(fetchPaymentsList());
+      dispatch(fetchPurchasesList());
+    } catch (error) {
+      console.error('Error loading financial data:', error);
+    }
   }, [dispatch]);
 
   // 📊 MANEJAR ACTUALIZACIÓN DE FILTROS DE PAGOS
@@ -54,7 +60,7 @@ const FinancialDashboard = () => {
     }));
   };
 
-  // 📄 MANEJAR CAMBIO DE PÁGINA DE PAGOS
+  // 📄 MANEJAR PAGINACIÓN DE PAGOS
   const handlePaymentsPageChange = (page) => {
     dispatch(updatePaymentsPage(page));
     dispatch(fetchPaymentsList({ 
@@ -64,7 +70,7 @@ const FinancialDashboard = () => {
     }));
   };
 
-  // 📄 MANEJAR CAMBIO DE PÁGINA DE COMPRAS
+  // 🛒 MANEJAR PAGINACIÓN DE COMPRAS
   const handlePurchasesPageChange = (page) => {
     dispatch(updatePurchasesPage(page));
     dispatch(fetchPurchasesList({ 
@@ -78,23 +84,26 @@ const FinancialDashboard = () => {
   const handleRefresh = () => {
     switch (activeTab) {
       case 'resumen':
+      case 'tendencias':
+      case 'comparacion':
         dispatch(fetchFinancialSummary());
+        break;
+      case 'contratos-completados':
+        // No necesita dispatch específico aquí, el componente maneja su propio estado
         break;
       case 'pagos':
         dispatch(fetchPaymentsList({ 
-          page: payments.pagination.currentPage,
+          page: payments.pagination.currentPage, 
           limit: payments.pagination.itemsPerPage,
           ...payments.filters 
         }));
         break;
       case 'compras':
         dispatch(fetchPurchasesList({ 
-          page: purchases.pagination.currentPage,
+          page: purchases.pagination.currentPage, 
           limit: purchases.pagination.itemsPerPage,
           ...purchases.filters 
         }));
-        break;
-      default:
         break;
     }
   };
@@ -124,9 +133,9 @@ const FinancialDashboard = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Dashboard Financiero</h1>
+              <h1 className="text-3xl font-bold text-gray-900">💰 Dashboard Financiero</h1>
               <p className="mt-1 text-sm text-gray-600">
-                Monitorea ingresos, gastos y ganancias en tiempo real
+                Balance real de ingresos vs gastos con análisis de rentabilidad
               </p>
             </div>
             <button
@@ -144,13 +153,16 @@ const FinancialDashboard = () => {
 
       {/* 📊 CONTENIDO PRINCIPAL */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* 🔗 NAVEGACIÓN POR PESTAÑAS */}
+        {/* 🔗 NAVEGACIÓN POR PESTAÑAS SIMPLIFICADA */}
         <div className="mb-8">
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8">
               {[
-                { id: 'resumen', name: 'Resumen General', icon: '📊' },
-                { id: 'pagos', name: 'Historial de Pagos', icon: '💰' },
+                { id: 'resumen', name: 'Balance Financiero', icon: '💰' },
+                { id: 'contratos-completados', name: 'Contratos Completados', icon: '🏆' },
+                { id: 'tendencias', name: 'Análisis de Tendencias', icon: '📈' },
+                { id: 'comparacion', name: 'Comparar Períodos', icon: '🔄' },
+                { id: 'pagos', name: 'Historial de Pagos', icon: '💳' },
                 { id: 'compras', name: 'Historial de Compras', icon: '🛒' }
               ].map((tab) => (
                 <button
@@ -172,18 +184,22 @@ const FinancialDashboard = () => {
 
         {/* 📊 CONTENIDO DE PESTAÑAS */}
         {activeTab === 'resumen' && (
-          <div className="space-y-8">
-            {/* 📈 TARJETAS DE RESUMEN */}
-            <FinancialSummaryCards summary={summary} />
+          <RealFinancialBalanceFixed />
+        )}
 
-            {/* 📊 GRÁFICO FINANCIERO */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-6">
-                Tendencia Financiera Mensual
-              </h3>
-              <FinancialChart data={summary.monthlyData} loading={summary.loading} />
-            </div>
-          </div>
+        {activeTab === 'contratos-completados' && (
+          <CompletedContractsFinancials />
+        )}
+
+        {activeTab === 'tendencias' && (
+          <TrendsAnalysisImproved 
+            monthlyData={summary?.datos_mensuales || []} 
+            loading={summary?.loading || false} 
+          />
+        )}
+
+        {activeTab === 'comparacion' && (
+          <PeriodComparisonImproved />
         )}
 
         {activeTab === 'pagos' && (
