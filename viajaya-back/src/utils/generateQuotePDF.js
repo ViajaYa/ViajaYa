@@ -34,12 +34,17 @@ function formatPrice(price) {
 
 // ✅ Generar desglose detallado
 function generateBudgetBreakdown(quote) {
-  const calculation = getCalculationData(quote);
-  const personas_que_pagan = quote.personas_que_pagan || 1;
-  let breakdown = [];
-  
-  // 1. TRANSPORTES
-  if (calculation.tiquetes && calculation.tiquetes.costo_total > 0) {
+  try {
+    console.log("🔍 Iniciando generateBudgetBreakdown...");
+    const calculation = getCalculationData(quote);
+    console.log("✅ getCalculationData completado");
+    
+    const personas_que_pagan = quote.personas_que_pagan || 1;
+    let breakdown = [];
+    
+    console.log("🔍 Procesando transportes...");
+    // 1. TRANSPORTES
+    if (calculation.tiquetes && calculation.tiquetes.costo_total > 0) {
     breakdown.push({
       category: 'TRANSPORTES',
       items: [
@@ -223,7 +228,13 @@ function generateBudgetBreakdown(quote) {
     });
   }
   
+  console.log("✅ generateBudgetBreakdown completado exitosamente");
   return breakdown;
+} catch (error) {
+  console.error("❌ Error en generateBudgetBreakdown:", error);
+  // Retornar breakdown vacío en caso de error
+  return [];
+}
 }
 
 // 🎨 Colores corporativos
@@ -249,20 +260,39 @@ const ensurePDFDirectory = () => {
 
 // ✅ Generar PDF
 const generateQuotePDF = async (quote, saveToFile = true) => {
-  const doc = new PDFDocument({ margin: 25, size: 'A4' });
-  let yPosition = 20;
-  const pageWidth = doc.page.width;
-  const pageHeight = doc.page.height;
-  const margin = 25;
-  const contentWidth = pageWidth - 2 * margin;
-
+  console.log("🔍 Iniciando generateQuotePDF:", { saveToFile, quoteId: quote.id });
+  
+  // Declarar variables fuera del try block para evitar problemas de scope
+  let doc, yPosition, pageWidth, pageHeight, margin, contentWidth;
   let filepath;
-  if (saveToFile) {
-   const pdfDir = ensurePDFDirectory();
-   const filename = `cotizacion-${quote.quote_number || quote.id}.pdf`;
-   filepath = path.join(pdfDir, filename);
-   const stream = fs.createWriteStream(filepath);
-   doc.pipe(stream);
+  let bufferChunks = [];
+  
+  try {
+    doc = new PDFDocument({ margin: 25, size: 'A4' });
+    yPosition = 20;
+    pageWidth = doc.page.width;
+    pageHeight = doc.page.height;
+    margin = 25;
+    contentWidth = pageWidth - 2 * margin;
+
+    if (saveToFile) {
+     const pdfDir = ensurePDFDirectory();
+     const filename = `cotizacion-${quote.quote_number || quote.id}.pdf`;
+     filepath = path.join(pdfDir, filename);
+     const stream = fs.createWriteStream(filepath);
+     doc.pipe(stream);
+    } else {
+     // ✅ FIX: Para vista previa, capturar el buffer
+     doc.on('data', chunk => bufferChunks.push(chunk));
+     doc.on('end', () => {
+      console.log("✅ PDF buffer generado, chunks:", bufferChunks.length);
+     });
+    }
+
+    console.log("🔍 Configuración PDF completada, iniciando contenido...");
+  } catch (error) {
+    console.error("❌ Error en inicialización de generateQuotePDF:", error);
+    throw error;
   }
 
   // Funciones utilitarias
@@ -560,8 +590,37 @@ const generateQuotePDF = async (quote, saveToFile = true) => {
   }
 
   doc.end();
-  if (saveToFile) return { filepath };
-  return null;
+  
+  if (saveToFile) {
+    console.log("✅ PDF guardado en archivo:", filepath);
+    return { 
+      filepath,
+      filename: `cotizacion-${quote.quote_number || quote.id}.pdf`
+    };
+  } else {
+    // ✅ FIX: Para vista previa, retornar el buffer
+    console.log("🔍 Esperando generación de buffer...");
+    return new Promise((resolve, reject) => {
+      doc.on('end', () => {
+        try {
+          const buffer = Buffer.concat(bufferChunks);
+          console.log("✅ Buffer generado exitosamente, tamaño:", buffer.length);
+          resolve({
+            buffer,
+            filename: `cotizacion-${quote.quote_number || quote.id}.pdf`
+          });
+        } catch (error) {
+          console.error("❌ Error creando buffer:", error);
+          reject(error);
+        }
+      });
+      
+      doc.on('error', (error) => {
+        console.error("❌ Error en documento PDF:", error);
+        reject(error);
+      });
+    });
+  }
 };
 
 module.exports = { generateQuotePDF };
