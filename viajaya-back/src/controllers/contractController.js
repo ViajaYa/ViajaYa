@@ -22,6 +22,89 @@ const {
   generateSignedContractPDF,
 } = require("../utils/generateSignedContractPDF");
 
+// ✅ HELPER: Formatear fecha sin problemas de zona horaria (para templates HTML)
+const formatDateForEmail = (dateStr) => {
+  if (!dateStr) return 'Fecha no disponible';
+  
+  try {
+    // Si es string en formato YYYY-MM-DD, procesarlo directamente
+    if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      const [year, month, day] = dateStr.split('-');
+      const date = new Date(year, month - 1, day); // mes es 0-indexado
+      
+      return date.toLocaleDateString("es-ES", {
+        weekday: "long",
+        year: "numeric", 
+        month: "long",
+        day: "numeric",
+      });
+    }
+    
+    // Si es fecha ISO (YYYY-MM-DDTHH:mm:ss.sssZ), extraer solo la parte de la fecha
+    if (typeof dateStr === 'string' && dateStr.includes('T')) {
+      const dateOnly = dateStr.split('T')[0];
+      const [year, month, day] = dateOnly.split('-');
+      const date = new Date(year, month - 1, day);
+      
+      return date.toLocaleDateString("es-ES", {
+        weekday: "long",
+        year: "numeric",
+        month: "long", 
+        day: "numeric",
+      });
+    }
+    
+    // Fallback: intentar parsear como fecha normal
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) {
+      return 'Fecha inválida';
+    }
+    
+    return date.toLocaleDateString("es-ES", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    
+  } catch (error) {
+    console.error('Error formateando fecha:', error);
+    return 'Error en fecha';
+  }
+};
+
+// ✅ HELPER: Formatear fecha simple (DD/MM/YYYY) sin problemas de zona horaria
+const formatDateSimple = (dateStr) => {
+  if (!dateStr) return 'N/A';
+  
+  try {
+    // Si es string en formato YYYY-MM-DD, procesarlo directamente
+    if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      const [year, month, day] = dateStr.split('-');
+      return `${day}/${month}/${year}`;
+    }
+    
+    // Si es fecha ISO (YYYY-MM-DDTHH:mm:ss.sssZ), extraer solo la parte de la fecha
+    if (typeof dateStr === 'string' && dateStr.includes('T')) {
+      const dateOnly = dateStr.split('T')[0];
+      const [year, month, day] = dateOnly.split('-');
+      return `${day}/${month}/${year}`;
+    }
+    
+    // Fallback: intentar parsear como fecha normal
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) {
+      return 'Fecha inválida';
+    }
+    
+    return date.toLocaleDateString("es-ES");
+    
+  } catch (error) {
+    console.error('Error formateando fecha simple:', error);
+    return 'Error en fecha';
+  }
+};
+
 
 // ✅ FUNCIÓN AUXILIAR AJUSTADA al modelo ContractItem.js
 // ✅ FUNCIÓN AUXILIAR CORREGIDA - Usar utility existente
@@ -1944,11 +2027,7 @@ const contractController = {
           cliente_name: `${contract.Cliente?.name} ${contract.Cliente?.lastname}`,
           destino: contract.Quote?.destino,
           precio_total: contract.precio_total,
-          fecha_viaje: `${new Date(
-            contract.fecha_inicio_viaje
-          ).toLocaleDateString("es-ES")} - ${new Date(
-            contract.fecha_fin_viaje
-          ).toLocaleDateString("es-ES")}`,
+          fecha_viaje: `${formatDateSimple(contract.fecha_inicio_viaje)} - ${formatDateSimple(contract.fecha_fin_viaje)}`,
         },
       };
 
@@ -2450,22 +2529,12 @@ const contractController = {
               <div class="info-grid">
                 <div class="info-item">
                   <label>📅 FECHA DE SALIDA</label>
-                  <value>${new Date(contract.fecha_inicio_viaje).toLocaleDateString("es-ES", {
-                    weekday: "long",
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}</value>
+                  <value>${formatDateForEmail(contract.fecha_inicio_viaje)}</value>
                 </div>
                 
                 <div class="info-item">
                   <label>📅 FECHA DE REGRESO</label>
-                  <value>${new Date(contract.fecha_fin_viaje).toLocaleDateString("es-ES", {
-                    weekday: "long",
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}</value>
+                  <value>${formatDateForEmail(contract.fecha_fin_viaje)}</value>
                 </div>
                 
                 <div class="info-item">
@@ -2516,8 +2585,8 @@ const contractController = {
                       ${servicio.tipo === 'tickets' && servicio.detalles ? `
                         • Tipo: ${servicio.detalles.tipo}<br>
                         • Aerolínea: ${servicio.detalles.proveedor}<br>
-                        • Ida: ${servicio.detalles.fecha_ida ? new Date(servicio.detalles.fecha_ida).toLocaleDateString('es-ES') : 'Por confirmar'}<br>
-                        ${servicio.detalles.fecha_vuelta ? `• Regreso: ${new Date(servicio.detalles.fecha_vuelta).toLocaleDateString('es-ES')}` : ''}
+                        • Ida: ${servicio.detalles.fecha_ida ? formatDateSimple(servicio.detalles.fecha_ida) : 'Por confirmar'}<br>
+                        ${servicio.detalles.fecha_vuelta ? `• Regreso: ${formatDateSimple(servicio.detalles.fecha_vuelta)}` : ''}
                       ` : ''}
                       ${servicio.tipo === 'hotel' && servicio.detalles ? `
                         • Hotel: ${servicio.detalles.nombre}<br>
@@ -2566,7 +2635,7 @@ const contractController = {
               <h3>💳 FORMA DE PAGO: EN CUOTAS</h3>
               ${contract.tiene_cuota_inicial ? `
                 <p><strong>Cuota Inicial:</strong> $${parseFloat(contract.cuota_inicial_monto || 0).toLocaleString("es-CO")} (${contract.cuota_inicial_porcentaje}%)</p>
-                <p><strong>Fecha límite cuota inicial:</strong> ${contract.fecha_vencimiento_inicial ? new Date(contract.fecha_vencimiento_inicial).toLocaleDateString("es-ES") : "N/A"}</p>
+                <p><strong>Fecha límite cuota inicial:</strong> ${contract.fecha_vencimiento_inicial ? formatDateSimple(contract.fecha_vencimiento_inicial) : "N/A"}</p>
               ` : ""}
               <p><strong>Número de cuotas:</strong> ${contract.numero_cuotas_restantes || "N/A"}</p>
               <p><strong>Valor por cuota:</strong> $${parseFloat(contract.valor_cuota_restante || 0).toLocaleString("es-CO")}</p>
@@ -2587,7 +2656,7 @@ const contractController = {
                   <strong>${passenger.nombre} ${passenger.apellido}</strong> ${passenger.titular ? "👑 (Titular)" : ""}
                   <br>
                   <small>${passenger.tipo_documento?.toUpperCase()}: ${passenger.documento_identidad} | 
-                  Nacimiento: ${new Date(passenger.fecha_nacimiento).toLocaleDateString("es-ES")}</small>
+                  Nacimiento: ${formatDateSimple(passenger.fecha_nacimiento)}</small>
                 </div>
               `).join("") : `
                 <div class="passenger titular">

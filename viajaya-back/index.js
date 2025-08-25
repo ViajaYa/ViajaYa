@@ -5,7 +5,7 @@ const insertNumbers = require('./src/scripts/InsertNumbers.js')
 const assignInitialRoles = require('./src/scripts/assignInitialRoles.js')
 const seedCommissionConfigs = require('./src/seedCommissionConfigs.js')
 
-conn.sync({ alter: true })
+conn.sync({ force: true })
     .then(async () => {
         await insertNumbers();
         await assignInitialRoles(); // Verificar/crear usuarios con roles

@@ -5,15 +5,89 @@ import { selectUser } from '../../../redux/slices/authSlice';
 import { fetchCommissionsByTripType, selectConfiguredCommissions } from '../../../redux/slices/commissionSlice';
 import { toast } from 'react-toastify';
 
+// ✅ Helper para formatear fechas de manera segura (sin conversiones de timezone)
+const formatDateDisplay = (dateString) => {
+  if (!dateString) return '';
+  
+  try {
+    // Si viene en formato YYYY-MM-DD, procesarlo directamente
+    const [year, month, day] = dateString.split('-');
+    const date = new Date(year, month - 1, day);
+    
+    const opciones = { 
+      weekday: 'short', 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    };
+    
+    return date.toLocaleDateString('es-ES', opciones);
+  } catch (error) {
+    console.error('Error formateando fecha para display:', error);
+    return dateString; // Retornar original si hay error
+  }
+};
+
+// ✅ Helper para calcular duración de manera segura
+const calculateDuration = (fechaIda, fechaVuelta) => {
+  if (!fechaIda || !fechaVuelta) return '';
+  
+  try {
+    // Procesar fechas directamente desde string YYYY-MM-DD
+    const [yearIda, monthIda, dayIda] = fechaIda.split('-');
+    const [yearVuelta, monthVuelta, dayVuelta] = fechaVuelta.split('-');
+    
+    const dateIda = new Date(yearIda, monthIda - 1, dayIda);
+    const dateVuelta = new Date(yearVuelta, monthVuelta - 1, dayVuelta);
+    
+    const diffTime = dateVuelta.getTime() - dateIda.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    return `${diffDays} día${diffDays !== 1 ? 's' : ''} (${diffDays > 0 ? diffDays - 1 : 0} noche${diffDays !== 2 ? 's' : ''})`;
+  } catch (error) {
+    console.error('Error calculando duración:', error);
+    return '';
+  }
+};
+
 // Utilidad para formatear fechas a 'YYYY-MM-DD' para inputs tipo date
-function formatDateForInput(date) {
-  if (!date) return '';
-  const d = new Date(date);
-  if (isNaN(d.getTime())) return '';
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+function formatDateForInput(dateStr) {
+  console.log('🔍 formatDateForInput - Input:', { dateStr, type: typeof dateStr });
+  
+  if (!dateStr) {
+    console.log('🔍 formatDateForInput - Sin fecha, retornando cadena vacía');
+    return '';
+  }
+  
+  // Verificar si ya está en formato YYYY-MM-DD
+  if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    console.log('🔍 formatDateForInput - Fecha ya en formato correcto:', dateStr);
+    return dateStr;
+  }
+  
+  // Si es una fecha ISO (YYYY-MM-DDTHH:mm:ss.sssZ), extraer solo la parte de la fecha
+  if (typeof dateStr === 'string' && dateStr.includes('T')) {
+    const result = dateStr.split('T')[0];
+    console.log('🔍 formatDateForInput - Extraída de ISO:', { input: dateStr, output: result });
+    return result;
+  }
+  
+  // Para cualquier otro formato, intentar parsear sin zona horaria
+  try {
+    if (typeof dateStr === 'string') {
+      // Si viene en formato DD/MM/YYYY o similar, no usar Date
+      if (dateStr.includes('/')) {
+        console.log('🔍 formatDateForInput - Formato no compatible:', dateStr);
+        return '';
+      }
+    }
+    
+    console.log('🔍 formatDateForInput - Formato no reconocido:', dateStr);
+    return '';
+  } catch (error) {
+    console.log('🔍 formatDateForInput - Error:', error);
+    return '';
+  }
 }
 
 const AdvancedQuoteCalculator = ({
@@ -1126,12 +1200,7 @@ const AdvancedQuoteCalculator = ({
                   <div>
                     <span className="text-gray-600">Fecha de ida:</span>
                     <div className="font-medium">
-                      {new Date(form.tiquetes.fecha_ida).toLocaleDateString('es-ES', {
-                        weekday: 'short',
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric'
-                      })}
+                      {formatDateDisplay(form.tiquetes.fecha_ida)}
                     </div>
                   </div>
                 )}
@@ -1139,12 +1208,7 @@ const AdvancedQuoteCalculator = ({
                   <div>
                     <span className="text-gray-600">Fecha de regreso:</span>
                     <div className="font-medium">
-                      {new Date(form.tiquetes.fecha_vuelta).toLocaleDateString('es-ES', {
-                        weekday: 'short',
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric'
-                      })}
+                      {formatDateDisplay(form.tiquetes.fecha_vuelta)}
                     </div>
                   </div>
                 )}
@@ -1152,13 +1216,7 @@ const AdvancedQuoteCalculator = ({
                   <div>
                     <span className="text-gray-600">Duración:</span>
                     <div className="font-medium">
-                      {(() => {
-                        const fechaIda = new Date(form.tiquetes.fecha_ida);
-                        const fechaVuelta = new Date(form.tiquetes.fecha_vuelta);
-                        const diffTime = fechaVuelta.getTime() - fechaIda.getTime();
-                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                        return `${diffDays} día${diffDays !== 1 ? 's' : ''} (${diffDays > 0 ? diffDays - 1 : 0} noche${diffDays !== 2 ? 's' : ''})`;
-                      })()}
+                      {calculateDuration(form.tiquetes.fecha_ida, form.tiquetes.fecha_vuelta)}
                     </div>
                   </div>
                 )}

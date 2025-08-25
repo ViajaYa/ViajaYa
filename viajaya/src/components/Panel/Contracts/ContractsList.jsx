@@ -1,6 +1,20 @@
 import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
+
+// ✅ Helper para formatear fechas de manera segura (sin conversiones de timezone)
+const formatDateDisplay = (dateString) => {
+  if (!dateString) return '';
+  
+  try {
+    // Si viene en formato YYYY-MM-DD, procesarlo directamente
+    const [year, month, day] = dateString.split('-');
+    return `${day}/${month}/${year}`;
+  } catch (error) {
+    console.error('Error formateando fecha:', error);
+    return dateString; // Retornar original si hay error
+  }
+};
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import NavBar from "../../layout/NavBar/NavBar";
 import api from "../../../utils/api";
@@ -586,15 +600,11 @@ const ContractsList = () => {
                         />
                         <div>
                           <div className="text-gray-900">
-                            {new Date(
-                              contract.fecha_inicio_viaje
-                            ).toLocaleDateString("es-ES")}
+                            {formatDateDisplay(contract.fecha_inicio_viaje)}
                           </div>
                           <div className="text-gray-500">
                             al{" "}
-                            {new Date(
-                              contract.fecha_fin_viaje
-                            ).toLocaleDateString("es-ES")}
+                            {formatDateDisplay(contract.fecha_fin_viaje)}
                           </div>
                         </div>
                       </div>

@@ -120,7 +120,7 @@ module.exports = (sequelize) => {
       defaultValue: 'doble'
     },
     fecha_ida: {
-      type: DataTypes.DATE,
+      type: DataTypes.DATEONLY, // ✅ CAMBIAR: De DATE a DATEONLY para evitar problemas de zona horaria
       allowNull: false,
     },
     alimentacion: {
@@ -128,7 +128,7 @@ module.exports = (sequelize) => {
       allowNull: true,
     },
     fecha_regreso: {
-      type: DataTypes.DATE,
+      type: DataTypes.DATEONLY, // ✅ CAMBIAR: De DATE a DATEONLY para evitar problemas de zona horaria
       allowNull: false,
     },
     destino: {

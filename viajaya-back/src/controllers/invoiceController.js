@@ -22,31 +22,29 @@ const invoiceController = {
         where: {
           status: 'completed',
           fecha_fin_viaje: {
-            [Op.lte]: new Date() // Solo viajes ya terminados (fecha de regreso pasada)
+            [Op.lte]: new Date() // Viajes ya terminados
           }
         },
         include: [
           {
             model: Quote,
-            as: 'Quote',
+            as: 'Quote', // ✅ Usar alias definido en db.js
             include: [
               { 
                 model: User,
-                as: 'Cliente',
-                attributes: ['id', 'name', 'lastname', 'email', 'phone'] 
+                as: 'Cliente', // ✅ Usar alias para el cliente
+                attributes: ['id', 'name', 'lastname', 'email', 'phone'] // ✅ Corregir nombres de campos
               },
               {
                 model: QuoteCalculation,
-                as: 'Calculation',
+                as: 'Calculation', // ✅ Usar alias definido en db.js
                 attributes: [
-                  'precio_final_total', 
-                  'total_comisiones',
-                  'total_ganancia',
-                  'precio_tickets',
-                  'precio_asistencia_medica',
-                  'precio_traslados',
-                  'precio_alojamiento'
-                ]
+                  'precio_final_total', // ✅ Usar nombre correcto de columna
+                  'precio_final_por_persona', // ✅ Agregar precio por persona
+                  'total_comisiones', // ✅ Usar nombre correcto
+                  'total_ganancia' // ✅ Usar nombre correcto
+                ],
+                required: false // ✅ LEFT JOIN para evitar errores si no existe
               }
             ]
           }
@@ -54,24 +52,12 @@ const invoiceController = {
         order: [['fecha_fin_viaje', 'ASC']]
       });
 
-      // ✅ FILTRAR CONTRATOS QUE YA TIENEN FACTURA
-      const contractsWithoutInvoice = [];
-      for (const contract of contractsPendientes) {
-        const existingInvoice = await Invoice.findOne({
-          where: { contract_id: contract.id }
-        });
-        
-        if (!existingInvoice) {
-          contractsWithoutInvoice.push(contract);
-        }
-      }
-
-      console.log(`📊 Encontrados ${contractsWithoutInvoice.length} contratos pendientes de facturar`);
+      console.log(`📊 Encontrados ${contractsPendientes.length} contratos pendientes de facturar`);
 
       res.status(200).json({
         success: true,
-        message: `Se encontraron ${contractsWithoutInvoice.length} contratos pendientes de facturar`,
-        data: contractsWithoutInvoice
+        message: `Se encontraron ${contractsPendientes.length} contratos pendientes de facturar`,
+        data: contractsPendientes
       });
 
     } catch (error) {
@@ -95,31 +81,33 @@ const invoiceController = {
         include: [
           {
             model: Quote,
-            as: 'Quote',
+            as: 'Quote', // ✅ Usar alias definido en db.js
             include: [
               { 
                 model: User,
-                as: 'Cliente',
-                attributes: ['id', 'name', 'lastname', 'email', 'phone'] 
+                as: 'Cliente', // ✅ Usar alias para el cliente
+                attributes: ['id', 'name', 'lastname', 'email', 'phone'] // ✅ Corregir nombres de campos
               },
               {
                 model: QuoteCalculation,
-                as: 'Calculation',
+                as: 'Calculation', // ✅ Usar alias definido en db.js
                 attributes: [
-                  'precio_final_total', 
-                  'total_comisiones',
-                  'total_ganancia'
-                ]
+                  'precio_final_total', // ✅ Usar nombre correcto de columna
+                  'precio_final_por_persona', // ✅ Agregar precio por persona
+                  'total_comisiones', // ✅ Usar nombre correcto
+                  'total_ganancia' // ✅ Usar nombre correcto
+                ],
+                required: false // ✅ LEFT JOIN para evitar errores si no existe
               }
             ]
           },
           {
             model: ContractItem,
-            as: 'Items',
+            as: 'Items', // ✅ Usar alias definido en db.js
             include: [
               {
                 model: Purchase,
-                as: 'Purchases',
+                as: 'Purchases', // ✅ Usar alias definido en db.js
                 attributes: ['id', 'costo', 'proveedor', 'estado_pago']
               }
             ]
@@ -158,117 +146,38 @@ const invoiceController = {
       const invoiceCount = await Invoice.count();
       const invoiceNumber = `INV-${new Date().getFullYear()}-${String(invoiceCount + 1).padStart(4, '0')}`;
 
-      // 4. Extraer items de la cotización aprobada
-      const quote = contract.Quote;
-      const calculation = quote?.Calculation;
-      
-      // ✅ DESGLOSE DE ITEMS BASADO EN LA COTIZACIÓN
-      const invoiceItems = [];
-      
-      // Items principales de la cotización
-      if (calculation) {
-        // Agregar items según lo cotizado
-        if (calculation.precio_tickets > 0) {
-          invoiceItems.push({
-            descripcion: 'Tickets de transporte',
-            cantidad: 1,
-            valor_unitario: parseFloat(calculation.precio_tickets),
-            valor_total: parseFloat(calculation.precio_tickets)
-          });
-        }
-        
-        if (calculation.precio_asistencia_medica > 0) {
-          invoiceItems.push({
-            descripcion: 'Asistencia médica de viaje',
-            cantidad: 1,
-            valor_unitario: parseFloat(calculation.precio_asistencia_medica),
-            valor_total: parseFloat(calculation.precio_asistencia_medica)
-          });
-        }
-        
-        if (calculation.precio_traslados > 0) {
-          invoiceItems.push({
-            descripcion: 'Traslados y transporte local',
-            cantidad: 1,
-            valor_unitario: parseFloat(calculation.precio_traslados),
-            valor_total: parseFloat(calculation.precio_traslados)
-          });
-        }
-        
-        if (calculation.precio_alojamiento > 0) {
-          invoiceItems.push({
-            descripcion: 'Alojamiento',
-            cantidad: 1,
-            valor_unitario: parseFloat(calculation.precio_alojamiento),
-            valor_total: parseFloat(calculation.precio_alojamiento)
-          });
-        }
-        
-        if (calculation.total_comisiones > 0) {
-          invoiceItems.push({
-            descripcion: 'Comisiones de gestión',
-            cantidad: 1,
-            valor_unitario: parseFloat(calculation.total_comisiones),
-            valor_total: parseFloat(calculation.total_comisiones)
-          });
-        }
-        
-        if (calculation.total_ganancia > 0) {
-          invoiceItems.push({
-            descripcion: 'Ganancia operacional',
-            cantidad: 1,
-            valor_unitario: parseFloat(calculation.total_ganancia),
-            valor_total: parseFloat(calculation.total_ganancia)
-          });
-        }
-      }
+      // 4. Calcular totales de la factura
+      const quoteCalc = contract.Quote?.Calculation; // ✅ Corregir acceso usando alias
+      const totalAmount = quoteCalc?.precio_final_total || 0; // ✅ Usar nombre de columna español
+      const commissionsAmount = quoteCalc?.total_comisiones || 0; // ✅ Usar campo consolidado de comisiones
+      const companyProfit = quoteCalc?.total_ganancia || 0; // ✅ Usar nombre de columna español
 
-      // 5. Calcular totales de la factura
-      const totalAmount = calculation?.precio_final_total || 0;
-      const commissionsAmount = calculation?.total_comisiones || 0;
-      const companyProfit = calculation?.total_ganancia || 0;
-      const purchasesAmount = parseFloat(totalAmount) - parseFloat(commissionsAmount) - parseFloat(companyProfit);
-
-      // 6. Crear la factura usando los nombres correctos del modelo
+      // 5. Crear la factura
       const invoice = await Invoice.create({
         contract_id: contractId,
-        cliente_id: contract.Quote?.Cliente?.id,
-        numero_factura: invoiceNumber,
-        fecha_factura: new Date(),
-        fecha_vencimiento: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días
-        
-        // Información del cliente
-        cliente_nombre: `${contract.Quote?.Cliente?.name} ${contract.Quote?.Cliente?.lastname}`,
-        cliente_documento: contract.Quote?.Cliente?.documento || 'N/A',
-        cliente_email: contract.Quote?.Cliente?.email,
-        cliente_telefono: contract.Quote?.Cliente?.phone,
-        
-        // Montos detallados según cotización
-        monto_compras: purchasesAmount,
-        monto_comisiones: commissionsAmount,
-        monto_ganancia: companyProfit,
+        user_id: contract.Quote?.Cliente?.id, // ✅ Corregir acceso usando alias
+        numero_factura: invoiceNumber, // ✅ Usar nombre de columna español
+        fecha_factura: new Date(), // ✅ Usar nombre de columna español
+        due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días
+        monto_total: totalAmount, // ✅ Usar nombre de columna español
+        tax_amount: 0, // Por definir si aplica
         subtotal: totalAmount,
-        impuestos: 0, // Por definir si aplica
-        monto_total: totalAmount,
-        
-        status: 'generated',
-        generada_por: req.user?.id || 1, // Usuario que genera
-        observaciones: `Factura generada automáticamente para contrato ${contract.contract_number}`,
-        
-        // Items detallados como JSON
-        items_factura: invoiceItems
+        status: 'pending',
+        notes: `Factura generada automáticamente para contrato ${contractId}`,
+        metadata: {
+          commissions_amount: commissionsAmount,
+          company_profit: companyProfit,
+          generated_by: 'system',
+          generation_date: new Date().toISOString()
+        }
       });
 
       console.log(`✅ Factura creada exitosamente: ${invoiceNumber}`);
-      console.log(`📋 Items de factura:`, invoiceItems);
 
       res.status(201).json({
         success: true,
         message: 'Factura generada exitosamente',
-        data: {
-          ...invoice.toJSON(),
-          items_detallados: invoiceItems
-        }
+        data: invoice
       });
 
     } catch (error) {
@@ -290,23 +199,23 @@ const invoiceController = {
         include: [
           {
             model: Contract,
-            as: 'Contract',
+            as: 'Contract', // ✅ Usar alias definido en db.js
             include: [
               {
                 model: Quote,
-                as: 'Quote',
+                as: 'Quote', // ✅ Usar alias definido en db.js
                 include: [
                   { 
                     model: User,
-                    as: 'Cliente',
-                    attributes: ['id', 'name', 'lastname', 'email', 'phone'] 
+                    as: 'Cliente', // ✅ Usar alias para el cliente
+                    attributes: ['id', 'name', 'lastname', 'email', 'phone'] // ✅ Corregir nombres de campos
                   }
                 ]
               }
             ]
           }
         ],
-        order: [['issue_date', 'DESC']]
+        order: [['fecha_factura', 'DESC']] // ✅ Usar nombre de columna español
       });
 
       res.status(200).json({
@@ -335,25 +244,27 @@ const invoiceController = {
         include: [
           {
             model: Contract,
-            as: 'Contract',
+            as: 'Contract', // ✅ Usar alias definido en db.js
             include: [
               {
                 model: Quote,
-                as: 'Quote',
+                as: 'Quote', // ✅ Usar alias definido en db.js
                 include: [
                   { 
                     model: User,
-                    as: 'Cliente',
-                    attributes: ['id', 'name', 'lastname', 'email', 'phone'] 
+                    as: 'Cliente', // ✅ Usar alias para el cliente
+                    attributes: ['id', 'name', 'lastname', 'email', 'phone'] // ✅ Corregir nombres de campos
                   },
                   {
                     model: QuoteCalculation,
-                    as: 'Calculation',
+                    as: 'Calculation', // ✅ Usar alias definido en db.js
                     attributes: [
-                      'precio_final_total', 
-                      'total_comisiones',
-                      'total_ganancia'
-                    ]
+                      'precio_final_total', // ✅ Usar nombre correcto de columna
+                      'precio_final_por_persona', // ✅ Agregar precio por persona
+                      'total_comisiones', // ✅ Usar nombre correcto
+                      'total_ganancia' // ✅ Usar nombre correcto
+                    ],
+                    required: false // ✅ LEFT JOIN para evitar errores si no existe
                   }
                 ]
               }
@@ -371,10 +282,7 @@ const invoiceController = {
 
       res.status(200).json({
         success: true,
-        data: {
-          ...invoice.toJSON(),
-          items_detallados: invoice.items_factura || []
-        }
+        data: invoice
       });
 
     } catch (error) {
