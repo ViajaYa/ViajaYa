@@ -44,6 +44,13 @@ router.get('/profit-by-contract',
   financialController.getProfitByContract
 );
 
+// 🏆 GANANCIAS DE CONTRATOS COMPLETADOS
+router.get('/completed-contracts', 
+  authenticateToken, 
+  authorizeRoles(4, 5, 6, 7), // gerente, admin, contador, owner
+  financialController.getCompletedContractsFinancials
+);
+
 console.log('✅ financialRoutes cargado exitosamente');
 
 module.exports = router;

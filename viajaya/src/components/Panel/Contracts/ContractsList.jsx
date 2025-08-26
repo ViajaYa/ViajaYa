@@ -1,6 +1,20 @@
 import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
+
+// ✅ Helper para formatear fechas de manera segura (sin conversiones de timezone)
+const formatDateDisplay = (dateString) => {
+  if (!dateString) return '';
+  
+  try {
+    // Si viene en formato YYYY-MM-DD, procesarlo directamente
+    const [year, month, day] = dateString.split('-');
+    return `${day}/${month}/${year}`;
+  } catch (error) {
+    console.error('Error formateando fecha:', error);
+    return dateString; // Retornar original si hay error
+  }
+};
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import NavBar from "../../layout/NavBar/NavBar";
 import api from "../../../utils/api";
@@ -586,15 +600,11 @@ const ContractsList = () => {
                         />
                         <div>
                           <div className="text-gray-900">
-                            {new Date(
-                              contract.fecha_inicio_viaje
-                            ).toLocaleDateString("es-ES")}
+                            {formatDateDisplay(contract.fecha_inicio_viaje)}
                           </div>
                           <div className="text-gray-500">
                             al{" "}
-                            {new Date(
-                              contract.fecha_fin_viaje
-                            ).toLocaleDateString("es-ES")}
+                            {formatDateDisplay(contract.fecha_fin_viaje)}
                           </div>
                         </div>
                       </div>
@@ -618,15 +628,7 @@ const ContractsList = () => {
                       <div className="flex items-center gap-1">
 
                         {/* ✅ GENERAR PDF - Mostrar si no existe PDF */}
-                        {!contract.contrato_pdf_url && (
-                          <button
-                            onClick={() => handleAction("generate_pdf", contract.id)}
-                            className="p-2 text-orange-600 hover:bg-orange-50 rounded transition-colors"
-                            title="Generar PDF"
-                          >
-                            <FontAwesomeIcon icon={faFilePdf} size="sm" />
-                          </button>
-                        )}
+                       
 
                         {/* Editar */}
                         {contract.status === "draft" && (
@@ -652,18 +654,7 @@ const ContractsList = () => {
                           <FontAwesomeIcon icon={faEye} size="sm" />
                         </button>
 
-                        {/* ✅ NUEVO BOTÓN: Gestión de Compras */}
-                        {(contract.status === "active" || 
-                          contract.status === "signed" || 
-                          contract.status === "completed") && (
-                          <button
-                            onClick={() => handleAction("purchase_management", contract.id)}
-                            className="p-2 text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
-                            title="Gestión de Compras"
-                          >
-                            <FontAwesomeIcon icon={faShoppingCart} size="sm" />
-                          </button>
-                        )}
+                       
 
                         {/* Enviar */}
                         {(contract.status === "draft" ||
@@ -704,6 +695,18 @@ const ContractsList = () => {
                             title="Ver comisiones generadas"
                           >
                             <FontAwesomeIcon icon={faCoins} size="sm" />
+                          </button>
+                        )}
+                         {/* ✅ NUEVO BOTÓN: Gestión de Compras */}
+                        {(contract.status === "active" || 
+                          contract.status === "signed" || 
+                          contract.status === "completed") && (
+                          <button
+                            onClick={() => handleAction("purchase_management", contract.id)}
+                            className="p-2 text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                            title="Gestión de Compras"
+                          >
+                            <FontAwesomeIcon icon={faShoppingCart} size="sm" />
                           </button>
                         )}
 

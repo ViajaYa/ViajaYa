@@ -73,7 +73,9 @@ const PassengerForm = () => {
       const docValue = passengerData.documento_identidad;
       const docType = passengerData.tipo_documento;
       if (docValue && docValue.trim && docValue.trim()) {
-        const docValidation = validateDocument(docType, docValue);
+        // ✅ FIX: Convertir tipo de documento a mayúsculas
+        const upperDocType = docType?.toUpperCase() || 'CC';
+        const docValidation = validateDocument(upperDocType, docValue);
         
         validatedData[`documento_identidad_validation`] = {
           isValid: docValidation.isValid,
@@ -217,7 +219,9 @@ const PassengerForm = () => {
         
       case 'documento_identidad': {
         if (value.trim()) {
-          const documentValidation = validateDocument(passenger.tipo_documento, value);
+          // ✅ FIX: Convertir tipo de documento a mayúsculas para la validación
+          const docType = passenger.tipo_documento?.toUpperCase() || 'CC';
+          const documentValidation = validateDocument(docType, value);
           isValid = documentValidation.isValid;
           errorMessage = documentValidation.message;
           if (documentValidation.isValid && documentValidation.formatted) {
@@ -292,6 +296,24 @@ const PassengerForm = () => {
         const finalValue = validation.formattedValue !== undefined ? validation.formattedValue : value;
         updated[index] = { ...updated[index], [field]: finalValue };
         
+        // ✅ FIX: Si se cambia el tipo de documento, re-validar el número de documento
+        if (field === 'tipo_documento' && updated[index].documento_identidad?.trim()) {
+          const docType = value.toUpperCase();
+          const docValidation = validateDocument(docType, updated[index].documento_identidad);
+          updated[index] = {
+            ...updated[index],
+            documento_identidad_validation: {
+              isValid: docValidation.isValid,
+              message: docValidation.message
+            }
+          };
+          
+          // Formatear el documento según el nuevo tipo
+          if (docValidation.isValid && docValidation.formatted) {
+            updated[index].documento_identidad = docValidation.formatted;
+          }
+        }
+        
         // Agregar información de validación al estado (opcional, para mostrar errores en tiempo real)
         if (field !== 'titular') {
           updated[index] = { 
@@ -338,7 +360,7 @@ const PassengerForm = () => {
         
         // Validar documento
         const documentValidation = validateDocument(
-          passenger.tipo_documento, 
+          passenger.tipo_documento?.toUpperCase() || 'CC', 
           passenger.documento_identidad
         );
         if (!documentValidation.isValid) {
@@ -396,7 +418,7 @@ const PassengerForm = () => {
           // Validar documento si está presente
           if (passenger.documento_identidad?.trim()) {
             const documentValidation = validateDocument(
-              passenger.tipo_documento, 
+              passenger.tipo_documento?.toUpperCase() || 'CC', 
               passenger.documento_identidad
             );
             if (!documentValidation.isValid) {

@@ -21,14 +21,92 @@ const PaymentReceiptModal = ({ receipt, onClose }) => {
 
   const { url, commission, title, paidBy, paymentDate } = receipt;
   
-  // Determinar tipo de archivo
-  const isImage = url.match(/\.(jpg|jpeg|png|gif|webp)$/i);
-  const isPdf = url.match(/\.pdf$/i);
+  // ✅ MEJORAR: Detectar tipo de archivo más robustamente
+  const detectFileType = (url) => {
+    if (!url) return 'unknown';
+    
+    const extension = url.split('.').pop()?.toLowerCase();
+    const hasRawUpload = url.includes('/raw/upload/');
+    const hasImageUpload = url.includes('/image/upload/');
+    const hasNoExtension = !extension || extension === url;
+    
+    // Para imágenes
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(extension)) return 'image';
+    
+    // Para PDFs o archivos sin extensión clara (que suelen ser PDFs en este contexto)
+    if (extension === 'pdf' || hasRawUpload || hasNoExtension || 
+        (hasImageUpload && !['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(extension))) {
+      return 'pdf';
+    }
+    
+    return 'unknown';
+  };
+
+  const fileType = detectFileType(url);
+  const isImage = fileType === 'image';
+  const isPdf = fileType === 'pdf';
+
+  // ✅ OPTIMIZAR URL para PDFs usando proxy del backend
+  const getOptimizedUrl = (originalUrl) => {
+    if (!originalUrl) return '';
+    
+    if (isPdf) {
+      // Para PDFs de Cloudinary, usar proxy del backend
+      if (originalUrl.includes('cloudinary.com')) {
+        let pdfUrl = originalUrl;
+        
+        // Si está mal configurado como imagen, convertir a raw/upload
+        if (originalUrl.includes('/image/upload/')) {
+          pdfUrl = originalUrl.replace('/image/upload/', '/raw/upload/')
+                             .replace(/\/f_auto,q_auto[^/]*\//, '/');
+        }
+        
+        // Usar proxy del backend para PDFs de Cloudinary
+        if (pdfUrl.includes('/raw/upload/')) {
+          let publicId = '';
+          
+          const parts = pdfUrl.split('/raw/upload/');
+          if (parts.length > 1) {
+            publicId = parts[1];
+            // Remover versión si existe (v1234567890/)
+            if (publicId.startsWith('v') && publicId.includes('/')) {
+              publicId = publicId.split('/').slice(1).join('/');
+            }
+          }
+          
+          if (publicId) {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+            const proxyUrl = `${apiUrl}/contracts/serve-pdf/${encodeURIComponent(publicId)}`;
+            console.log('🔧 Using backend proxy for payment receipt PDF:', pdfUrl, '→', proxyUrl);
+            return proxyUrl;
+          }
+        }
+        
+        return pdfUrl;
+      }
+    }
+    
+    return originalUrl;
+  };
+
+  const optimizedUrl = getOptimizedUrl(url);
+
+  // 🐛 DEBUG: Log para diagnosticar URLs
+  console.log('🔍 PaymentReceiptModal Debug:');
+  console.log('💳 Receipt:', receipt);
+  console.log('🔗 Original URL:', url);
+  console.log('🎯 Optimized URL:', optimizedUrl);
+  console.log('📏 URL Length:', url?.length);
+  console.log('🌐 URL Type:', typeof url);
+  console.log('✅ URL Valid:', !!url && url.trim() !== '');
+  console.log('📄 File Type Detection:', fileType);
+  console.log('📄 Is PDF:', isPdf);
+  console.log('🖼️ Is Image:', isImage);
 
   const handleDownload = () => {
     try {
       const link = document.createElement('a');
-      link.href = url;
+      link.href = optimizedUrl;
       link.download = `comprobante-${commission?.Contract?.contract_number || 'pago'}.${isImage ? 'jpg' : 'pdf'}`;
       link.target = '_blank';
       link.rel = 'noopener noreferrer';
@@ -153,7 +231,7 @@ const PaymentReceiptModal = ({ receipt, onClose }) => {
                     </div>
                     <p className="text-red-600 mb-2">Error al cargar la imagen</p>
                     <a 
-                      href={url} 
+                      href={optimizedUrl} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="text-blue-600 hover:text-blue-800 underline"
@@ -163,7 +241,7 @@ const PaymentReceiptModal = ({ receipt, onClose }) => {
                   </div>
                 ) : (
                   <img
-                    src={url}
+                    src={optimizedUrl}
                     alt="Comprobante de pago"
                     className={`${isFullscreen ? 'max-w-full max-h-full' : 'max-w-full h-auto'} mx-auto rounded-lg shadow-lg`}
                     onLoad={() => setImageLoaded(true)}
@@ -175,12 +253,26 @@ const PaymentReceiptModal = ({ receipt, onClose }) => {
             )}
 
             {isPdf && (
-              <div className="h-96 md:h-[500px]">
+              <div className="h-96 md:h-[500px] bg-gray-100 rounded-lg overflow-hidden">
                 <iframe
-                  src={url}
+                  src={optimizedUrl}
                   className="w-full h-full border-0"
                   title="Comprobante PDF"
+                  onError={() => {
+                    console.error('Error loading PDF in iframe');
+                    toast.error('Error al cargar el PDF. Intenta descargarlo.');
+                  }}
                 />
+                
+                {/* Botón de respaldo para abrir en nueva pestaña */}
+                <div className="absolute top-2 right-2 z-10">
+                  <button
+                    onClick={() => window.open(optimizedUrl, '_blank')}
+                    className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors"
+                  >
+                    Abrir PDF
+                  </button>
+                </div>
               </div>
             )}
 
@@ -189,7 +281,7 @@ const PaymentReceiptModal = ({ receipt, onClose }) => {
                 <FontAwesomeIcon icon={faMoneyBillWave} className="text-4xl text-gray-400 mb-4" />
                 <p className="text-gray-600 mb-4">Vista previa no disponible para este tipo de archivo</p>
                 <a
-                  href={url}
+                  href={optimizedUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"

@@ -5,6 +5,8 @@ import { USER_ROLES } from './RoleRoute';
 import RoleRoute from './RoleRoute';
 import PrivateRoute from './PrivateRoute';
 import LoadingSpinner from './LoadingSpinner';
+import ErrorBoundary from './ErrorBoundary';
+
 
 // Lazy loading de componentes
 const Landing = lazy(() => import("./pages/Landing/Landing"));
@@ -47,7 +49,6 @@ const ContractCommissions = lazy(() => import("./Panel/Contracts/ContractCommiss
 const CommissionConfigManager = lazy(() => import("./Panel/Commissions/CommissionConfigManager"));
 const DocumentsReview = lazy(() => import("./Panel/DocumentsReview"));
 const FacturasPendientes = lazy(() => import("./Panel/FacturasPendientes"));
-const FinancialDashboard = lazy(() => import("./pages/Financial/FinancialDashboard"));
 const OrganizationView = lazy(() => import("./pages/Organization/OrganizationView"));
 const AllTeamsView = lazy(() => import("./pages/Organization/AllTeamsView"));
 const PassengerForm = lazy(() => import("./Panel/Quotes/PassengerForm"));
@@ -58,6 +59,8 @@ const MyCommissions = lazy(() => import("./Panel/Commissions/MyCommissions"));
 const ResetPassword = lazy(() => import("./pages/Login/ResetPassword"));
 const ContractPurchaseManager = lazy(() => import("./Panel/Contracts/ContractPurchaseManager"));
 const ContractPaymentsManager = lazy(() => import("./Panel/Contracts/ContractPayments/ContractPaymentsManager"));
+const FinancialDashboard = lazy(() => import("./pages/Financial/FinancialDashboard"));
+
 
 const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
   return (
@@ -405,9 +408,11 @@ const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
       {/* ✅ DASHBOARD FINANCIERO */}
       <Route path="/financial-dashboard" element={
         <RoleRoute allowedRoles={[USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.CONTADOR, USER_ROLES.OWNER]}>
-          <Suspense fallback={<LoadingSpinner />}>
-            <FinancialDashboard />
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={<LoadingSpinner />}>
+              <FinancialDashboard />
+            </Suspense>
+          </ErrorBoundary>
         </RoleRoute>
       } />
 

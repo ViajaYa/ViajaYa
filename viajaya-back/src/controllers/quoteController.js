@@ -13,6 +13,43 @@ const crypto = require('crypto');
 // ✅ Importar utilidades de fecha con Luxon para Colombia
 const { formatForPDF, nowInColombia, toFrontend } = require("../utils/dateUtils"); 
 
+// ✅ Helper para formatear fechas para emails (formato largo con día de la semana)
+const formatDateForEmail = (dateString) => {
+  if (!dateString) return '';
+  
+  try {
+    // Si viene en formato YYYY-MM-DD, procesarlo directamente
+    const [year, month, day] = dateString.split('-');
+    const date = new Date(year, month - 1, day);
+    
+    const opciones = { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    };
+    
+    return date.toLocaleDateString('es-ES', opciones);
+  } catch (error) {
+    console.error('Error formateando fecha para email:', error);
+    return dateString; // Retornar original si hay error
+  }
+};
+
+// ✅ Helper para formatear fechas simples (formato DD/MM/YYYY)
+const formatDateSimple = (dateString) => {
+  if (!dateString) return '';
+  
+  try {
+    // Si viene en formato YYYY-MM-DD, procesarlo directamente
+    const [year, month, day] = dateString.split('-');
+    return `${day}/${month}/${year}`;
+  } catch (error) {
+    console.error('Error formateando fecha simple:', error);
+    return dateString; // Retornar original si hay error
+  }
+};
+
 // ✅ Función auxiliar para convertir trip_type a etiqueta legible
 const getTripTypeLabel = (tripType) => {
   switch (tripType) {
@@ -1664,8 +1701,8 @@ getQuoteById: async (req, res) => {
       pdf_data: {
         precio_total_cop: quote.precio_total ? `$${parseFloat(quote.precio_total).toLocaleString('es-CO')}` : null,
         precio_por_persona_cop: precio_por_persona > 0 ? `$${precio_por_persona.toLocaleString('es-CO')}` : null,
-        fecha_ida_formatted: quote.fecha_ida ? new Date(quote.fecha_ida).toLocaleDateString('es-ES') : null,
-        fecha_regreso_formatted: quote.fecha_regreso ? new Date(quote.fecha_regreso).toLocaleDateString('es-ES') : null,
+        fecha_ida_formatted: quote.fecha_ida ? formatDateSimple(quote.fecha_ida) : null,
+        fecha_regreso_formatted: quote.fecha_regreso ? formatDateSimple(quote.fecha_regreso) : null,
         trip_type_label: getTripTypeLabel(quote.trip_type),
       },
 
@@ -1743,8 +1780,8 @@ getQuoteById: async (req, res) => {
             <ul>
               <li><strong>🏖️ Destino:</strong> ${quote.destino}</li>
               <li><strong>📍 Origen:</strong> ${quote.origen}</li>
-              <li><strong>📅 Fecha de ida:</strong> ${new Date(quote.fecha_ida).toLocaleDateString("es-ES")}</li>
-              <li><strong>📅 Fecha de regreso:</strong> ${new Date(quote.fecha_regreso).toLocaleDateString("es-ES")}</li>
+              <li><strong>📅 Fecha de ida:</strong> ${formatDateSimple(quote.fecha_ida)}</li>
+              <li><strong>📅 Fecha de regreso:</strong> ${formatDateSimple(quote.fecha_regreso)}</li>
               <li><strong>👥 Número de personas:</strong> ${quote.numero_personas}</li>
               ${quote.menores > 0 ? `<li><strong>👶 Menores (2-14 años):</strong> ${quote.menores} (Edades: ${quote.edades_menores?.join(", ") || "No especificadas"})</li>` : ""}
               ${quote.infantes > 0 ? `<li><strong>🍼 Infantes (<2 años):</strong> ${quote.infantes} (Edades: ${quote.edades_infantes?.join(", ") || "No especificadas"})</li>` : ""}
@@ -2012,8 +2049,8 @@ getQuoteById: async (req, res) => {
       pdf_data: {
         precio_total_cop: quote.precio_total ? `$${parseFloat(quote.precio_total).toLocaleString('es-CO')}` : null,
         precio_por_persona_cop: precio_por_persona > 0 ? `$${precio_por_persona.toLocaleString('es-CO')}` : null,
-        fecha_ida_formatted: quote.fecha_ida ? new Date(quote.fecha_ida).toLocaleDateString('es-ES') : null,
-        fecha_regreso_formatted: quote.fecha_regreso ? new Date(quote.fecha_regreso).toLocaleDateString('es-ES') : null,
+        fecha_ida_formatted: quote.fecha_ida ? formatForPDF(quote.fecha_ida) : null,
+        fecha_regreso_formatted: quote.fecha_regreso ? formatForPDF(quote.fecha_regreso) : null,
         trip_type_label: getTripTypeLabel(quote.trip_type),
       },
       asesor_info: {
@@ -2600,10 +2637,82 @@ getQuoteById: async (req, res) => {
         owner: quote.Owner?.name,
       });
 
-      // ✅ Generar PDF en memoria (sin guardar archivo)
-      const pdfResult = await generateQuotePDF(quote, false);
+      // ✅ FIX: Enriquecer cotización con cálculos (IGUAL QUE EN sendQuote)
+      let precio_por_persona = 0;
+      let personasQuePagan = 0;
+      
+      if (quote.precio_total) {
+        // Calcular personas que pagan (excluyendo infantes)
+        personasQuePagan = calcularPersonasQuePagan({
+          adultos: quote.adultos,
+          menores: quote.menores,
+          infantes: quote.infantes
+        });
+        
+        if (personasQuePagan > 0) {
+          precio_por_persona = parseFloat(quote.precio_total) / personasQuePagan;
+        }
+        
+        console.log('💰 PREVIEW PDF - CÁLCULO DE PRECIO POR PERSONA QUE PAGA:', {
+          precio_total: quote.precio_total,
+          total_pasajeros: quote.numero_personas,
+          personas_que_pagan: personasQuePagan,
+          adultos: quote.adultos,
+          menores: quote.menores,
+          infantes: quote.infantes,
+          precio_por_persona_que_paga: precio_por_persona.toFixed(2)
+        });
+      }
+
+      // ✅ FIX: Crear versión enriquecida de la cotización (IGUAL QUE EN sendQuote)
+      const enrichedQuote = {
+        ...quote.toJSON(),
+        precio_por_persona: precio_por_persona,
+        precio_por_persona_formateado: precio_por_persona.toFixed(2),
+        personas_que_pagan: personasQuePagan,
+        calculation_metadata: {
+          has_price: !!quote.precio_total,
+          has_passengers: quote.numero_personas > 0,
+          price_per_person_available: !!(quote.precio_total && personasQuePagan > 0),
+          infants_dont_pay: true,
+        },
+        pdf_data: {
+          precio_total_cop: quote.precio_total ? `$${parseFloat(quote.precio_total).toLocaleString('es-CO')}` : null,
+          precio_por_persona_cop: precio_por_persona > 0 ? `$${precio_por_persona.toLocaleString('es-CO')}` : null,
+          fecha_ida_formatted: quote.fecha_ida ? formatForPDF(quote.fecha_ida) : null,
+          fecha_regreso_formatted: quote.fecha_regreso ? formatForPDF(quote.fecha_regreso) : null,
+          trip_type_label: getTripTypeLabel(quote.trip_type),
+        },
+        asesor_info: {
+          nombre_completo: quote.Asesor ? `${quote.Asesor.name} ${quote.Asesor.lastname}` : 
+                          quote.Lider ? `${quote.Lider.name} ${quote.Lider.lastname}` :
+                          quote.Gerente ? `${quote.Gerente.name} ${quote.Gerente.lastname}` :
+                          quote.Admin ? `${quote.Admin.name} ${quote.Admin.lastname}` : 'No asignado',
+          email: quote.Asesor?.email || quote.Lider?.email || quote.Gerente?.email || quote.Admin?.email || null,
+          rol: quote.Asesor ? 'Asesor' : 
+               quote.Lider ? 'Líder' : 
+               quote.Gerente ? 'Gerente' : 
+               quote.Admin ? 'Administrador' : 'No asignado'
+        }
+      };
+
+      console.log('📋 PREVIEW PDF - Datos enriquecidos para PDF:', {
+        precio_por_persona: enrichedQuote.precio_por_persona,
+        precio_por_persona_formateado: enrichedQuote.precio_por_persona_formateado,
+        pdf_data_precio_cop: enrichedQuote.pdf_data?.precio_por_persona_cop,
+        pdf_data_fechas: {
+          fecha_ida_formatted: enrichedQuote.pdf_data?.fecha_ida_formatted,
+          fecha_regreso_formatted: enrichedQuote.pdf_data?.fecha_regreso_formatted
+        }
+      });
+
+      // ✅ FIX: Generar PDF en memoria usando cotización enriquecida
+      console.log("🔍 Llamando a generateQuotePDF con enrichedQuote...");
+      const pdfResult = await generateQuotePDF(enrichedQuote, false);
+      console.log("✅ generateQuotePDF completado, verificando resultado...");
 
       if (!pdfResult || !pdfResult.buffer) {
+        console.error("❌ pdfResult:", pdfResult);
         throw new Error("Error generando buffer de PDF");
       }
 

@@ -30,6 +30,50 @@ import {
   convertQuoteToContractItems, // ✅ NUEVO - acción
 } from "../../../redux/slices/contractSlice";
 
+// ✅ HELPER: Formatear fecha para display sin problemas de zona horaria
+const formatDateDisplay = (dateStr) => {
+  console.log('🔍 formatDateDisplay - Input:', { dateStr, type: typeof dateStr });
+  
+  if (!dateStr) {
+    console.log('🔍 formatDateDisplay - Sin fecha, retornando cadena vacía');
+    return '';
+  }
+  
+  // Verificar si ya está en formato YYYY-MM-DD
+  if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    console.log('🔍 formatDateDisplay - Fecha ya en formato correcto:', dateStr);
+    // Convertir a formato DD/MM/YYYY para display
+    const [year, month, day] = dateStr.split('-');
+    return `${day}/${month}/${year}`;
+  }
+  
+  // Si es una fecha ISO (YYYY-MM-DDTHH:mm:ss.sssZ), extraer solo la parte de la fecha
+  if (typeof dateStr === 'string' && dateStr.includes('T')) {
+    const result = dateStr.split('T')[0];
+    console.log('🔍 formatDateDisplay - Extraída de ISO:', { input: dateStr, output: result });
+    // Convertir a formato DD/MM/YYYY para display
+    const [year, month, day] = result.split('-');
+    return `${day}/${month}/${year}`;
+  }
+  
+  // Para cualquier otro formato, intentar parsear sin zona horaria
+  try {
+    if (typeof dateStr === 'string') {
+      // Si viene en formato DD/MM/YYYY, retornar tal como está
+      if (dateStr.includes('/')) {
+        console.log('🔍 formatDateDisplay - Ya en formato DD/MM/YYYY:', dateStr);
+        return dateStr;
+      }
+    }
+    
+    console.log('🔍 formatDateDisplay - Formato no reconocido, retornando original:', dateStr);
+    return dateStr;
+  } catch (error) {
+    console.log('🔍 formatDateDisplay - Error:', error);
+    return dateStr;
+  }
+};
+
 const ContractSet = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -190,9 +234,7 @@ const ContractSet = () => {
                 {titularPassenger.documento_identidad}
               </p>
               <p className="text-gray-600">
-                {new Date(titularPassenger.fecha_nacimiento).toLocaleDateString(
-                  "es-ES"
-                )}
+                {formatDateDisplay(titularPassenger.fecha_nacimiento)}
               </p>
             </div>
           </div>
@@ -218,9 +260,7 @@ const ContractSet = () => {
                     {passenger.documento_identidad}
                   </p>
                   <p className="text-gray-600">
-                    {new Date(passenger.fecha_nacimiento).toLocaleDateString(
-                      "es-ES"
-                    )}
+                    {formatDateDisplay(passenger.fecha_nacimiento)}
                   </p>
                 </div>
               </div>
@@ -749,9 +789,9 @@ const handleSave = async () => {
                     <div><strong>Proveedor:</strong> {item.detalles.proveedor || 'No especificado'}</div>
                   </div>
                   <div className="mt-2 pt-2 border-t">
-                    <div><strong>Fecha ida:</strong> {new Date(item.detalles.fecha_ida).toLocaleDateString('es-ES')}</div>
+                    <div><strong>Fecha ida:</strong> {item.detalles.fecha_ida}</div>
                     {item.detalles.fecha_vuelta && (
-                      <div><strong>Fecha vuelta:</strong> {new Date(item.detalles.fecha_vuelta).toLocaleDateString('es-ES')}</div>
+                      <div><strong>Fecha vuelta:</strong> {item.detalles.fecha_vuelta}</div>
                     )}
                   </div>
                 </>
@@ -1350,9 +1390,7 @@ const handleSave = async () => {
                   Fecha de inicio
                 </label>
                 <p className="text-gray-900">
-                  {new Date(
-                    contract.contract?.fecha_inicio_viaje
-                  ).toLocaleDateString("es-ES")}
+                  {formatDateDisplay(contract.contract?.fecha_inicio_viaje)}
                 </p>
               </div>
 
@@ -1361,9 +1399,7 @@ const handleSave = async () => {
                   Fecha de fin
                 </label>
                 <p className="text-gray-900">
-                  {new Date(
-                    contract.contract?.fecha_fin_viaje
-                  ).toLocaleDateString("es-ES")}
+                  {formatDateDisplay(contract.contract?.fecha_fin_viaje)}
                 </p>
               </div>
 

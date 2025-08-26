@@ -35,6 +35,10 @@ const PaymentRequestModal = ({ commission, onClose, onSuccess }) => {
     doc => doc.document_name === "Firma Digital" && doc.status === "approved"
   );
 
+  const firmaDigitalAprobada = documentationStatus?.documents?.some(
+    doc => doc.document_name === "Firma Digital" && doc.status === "approved"
+  );
+
   useEffect(() => {
     console.log("Firma Digital encontrada:", firmaDigital);
   }, [firmaDigital]);
@@ -309,7 +313,7 @@ const PaymentRequestModal = ({ commission, onClose, onSuccess }) => {
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={!firmaDigitalAprobada || loading}
               className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
             >
               {loading ? (
@@ -325,6 +329,13 @@ const PaymentRequestModal = ({ commission, onClose, onSuccess }) => {
               )}
             </button>
           </div>
+
+          {/* Mensaje de advertencia si la firma digital no está aprobada */}
+          {!firmaDigitalAprobada && (
+            <div className="text-red-600 mt-4">
+              Debes tener tu Firma Digital aprobada para solicitar el pago de comisión.
+            </div>
+          )}
         </form>
       </div>
     </div>

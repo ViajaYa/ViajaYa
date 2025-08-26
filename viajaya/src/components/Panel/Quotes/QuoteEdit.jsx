@@ -100,6 +100,8 @@ const QuoteEdit = () => {
   const error = useSelector(selectQuoteError);
   const user = useSelector(selectUser);
 
+  console.log(currentQuote)
+
   // ✅ Nuevos selectores para PDF
   const pdfOperations = useSelector(selectPDFOperations);
   const pdfLoading = useSelector(selectPDFLoading);
@@ -122,6 +124,33 @@ const QuoteEdit = () => {
     USER_ROLES = {},
     canManageQuotes = false,
   } = useRolePermissions() || {};
+
+  // ✅ HELPER: Formatear fecha para input sin problemas de zona horaria
+  const formatDateDisplay = (dateStr) => {
+    if (!dateStr) return "";
+    
+    console.log('🔍 formatDateDisplay - Input:', { dateStr, type: typeof dateStr });
+    
+    // Si ya viene en formato YYYY-MM-DD, usarla directamente SIN conversiones
+    if (typeof dateStr === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      console.log('🔍 formatDateDisplay - Fecha ya en formato correcto:', dateStr);
+      return dateStr;
+    }
+    
+    // Si viene en otros formatos, extraer solo la parte de fecha sin crear Date objects
+    if (typeof dateStr === "string") {
+      // Si viene como ISO string (2025-08-21T00:00:00.000Z), extraer solo la fecha
+      const isoMatch = dateStr.match(/^(\d{4}-\d{2}-\d{2})/);
+      if (isoMatch) {
+        const result = isoMatch[1];
+        console.log('🔍 formatDateDisplay - Extraída de ISO:', { input: dateStr, output: result });
+        return result;
+      }
+    }
+    
+    console.log('❌ formatDateDisplay - Formato no reconocido:', dateStr);
+    return "";
+  };
 
   // ✅ Estados del formulario
   const [formData, setFormData] = useState({
@@ -519,12 +548,8 @@ useEffect(() => {
           ...prev,
           numero_personas:
             calculation.num_personas || currentQuote.numero_personas || 1,
-          fecha_ida: currentQuote.fecha_ida
-            ? new Date(currentQuote.fecha_ida).toISOString().split("T")[0]
-            : "",
-          fecha_regreso: currentQuote.fecha_regreso
-            ? new Date(currentQuote.fecha_regreso).toISOString().split("T")[0]
-            : "",
+          fecha_ida: formatDateDisplay(currentQuote.fecha_ida),
+          fecha_regreso: formatDateDisplay(currentQuote.fecha_regreso),
           destino: currentQuote.destino || "",
           trip_type: currentQuote.trip_type || "",
           origen: currentQuote.origen || "",
@@ -611,12 +636,8 @@ useEffect(() => {
           edades_infantes: calculatedEdadesInfantes,
           personas_atencion_especial: currentQuote.personas_atencion_especial || 0,
           detalles_atencion_especial: currentQuote.detalles_atencion_especial || "",
-          fecha_ida: currentQuote.fecha_ida
-            ? new Date(currentQuote.fecha_ida).toISOString().split("T")[0]
-            : "",
-          fecha_regreso: currentQuote.fecha_regreso
-            ? new Date(currentQuote.fecha_regreso).toISOString().split("T")[0]
-            : "",
+          fecha_ida: formatDateDisplay(currentQuote.fecha_ida),
+          fecha_regreso: formatDateDisplay(currentQuote.fecha_regreso),
           destino: currentQuote.destino || "",
           trip_type: currentQuote.trip_type || "",
           origen: currentQuote.origen || "",
@@ -1480,15 +1501,13 @@ const handleCalculationSave = async (calculationData) => {
                   {(currentQuote?.fecha_ida || formData.fecha_ida) && (
                     <div>
                       <strong>Ida:</strong>{" "}
-                      {new Date(currentQuote?.fecha_ida || formData.fecha_ida).toLocaleDateString("es-ES")}
+                      {formatDateDisplay(currentQuote?.fecha_ida || formData.fecha_ida)}
                     </div>
                   )}
                   {(currentQuote?.fecha_regreso || formData.fecha_regreso) && (
                     <div>
                       <strong>Regreso:</strong>{" "}
-                      {new Date(currentQuote?.fecha_regreso || formData.fecha_regreso).toLocaleDateString(
-                        "es-ES"
-                      )}
+                      {formatDateDisplay(currentQuote?.fecha_regreso || formData.fecha_regreso)}
                     </div>
                   )}
                 </div>
@@ -1863,15 +1882,13 @@ const handleCalculationSave = async (calculationData) => {
                   <div>
                     <strong>Fecha ida:</strong>{" "}
                     {currentQuote?.fecha_ida
-                      ? new Date(currentQuote.fecha_ida).toLocaleDateString()
+                      ? formatDateDisplay(currentQuote.fecha_ida)
                       : "-"}
                   </div>
                   <div>
                     <strong>Fecha regreso:</strong>{" "}
                     {currentQuote?.fecha_regreso
-                      ? new Date(
-                          currentQuote.fecha_regreso
-                        ).toLocaleDateString()
+                      ? formatDateDisplay(currentQuote.fecha_regreso)
                       : "-"}
                   </div>
                   <div>

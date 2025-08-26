@@ -28,21 +28,23 @@ const invoiceController = {
         include: [
           {
             model: Quote,
-            as: 'Quote',
+            as: 'Quote', // ✅ Usar alias definido en db.js
             include: [
               { 
                 model: User,
-                as: 'Cliente',
-                attributes: ['id', 'name', 'lastname', 'email', 'phone'] 
+                as: 'Cliente', // ✅ Usar alias para el cliente
+                attributes: ['id', 'name', 'lastname', 'email', 'phone'] // ✅ Corregir nombres de campos
               },
               {
                 model: QuoteCalculation,
-                as: 'Calculation',
+                as: 'Calculation', // ✅ Usar alias definido en db.js
                 attributes: [
-                  'precio_final_total', 
-                  'total_comisiones',
-                  'total_ganancia'
-                ]
+                  'precio_final_total', // ✅ Usar nombre correcto de columna
+                  'precio_final_por_persona', // ✅ Agregar precio por persona
+                  'total_comisiones', // ✅ Usar nombre correcto
+                  'total_ganancia' // ✅ Usar nombre correcto
+                ],
+                required: false // ✅ LEFT JOIN para evitar errores si no existe
               }
             ]
           }
@@ -79,31 +81,33 @@ const invoiceController = {
         include: [
           {
             model: Quote,
-            as: 'Quote',
+            as: 'Quote', // ✅ Usar alias definido en db.js
             include: [
               { 
                 model: User,
-                as: 'Cliente',
-                attributes: ['id', 'name', 'lastname', 'email', 'phone'] 
+                as: 'Cliente', // ✅ Usar alias para el cliente
+                attributes: ['id', 'name', 'lastname', 'email', 'phone'] // ✅ Corregir nombres de campos
               },
               {
                 model: QuoteCalculation,
-                as: 'Calculation',
+                as: 'Calculation', // ✅ Usar alias definido en db.js
                 attributes: [
-                  'precio_final_total', 
-                  'total_comisiones',
-                  'total_ganancia'
-                ]
+                  'precio_final_total', // ✅ Usar nombre correcto de columna
+                  'precio_final_por_persona', // ✅ Agregar precio por persona
+                  'total_comisiones', // ✅ Usar nombre correcto
+                  'total_ganancia' // ✅ Usar nombre correcto
+                ],
+                required: false // ✅ LEFT JOIN para evitar errores si no existe
               }
             ]
           },
           {
             model: ContractItem,
-            as: 'Items',
+            as: 'Items', // ✅ Usar alias definido en db.js
             include: [
               {
                 model: Purchase,
-                as: 'Purchases',
+                as: 'Purchases', // ✅ Usar alias definido en db.js
                 attributes: ['id', 'costo', 'proveedor', 'estado_pago']
               }
             ]
@@ -143,19 +147,19 @@ const invoiceController = {
       const invoiceNumber = `INV-${new Date().getFullYear()}-${String(invoiceCount + 1).padStart(4, '0')}`;
 
       // 4. Calcular totales de la factura
-      const quoteCalc = contract.Quote?.Calculation;
-      const totalAmount = quoteCalc?.precio_final_total || 0;
-      const commissionsAmount = quoteCalc?.total_comisiones || 0;
-      const companyProfit = quoteCalc?.total_ganancia || 0;
+      const quoteCalc = contract.Quote?.Calculation; // ✅ Corregir acceso usando alias
+      const totalAmount = quoteCalc?.precio_final_total || 0; // ✅ Usar nombre de columna español
+      const commissionsAmount = quoteCalc?.total_comisiones || 0; // ✅ Usar campo consolidado de comisiones
+      const companyProfit = quoteCalc?.total_ganancia || 0; // ✅ Usar nombre de columna español
 
       // 5. Crear la factura
       const invoice = await Invoice.create({
         contract_id: contractId,
-        user_id: contract.Quote?.Cliente?.id,
-        invoice_number: invoiceNumber,
-        issue_date: new Date(),
+        user_id: contract.Quote?.Cliente?.id, // ✅ Corregir acceso usando alias
+        numero_factura: invoiceNumber, // ✅ Usar nombre de columna español
+        fecha_factura: new Date(), // ✅ Usar nombre de columna español
         due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días
-        total_amount: totalAmount,
+        monto_total: totalAmount, // ✅ Usar nombre de columna español
         tax_amount: 0, // Por definir si aplica
         subtotal: totalAmount,
         status: 'pending',
@@ -195,23 +199,23 @@ const invoiceController = {
         include: [
           {
             model: Contract,
-            as: 'Contract',
+            as: 'Contract', // ✅ Usar alias definido en db.js
             include: [
               {
                 model: Quote,
-                as: 'Quote',
+                as: 'Quote', // ✅ Usar alias definido en db.js
                 include: [
                   { 
                     model: User,
-                    as: 'Cliente',
-                    attributes: ['id', 'name', 'lastname', 'email', 'phone'] 
+                    as: 'Cliente', // ✅ Usar alias para el cliente
+                    attributes: ['id', 'name', 'lastname', 'email', 'phone'] // ✅ Corregir nombres de campos
                   }
                 ]
               }
             ]
           }
         ],
-        order: [['issue_date', 'DESC']]
+        order: [['fecha_factura', 'DESC']] // ✅ Usar nombre de columna español
       });
 
       res.status(200).json({
@@ -240,25 +244,27 @@ const invoiceController = {
         include: [
           {
             model: Contract,
-            as: 'Contract',
+            as: 'Contract', // ✅ Usar alias definido en db.js
             include: [
               {
                 model: Quote,
-                as: 'Quote',
+                as: 'Quote', // ✅ Usar alias definido en db.js
                 include: [
                   { 
                     model: User,
-                    as: 'Cliente',
-                    attributes: ['id', 'name', 'lastname', 'email', 'phone'] 
+                    as: 'Cliente', // ✅ Usar alias para el cliente
+                    attributes: ['id', 'name', 'lastname', 'email', 'phone'] // ✅ Corregir nombres de campos
                   },
                   {
                     model: QuoteCalculation,
-                    as: 'Calculation',
+                    as: 'Calculation', // ✅ Usar alias definido en db.js
                     attributes: [
-                      'precio_final_total', 
-                      'total_comisiones',
-                      'total_ganancia'
-                    ]
+                      'precio_final_total', // ✅ Usar nombre correcto de columna
+                      'precio_final_por_persona', // ✅ Agregar precio por persona
+                      'total_comisiones', // ✅ Usar nombre correcto
+                      'total_ganancia' // ✅ Usar nombre correcto
+                    ],
+                    required: false // ✅ LEFT JOIN para evitar errores si no existe
                   }
                 ]
               }

@@ -355,14 +355,10 @@ const handleSubmit = async (e) => {
 
     // ✅ CLAVE: Preparar datos del cliente (desde DB si existe, sino desde el formulario)
     const getClientData = () => {
-      // ✅ Convertir fechas a zona horaria de Colombia para evitar problemas de UTC
-      const fechaIdaColombia = form.fecha_ida ? 
-        DateTime.fromISO(form.fecha_ida).setZone('America/Bogota').toISODate() : 
-        form.fecha_ida;
-      
-      const fechaRegresoColombia = form.fecha_regreso ? 
-        DateTime.fromISO(form.fecha_regreso).setZone('America/Bogota').toISODate() : 
-        form.fecha_regreso;
+      // ✅ SIMPLIFICAR: Las fechas se envían tal como están (YYYY-MM-DD)
+      // No convertir zona horaria - dejar que el backend maneje las fechas como DATEONLY
+      const fechaIdaColombia = form.fecha_ida; // Mantener formato YYYY-MM-DD
+      const fechaRegresoColombia = form.fecha_regreso; // Mantener formato YYYY-MM-DD
 
       // ✅ Usar cliente_id del estado (ya se setea en useEffect)
       const baseData = {

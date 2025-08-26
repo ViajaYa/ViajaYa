@@ -50,65 +50,46 @@ const QuoteCalculator = ({ onContinue, quote_id }) => {
     });
   };
 
-  const removeExcursion = (idx) => {
-    const newExcursiones = form.excursiones.filter((_, i) => i !== idx);
-    setForm({ ...form, excursiones: newExcursiones });
-  };
-
-  const handleExcursionChange = (idx, field, value) => {
-    const newExcursiones = [...form.excursiones];
-    newExcursiones[idx][field] = value;
-    setForm({ ...form, excursiones: newExcursiones });
-  };
-
-  // ✅ NUEVO: Funciones para manejar extras
-  const addExtra = () => {
-    setForm({ 
-      ...form, 
-      extras: [...form.extras, { nombre: '', descripcion: '', costo: 0, proveedor: '' }] 
+  // Nuevo: función para preparar y enviar los datos calculados al padre
+  const handleApplyCalculation = (e) => {
+    e.preventDefault();
+    // Combinar excursiones y extras en un solo array de "extras"
+    const combinedExtras = [];
+    form.excursiones.forEach(excursion => {
+      if (excursion.nombre && excursion.costo > 0) {
+        combinedExtras.push({ ...excursion, tipo: 'excursion' });
+      }
     });
+    form.extras.forEach(extra => {
+      if (extra.nombre && extra.costo > 0) {
+        combinedExtras.push({ ...extra, tipo: 'extra' });
+      }
+    });
+    const data = {
+      adultos: form.adultos,
+      menores: form.menores,
+      infantes: form.infantes,
+      edades_menores: form.edades_menores,
+      edades_infantes: form.edades_infantes,
+      personas_atencion_especial: form.personas_atencion_especial,
+      num_personas: form.num_personas,
+      proveedor: form.proveedor,
+      items: form.items,
+      excursiones: [],
+      extras: combinedExtras,
+      margen_ganancia: Number(form.margen) || 0,
+      costo_total: calcularCostoTotal(),
+      precio_sugerido: calcularPrecioSugerido(),
+      personas_que_pagan: calcularPersonasQuePagan(),
+      precio_por_persona_que_paga: calcularPrecioPorPersonaQuePaga(),
+      estado: 'temporal',
+      user_id: user?.id || null,
+      quote_id: quote_id || null,
+    };
+    if (typeof onContinue === 'function') {
+      onContinue(data);
+    }
   };
-
-  const removeExtra = (idx) => {
-    const newExtras = form.extras.filter((_, i) => i !== idx);
-    setForm({ ...form, extras: newExtras });
-  };
-
-  const handleExtraChange = (idx, field, value) => {
-    const newExtras = [...form.extras];
-    newExtras[idx][field] = value;
-    setForm({ ...form, extras: newExtras });
-  };
-
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  // ✅ NUEVA FUNCIÓN: Calcular personas que realmente pagan (excluyendo infantes)
-  const calcularPersonasQuePagan = () => {
-    const adultos = parseInt(form.adultos) || 0;
-    const menores = parseInt(form.menores) || 0;
-    // Los infantes (<2 años) NO pagan
-    return adultos + menores;
-  };
-
-  // ✅ NUEVA FUNCIÓN: Actualizar total de personas automáticamente
-  const updateTotalPersonas = () => {
-    const total = (parseInt(form.adultos) || 0) + (parseInt(form.menores) || 0) + (parseInt(form.infantes) || 0);
-    setForm(prev => ({ ...prev, num_personas: total }));
-  };
-
-  // ✅ NUEVA FUNCIÓN: Manejar cambios en pasajeros
-  const handlePassengerChange = (field, value) => {
-    const newForm = { ...form, [field]: parseInt(value) || 0 };
-    
-    // Actualizar total automáticamente
-    const total = (newForm.adultos || 0) + (newForm.menores || 0) + (newForm.infantes || 0);
-    newForm.num_personas = total;
-    
-    setForm(newForm);
-  };
-
   const calcularCostoTotal = () => {
     const costoItems = form.items.reduce((acc, item) => acc + Number(item.costo || 0), 0);
     const costoExcursiones = form.excursiones.reduce((acc, exc) => acc + Number(exc.costo || 0), 0);
@@ -217,7 +198,7 @@ const QuoteCalculator = ({ onContinue, quote_id }) => {
   return (
     <div className="bg-white p-6 rounded-lg shadow-md max-w-2xl mx-auto">
       <h2 className="text-xl font-bold mb-4">Calculadora de Costos</h2>
-      <form onSubmit={handleSubmit}>
+  <form onSubmit={handleApplyCalculation}>
         <div className="mb-4">
           <label>Proveedor principal:</label>
           <input
@@ -500,10 +481,9 @@ const QuoteCalculator = ({ onContinue, quote_id }) => {
         {error && <div className="text-red-500 mb-2">{error}</div>}
         <button
           type="submit"
-          disabled={loading}
           className="bg-blue-600 text-white px-4 py-2 rounded"
         >
-          {loading ? 'Guardando...' : 'Guardar y continuar'}
+          Aplicar cálculo
         </button>
       </form>
     </div>

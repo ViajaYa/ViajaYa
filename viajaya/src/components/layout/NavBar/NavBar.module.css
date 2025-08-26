@@ -15,8 +15,16 @@
 }
 
 .logo {
-    width: 80px;
-    margin-left: 75px;
+    height: 60px;
+    width: auto;
+    margin-left: 30px; /* Ajusta este valor para mover a la derecha */
+    margin-top: 2px;   /* Ajusta este valor para mover hacia abajo */
+    position: static;
+    display: block;
+    background-color:#d4dddd;
+    border-radius:50%;
+  
+   
 }
 
 .ul {
