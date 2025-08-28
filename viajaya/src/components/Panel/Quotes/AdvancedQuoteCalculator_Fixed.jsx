@@ -661,9 +661,9 @@ const AdvancedQuoteCalculator = ({
     setForm(prev => {
       const newForm = JSON.parse(JSON.stringify(prev));
 
-      if (!categoria || categoria === 'observaciones_generales') {
+      if (!categoria) {
         // Para campos del nivel raíz como trip_type, num_personas, estado
-        newForm[campo || categoria] = valor;
+        newForm[campo] = valor;
       } else if (subcampo) {
         // Si el campo es 'equipaje_extra' y no existe, inicializarlo
         if (categoria === 'equipaje' && campo === 'equipaje_extra' && !newForm.equipaje.equipaje_extra) {
@@ -706,23 +706,6 @@ const AdvancedQuoteCalculator = ({
         }
       } else {
         newForm[categoria][campo] = valor;
-
-        if (categoria === 'ganancia') {
-        const costoBase = parseFloat(newForm.costo_base || 0);
-        if (campo === 'porcentaje') {
-          const porcentaje = parseFloat(valor || 0);
-          // Solo recalcula valor_fijo si hay costo base
-          if (costoBase > 0) {
-            newForm.ganancia.valor_fijo = ((porcentaje / 100) * costoBase).toFixed(0);
-          }
-        }
-        if (campo === 'valor_fijo') {
-          const valorFijo = parseFloat(valor || 0);
-          if (costoBase > 0) {
-            newForm.ganancia.porcentaje = ((valorFijo / costoBase) * 100).toFixed(2);
-          }
-        }
-      }
 
         // ✅ NUEVO: Calcular automáticamente noches del hotel cuando cambien las fechas
         if (categoria === 'tiquetes' && (campo === 'fecha_ida' || campo === 'fecha_vuelta')) {
