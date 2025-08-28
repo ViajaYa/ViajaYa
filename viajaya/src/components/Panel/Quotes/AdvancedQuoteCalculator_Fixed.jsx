@@ -137,7 +137,19 @@ const AdvancedQuoteCalculator = ({
     setForm({ ...defaultForm });
   }, [quote_id, user]);
 
+
+
   const [form, setForm] = useState({ ...defaultForm });
+
+
+useEffect(() => {
+  // Si no hay existingCalculation, SIEMPRE resetea el formulario
+  if (!existingCalculation || Object.keys(existingCalculation).length === 0) {
+    resetFormToDefault();
+  }
+}, [quote_id, user, existingCalculation, resetFormToDefault]);
+
+
   const [activeTab, setActiveTab] = useState('transporte');
   const [shouldRecalculate, setShouldRecalculate] = useState(false);
   const prevQuoteIdRef = useRef(quote_id);
