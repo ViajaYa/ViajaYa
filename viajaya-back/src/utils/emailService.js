@@ -10,6 +10,7 @@ const transporter = nodemailer.createTransport({
     user: process.env.SMTP_USER, // Tu correo de Gmail
     pass: process.env.SMTP_PASSWORD, // Tu contraseña de aplicación
   },
+  family: 4 // Fuerza IPv4
 });
 transporter.verify((error, success) => {
   if (error) {
