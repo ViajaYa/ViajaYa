@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { createQuoteCalculation, upsertQuoteCalculation, fetchCalculationBaseData } from '../../../redux/slices/quoteCalculationSlice';
@@ -33,17 +34,14 @@ const calculateDuration = (fechaIda, fechaVuelta) => {
   if (!fechaIda || !fechaVuelta) return '';
   
   try {
-    // Procesar fechas directamente desde string YYYY-MM-DD
     const [yearIda, monthIda, dayIda] = fechaIda.split('-');
     const [yearVuelta, monthVuelta, dayVuelta] = fechaVuelta.split('-');
-    
     const dateIda = new Date(yearIda, monthIda - 1, dayIda);
     const dateVuelta = new Date(yearVuelta, monthVuelta - 1, dayVuelta);
-    
     const diffTime = dateVuelta.getTime() - dateIda.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    return `${diffDays} día${diffDays !== 1 ? 's' : ''} (${diffDays > 0 ? diffDays - 1 : 0} noche${diffDays !== 2 ? 's' : ''})`;
+    // Ahora las noches son igual a diffDays
+    return `${diffDays} día${diffDays !== 1 ? 's' : ''} (${diffDays} noche${diffDays !== 1 ? 's' : ''})`;
   } catch (error) {
     console.error('Error calculando duración:', error);
     return '';
@@ -663,9 +661,9 @@ const AdvancedQuoteCalculator = ({
     setForm(prev => {
       const newForm = JSON.parse(JSON.stringify(prev));
 
-      if (!categoria) {
+      if (!categoria || categoria === 'observaciones_generales') {
         // Para campos del nivel raíz como trip_type, num_personas, estado
-        newForm[campo] = valor;
+        newForm[campo || categoria] = valor;
       } else if (subcampo) {
         // Si el campo es 'equipaje_extra' y no existe, inicializarlo
         if (categoria === 'equipaje' && campo === 'equipaje_extra' && !newForm.equipaje.equipaje_extra) {
@@ -708,6 +706,23 @@ const AdvancedQuoteCalculator = ({
         }
       } else {
         newForm[categoria][campo] = valor;
+
+        if (categoria === 'ganancia') {
+        const costoBase = parseFloat(newForm.costo_base || 0);
+        if (campo === 'porcentaje') {
+          const porcentaje = parseFloat(valor || 0);
+          // Solo recalcula valor_fijo si hay costo base
+          if (costoBase > 0) {
+            newForm.ganancia.valor_fijo = ((porcentaje / 100) * costoBase).toFixed(0);
+          }
+        }
+        if (campo === 'valor_fijo') {
+          const valorFijo = parseFloat(valor || 0);
+          if (costoBase > 0) {
+            newForm.ganancia.porcentaje = ((valorFijo / costoBase) * 100).toFixed(2);
+          }
+        }
+      }
 
         // ✅ NUEVO: Calcular automáticamente noches del hotel cuando cambien las fechas
         if (categoria === 'tiquetes' && (campo === 'fecha_ida' || campo === 'fecha_vuelta')) {
