@@ -10,7 +10,6 @@ const transporter = nodemailer.createTransport({
     user: process.env.SMTP_USER, // Tu correo de Gmail
     pass: process.env.SMTP_PASSWORD, // Tu contraseña de aplicación
   },
-  family: 4 // Fuerza IPv4
 });
 transporter.verify((error, success) => {
   if (error) {
@@ -52,24 +51,4 @@ const sendEmail = async (mailOptions) => {
     throw error; 
   }
 };
-// Endpoint temporal para probar conectividad SMTP desde Railway
-const net = require('net');
-const addSmtpTestEndpoint = (app) => {
-  app.get('/test-smtp', (req, res) => {
-    const socket = net.createConnection(465, 'smtp.gmail.com');
-    socket.setTimeout(5000);
-    socket.on('connect', () => {
-      res.send('Conexión SMTP exitosa');
-      socket.end();
-    });
-    socket.on('timeout', () => {
-      res.status(500).send('Timeout al conectar al SMTP');
-      socket.destroy();
-    });
-    socket.on('error', (err) => {
-      res.status(500).send('Error al conectar al SMTP: ' + err.message);
-    });
-  });
-};
-
-module.exports = { sendEmail, addSmtpTestEndpoint };
+module.exports = { sendEmail };
