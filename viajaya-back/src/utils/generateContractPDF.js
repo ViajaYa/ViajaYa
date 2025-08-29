@@ -2,6 +2,7 @@ const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
 const { generatePassengerSummary } = require('./passengerValidation');
+const { calcularPersonasQuePagan } = require('./quoteCalculations'); // ✅ AGREGAR
 
 // ✅ Función auxiliar para generar desglose detallado de pasajeros
 function generatePassengerBreakdown(contractData) {
@@ -917,9 +918,19 @@ const createFinancialSection = (doc, contractData) => {
   const contentWidth = pageWidth - 2 * margin;
   let yPos = 120;
   
-  // ✅ Información de precios - datos reales detallados
+  // ✅ Información de precios - datos reales detallados CON CÁLCULO CORREGIDO
   const precioTotal = parseFloat(contractData.precio_total || 0);
-  const precioPorPersona = precioTotal / (contractData.numero_pasajeros || 1);
+  
+  // ✅ CALCULAR: Personas que pagan (excluye infantes)
+  const quote = contractData.Quote || contractData;
+  const personasQuePagan = calcularPersonasQuePagan({
+    adultos: quote?.adultos || 0,
+    menores: quote?.menores || 0,
+    infantes: quote?.infantes || 0
+  });
+  
+  // ✅ PRECIO CORRECTO: Dividir por personas que pagan, no por total de pasajeros
+  const precioPorPersona = personasQuePagan > 0 ? precioTotal / personasQuePagan : 0;
   const analysis = contractData.quote_calculation_analysis;
   
   // Crear cuadro de precios con más detalles
@@ -937,11 +948,11 @@ const createFinancialSection = (doc, contractData) => {
   doc.fontSize(12)
      .fillColor('#000000')
      .font('Helvetica-Bold')
-     .text(`VALOR PRECIO POR PERSONA: $ ${formatearMoneda(precioPorPersona).replace('$', '')}`, margin + 10, yPos);
+     .text(`VALOR PRECIO POR PERSONA QUE PAGA: $ ${formatearMoneda(precioPorPersona).replace('$', '')}`, margin + 10, yPos);
   
   yPos += 20;
   doc.fontSize(12)
-     .text(`Número de pasajeros: ${contractData.numero_pasajeros} Pasajeros`, margin + 10, yPos);
+     .text(`Personas que pagan: ${personasQuePagan} de ${contractData.numero_pasajeros || quote?.numero_personas} pasajeros`, margin + 10, yPos);
   
   yPos += 20;
   doc.fontSize(14)

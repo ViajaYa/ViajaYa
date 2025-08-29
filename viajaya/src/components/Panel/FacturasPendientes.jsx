@@ -412,39 +412,84 @@ const FacturasPendientes = () => {
                   </div>
                 </div>
               </div>
-              
-              {/* Desglose de Items */}
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold mb-4">Desglose de Items</h3>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full bg-white border border-gray-200 rounded-lg">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Descripción</th>
-                        <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">Cantidad</th>
-                        <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">Valor Unit.</th>
-                        <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {selectedInvoice.items_detallados?.map((item, index) => (
-                        <tr key={index}>
-                          <td className="px-4 py-3 text-sm text-gray-900">{item.descripcion}</td>
-                          <td className="px-4 py-3 text-sm text-gray-900 text-right">{item.cantidad}</td>
-                          <td className="px-4 py-3 text-sm text-gray-900 text-right">
-                            {formatCurrency(item.valor_unitario)}
-                          </td>
-                          <td className="px-4 py-3 text-sm font-medium text-gray-900 text-right">
-                            {formatCurrency(item.valor_total)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-              
-              {/* Resumen de Totales */}
+
+{/* Desglose de Items */}
+<div className="mb-6">
+  <h3 className="text-lg font-semibold mb-4">Desglose de Items</h3>
+  <div className="overflow-x-auto">
+    <table className="min-w-full bg-white border border-gray-200 rounded-lg">
+      <thead className="bg-gray-50">
+        <tr>
+          <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Tipo</th>
+          <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Descripción</th>
+          <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">Cantidad</th>
+          <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">Valor Unit.</th>
+          <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">Total</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-gray-200">
+        {selectedInvoice.items_factura?.items_contrato?.length > 0 ? (
+          selectedInvoice.items_factura.items_contrato.map((item, index) => (
+            <tr key={index} className="hover:bg-gray-50">
+              <td className="px-4 py-3">
+                <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                  item.tipo === 'tickets' ? 'bg-blue-100 text-blue-800' :
+                  item.tipo === 'alojamiento' ? 'bg-green-100 text-green-800' :
+                  item.tipo === 'traslados' ? 'bg-yellow-100 text-yellow-800' :
+                  item.tipo === 'alimentacion' ? 'bg-purple-100 text-purple-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {item.tipo.charAt(0).toUpperCase() + item.tipo.slice(1)}
+                </span>
+              </td>
+              <td className="px-4 py-3 text-sm text-gray-900">{item.descripcion}</td>
+              <td className="px-4 py-3 text-sm text-gray-900 text-right">{item.cantidad}</td>
+              <td className="px-4 py-3 text-sm text-gray-900 text-right">
+                {formatCurrency(item.precio_unitario)}
+              </td>
+              <td className="px-4 py-3 text-sm font-medium text-gray-900 text-right">
+                {formatCurrency(item.precio_total)}
+              </td>
+            </tr>
+          ))
+        ) : (
+          <tr>
+            <td colSpan="5" className="px-4 py-8 text-center text-gray-500">
+              No hay items detallados disponibles
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{/* También agreguemos información del contrato */}
+{selectedInvoice.items_factura?.contract_info && (
+  <div className="mb-6 bg-blue-50 p-4 rounded-lg">
+    <h3 className="text-lg font-semibold mb-4 text-blue-800">Información del Viaje</h3>
+    <div className="grid md:grid-cols-2 gap-4">
+      <div>
+        <p className="text-sm text-blue-600 mb-1">
+          <span className="font-medium">Contrato:</span> {selectedInvoice.items_factura.contract_info.contract_number}
+        </p>
+        <p className="text-sm text-blue-600 mb-1">
+          <span className="font-medium">Destino:</span> {selectedInvoice.items_factura.contract_info.destino}
+        </p>
+      </div>
+      <div>
+        <p className="text-sm text-blue-600 mb-1">
+          <span className="font-medium">Fecha de Viaje:</span> {formatDate(selectedInvoice.items_factura.contract_info.fecha_viaje)}
+        </p>
+        <p className="text-sm text-blue-600">
+          <span className="font-medium">Número de Personas:</span> {selectedInvoice.items_factura.contract_info.numero_personas}
+        </p>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* Resumen de Totales */}
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="grid md:grid-cols-3 gap-4">
                   <div className="text-center">

@@ -428,24 +428,25 @@ useEffect(() => {
   console.log('Traslados costo_total (por persona):', form.traslados?.costo_total);
   console.log('Alimentacion costo_total (por persona):', form.alimentacion?.costo_total);
 
-  // ✅ CORREGIDO: Los costos son POR PERSONA, necesitamos multiplicar por personas que pagan
-  costoBase += parseFloat(form.tiquetes?.costo_total || 0) * personasQuePagan;
-  costoBase += parseFloat(form.traslados?.costo_total || 0) * personasQuePagan;
-  costoBase += parseFloat(form.hotel?.costo_total || 0) * personasQuePagan;
-  costoBase += parseFloat(form.alimentacion?.costo_total || 0) * personasQuePagan;
-  costoBase += parseFloat(form.equipaje?.costo_total || 0) * personasQuePagan;
-  costoBase += parseFloat(form.seguros?.costo_total || 0) * personasQuePagan;
-  costoBase += parseFloat(form.seguros?.asistencia_medica?.costo || 0) * personasQuePagan;
+  // ✅ CORREGIDO: Los costos son POR PERSONA, NO multiplicar por personas que pagan
+  // Ya que el backend convertirá estos valores correctamente a items del contrato
+  costoBase += parseFloat(form.tiquetes?.costo_total || 0);
+  costoBase += parseFloat(form.traslados?.costo_total || 0);
+  costoBase += parseFloat(form.hotel?.costo_total || 0);
+  costoBase += parseFloat(form.alimentacion?.costo_total || 0);
+  costoBase += parseFloat(form.equipaje?.costo_total || 0);
+  costoBase += parseFloat(form.seguros?.costo_total || 0);
+  costoBase += parseFloat(form.seguros?.asistencia_medica?.costo || 0);
 
   console.log('🎯 COSTO BASE DESPUÉS DE SERVICIOS BÁSICOS:');
-  console.log('- Tiquetes total:', parseFloat(form.tiquetes?.costo_total || 0) * personasQuePagan);
-  console.log('- Hotel total:', parseFloat(form.hotel?.costo_total || 0) * personasQuePagan);
-  console.log('- Traslados total:', parseFloat(form.traslados?.costo_total || 0) * personasQuePagan);
-  console.log('- Alimentación total:', parseFloat(form.alimentacion?.costo_total || 0) * personasQuePagan);
-  console.log('- Equipaje total:', parseFloat(form.equipaje?.costo_total || 0) * personasQuePagan);
-  console.log('- Seguros total:', parseFloat(form.seguros?.costo_total || 0) * personasQuePagan);
-  console.log('- Asistencia médica total:', parseFloat(form.seguros?.asistencia_medica?.costo || 0) * personasQuePagan);
-  console.log('- Costo base parcial:', costoBase);
+  console.log('- Tiquetes (por persona):', parseFloat(form.tiquetes?.costo_total || 0));
+  console.log('- Hotel (por persona):', parseFloat(form.hotel?.costo_total || 0));
+  console.log('- Traslados (por persona):', parseFloat(form.traslados?.costo_total || 0));
+  console.log('- Alimentación (por persona):', parseFloat(form.alimentacion?.costo_total || 0));
+  console.log('- Equipaje (por persona):', parseFloat(form.equipaje?.costo_total || 0));
+  console.log('- Seguros (por persona):', parseFloat(form.seguros?.costo_total || 0));
+  console.log('- Asistencia médica (por persona):', parseFloat(form.seguros?.asistencia_medica?.costo || 0));
+  console.log('- Costo base POR PERSONA:', costoBase);
 
     // ✅ ACTUALIZADO: Calcular extras combinados según el nuevo sistema
     let totalExtrasPersonas = 0;
@@ -480,11 +481,17 @@ useEffect(() => {
     // Sumar al costo base: extras por persona se multiplican por personas que pagan
     costoBase += (totalExtrasPersonas * personasQuePagan) + totalExtrasGenerales;
 
-    console.log('🎯 COSTO BASE FINAL (después de actividades):', costoBase);
+    // ✅ AHORA multiplicar el costo base por personas que pagan para obtener el total del viaje
+    const costoBaseTotalViaje = costoBase * personasQuePagan;
+
+    console.log('🎯 COSTO BASE FINAL:');
+    console.log('- Costo base por persona:', costoBase);
+    console.log('- Personas que pagan:', personasQuePagan);
+    console.log('- Costo base total del viaje:', costoBaseTotalViaje);
     console.log('- Total extras por persona:', totalExtrasPersonas, 'x', personasQuePagan, '=', totalExtrasPersonas * personasQuePagan);
     console.log('- Total extras generales:', totalExtrasGenerales);
 
-    // Calcular comisiones sobre el costo base SOLO si costoBase > 0
+    // Calcular comisiones sobre el costo base TOTAL del viaje
     let totalComisiones = 0;
     // Helper: ensure all roles exist with default structure
     const defaultRoles = {
@@ -495,7 +502,7 @@ useEffect(() => {
     };
     const comisionesActualizadas = { ...defaultRoles, ...(form.comisiones || {}) };
 
-    if (costoBase > 0) {
+    if (costoBaseTotalViaje > 0) {
       Object.keys(comisionesActualizadas).forEach(rol => {
         if (rol !== 'total_comisiones' && comisionesActualizadas[rol]) {
           const comision = comisionesActualizadas[rol];
@@ -507,7 +514,7 @@ useEffect(() => {
             totalRol = parseFloat(comision.valor_por_persona || 0) * personasQuePagan;
           } else if (comision.tipo_calculo === 'percentage') {
             const porcentaje = parseFloat(comision.porcentaje || 0);
-            totalRol = costoBase * porcentaje / 100;
+            totalRol = costoBaseTotalViaje * porcentaje / 100;
           } else if (comision.tipo_calculo === 'fixed_total') {
             totalRol = parseFloat(comision.valor_fijo || 0);
           }
@@ -530,18 +537,18 @@ useEffect(() => {
     }
     comisionesActualizadas.total_comisiones = totalComisiones;
 
-    // Calcular ganancia sobre el costo base (sin comisiones)
+    // Calcular ganancia sobre el costo base total del viaje (sin comisiones)
     const porcentajeGanancia = parseFloat(form.ganancia.porcentaje || 0);
     const valorFijoGanancia = parseFloat(form.ganancia.valor_fijo || 0);
-    const totalGanancia = (costoBase * porcentajeGanancia / 100) + valorFijoGanancia;
+    const totalGanancia = (costoBaseTotalViaje * porcentajeGanancia / 100) + valorFijoGanancia;
 
-    // Precio final = costo base + comisiones + ganancia
-    const precioFinalTotal = costoBase + totalComisiones + totalGanancia;
+    // Precio final = costo base total + comisiones + ganancia
+    const precioFinalTotal = costoBaseTotalViaje + totalComisiones + totalGanancia;
     const precioFinalPorPersona = personasQuePagan > 0 ? precioFinalTotal / personasQuePagan : 0; // ✅ Dividir por personas que pagan
 
     setForm(prev => ({
       ...prev,
-      costo_base: costoBase,
+      costo_base: costoBaseTotalViaje, // ✅ Guardar el costo base total del viaje
       comisiones: comisionesActualizadas,
       total_comisiones: totalComisiones,
       ganancia: {
@@ -554,7 +561,7 @@ useEffect(() => {
     }));
     
     console.log('🎯 RESULTADO FINAL CALCULAR TOTALES:');
-    console.log('- Costo Base (total para', personasQuePagan, 'personas):', costoBase);
+    console.log('- Costo Base Total del Viaje:', costoBaseTotalViaje);
     console.log('- Total Comisiones:', totalComisiones);
     console.log('- Total Ganancia:', totalGanancia);
     console.log('- Precio Final Total:', precioFinalTotal);
@@ -641,7 +648,12 @@ useEffect(() => {
     }
   }, [baseData]);
 
-  // ...existing code...
+  const handleSimpleInputChange = (field, value) => {
+  setForm(prev => ({
+    ...prev,
+    [field]: value
+  }));
+};
 
   useEffect(() => {
     calcularTotales();
@@ -1280,7 +1292,7 @@ useEffect(() => {
                     </div> */}
                     {form.tiquetes.tipo === 'ida_vuelta' && (
                       <div>
-                        <label className="block text-sm font-medium mb-1">Valor (por persona)</label>
+                        <label className="block text-sm font-medium mb-1">Precio (por persona)</label>
                         <input
                           type="number"
                           value={form.tiquetes.costo_vuelta}
@@ -1422,7 +1434,7 @@ useEffect(() => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Valor por Noche (por persona)</label>
+                  <label className="block text-sm font-medium mb-1">Precio por Noche (por persona)</label>
                   <input
                     type="number"
                     value={form.hotel.costo_noche}
@@ -1463,7 +1475,7 @@ useEffect(() => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Valor Total (por persona)</label>
+                  <label className="block text-sm font-medium mb-1">Precio Total (por persona)</label>
                   <input
                     type="number"
                     value={form.alimentacion.costo_total}
@@ -1546,7 +1558,7 @@ useEffect(() => {
 
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Valor Total Equipaje (por persona)</label>
+                  <label className="block text-sm font-medium mb-1">Precio Total Equipaje (por persona)</label>
                   <input
                     type="number"
                     value={form.equipaje.costo_total}
@@ -1658,7 +1670,7 @@ useEffect(() => {
 
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Valor por persona *
+                              Precio por persona *
                             </label>
                             <input
                               type="number"
@@ -1752,7 +1764,7 @@ useEffect(() => {
 
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Valor total del servicio *
+                              Precio total del servicio *
                             </label>
                             <input
                               type="number"
@@ -1899,7 +1911,7 @@ useEffect(() => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Valor Fijo</label>
+                  <label className="block text-sm font-medium mb-1">Precio Fijo</label>
                   <input
                     type="number"
                     value={form.ganancia.valor_fijo}
@@ -2040,7 +2052,7 @@ useEffect(() => {
               <label className="block text-sm font-medium mb-2">Observaciones Generales</label>
               <textarea
                 value={form.observaciones_generales}
-                onChange={e => handleInputChange('observaciones_generales', '', e.target.value)}
+                onChange={e => handleSimpleInputChange('observaciones_generales', e.target.value)}
                 rows={3}
                 className="w-full border rounded px-3 py-2"
                 placeholder="Comentarios adicionales sobre el presupuesto..."

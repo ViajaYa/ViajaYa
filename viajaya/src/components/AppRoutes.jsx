@@ -407,7 +407,7 @@ const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
 
       {/* ✅ DASHBOARD FINANCIERO */}
       <Route path="/financial-dashboard" element={
-        <RoleRoute allowedRoles={[USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.CONTADOR, USER_ROLES.OWNER]}>
+        <RoleRoute allowedRoles={[ USER_ROLES.ADMIN, USER_ROLES.CONTADOR, USER_ROLES.OWNER]}>
           <ErrorBoundary>
             <Suspense fallback={<LoadingSpinner />}>
               <FinancialDashboard />

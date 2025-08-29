@@ -101,14 +101,25 @@ const ItemCard = ({
             </p>
           </div>
           <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wide">Cantidad</p>
-            <p className="text-lg font-semibold text-gray-900">{item.cantidad || 1}</p>
+            <p className="text-xs text-gray-500 uppercase tracking-wide">
+              {item.tipo === 'ganancia_empresa' ? 'Cantidad' : 'Pasajeros'}
+            </p>
+            <p className="text-lg font-semibold text-gray-900">
+              {item.tipo === 'ganancia_empresa' ? (item.cantidad || 1) : `${item.cantidad || 1} ${(item.cantidad || 1) === 1 ? 'pasajero' : 'pasajeros'}`}
+            </p>
           </div>
           <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wide">Precio Unitario</p>
+            <p className="text-xs text-gray-500 uppercase tracking-wide">
+              {item.tipo === 'ganancia_empresa' ? 'Precio Unitario' : 'Precio por Pasajero'}
+            </p>
             <p className="text-lg font-semibold text-gray-900">
               ${parseFloat(item.precio_unitario || 0).toLocaleString('es-CO')}
             </p>
+            {item.tipo !== 'ganancia_empresa' && item.cantidad > 1 && (
+              <p className="text-xs text-blue-600 mt-1">
+                ${parseFloat(item.precio_unitario || 0).toLocaleString('es-CO')} × {item.cantidad} = ${parseFloat(item.precio_total || 0).toLocaleString('es-CO')}
+              </p>
+            )}
           </div>
           <div>
             <p className="text-xs text-gray-500 uppercase tracking-wide">Estado</p>
