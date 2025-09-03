@@ -3284,10 +3284,95 @@ servePDF: async (req, res) => {
       });
     }
   },
+
+  // 🧪 FUNCIÓN DE PRUEBA PARA VER PDF - TEMPORAL
+  generateTestPDF: async (req, res) => {
+    try {
+      console.log('🧪 Generando PDF de prueba...');
+      
+      // Datos de prueba para el contrato
+      const testContractData = {
+        contract_number: 'TEST-2024-001',
+        quote: {
+          tipo_viaje: 'Nacional',
+          destino: 'Cartagena, Colombia',
+          fecha_inicio: '2024-12-15',
+          fecha_fin: '2024-12-20',
+          numero_personas: 4
+        },
+        cliente: {
+          nombre: 'Juan Pérez Gómez',
+          cedula: '12345678',
+          telefono: '300 123 4567',
+          email: 'juan.perez@email.com',
+          direccion: 'Calle 123 #45-67, Bogotá'
+        },
+        total_amount: 2500000,
+        payments: [
+          {
+            amount: 1250000,
+            payment_date: '2024-11-01',
+            payment_method: 'Transferencia',
+            status: 'paid'
+          },
+          {
+            amount: 1250000,
+            payment_date: '2024-12-01',
+            payment_method: 'Efectivo',
+            status: 'pending'
+          }
+        ],
+        items: [
+          {
+            descripcion: 'Paquete turístico Cartagena 5 días/4 noches',
+            quantity: 4,
+            unit_price: 625000,
+            total_price: 2500000
+          }
+        ],
+        passengers: [
+          {
+            nombre: 'Juan Pérez',
+            cedula: '12345678',
+            telefono: '300 123 4567'
+          },
+          {
+            nombre: 'María García',
+            cedula: '87654321',
+            telefono: '300 765 4321'
+          },
+          {
+            nombre: 'Carlos Pérez',
+            cedula: '11223344',
+            telefono: '300 112 2334'
+          },
+          {
+            nombre: 'Ana García',
+            cedula: '44332211',
+            telefono: '300 443 3221'
+          }
+        ]
+      };
+
+      // Generar el PDF
+      const pdfResult = await generateContractPDF(testContractData, false);
+
+      // Configurar headers para mostrar PDF en navegador
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'inline; filename=contrato-prueba.pdf');
+      
+      // Enviar el PDF
+      res.send(pdfResult.buffer);
+      
+    } catch (error) {
+      console.error('❌ Error generando PDF de prueba:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error generando PDF de prueba',
+        error: error.message
+      });
+    }
+  },
 };
-
- 
-
-
 
 module.exports = contractController;
