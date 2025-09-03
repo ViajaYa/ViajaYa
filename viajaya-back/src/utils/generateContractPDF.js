@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { generatePassengerSummary } = require('./passengerValidation');
 const { calcularPersonasQuePagan } = require('./quoteCalculations'); // ✅ AGREGAR
+const { formatForPDF } = require('./dateUtils'); // ✅ AGREGAR utilidades de fecha
 
 // ✅ Función auxiliar para generar desglose detallado de pasajeros
 function generatePassengerBreakdown(contractData) {
@@ -103,13 +104,9 @@ const ensurePDFDirectory = () => {
   return pdfDir;
 };
 
-// ✅ Función para formatear fechas en español
+// ✅ Función para formatear fechas en español - CORREGIDO para usar utilidades consistentes
 const formatearFecha = (fecha) => {
-  return new Date(fecha).toLocaleDateString('es-ES', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric'
-  });
+  return formatForPDF(fecha); // Usar utilidad consistente en lugar de new Date().toLocaleDateString
 };
 
 // ✅ Función para formatear moneda colombiana

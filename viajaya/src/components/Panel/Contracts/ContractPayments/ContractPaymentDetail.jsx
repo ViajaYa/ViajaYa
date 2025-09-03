@@ -8,6 +8,7 @@ import {
   uploadPaymentReceipt 
 } from '../../../../redux/slices/contractPaymentSlice';
 import PropTypes from 'prop-types';
+import PaymentReceiptActions from './PaymentReceiptActions';
 
 const ContractPaymentDetail = ({ contractId, isOpen, onClose, onPaymentSuccess }) => {
   const dispatch = useDispatch();
@@ -501,13 +502,24 @@ const ContractPaymentDetail = ({ contractId, isOpen, onClose, onPaymentSuccess }
                       </div>
                     )}
                   </div>
-                  <div className="text-right">
+                  <div className="text-right space-y-2">
+                    {/* ✅ NUEVO: Botones de recibo para pagos verificados */}
+                    {payment.status === 'verified' && (
+                      <div className="mb-2">
+                        <PaymentReceiptActions 
+                          payment={payment} 
+                          showLabels={false} 
+                          size="small" 
+                        />
+                      </div>
+                    )}
+                    
                     {payment.comprobante_url ? (
                       <a 
                         href={payment.comprobante_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 text-sm"
+                        className="block text-blue-600 hover:text-blue-800 text-sm"
                       >
                         Ver comprobante
                       </a>

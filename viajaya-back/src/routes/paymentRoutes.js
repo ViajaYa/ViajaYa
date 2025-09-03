@@ -94,6 +94,29 @@ try {
     router.get('/reports/summary', authenticateToken, authorizeRoles(4, 5, 6, 7), paymentController.getPaymentsReport);
   }
 
+  // ✅ NUEVAS RUTAS PARA RECIBOS PDF
+  if (paymentController.generateReceiptPDF) {
+    console.log('✅ Agregando ruta generateReceiptPDF...');
+    router.get('/:id/receipt/download', 
+      authenticateToken,
+      authorizeRoles(1, 2, 3, 4, 5, 6, 7), // Todos los roles pueden descargar recibos
+      paymentController.generateReceiptPDF
+    );
+  } else {
+    console.log('❌ No se puede agregar ruta generateReceiptPDF - método no existe');
+  }
+
+  if (paymentController.previewReceiptPDF) {
+    console.log('✅ Agregando ruta previewReceiptPDF...');
+    router.get('/:id/receipt/preview', 
+      authenticateToken,
+      authorizeRoles(1, 2, 3, 4, 5, 6, 7), // Todos los roles pueden ver vista previa
+      paymentController.previewReceiptPDF
+    );
+  } else {
+    console.log('❌ No se puede agregar ruta previewReceiptPDF - método no existe');
+  }
+
   console.log('✅ paymentRoutes cargado exitosamente');
 
 } catch (error) {

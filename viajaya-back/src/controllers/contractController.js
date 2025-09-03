@@ -21,44 +21,21 @@ const {
 const {
   generateSignedContractPDF,
 } = require("../utils/generateSignedContractPDF");
+const { formatForPDF } = require("../utils/dateUtils");
 
 // ✅ HELPER: Formatear fecha sin problemas de zona horaria (para templates HTML)
 const formatDateForEmail = (dateStr) => {
   if (!dateStr) return 'Fecha no disponible';
   
   try {
-    // Si es string en formato YYYY-MM-DD, procesarlo directamente
-    if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-      const [year, month, day] = dateStr.split('-');
-      const date = new Date(year, month - 1, day); // mes es 0-indexado
-      
-      return date.toLocaleDateString("es-ES", {
-        weekday: "long",
-        year: "numeric", 
-        month: "long",
-        day: "numeric",
-      });
+    const formattedDate = formatForPDF(dateStr);
+    if (formattedDate === 'Fecha no disponible') {
+      return 'Fecha no disponible';
     }
     
-    // Si es fecha ISO (YYYY-MM-DDTHH:mm:ss.sssZ), extraer solo la parte de la fecha
-    if (typeof dateStr === 'string' && dateStr.includes('T')) {
-      const dateOnly = dateStr.split('T')[0];
-      const [year, month, day] = dateOnly.split('-');
-      const date = new Date(year, month - 1, day);
-      
-      return date.toLocaleDateString("es-ES", {
-        weekday: "long",
-        year: "numeric",
-        month: "long", 
-        day: "numeric",
-      });
-    }
-    
-    // Fallback: intentar parsear como fecha normal
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) {
-      return 'Fecha inválida';
-    }
+    // Convertir formato DD/MM/YYYY a formato largo en español
+    const [day, month, year] = formattedDate.split('/');
+    const date = new Date(year, month - 1, day); // mes es 0-indexado
     
     return date.toLocaleDateString("es-ES", {
       weekday: "long",
@@ -78,27 +55,7 @@ const formatDateSimple = (dateStr) => {
   if (!dateStr) return 'N/A';
   
   try {
-    // Si es string en formato YYYY-MM-DD, procesarlo directamente
-    if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-      const [year, month, day] = dateStr.split('-');
-      return `${day}/${month}/${year}`;
-    }
-    
-    // Si es fecha ISO (YYYY-MM-DDTHH:mm:ss.sssZ), extraer solo la parte de la fecha
-    if (typeof dateStr === 'string' && dateStr.includes('T')) {
-      const dateOnly = dateStr.split('T')[0];
-      const [year, month, day] = dateOnly.split('-');
-      return `${day}/${month}/${year}`;
-    }
-    
-    // Fallback: intentar parsear como fecha normal
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) {
-      return 'Fecha inválida';
-    }
-    
-    return date.toLocaleDateString("es-ES");
-    
+    return formatForPDF(dateStr);
   } catch (error) {
     console.error('Error formateando fecha simple:', error);
     return 'Error en fecha';

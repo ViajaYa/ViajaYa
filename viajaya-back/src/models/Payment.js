@@ -170,12 +170,8 @@ module.exports = (sequelize) => {
         if (this.monto <= 0) {
           throw new Error('El monto debe ser mayor a cero');
         }
-      },
-      comprobanteRequeridoParaTransferencia() {
-        if (this.tipo_pago === 'transferencia' && !this.comprobante_url && this.status !== 'pending') {
-          throw new Error('El comprobante es requerido para transferencias');
-        }
       }
+      // ✅ REMOVIDO: validación de comprobante ya no es obligatoria
     }
   });
 };

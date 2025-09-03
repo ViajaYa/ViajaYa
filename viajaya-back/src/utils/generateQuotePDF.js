@@ -1,4 +1,7 @@
 // ✅ Calcular noches y días de viaje
+const { formatForPDF } = require("../utils/dateUtils");
+
+
 function calcularNoches(fechaIda, fechaRegreso) {
   if (!fechaIda || !fechaRegreso) return null;
   const ida = new Date(fechaIda);
@@ -54,8 +57,8 @@ function generateBudgetBreakdown(quote) {
             `Origen: ${calculation.tiquetes.origen || 'No especificado'}`,
             `Destino: ${calculation.tiquetes.destino || 'No especificado'}`,
             `Aerolínea: ${calculation.tiquetes.proveedor || 'Por confirmar'}`,
-            `Fecha ida: ${calculation.tiquetes.fecha_ida ? new Date(calculation.tiquetes.fecha_ida).toLocaleDateString('es-ES') : 'Por confirmar'}`,
-            `Fecha vuelta: ${calculation.tiquetes.fecha_vuelta ? new Date(calculation.tiquetes.fecha_vuelta).toLocaleDateString('es-ES') : 'Por confirmar'}`
+            `Fecha ida: ${calculation.tiquetes.fecha_ida ? formatForPDF(calculation.tiquetes.fecha_ida) : 'Por confirmar'}`,
+            `Fecha vuelta: ${calculation.tiquetes.fecha_vuelta ? formatForPDF(calculation.tiquetes.fecha_vuelta) : 'Por confirmar'}`
           ],
           totalPerPerson: calculation.tiquetes.costo_total,
           totalGeneral: calculation.tiquetes.costo_total * personas_que_pagan
@@ -395,8 +398,8 @@ const generateQuotePDF = async (quote, saveToFile = true) => {
   yPosition += 20;
 
   // Datos principales del viaje
-  const fechaIda = quote.fecha_ida ? new Date(quote.fecha_ida).toLocaleDateString('es-CO') : null;
-  const fechaRegreso = quote.fecha_regreso ? new Date(quote.fecha_regreso).toLocaleDateString('es-CO') : null;
+  const fechaIda = quote.fecha_ida ? formatForPDF(quote.fecha_ida) : null;
+const fechaRegreso = quote.fecha_regreso ? formatForPDF(quote.fecha_regreso) : null;
   const noches = calcularNoches(quote.fecha_ida, quote.fecha_regreso);
   const dias = noches ? noches + 1 : null;
   const personas = [

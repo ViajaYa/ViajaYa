@@ -2,6 +2,7 @@ const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
+const { formatForPDF } = require('./dateUtils');
 
 // ✅ Función para verificar si necesitamos comprimir espaciado
 const needsCompression = (yPosition, pageHeight) => {
@@ -66,13 +67,16 @@ const generatePaymentDocument = async (supportDocument, commission) => {
       let yPosition = 60; // Reducido de 80
 
       // ✅ FECHA DEL DÍA (formato exacto como en la imagen)
-      const fechaHoy = new Date().toLocaleDateString('es-CO', {
+      const fechaHoy = formatForPDF(new Date().toISOString());
+      // Convertir DD/MM/YYYY a formato largo
+      const [day, month, year] = fechaHoy.split('/');
+      const fechaLarga = new Date(year, month - 1, day).toLocaleDateString('es-CO', {
         year: 'numeric',
         month: 'long',
         day: 'numeric'
       });
       doc.fontSize(12)
-         .text(`Bogotá, ${fechaHoy}`, 80, yPosition);
+         .text(`Bogotá, ${fechaLarga}`, 80, yPosition);
 
       yPosition += getDynamicSpacing(yPosition, pageHeight, 50, 35); // Reducido de 80
 
