@@ -7,6 +7,9 @@ const initialState = {
   userCommissions: [],
   contractCommissions: [], // Nueva propiedad para comisiones por contrato
   configuredCommissions: {}, // ✅ NUEVO: Para comisiones configuradas por trip_type
+  monthlyLimits: [], // ✅ NUEVO: Para límites mensuales de todos los vendedores
+  currentVendorLimit: null, // ✅ NUEVO: Para límite mensual de un vendedor específico
+  vendorLimitSummaries: {}, // ✅ NUEVO: Para resúmenes de límites por vendedor (cache)
   totalCommissions: 0,
   currentCommission: null,
   loading: false,
@@ -178,6 +181,51 @@ export const fetchCommissionsByTripType = createAsyncThunk(
   }
 );
 
+// ✅ NUEVO: Obtener resumen de límite mensual de un vendedor específico (versión compacta)
+export const fetchVendorLimitSummary = createAsyncThunk(
+  'commission/fetchVendorLimitSummary',
+  async (vendedorId, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/commissions/vendor-limit-summary/${vendedorId}`);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Error obteniendo resumen de límite del vendedor'
+      );
+    }
+  }
+);
+
+// ✅ NUEVO: Obtener límite mensual de un vendedor específico
+export const fetchMonthlyPaymentLimit = createAsyncThunk(
+  'commission/fetchMonthlyPaymentLimit',
+  async (vendedorId, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/commissions/monthly-limit/${vendedorId}`);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Error obteniendo límite mensual del vendedor'
+      );
+    }
+  }
+);
+
+// ✅ NUEVO: Obtener límites mensuales de todos los vendedores
+export const fetchAllVendorsMonthlyLimits = createAsyncThunk(
+  'commission/fetchAllVendorsMonthlyLimits',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/commissions/monthly-limits/all');
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Error obteniendo límites mensuales de vendedores'
+      );
+    }
+  }
+);
+
 // Slice
 const commissionSlice = createSlice({
   name: 'commission',
@@ -209,6 +257,9 @@ const commissionSlice = createSlice({
     resetCommissions: (state) => {
       state.commissions = [];
       state.userCommissions = [];
+      state.contractCommissions = [];
+      state.monthlyLimits = [];
+      state.currentVendorLimit = null;
       state.totalCommissions = 0;
       state.currentCommission = null;
       state.pagination = {
@@ -217,6 +268,11 @@ const commissionSlice = createSlice({
         total: 0,
         totalPages: 0,
       };
+    },
+    // ✅ NUEVO: Limpiar límites mensuales
+    clearMonthlyLimits: (state) => {
+      state.monthlyLimits = [];
+      state.currentVendorLimit = null;
     },
   },
   extraReducers: (builder) => {
@@ -391,6 +447,48 @@ const commissionSlice = createSlice({
       .addCase(fetchCommissionsByTripType.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+      // ✅ NUEVO: Fetch Vendor Limit Summary
+      .addCase(fetchVendorLimitSummary.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchVendorLimitSummary.fulfilled, (state, action) => {
+        state.loading = false;
+        // Guardar el resumen en cache por vendedorId
+        if (action.payload.summary) {
+          state.vendorLimitSummaries[action.payload.summary.vendedorId] = action.payload.summary;
+        }
+      })
+      .addCase(fetchVendorLimitSummary.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // ✅ NUEVO: Fetch Monthly Payment Limit (vendedor específico)
+      .addCase(fetchMonthlyPaymentLimit.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchMonthlyPaymentLimit.fulfilled, (state, action) => {
+        state.loading = false;
+        state.currentVendorLimit = action.payload;
+      })
+      .addCase(fetchMonthlyPaymentLimit.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // ✅ NUEVO: Fetch All Vendors Monthly Limits
+      .addCase(fetchAllVendorsMonthlyLimits.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchAllVendorsMonthlyLimits.fulfilled, (state, action) => {
+        state.loading = false;
+        state.monthlyLimits = action.payload.vendedores || [];
+      })
+      .addCase(fetchAllVendorsMonthlyLimits.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       });
   },
 });
@@ -404,6 +502,7 @@ export const {
   clearFilters,
   setPagination,
   resetCommissions,
+  clearMonthlyLimits, // ✅ NUEVO
 } = commissionSlice.actions;
 
 // Selectores
@@ -411,6 +510,9 @@ export const selectCommissions = (state) => state.commission.commissions;
 export const selectUserCommissions = (state) => state.commission.userCommissions;
 export const selectCommissionsByContract = (state) => state.commission.contractCommissions;
 export const selectConfiguredCommissions = (state) => state.commission.configuredCommissions; // ✅ NUEVO
+export const selectMonthlyLimits = (state) => state.commission.monthlyLimits; // ✅ NUEVO
+export const selectCurrentVendorLimit = (state) => state.commission.currentVendorLimit; // ✅ NUEVO
+export const selectVendorLimitSummaries = (state) => state.commission.vendorLimitSummaries; // ✅ NUEVO
 export const selectTotalCommissions = (state) => state.commission.totalCommissions;
 export const selectCurrentCommission = (state) => state.commission.currentCommission;
 export const selectCommissionLoading = (state) => state.commission.loading;

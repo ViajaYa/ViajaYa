@@ -908,6 +908,206 @@ getCommissionStats: async (req, res) => {
     }
   },
 
+  // ✅ NUEVO: Obtener total pagado en el mes actual por vendedor
+  getMonthlyPaymentLimit: async (req, res) => {
+    try {
+      const { vendedorId } = req.params;
+      const { year, month } = req.query; // Opcional: para consultar mes específico
+      
+      // Por defecto usar mes actual
+      const targetDate = new Date();
+      if (year && month) {
+        targetDate.setFullYear(parseInt(year), parseInt(month) - 1, 1);
+      }
+      
+      // Primer y último día del mes
+      const firstDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
+      const lastDay = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0, 23, 59, 59);
+      
+      console.log(`📅 Consultando pagos para vendedor ${vendedorId} del ${firstDay.toISOString()} al ${lastDay.toISOString()}`);
+      
+      // Buscar todas las comisiones PAGADAS del vendedor en el mes
+      const commissionsPaid = await Commission.findAll({
+        where: {
+          vendedor_id: vendedorId,
+          status: 'paid',
+          fecha_pago: {
+            [Op.between]: [firstDay, lastDay]
+          }
+        },
+        include: [
+          {
+            model: SupportDocument,
+            as: 'DocumentoSoporte',
+            attributes: ['numero_documento', 'fecha_pago', 'status']
+          },
+          {
+            model: Contract,
+            as: 'Contract',
+            attributes: ['contract_number'],
+            include: [
+              {
+                model: Quote,
+                as: 'Quote',
+                attributes: ['quote_number', 'nombre_cliente']
+              }
+            ]
+          }
+        ],
+        order: [['fecha_pago', 'DESC']]
+      });
+      
+      // Calcular total pagado
+      const totalPagado = commissionsPaid.reduce((sum, commission) => {
+        return sum + parseFloat(commission.monto_comision || 0);
+      }, 0);
+      
+      const LIMITE_MENSUAL = 1300000; // $1.300.000 COP
+      const porcentajeUsado = (totalPagado / LIMITE_MENSUAL) * 100;
+      const disponible = Math.max(0, LIMITE_MENSUAL - totalPagado);
+      
+      // Estado del límite
+      let status = 'safe'; // verde
+      if (porcentajeUsado >= 90) {
+        status = 'critical'; // rojo
+      } else if (porcentajeUsado >= 70) {
+        status = 'warning'; // amarillo
+      }
+      
+      const result = {
+        vendedor_id: vendedorId,
+        mes: `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`,
+        limite_mensual: LIMITE_MENSUAL,
+        total_pagado: totalPagado,
+        disponible: disponible,
+        porcentaje_usado: Math.round(porcentajeUsado * 100) / 100,
+        status: status,
+        comisiones_pagadas: commissionsPaid.length,
+        detalle_pagos: commissionsPaid.map(c => ({
+          id: c.id,
+          monto: c.monto_comision,
+          fecha_pago: c.fecha_pago,
+          contrato: c.Contract?.contract_number,
+          cliente: c.Contract?.Quote?.nombre_cliente,
+          documento: c.DocumentoSoporte?.numero_documento
+        }))
+      };
+      
+      console.log('💰 Límite mensual calculado:', {
+        vendedor: vendedorId,
+        mes: result.mes,
+        pagado: totalPagado,
+        limite: LIMITE_MENSUAL,
+        porcentaje: porcentajeUsado,
+        status: status
+      });
+      
+      res.json({
+        success: true,
+        data: result
+      });
+      
+    } catch (error) {
+      console.error('❌ Error calculando límite mensual:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al calcular límite mensual',
+        error: error.message
+      });
+    }
+  },
+
+  // ✅ NUEVO: Obtener resumen de límites para todos los vendedores (solo para admins)
+  getAllVendorsMonthlyLimits: async (req, res) => {
+    try {
+      const { year, month } = req.query;
+      
+      // Solo admins pueden ver esto
+      if (req.user.role < 5) {
+        return res.status(403).json({
+          success: false,
+          message: 'Sin permisos para esta consulta'
+        });
+      }
+      
+      // Obtener todos los vendedores que tienen comisiones
+      const vendedores = await User.findAll({
+        where: {
+          role: { [Op.in]: [2, 3, 4] } // asesor, lider, gerente
+        },
+        attributes: ['id', 'name', 'lastname', 'role'],
+        include: [
+          {
+            model: Commission,
+            as: 'CommissionsAsVendedor',
+            required: true, // Solo vendedores con comisiones
+            attributes: []
+          }
+        ],
+        group: ['user.id'],
+        order: [['name', 'ASC']]
+      });
+      
+      const LIMITE_MENSUAL = 1300000;
+      const targetDate = new Date();
+      if (year && month) {
+        targetDate.setFullYear(parseInt(year), parseInt(month) - 1, 1);
+      }
+      
+      const firstDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
+      const lastDay = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0, 23, 59, 59);
+      
+      const resultados = [];
+      
+      for (const vendedor of vendedores) {
+        const totalPagado = await Commission.sum('monto_comision', {
+          where: {
+            vendedor_id: vendedor.id,
+            status: 'paid',
+            fecha_pago: {
+              [Op.between]: [firstDay, lastDay]
+            }
+          }
+        }) || 0;
+        
+        const porcentajeUsado = (totalPagado / LIMITE_MENSUAL) * 100;
+        let status = 'safe';
+        if (porcentajeUsado >= 90) status = 'critical';
+        else if (porcentajeUsado >= 70) status = 'warning';
+        
+        resultados.push({
+          vendedor: {
+            id: vendedor.id,
+            nombre: `${vendedor.name} ${vendedor.lastname}`,
+            role: vendedor.role
+          },
+          total_pagado: totalPagado,
+          porcentaje_usado: Math.round(porcentajeUsado * 100) / 100,
+          disponible: Math.max(0, LIMITE_MENSUAL - totalPagado),
+          status: status
+        });
+      }
+      
+      // Ordenar por porcentaje usado (descendente)
+      resultados.sort((a, b) => b.porcentaje_usado - a.porcentaje_usado);
+      
+      res.json({
+        success: true,
+        mes: `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`,
+        limite_mensual: LIMITE_MENSUAL,
+        vendedores: resultados
+      });
+      
+    } catch (error) {
+      console.error('❌ Error obteniendo límites de todos los vendedores:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al obtener límites mensuales',
+        error: error.message
+      });
+    }
+  },
+
   // ✅ VISTA PREVIA del documento de comisión
   previewDocument: async (req, res) => {
     try {
@@ -1007,6 +1207,87 @@ getCommissionStats: async (req, res) => {
           error: error.message 
         });
       }
+    }
+  },
+
+  // ✅ NUEVO: Obtener límite mensual específico de un vendedor (versión compacta para UI)
+  getVendorMonthlyLimitSummary: async (req, res) => {
+    try {
+      const { vendedorId } = req.params;
+      
+      if (!vendedorId) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID del vendedor es requerido'
+        });
+      }
+
+      // Verificar que existe el vendedor
+      const vendedor = await User.findByPk(vendedorId);
+      if (!vendedor) {
+        return res.status(404).json({
+          success: false,
+          message: 'Vendedor no encontrado'
+        });
+      }
+
+      // Calcular límite actual
+      const currentDate = new Date();
+      const currentYear = currentDate.getFullYear();
+      const currentMonth = currentDate.getMonth() + 1;
+
+      const mesActual = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+      const limite = 1300000; // $1,300,000 COP
+
+      // Calcular total pagado este mes
+      const startOfMonth = new Date(currentYear, currentMonth - 1, 1);
+      const endOfMonth = new Date(currentYear, currentMonth, 0, 23, 59, 59);
+
+      const totalPagadoMes = await Commission.sum('monto_comision', {
+        where: {
+          vendedor_id: vendedorId,
+          status: 'paid',
+          fecha_pago: {
+            [Op.between]: [startOfMonth, endOfMonth]
+          }
+        }
+      }) || 0;
+
+      const limiteRestante = limite - totalPagadoMes;
+      const porcentajeUsado = (totalPagadoMes / limite) * 100;
+
+      // Determinar estado
+      let status;
+      if (porcentajeUsado < 70) {
+        status = 'safe';
+      } else if (porcentajeUsado < 90) {
+        status = 'warning';
+      } else {
+        status = 'critical';
+      }
+
+      const summary = {
+        vendedorId: vendedor.id,
+        vendedorNombre: `${vendedor.name} ${vendedor.lastname}`,
+        mesActual,
+        limite,
+        pagadoMes: totalPagadoMes,
+        limiteRestante,
+        porcentajeUsado: parseFloat(porcentajeUsado.toFixed(1)),
+        status
+      };
+
+      res.json({
+        success: true,
+        summary
+      });
+
+    } catch (error) {
+      console.error('❌ Error obteniendo resumen de límite del vendedor:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
+      });
     }
   },
 };
