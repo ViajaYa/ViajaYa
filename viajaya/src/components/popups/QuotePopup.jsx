@@ -433,26 +433,12 @@ const handleSubmit = async (e) => {
   }
 };
 
-  // ✅ Validar permisos - CORREGIDO
-  if (isAuthenticated && user && !hasAnyRole([USER_ROLES.ASESOR, USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.CONTADOR, USER_ROLES.OWNER])) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-        <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
-          <div className="text-center">
-            <FontAwesomeIcon icon={faExclamationTriangle} className="text-red-500 text-4xl mb-4" />
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Sin Permisos</h2>
-            <p className="text-gray-600 mb-4">No tienes permisos para crear cotizaciones.</p>
-            <button
-              onClick={onClose}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
-            >
-              Entendido
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // ✅ Validar permisos - CORREGIDO: Los clientes SÍ pueden crear cotizaciones
+  // Solo bloqueamos si es un usuario autenticado con un rol que no debería poder crear cotizaciones
+  // (en este caso, no hay restricciones - todos pueden crear cotizaciones)
+  
+  // Si no está autenticado o es cliente, puede crear cotizaciones sin restricciones
+  // Si está autenticado con otros roles, también puede crear cotizaciones
 
   if (!isOpen) return null;
 
@@ -474,8 +460,8 @@ const handleSubmit = async (e) => {
           </button>
         </div>
 
-        {/* ✅ Identificación del creador - CORREGIDO */}
-        {isAuthenticated && user && hasAnyRole([USER_ROLES.ASESOR, USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.CONTADOR, USER_ROLES.OWNER]) && (
+        {/* ✅ Identificación del creador - Solo para empleados (rol >= 2) */}
+        {isAuthenticated && user && user.role >= 2 && (
           <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
             <div className="flex items-center">
               <FontAwesomeIcon icon={faUser} className="text-blue-400 mr-3" />

@@ -297,28 +297,106 @@ const Profile = () => {
     return null;
   }
 
+  // Agrupar acciones por categorías - REORGANIZADO según solicitud
+  const userActions = {
+    // ACCIONES PERSONALES: Todo lo que no es gestión directa
+    personal: [
+      ...(user?.referral_code ? [{
+        label: "Refiere y Gana YA",
+        action: copyToClipboard,
+        icon: <FaRegCopy />,
+        color: "bg-blue-500 hover:bg-blue-600",
+        show: true
+      }] : []),
+      {
+        label: "Mis Reservas",
+        action: () => navigate("/userReservas"),
+        icon: <MdPayment />,
+        color: "bg-purple-500 hover:bg-purple-600",
+        show: true
+      },
+      // Agregar Mis Comisiones a acciones personales
+      ...(user?.role >= 2 && user?.role <= 4 ? [{
+        label: "Mis Comisiones",
+        link: "/my-commissions",
+        icon: <FontAwesomeIcon icon={faCoins} />,
+        color: "bg-emerald-500 hover:bg-emerald-600",
+        show: true
+      }] : []),
+      // Agregar Capacitaciones a acciones personales
+      ...(user?.role >= 2 ? [{
+        label: "Capacitaciones",
+        link: "/capacitacion",
+        icon: "📚",
+        color: "bg-yellow-500 hover:bg-yellow-600",
+        show: true
+      }] : [])
+    ],
+    
+    // HERRAMIENTAS DE GESTIÓN: Para el header (donde están cotizaciones)
+    management: [
+      // Nueva Cotización - para todos los roles >= 2
+      ...(canCreateQuotes() && user?.role >= 2 ? [{
+        label: "Nueva Cotización",
+        action: () => setShowCreateQuote(true),
+        icon: <FontAwesomeIcon icon={faPlus} />,
+        color: "bg-green-500 hover:bg-green-600",
+        show: true
+      }] : []),
+      // Panel Admin - para roles >= 4
+      ...(canAccessPanel() && user?.role >= 4 ? [{
+        label: "Panel Admin",
+        link: "/panel",
+        icon: <FontAwesomeIcon icon={faUsers} />,
+        color: "bg-red-500 hover:bg-red-600",
+        show: true
+      }] : []),
+      // Dashboard Financiero - para roles >= 4
+      ...(user?.role >= 4 ? [{
+        label: "Dashboard Financiero",
+        link: "/financial-dashboard",
+        icon: <FontAwesomeIcon icon={faChartArea} />,
+        color: "bg-indigo-500 hover:bg-indigo-600",
+        show: true
+      }] : []),
+      // Mi Equipo - para roles >= 3
+      ...(canViewOrganization() && user?.role >= 3 ? [{
+        label: "Mi Equipo",
+        link: "/panel/organization",
+        icon: <FontAwesomeIcon icon={faChartLine} />,
+        color: "bg-cyan-500 hover:bg-cyan-600",
+        show: true
+      }] : []),
+      // Todos los Equipos - para roles >= 5
+      ...(user?.role >= 5 ? [{
+        label: "Todos los Equipos",
+        link: "/panel/all-teams",
+        icon: <FontAwesomeIcon icon={faUsers} />,
+        color: "bg-pink-500 hover:bg-pink-600",
+        show: true
+      }] : [])
+    ]
+  };
+
   return (
     <>
       <div className="fixed top-0 left-0 z-50 w-full">
         <NavBar />
       </div>
       
-      <div className="flex flex-col md:flex-row min-h-screen">
-        {/* ✅ Contenedor principal */}
-        <div className="flex flex-grow mt-8">
+      <div className="min-h-screen bg-gray-50 pt-20">
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <Toaster />
           
-          {/* ✅ Columna izquierda - Perfil y formulario */}
-          <div className="w-full lg:w-1/2 p-12 flex flex-col justify-center items-center">
-            <Toaster />
-            
-            {/* ✅ Header del perfil */}
-            <div className="bg-gradient-to-r from-blue-50 to-purple-50 text-gray-800 p-6 rounded-lg shadow-md mb-6 w-full">
-              <div className="flex flex-col md:flex-row items-start md:items-center">
+          {/* Header del perfil */}
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-8">
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-8">
+              <div className="flex flex-col md:flex-row items-center md:items-start space-y-4 md:space-y-0 md:space-x-6">
                 
-                {/* ✅ Imagen de perfil */}
-                <div className="relative mb-4 md:mb-0 md:mr-6">
+                {/* Imagen de perfil */}
+                <div className="relative">
                   <img
-                    className="w-24 h-24 rounded-full border-4 border-blue-200 cursor-pointer object-cover shadow-lg hover:border-blue-300 transition-colors"
+                    className="w-32 h-32 rounded-full border-4 border-white cursor-pointer object-cover shadow-lg hover:shadow-xl transition-all duration-300"
                     src={
                       user?.image
                         ? user.image
@@ -334,305 +412,259 @@ const Profile = () => {
                     className="absolute inset-0 opacity-0 cursor-pointer"
                     onChange={uploadUserImage}
                   />
-                  <div className="absolute bottom-0 right-0 bg-blue-500 text-white rounded-full p-1 cursor-pointer">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <div className="absolute bottom-2 right-2 bg-white text-blue-600 rounded-full p-2 cursor-pointer shadow-lg hover:bg-gray-50 transition-colors">
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"></path>
                     </svg>
                   </div>
                 </div>
 
-                {/* ✅ Información del usuario */}
-                <div className="flex-1">
-                  <div className="mb-4">
-                    <h2 className="text-xl font-bold text-gray-800">
-                      {user?.name} {user?.lastname}
-                    </h2>
-                    <p className="text-sm text-gray-600">
-                      {getRoleName(user?.role)} • {user?.email}
+                {/* Información del usuario */}
+                <div className="flex-1 text-center md:text-left text-white">
+                  <h1 className="text-3xl font-bold font-nunito mb-2">
+                    {user?.name} {user?.lastname}
+                  </h1>
+                  <div className="space-y-1">
+                    <p className="text-blue-100 text-lg">
+                      {getRoleName(user?.role)}
+                    </p>
+                    <p className="text-blue-200 flex items-center justify-center md:justify-start">
+                      <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                        <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                      </svg>
+                      {user?.email}
                     </p>
                     {user?.phone && (
-                      <p className="text-sm text-gray-500">
-                        📱 {user.phone}
+                      <p className="text-blue-200 flex items-center justify-center md:justify-start">
+                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                        </svg>
+                        {user.phone}
                       </p>
                     )}
                   </div>
+                </div>
 
-                  {/* ✅ Botones de acción */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    
-                    {/* ✅ Referidos */}
-                    {user?.referral_code && (
-                      <button 
-                        onClick={copyToClipboard} 
-                        className="px-4 py-2 text-white font-nunito font-semibold rounded-lg bg-blue-500 hover:bg-blue-600 transition-colors flex items-center justify-center text-sm"
-                      >
-                        Refiere y Gana YA 
-                        <FaRegCopy className="ml-2" />
-                      </button>
-                    )}
-                    
-                    {/* ✅ Mis Reservas */}
-                    <button
-                      onClick={() => navigate("/userReservas")}
-                      className="px-4 py-2 text-white font-nunito font-semibold rounded-lg bg-purple-500 hover:bg-purple-600 transition-colors flex items-center justify-center text-sm"
-                    >
-                      Mis Reservas
-                      <MdPayment className="ml-2" />
-                    </button>
-
-                    {user?.role >= 2 && user?.role <= 4 && (
-                      <Link
-                        to="/my-commissions"
-                        className="px-4 py-2 text-white font-nunito font-semibold rounded-lg bg-emerald-500 hover:bg-emerald-600 transition-colors flex items-center justify-center text-sm"
-                      >
-                        <FontAwesomeIcon icon={faCoins} className="mr-2" />
-                        Mis Comisiones
-                      </Link>
-                    )}
-
-                    {/* ✅ Nueva Cotización */}
-                    {canCreateQuotes() && (
-                      <button
-                        onClick={() => setShowCreateQuote(true)}
-                        className="px-4 py-2 text-white font-nunito font-semibold rounded-lg bg-green-500 hover:bg-green-600 transition-colors flex items-center justify-center text-sm"
-                      >
-                        <FontAwesomeIcon icon={faPlus} className="mr-2" />
-                        Nueva Cotización
-                      </button>
-                    )}
-
-                    {/* ✅ Panel Admin */}
-                    {canAccessPanel() && user?.role >= 5 && (
-                      <Link
-                        to="/panel"
-                        className="px-4 py-2 text-white font-nunito font-semibold rounded-lg bg-red-500 hover:bg-red-600 transition-colors flex items-center justify-center text-sm"
-                      >
-                        <FontAwesomeIcon icon={faUsers} className="mr-2" />
-                        Panel Admin
-                      </Link>
-                    )}
-
-                    {/* ✅ Gestión de Cotizaciones */}
-                    {canManageQuotes() && (
-                      <Link
-                        to="/quotesList"
-                        className="px-4 py-2 text-white font-nunito font-semibold rounded-lg bg-orange-500 hover:bg-orange-600 transition-colors flex items-center justify-center text-sm"
-                      >
-                        <FontAwesomeIcon icon={faFileInvoice} className="mr-2" />
-                        Gestionar Cotizaciones
-                      </Link>
-                    )}
-
-                    {/* ✅ Mi Equipo */}
-                    {canViewOrganization() && (
-                      <Link
-                        to="/panel/organization"
-                        className="px-4 py-2 text-white font-nunito font-semibold rounded-lg bg-indigo-500 hover:bg-indigo-600 transition-colors flex items-center justify-center text-sm"
-                      >
-                        <FontAwesomeIcon icon={faChartLine} className="mr-2" />
-                        Mi Equipo
-                      </Link>
-                    )}
-
-                    {/* ✅ Todos los Equipos - Solo para Admin, Contador, Owner */}
-                    {user?.role >= 5 && (
-                      <Link
-                        to="/panel/all-teams"
-                        className="px-4 py-2 text-white font-nunito font-semibold rounded-lg bg-pink-500 hover:bg-pink-600 transition-colors flex items-center justify-center text-sm"
-                      >
-                        <FontAwesomeIcon icon={faUsers} className="mr-2" />
-                        Todos los Equipos
-                      </Link>
-                    )}
-
-                    {/* ✅ Dashboard Financiero - Solo para Gerente, Admin, Contador, Owner */}
-                    {user?.role >= 4 && (
-                      <Link
-                        to="/financial-dashboard"
-                        className="px-4 py-2 text-white font-nunito font-semibold rounded-lg bg-emerald-500 hover:bg-emerald-600 transition-colors flex items-center justify-center text-sm"
-                      >
-                        <FontAwesomeIcon icon={faChartArea} className="mr-2" />
-                        Dashboard Financiero
-                      </Link>
-                    )}
-
-                    {/* ✅ Capacitaciones */}
-                    {user?.role >= 2 && (
-                      <Link
-                        to="/capacitacion"
-                        className="px-4 py-2 text-white font-nunito font-semibold rounded-lg bg-yellow-500 hover:bg-yellow-600 transition-colors flex items-center justify-center text-sm"
-                      >
-                        📚 Capacitaciones
-                      </Link>
-                    )}
-
-                    {/* ✅ Cerrar Sesión */}
-                    <button
-                      onClick={handleLogout}
-                      className="px-4 py-2 text-white font-nunito font-semibold rounded-lg bg-gray-500 hover:bg-gray-600 transition-colors flex items-center justify-center text-sm"
-                    >
-                      Cerrar sesión
-                      <MdExitToApp className="ml-2" />
-                    </button>
-                  </div>
-
-                  {/* ✅ Link de referido */}
-                  {user?.referral_code && (
-                    <div className="mt-4 p-3 bg-white rounded-lg border border-gray-200">
-                      <p className="text-xs text-gray-500 mb-1">Tu enlace de referido:</p>
-                      <p className="text-gray-700 font-mono text-xs break-all">
-                        {referralLink}
-                      </p>
-                    </div>
-                  )}
+                {/* Herramientas de GESTIÓN en el header - principales funciones */}
+                <div className="flex flex-wrap gap-3 justify-center md:justify-end">
+                  {/* Herramientas de gestión visibles en el header */}
+                  {userActions.management.filter(action => action.show).map((action, index) => (
+                    <ActionButton key={index} action={{...action, size: 'compact'}} />
+                  ))}
                 </div>
               </div>
+
+              {/* Link de referido */}
+              {user?.referral_code && (
+                <div className="mt-6 p-4 bg-white bg-opacity-10 rounded-lg backdrop-blur-sm">
+                  <p className="text-blue-100 text-sm mb-2">Tu enlace de referido:</p>
+                  <div className="flex items-center space-x-2">
+                    <code className="flex-1 text-white bg-black bg-opacity-20 px-3 py-2 rounded text-sm font-mono break-all">
+                      {referralLink}
+                    </code>
+                    <button
+                      onClick={copyToClipboard}
+                      className="p-2 bg-white bg-opacity-20 rounded hover:bg-opacity-30 transition-colors"
+                      title="Copiar enlace"
+                    >
+                      <FaRegCopy className="text-white" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-            
-            {/* ✅ Alerta de documentación para empleados (roles 2,3,4) */}
+          </div>
+
+          {/* Alerta de documentación - SOLO para empleados (roles 2,3,4) */}
+          {user?.role >= 2 && user?.role <= 4 && (
             <DocumentationAlert 
               user={user} 
               onOpenDocuments={() => setShowDocumentManager(true)}
             />
+          )}
+
+          {/* Sección de Acciones Personales - TODO lo que no es gestión directa */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
             
-            {/* ✅ Formulario de datos */}
-            {page === 0 && (
-              <div className="w-full max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg">
-                <form onSubmit={(e) => e.preventDefault()}>
-                  {!changePass ? (
-                    <>
-                      <h3 className="text-lg font-bold font-nunito text-center text-gray-700 mb-6">
-                        Mis Datos Personales
-                      </h3>
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <input
-                            className="w-full p-3 border font-nunito border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            onChange={handleUser}
-                            name="name"
-                            value={formData.name}
-                            placeholder="Nombre"
-                            required
-                          />
-                          <input
-                            className="w-full p-3 border font-nunito border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            onChange={handleUser}
-                            name="lastname"
-                            value={formData.lastname}
-                            placeholder="Apellido"
-                            required
-                          />
-                        </div>
-                        <input
-                          className="w-full p-3 border font-nunito border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          onChange={handleUser}
-                          name="email"
-                          type="email"
-                          value={formData.email}
-                          placeholder="Email"
-                          required
-                        />
-                        <input
-                          className="w-full p-3 border font-nunito border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          onChange={handleUser}
-                          name="phone"
-                          type="tel"
-                          value={formData.phone}
-                          placeholder="Teléfono (10 dígitos)"
-                          required
-                        />
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <h3 className="text-lg font-bold font-nunito text-center text-gray-700 mb-6">
-                        Cambiar Contraseña
-                      </h3>
-                      <div className="space-y-4">
-                        <input
-                          className="w-full p-3 border font-nunito border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          onChange={handleUser}
-                          name="passwordLast"
-                          type="password"
-                          value={formData.passwordLast}
-                          placeholder="Contraseña actual"
-                          required
-                        />
-                        <input
-                          className="w-full p-3 border font-nunito border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          onChange={handleUser}
-                          name="password2"
-                          type="password"
-                          value={formData.password2}
-                          placeholder="Nueva contraseña (mín. 8 caracteres)"
-                          required
-                        />
-                        <input
-                          className="w-full p-3 border font-nunito border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          onChange={handleUser}
-                          name="password3"
-                          type="password"
-                          value={formData.password3}
-                          placeholder="Confirmar nueva contraseña"
-                          required
-                        />
-                      </div>
-                    </>
-                  )}
-                  
-                  <div className="mt-6 space-y-3">
-                    <button
-                      onClick={updateUser}
-                      disabled={authLoading}
-                      className="w-full bg-blue-500 font-nunito text-white p-3 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {authLoading 
-                        ? "Actualizando..." 
-                        : changePass 
-                          ? "Actualizar contraseña" 
-                          : "Actualizar datos"
-                      }
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setChangePass(!changePass)}
-                      className="w-full font-nunito text-gray-600 hover:text-gray-800 hover:underline transition-colors"
-                    >
-                      {changePass
-                        ? "Cancelar cambio de contraseña"
-                        : "Cambiar contraseña"}
-                    </button>
-                  </div>
-                </form>
+            {/* Acciones Personales Completas */}
+            {userActions.personal.length > 0 && (
+              <div className="bg-white rounded-xl shadow-md p-6 lg:col-span-2">
+                <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
+                  Acciones Personales
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {userActions.personal.map((action, index) => (
+                    action.show && (
+                      <ActionButton key={index} action={action} />
+                    )
+                  ))}
+                </div>
               </div>
             )}
           </div>
+          {/* Formulario de edición de perfil */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            {/* Formulario de datos personales */}
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
+                {changePass ? "Cambiar Contraseña" : "Mis Datos Personales"}
+              </h3>
+              
+              <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
+                {!changePass ? (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Nombre</label>
+                        <input
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-nunito"
+                          onChange={handleUser}
+                          name="name"
+                          value={formData.name}
+                          placeholder="Nombre"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Apellido</label>
+                        <input
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-nunito"
+                          onChange={handleUser}
+                          name="lastname"
+                          value={formData.lastname}
+                          placeholder="Apellido"
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                      <input
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-nunito"
+                        onChange={handleUser}
+                        name="email"
+                        type="email"
+                        value={formData.email}
+                        placeholder="Email"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Teléfono</label>
+                      <input
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-nunito"
+                        onChange={handleUser}
+                        name="phone"
+                        type="tel"
+                        value={formData.phone}
+                        placeholder="Teléfono (10 dígitos)"
+                        required
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Contraseña actual</label>
+                      <input
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-nunito"
+                        onChange={handleUser}
+                        name="passwordLast"
+                        type="password"
+                        value={formData.passwordLast}
+                        placeholder="Contraseña actual"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Nueva contraseña</label>
+                      <input
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-nunito"
+                        onChange={handleUser}
+                        name="password2"
+                        type="password"
+                        value={formData.password2}
+                        placeholder="Nueva contraseña (mín. 8 caracteres)"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Confirmar nueva contraseña</label>
+                      <input
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-nunito"
+                        onChange={handleUser}
+                        name="password3"
+                        type="password"
+                        value={formData.password3}
+                        placeholder="Confirmar nueva contraseña"
+                        required
+                      />
+                    </div>
+                  </>
+                )}
+                
+                <div className="pt-4 space-y-3">
+                  <button
+                    onClick={updateUser}
+                    disabled={authLoading}
+                    className="w-full bg-blue-500 text-white p-3 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-nunito font-semibold"
+                  >
+                    {authLoading 
+                      ? "Actualizando..." 
+                      : changePass 
+                        ? "Actualizar contraseña" 
+                        : "Actualizar datos"
+                    }
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setChangePass(!changePass)}
+                    className="w-full text-gray-600 hover:text-gray-800 hover:underline transition-colors font-nunito"
+                  >
+                    {changePass
+                      ? "Cancelar cambio de contraseña"
+                      : "Cambiar contraseña"}
+                  </button>
+                </div>
+              </form>
+            </div>
 
-          {/* ✅ Columna derecha - Imagen promocional */}
-          <div className="w-full lg:w-1/2 mt-40 lg:mt-32 hidden lg:flex lg:items-center lg:justify-center">
-            <div className="flex flex-col items-center space-y-6">
-              <Link to="/productos" className="group">
+            {/* Imagen promocional */}
+            <div className="bg-white rounded-xl shadow-md p-6 flex flex-col items-center justify-center">
+              <Link to="/productos" className="group mb-6">
                 <img
                   src="/tarjeta.png"
                   alt="Tarjeta ViajaYa"
-                  className="w-80 h-auto max-w-md cursor-pointer border-4 border-blue-400 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 group-hover:scale-105"
+                  className="w-full max-w-sm h-auto cursor-pointer border-4 border-blue-200 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 group-hover:scale-105 group-hover:border-blue-400"
                 />
               </Link>
               
-              {/* ✅ Información adicional para el usuario */}
-              <div className="text-center max-w-md">
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">
+              <div className="text-center">
+                <h3 className="text-xl font-bold text-gray-800 mb-3">
                   ¡Descubre nuestros destinos!
                 </h3>
-                <p className="text-gray-600 text-sm">
+                <p className="text-gray-600 mb-4">
                   Explora los mejores paquetes turísticos y vive experiencias inolvidables
                 </p>
+                <Link 
+                  to="/productos"
+                  className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all duration-300 transform hover:scale-105"
+                >
+                  Ver Paquetes
+                  <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Link>
               </div>
             </div>
           </div>
         </div>
 
-        {/* ✅ Popup de cotización */}
+        {/* Popups y Modales */}
         {showCreateQuote && (
           <QuotePopup
             isOpen={showCreateQuote}
@@ -646,14 +678,41 @@ const Profile = () => {
           />
         )}
 
-        {/* ✅ Modal de gestión de documentos */}
-        <DocumentModal
-          isOpen={showDocumentManager}
-          onClose={() => setShowDocumentManager(false)}
-          user={user}
-        />
+        {/* Modal de documentos solo para empleados */}
+        {user?.role >= 2 && user?.role <= 4 && (
+          <DocumentModal
+            isOpen={showDocumentManager}
+            onClose={() => setShowDocumentManager(false)}
+            user={user}
+          />
+        )}
       </div>
     </>
+  );
+};
+
+// Componente para los botones de acción
+const ActionButton = ({ action }) => {
+  const isCompact = action.size === 'compact';
+  
+  const buttonClass = isCompact 
+    ? `${action.color} text-white px-4 py-2 rounded-lg transition-all duration-300 flex items-center space-x-2 hover:shadow-lg transform hover:scale-105 font-nunito font-medium text-sm`
+    : `w-full ${action.color} text-white p-3 rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 hover:shadow-lg transform hover:scale-105 font-nunito font-medium`;
+  
+  if (action.link) {
+    return (
+      <Link to={action.link} className={buttonClass}>
+        <span className={isCompact ? "text-sm" : "text-lg"}>{action.icon}</span>
+        <span className={isCompact ? "hidden sm:inline" : ""}>{action.label}</span>
+      </Link>
+    );
+  }
+  
+  return (
+    <button onClick={action.action} className={buttonClass}>
+      <span className={isCompact ? "text-sm" : "text-lg"}>{action.icon}</span>
+      <span className={isCompact ? "hidden sm:inline" : ""}>{action.label}</span>
+    </button>
   );
 };
 
