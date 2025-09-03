@@ -245,7 +245,7 @@ const SendContractModal = ({
                             <p style="margin: 0; white-space: pre-line;">${customMessage}</p>
                           </div>
                           ${emailPreview.html}
-                        ` : emailPreview.html 
+                        ` : emailPreview.html
                       }}
                     />
                   </div>

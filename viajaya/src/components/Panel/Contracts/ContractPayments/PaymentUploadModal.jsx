@@ -431,7 +431,7 @@ PaymentUploadModal.propTypes = {
   contract: PropTypes.object.isRequired,
   onClose: PropTypes.func.isRequired,
   onSubmit: PropTypes.func.isRequired,
-  loading: PropTypes.bool.isRequired,
+  loading: PropTypes.bool.isRequired
 };
 
 export default PaymentUploadModal;

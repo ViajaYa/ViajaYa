@@ -14,6 +14,7 @@ import {
 import ContractsPaymentList from './ContractsPaymentList';
 import ContractPaymentDetail from './ContractPaymentDetail';
 import PaymentUploadModal from './PaymentUploadModal';
+import PaymentReceiptActions from './PaymentReceiptActions';
 
 const ContractPaymentsManager = () => {
   const dispatch = useDispatch();
@@ -22,6 +23,8 @@ const ContractPaymentsManager = () => {
   const [selectedContract, setSelectedContract] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showPaymentDetail, setShowPaymentDetail] = useState(false);
+  const [recentPayment, setRecentPayment] = useState(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [filters, setFilters] = useState({
     paymentStatus: 'all',
     sortBy: 'priority',
@@ -248,12 +251,19 @@ const ContractPaymentsManager = () => {
 
   const handlePaymentSubmit = async (paymentData, comprobante) => {
     try {
-      await dispatch(registerClientPayment({
+      const result = await dispatch(registerClientPayment({
         contractId: selectedContract.id,
         paymentData,
         comprobante
       })).unwrap();
       
+      // ✅ NUEVO: Guardar el pago recién creado y mostrar modal de éxito
+      if (result.payment) {
+        setRecentPayment(result.payment);
+        setShowSuccessModal(true);
+      }
+      
+      // Actualizar datos
       dispatch(fetchContracts());
       dispatch(fetchPaymentsByContract(selectedContract.id));
       setShowPaymentModal(false);
@@ -437,6 +447,75 @@ const ContractPaymentsManager = () => {
           onSubmit={handlePaymentSubmit}
           loading={registeringPayment}
         />
+      )}
+
+      {/* ✅ NUEVO: Modal de éxito con recibo */}
+      {showSuccessModal && recentPayment && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            {/* Header */}
+            <div className="text-center mb-6">
+              <div className="text-green-500 text-5xl mb-3">✅</div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                ¡Pago Registrado Exitosamente!
+              </h2>
+              <p className="text-gray-600">
+                El pago de {new Intl.NumberFormat('es-CO', {
+                  style: 'currency',
+                  currency: 'COP',
+                  minimumFractionDigits: 0
+                }).format(recentPayment.monto)} ha sido registrado y aplicado al contrato.
+              </p>
+            </div>
+
+            {/* Información del pago */}
+            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <span className="text-gray-600">Referencia:</span>
+                  <div className="font-medium">{recentPayment.referencia_pago}</div>
+                </div>
+                <div>
+                  <span className="text-gray-600">Estado:</span>
+                  <div className="font-medium text-green-600">Verificado</div>
+                </div>
+                <div>
+                  <span className="text-gray-600">Método:</span>
+                  <div className="font-medium">{recentPayment.tipo_pago}</div>
+                </div>
+                <div>
+                  <span className="text-gray-600">Fecha:</span>
+                  <div className="font-medium">
+                    {new Date(recentPayment.fecha_pago).toLocaleDateString('es-CO')}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Botones de recibo */}
+            <div className="mb-6">
+              <h3 className="text-sm font-medium text-gray-900 mb-3">Generar Recibo:</h3>
+              <PaymentReceiptActions 
+                payment={recentPayment} 
+                showLabels={true} 
+                size="medium" 
+              />
+            </div>
+
+            {/* Botón de cerrar */}
+            <div className="flex justify-center">
+              <button
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  setRecentPayment(null);
+                }}
+                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200"
+              >
+                Continuar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

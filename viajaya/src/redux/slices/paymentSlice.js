@@ -302,6 +302,90 @@ export const processWompiPayment = createAsyncThunk(
   }
 );
 
+// ✅ NUEVO: Generar recibo PDF para descarga
+export const generateReceiptPDF = createAsyncThunk(
+  'payment/generateReceiptPDF',
+  async (paymentId, { rejectWithValue, getState }) => {
+    try {
+      const { auth } = getState();
+
+      console.log('📄 SLICE: Generando recibo PDF para pago:', paymentId);
+
+      const response = await fetch(`${BASE_URL}/payments/${paymentId}/receipt/download`, {
+        method: 'GET',
+        headers: getAuthHeaders(auth.token)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error generando recibo PDF');
+      }
+
+      // Convertir respuesta a blob para descarga
+      const blob = await response.blob();
+      
+      // Crear URL temporal para descarga
+      const url = window.URL.createObjectURL(blob);
+      
+      // Crear enlace de descarga automática
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `recibo_pago_${paymentId}_${Date.now()}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Limpiar
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      console.log('✅ SLICE: Recibo PDF descargado exitosamente');
+      return { success: true, paymentId };
+
+    } catch (error) {
+      console.error('❌ SLICE: Error generating receipt PDF:', error);
+      return rejectWithValue(error.message || 'Error al generar el recibo PDF');
+    }
+  }
+);
+
+// ✅ NUEVO: Vista previa del recibo PDF (abre en nueva pestaña)
+export const previewReceiptPDF = createAsyncThunk(
+  'payment/previewReceiptPDF',
+  async (paymentId, { rejectWithValue, getState }) => {
+    try {
+      const { auth } = getState();
+
+      console.log('👁️ SLICE: Abriendo vista previa de recibo PDF para pago:', paymentId);
+
+      const response = await fetch(`${BASE_URL}/payments/${paymentId}/receipt/preview`, {
+        method: 'GET',
+        headers: getAuthHeaders(auth.token)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error generando vista previa');
+      }
+
+      // Convertir respuesta a blob
+      const blob = await response.blob();
+      
+      // Crear URL temporal para vista previa
+      const url = window.URL.createObjectURL(blob);
+      
+      // Abrir en nueva pestaña
+      window.open(url, '_blank');
+
+      console.log('✅ SLICE: Vista previa abierta exitosamente');
+      return { success: true, paymentId };
+
+    } catch (error) {
+      console.error('❌ SLICE: Error opening receipt preview:', error);
+      return rejectWithValue(error.message || 'Error al abrir la vista previa');
+    }
+  }
+);
+
 // Slice actualizado
 const paymentSlice = createSlice({
   name: 'payment',
@@ -341,7 +425,7 @@ const paymentSlice = createSlice({
     },
     
     // ✅ NUEVO: Reset completo del estado
-    resetPaymentState: (state) => {
+    resetPaymentState: () => {
       return initialState;
     }
   },
@@ -491,6 +575,34 @@ const paymentSlice = createSlice({
       .addCase(processWompiPayment.rejected, (state, action) => {
         state.processingPayment = false;
         state.error = action.payload;
+      })
+      
+      // ✅ NUEVO: Generate Receipt PDF
+      .addCase(generateReceiptPDF.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(generateReceiptPDF.fulfilled, (state) => {
+        state.loading = false;
+        // No necesitamos cambiar el estado, solo indicar éxito
+      })
+      .addCase(generateReceiptPDF.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      
+      // ✅ NUEVO: Preview Receipt PDF
+      .addCase(previewReceiptPDF.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(previewReceiptPDF.fulfilled, (state) => {
+        state.loading = false;
+        // No necesitamos cambiar el estado, solo indicar éxito
+      })
+      .addCase(previewReceiptPDF.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       });
   },
 });
@@ -534,6 +646,10 @@ export const selectReportsLoading = (state) => state.payment.reportsLoading;
 // Selectores para verificación
 export const selectVerifyingPayment = (state) => state.payment.verifyingPayment;
 export const selectVerifyPaymentError = (state) => state.payment.verifyPaymentError;
+
+// ✅ NUEVO: Selectores para recibos PDF
+export const selectGeneratingReceipt = (state) => state.payment.loading;
+export const selectReceiptError = (state) => state.payment.error;
 
 // ✅ NUEVO: Selectores calculados
 export const selectPaymentsByStatus = (status) => (state) =>

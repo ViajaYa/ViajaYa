@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -24,14 +24,17 @@ import {
   faFileAlt,
   faBan,
   faMoneyBillWave,
+  faInfoCircle,
 } from "@fortawesome/free-solid-svg-icons";
 import {
   fetchCommissions,
   approveCommission,
+  fetchVendorLimitSummary,
   selectCommissions,
   selectCommissionLoading,
   selectCommissionError,
   selectCommissionPagination,
+  selectVendorLimitSummaries,
 } from "../../../redux/slices/commissionSlice";
 import api from "../../../utils/api";
 import { toast } from "react-hot-toast";
@@ -46,6 +49,7 @@ const CommissionsList = () => {
   const loading = useSelector(selectCommissionLoading);
   const error = useSelector(selectCommissionError);
   const pagination = useSelector(selectCommissionPagination);
+  const vendorLimitSummaries = useSelector(selectVendorLimitSummaries);
 
   // Estados locales
   const [filters, setFilters] = useState({
@@ -59,26 +63,40 @@ const CommissionsList = () => {
   const [payModalOpen, setPayModalOpen] = useState(false);
   const [selectedCommissionToPay, setSelectedCommissionToPay] = useState(null);
 
-  useEffect(() => {
-    loadCommissions();
-  }, [filters]);
-
-  const loadCommissions = () => {
+  const loadCommissions = useCallback(async () => {
     // Filtrar parámetros vacíos
     const cleanFilters = Object.fromEntries(
       Object.entries(filters).filter(
-        ([_, value]) => value && value !== "all" && value !== ""
+        ([, value]) => value && value !== "all" && value !== ""
       )
     );
 
-    dispatch(
+    const result = await dispatch(
       fetchCommissions({
         page: pagination.page,
         limit: pagination.limit,
         filters: cleanFilters,
       })
     );
-  };
+
+    // Cargar límites mensuales para vendedores únicos
+    if (result.payload?.commissions) {
+      const uniqueVendorIds = [...new Set(
+        result.payload.commissions
+          .map(commission => commission.vendedor_id)
+          .filter(id => id && !vendorLimitSummaries[id])
+      )];
+
+      // Cargar límites para vendedores que no tenemos en cache
+      uniqueVendorIds.forEach(vendorId => {
+        dispatch(fetchVendorLimitSummary(vendorId));
+      });
+    }
+  }, [filters, pagination.page, pagination.limit, dispatch, vendorLimitSummaries]);
+
+  useEffect(() => {
+    loadCommissions();
+  }, [loadCommissions]);
 
   // 🎨 Función para obtener el color del estado de la comisión
   const getCommissionRowColor = (commission) => {
@@ -169,6 +187,45 @@ const CommissionsList = () => {
       currency: "COP",
       minimumFractionDigits: 0,
     }).format(amount);
+  };
+
+  // Función para obtener el indicador de límite mensual del vendedor
+  const getVendorLimitIndicator = (vendorId) => {
+    const limitSummary = vendorLimitSummaries[vendorId];
+    
+    if (!limitSummary) {
+      return (
+        <div className="text-xs text-gray-400 mt-1">
+          <FontAwesomeIcon icon={faClock} className="mr-1" />
+          Cargando límite...
+        </div>
+      );
+    }
+
+    const statusColors = {
+      safe: "text-green-600 bg-green-50",
+      warning: "text-yellow-600 bg-yellow-50", 
+      critical: "text-red-600 bg-red-50"
+    };
+
+    const statusIcons = {
+      safe: faCheckCircle,
+      warning: faExclamationTriangle,
+      critical: faExclamationTriangle
+    };
+
+    return (
+      <div className="text-xs mt-1">
+        <div className={`inline-flex items-center px-2 py-1 rounded-full ${statusColors[limitSummary.status] || 'text-gray-600 bg-gray-50'}`}>
+          <FontAwesomeIcon 
+            icon={statusIcons[limitSummary.status] || faInfoCircle} 
+            className="mr-1 h-2 w-2" 
+          />
+          {formatCurrency(limitSummary.pagadoMes)} / {formatCurrency(limitSummary.limite)}
+          <span className="ml-1">({limitSummary.porcentajeUsado}%)</span>
+        </div>
+      </div>
+    );
   };
 
   // 🔍 Vista previa del documento
@@ -290,7 +347,7 @@ const CommissionsList = () => {
         limit: pagination.limit,
         filters: Object.fromEntries(
           Object.entries(filters).filter(
-            ([_, value]) => value && value !== "all" && value !== ""
+            ([, value]) => value && value !== "all" && value !== ""
           )
         ),
       })
@@ -388,6 +445,14 @@ const CommissionsList = () => {
           </div>
 
           <div className="flex space-x-3">
+            <button
+              onClick={() => navigate("/monthly-limits")}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+              title="Ver límites mensuales de comisiones"
+            >
+              <FontAwesomeIcon icon={faMoneyBillWave} className="text-sm" />
+              Límites Mensuales
+            </button>
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`px-4 py-2 rounded-lg border transition-colors ${
@@ -682,6 +747,8 @@ const CommissionsList = () => {
                             <div className="text-sm text-gray-500 capitalize">
                               {commission.tipo_vendedor}
                             </div>
+                            {/* Indicador de límite mensual */}
+                            {getVendorLimitIndicator(commission.vendedor_id)}
                           </div>
                         </div>
                       </td>

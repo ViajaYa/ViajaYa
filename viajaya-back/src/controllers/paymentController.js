@@ -1,4 +1,5 @@
 const { Payment, Contract, Quote, User } = require('../db');
+const { generateReceiptPDF } = require('../utils/generateReceiptPDF');
 
 const paymentController = {
   // Crear nuevo pago
@@ -681,6 +682,141 @@ const paymentController = {
       res.status(500).json({ 
         success: false,
         message: 'Error al registrar el pago del cliente', 
+        error: error.message 
+      });
+    }
+  },
+
+  // ✅ NUEVO: Generar recibo PDF para un pago
+  generateReceiptPDF: async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      console.log('🧾 Generando recibo PDF para pago:', id);
+
+      // ✅ BUSCAR PAGO CON DETALLES COMPLETOS
+      const payment = await Payment.findByPk(id, {
+        include: [
+          {
+            model: Contract,
+            as: 'Contract',
+            attributes: ['id', 'contract_number', 'status', 'precio_total', 'saldo_pendiente', 'total_pagado'],
+            include: [
+              {
+                model: Quote,
+                as: 'Quote',
+                attributes: ['quote_number', 'nombre_cliente', 'destino', 'fecha_ida', 'fecha_regreso', 'numero_personas'],
+                include: [
+                  {
+                    model: User,
+                    as: 'Cliente',
+                    attributes: ['id', 'name', 'lastname', 'email', 'phone']
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      });
+
+      if (!payment) {
+        return res.status(404).json({ 
+          success: false,
+          message: 'Pago no encontrado' 
+        });
+      }
+
+      // ✅ GENERAR PDF DEL RECIBO
+      const pdfBuffer = await generateReceiptPDF(payment);
+
+      // ✅ CONFIGURAR HEADERS PARA DESCARGA
+      const filename = `recibo_pago_${payment.referencia_pago || payment.id?.substring(0, 8) || 'unknown'}_${Date.now()}.pdf`;
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Length', pdfBuffer.length);
+
+      // ✅ ENVIAR PDF
+      res.send(pdfBuffer);
+
+      console.log('✅ Recibo PDF generado exitosamente:', {
+        payment_id: payment.id,
+        contract_number: payment.Contract?.contract_number,
+        filename: filename,
+        size: `${(pdfBuffer.length / 1024).toFixed(1)} KB`
+      });
+
+    } catch (error) {
+      console.error('❌ Error generando recibo PDF:', error);
+      res.status(500).json({ 
+        success: false,
+        message: 'Error al generar el recibo PDF', 
+        error: error.message 
+      });
+    }
+  },
+
+  // ✅ NUEVO: Vista previa del recibo PDF (inline)
+  previewReceiptPDF: async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      console.log('👁️ Generando vista previa de recibo PDF para pago:', id);
+
+      // ✅ BUSCAR PAGO CON DETALLES COMPLETOS
+      const payment = await Payment.findByPk(id, {
+        include: [
+          {
+            model: Contract,
+            as: 'Contract',
+            attributes: ['id', 'contract_number', 'status', 'precio_total', 'saldo_pendiente', 'total_pagado'],
+            include: [
+              {
+                model: Quote,
+                as: 'Quote',
+                attributes: ['quote_number', 'nombre_cliente', 'destino', 'fecha_ida', 'fecha_regreso', 'numero_personas'],
+                include: [
+                  {
+                    model: User,
+                    as: 'Cliente',
+                    attributes: ['id', 'name', 'lastname', 'email', 'phone']
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      });
+
+      if (!payment) {
+        return res.status(404).json({ 
+          success: false,
+          message: 'Pago no encontrado' 
+        });
+      }
+
+      // ✅ GENERAR PDF DEL RECIBO
+      const pdfBuffer = await generateReceiptPDF(payment);
+
+      // ✅ CONFIGURAR HEADERS PARA VISTA PREVIA
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'inline');
+      res.setHeader('Content-Length', pdfBuffer.length);
+
+      // ✅ ENVIAR PDF PARA VISTA PREVIA
+      res.send(pdfBuffer);
+
+      console.log('✅ Vista previa de recibo generada exitosamente:', {
+        payment_id: payment.id,
+        contract_number: payment.Contract?.contract_number,
+        size: `${(pdfBuffer.length / 1024).toFixed(1)} KB`
+      });
+
+    } catch (error) {
+      console.error('❌ Error generando vista previa de recibo:', error);
+      res.status(500).json({ 
+        success: false,
+        message: 'Error al generar la vista previa del recibo', 
         error: error.message 
       });
     }

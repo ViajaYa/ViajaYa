@@ -62,4 +62,27 @@ router.put('/:commissionId/pay',
   commissionController.payCommission
 );
 
+// ✅ NUEVAS RUTAS PARA LÍMITES MENSUALES DE PAGO
+
+// Obtener resumen de límite mensual específico de un vendedor (versión compacta)
+router.get('/vendor-limit-summary/:vendedorId', 
+  authenticateToken,
+  authorizeRoles(2, 3, 4, 5, 6, 7), // Todos los roles pueden ver
+  commissionController.getVendorMonthlyLimitSummary
+);
+
+// Obtener límite mensual específico de un vendedor
+router.get('/monthly-limit/:vendedorId', 
+  authenticateToken,
+  authorizeRoles(4, 5, 6, 7), // Solo roles superiores pueden ver límites
+  commissionController.getMonthlyPaymentLimit
+);
+
+// Obtener límites mensuales de todos los vendedores
+router.get('/monthly-limits/all', 
+  authenticateToken,
+  authorizeRoles(4, 5, 6, 7), // Solo roles superiores pueden ver límites
+  commissionController.getAllVendorsMonthlyLimits
+);
+
 module.exports = router;

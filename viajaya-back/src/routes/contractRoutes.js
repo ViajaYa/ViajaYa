@@ -47,7 +47,7 @@ router.get('/cliente/:cliente_id', contractController.getContractsByCliente);
 router.get('/:contract_id/payment-details', contractController.getContractPaymentDetails);
 
 // ================== ITEMS DEL CONTRATO ==================
-router.post('/:contractId/convert-quote-items', contractController.convertQuoteToContractItems);
+router.post('/:contractId/convert-quote-items', contractController.convertQuoteToItems);
 
 router.get('/:contractId/purchase-stats', purchaseController.getContractPurchaseStats);
 router.get('/:contractId/items-with-purchases', purchaseController.getContractItemsWithPurchases);

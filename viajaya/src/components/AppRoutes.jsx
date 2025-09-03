@@ -47,6 +47,7 @@ const ContractSet = lazy(() => import("./Panel/Contracts/ContractSet"));
 const CommissionsList = lazy(() => import("./Panel/Commissions/CommissionsList"));
 const ContractCommissions = lazy(() => import("./Panel/Contracts/ContractCommissions"));
 const CommissionConfigManager = lazy(() => import("./Panel/Commissions/CommissionConfigManager"));
+const MonthlyLimitsManager = lazy(() => import("./Panel/Commissions/MonthlyLimitsManager"));
 const DocumentsReview = lazy(() => import("./Panel/DocumentsReview"));
 const FacturasPendientes = lazy(() => import("./Panel/FacturasPendientes"));
 const OrganizationView = lazy(() => import("./pages/Organization/OrganizationView"));
@@ -407,7 +408,7 @@ const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
 
       {/* ✅ DASHBOARD FINANCIERO */}
       <Route path="/financial-dashboard" element={
-        <RoleRoute allowedRoles={[USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.CONTADOR, USER_ROLES.OWNER]}>
+        <RoleRoute allowedRoles={[ USER_ROLES.ADMIN, USER_ROLES.CONTADOR, USER_ROLES.OWNER]}>
           <ErrorBoundary>
             <Suspense fallback={<LoadingSpinner />}>
               <FinancialDashboard />
@@ -421,6 +422,15 @@ const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
         <RoleRoute allowedRoles={[USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
           <Suspense fallback={<LoadingSpinner />}>
             <CommissionConfigManager />
+          </Suspense>
+        </RoleRoute>
+      } />
+
+      {/* ✅ NUEVA RUTA: Límites Mensuales de Comisiones */}
+      <Route path="/monthly-limits" element={
+        <RoleRoute allowedRoles={[USER_ROLES.ADMIN, USER_ROLES.OWNER, USER_ROLES.MANAGER]}>
+          <Suspense fallback={<LoadingSpinner />}>
+            <MonthlyLimitsManager />
           </Suspense>
         </RoleRoute>
       } />
