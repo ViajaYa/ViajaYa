@@ -30,6 +30,10 @@ router.get('/:id/download-pdf', contractController.downloadContractPDF);
 
 // Vista previa del PDF (sin guardar)
 router.get('/:id/preview-pdf', contractController.generateContractPDF);
+
+// 🧪 ENDPOINT DE PRUEBA PARA PDF - TEMPORAL
+router.get('/test/pdf-preview', contractController.generateTestPDF);
+
 router.get('/:id/email-preview', contractController.previewContractEmail);
 // Firmar contrato
 router.post('/:id/sign', contractController.signContract);
