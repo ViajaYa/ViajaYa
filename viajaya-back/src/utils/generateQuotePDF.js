@@ -337,9 +337,6 @@ function generateObservations(quote, calculation) {
 }
 
 // ✅ Calcular noches y días de viaje
-const { formatForPDF } = require("../utils/dateUtils");
-
-
 function calcularNoches(fechaIda, fechaRegreso) {
   if (!fechaIda || !fechaRegreso) return null;
   const ida = new Date(fechaIda);
@@ -460,7 +457,6 @@ function generateBudgetBreakdown(quote) {
     // 1. TIQUETES AÉREOS (sin iconos problemáticos)
     console.log("🔍 Procesando tiquetes aéreos...");
     if (calculation.tiquetes && calculation.tiquetes.costo_total > 0) {
-
       const tipoTiquete = calculation.tiquetes.tipo || 'ida_vuelta';
       let descripcionTiquete = '';
       
@@ -493,7 +489,6 @@ function generateBudgetBreakdown(quote) {
         items: [{
           description: descripcionTiquete,
           details: detallesTiquete,
-
           totalPerPerson: calculation.tiquetes.costo_total,
           totalGeneral: calculation.tiquetes.costo_total * personas_que_pagan
         }]
@@ -1016,7 +1011,6 @@ const generateQuotePDF = async (quote, saveToFile = true) => {
      .text('RESUMEN DETALLADO DEL VIAJE', margin + 8, yPosition + 5);
   yPosition += 25;
 
-
   // Datos principales del viaje con cálculos precisos
   const fechaIda = quote.fecha_ida ? new Date(quote.fecha_ida + 'T12:00:00').toLocaleDateString('es-CO', { 
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
@@ -1024,8 +1018,7 @@ const generateQuotePDF = async (quote, saveToFile = true) => {
   const fechaRegreso = quote.fecha_regreso ? new Date(quote.fecha_regreso + 'T12:00:00').toLocaleDateString('es-CO', { 
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
   }) : null;
- 
-
+  
   const noches = calcularNoches(quote.fecha_ida, quote.fecha_regreso);
   const dias = noches ? noches + 1 : null;
   
