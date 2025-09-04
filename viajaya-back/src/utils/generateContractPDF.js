@@ -922,6 +922,15 @@ const createReservaSection = (doc, contractData) => {
     });
   }
   
+  // Footer simple para página 2
+  doc.fontSize(7)
+     .fillColor('#666666')
+     .text('NIT: 1032406128 | RNT: 122035 | Tel: 320 492 44 44 | Email: info@viajaya.com', 
+           margin, 750, {
+             width: contentWidth,
+             align: 'center'
+           });
+  
   return yPos + 30;
 };
 
@@ -1211,6 +1220,15 @@ const createFinancialSection = (doc, contractData) => {
     yPos += 15;
   });
   
+  // Footer simple para página 3
+  doc.fontSize(7)
+     .fillColor('#666666')
+     .text('NIT: 1032406128 | RNT: 122035 | Tel: 320 492 44 44 | Email: info@viajaya.com', 
+           margin, 750, {
+             width: contentWidth,
+             align: 'center'
+           });
+  
   return yPos + 30;
 };
 
@@ -1311,6 +1329,15 @@ const createAdditionalClausesPages = (doc, contractData) => {
        lineGap: 2
      });
   
+  // Footer para página 4
+  doc.fontSize(7)
+     .fillColor('#666666')
+     .text('NIT: 1032406128 | RNT: 122035 | Tel: 320 492 44 44 | Email: info@viajaya.com', 
+           margin, 750, {
+             width: contentWidth,
+             align: 'center'
+           });
+  
   // ================== PÁGINA 5: PARÁGRAFO SEGUNDO Y CLÁUSULAS ==================
   doc.addPage();
   createContractHeader(doc);
@@ -1404,6 +1431,15 @@ const createAdditionalClausesPages = (doc, contractData) => {
        lineGap: 3
      });
   
+  // Footer para página 5
+  doc.fontSize(7)
+     .fillColor('#666666')
+     .text('NIT: 1032406128 | RNT: 122035 | Tel: 320 492 44 44 | Email: info@viajaya.com', 
+           margin, 750, {
+             width: contentWidth,
+             align: 'center'
+           });
+  
   // ================== PÁGINA 6: CLÁUSULAS ADICIONALES ==================
   doc.addPage();
   createContractHeader(doc);
@@ -1475,6 +1511,15 @@ const createAdditionalClausesPages = (doc, contractData) => {
        align: 'justify',
        lineGap: 3
      });
+  
+  // Footer para página 6
+  doc.fontSize(7)
+     .fillColor('#666666')
+     .text('NIT: 1032406128 | RNT: 122035 | Tel: 320 492 44 44 | Email: info@viajaya.com', 
+           margin, 750, {
+             width: contentWidth,
+             align: 'center'
+           });
   
   // ================== PÁGINA 7: CLÁUSULAS FINALES ==================
   doc.addPage();
@@ -1806,7 +1851,15 @@ const generateContractPDF = async (contractData, saveToFile = true) => {
     yPosition = createContractTitle(doc, yPosition);
     yPosition = createContractClauses(doc, contractData, yPosition);
     
-    // Agregar footer a la primera página
+    // Footer simple para página 1
+    doc.fontSize(7)
+       .fillColor('#666666')
+       .text('NIT: 1032406128 | RNT: 122035 | Tel: 320 492 44 44 | Email: info@viajaya.com', 
+             margin, 750, {
+               width: contentWidth,
+               align: 'center'
+             });
+    
     // ================= CONTINUAR CON LAS DEMÁS PÁGINAS... =================
     // (mantener el resto de las funciones existentes)
     createReservaSection(doc, contractData);
