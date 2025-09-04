@@ -1680,6 +1680,33 @@ getQuoteById: async (req, res) => {
       });
     }
 
+    // ✅ NUEVO: Buscar datos de cálculo detallado si existen
+    let calculationData = null;
+    try {
+      const quoteCalculation = await QuoteCalculation.findOne({
+        where: { quote_id: id }
+      });
+      
+      if (quoteCalculation) {
+        calculationData = quoteCalculation.toJSON();
+        console.log('✅ Datos de QuoteCalculation encontrados para PDF:', {
+          id: calculationData.id,
+          tiquetes: calculationData.tiquetes ? 'PRESENTE' : 'AUSENTE',
+          hotel: calculationData.hotel ? 'PRESENTE' : 'AUSENTE',
+          traslados: calculationData.traslados ? 'PRESENTE' : 'AUSENTE',
+          alimentacion: calculationData.alimentacion ? 'PRESENTE' : 'AUSENTE',
+          equipaje: calculationData.equipaje ? 'PRESENTE' : 'AUSENTE',
+          seguros: calculationData.seguros ? 'PRESENTE' : 'AUSENTE',
+          excursiones: calculationData.excursiones ? `${calculationData.excursiones.length} items` : 'AUSENTE',
+          extras: calculationData.extras ? `${calculationData.extras.length} items` : 'AUSENTE'
+        });
+      } else {
+        console.log('ℹ️ No se encontraron datos de QuoteCalculation para quote_id:', id);
+      }
+    } catch (error) {
+      console.error('❌ Error buscando QuoteCalculation:', error);
+    }
+
     // ✅ NUEVO: Crear versión enriquecida de la cotización
     const enrichedQuote = {
       ...quote.toJSON(), // Convertir a objeto plano
@@ -1689,12 +1716,16 @@ getQuoteById: async (req, res) => {
       precio_por_persona_formateado: precio_por_persona.toFixed(2),
       personas_que_pagan: personasQuePagan,
       
+      // ✅ AGREGAR: Datos de cálculo detallado si existen
+      calculation: calculationData,
+      
       // ✅ AGREGAR: Metadatos útiles
       calculation_metadata: {
         has_price: !!quote.precio_total,
         has_passengers: quote.numero_personas > 0,
         price_per_person_available: !!(quote.precio_total && personasQuePagan > 0),
         infants_dont_pay: true, // ✅ Indicar que infantes no pagan
+        has_detailed_calculation: !!calculationData,
       },
 
       // ✅ AGREGAR: Datos formateados para PDF
@@ -2035,16 +2066,43 @@ getQuoteById: async (req, res) => {
       }
     }
 
+    // ✅ NUEVO: Buscar datos de cálculo detallado si existen
+    let calculationData = null;
+    try {
+      const quoteCalculation = await QuoteCalculation.findOne({
+        where: { quote_id: id }
+      });
+      
+      if (quoteCalculation) {
+        calculationData = quoteCalculation.toJSON();
+        console.log('✅ Datos de QuoteCalculation encontrados para regenerar PDF:', {
+          id: calculationData.id,
+          tiquetes: calculationData.tiquetes ? 'PRESENTE' : 'AUSENTE',
+          hotel: calculationData.hotel ? 'PRESENTE' : 'AUSENTE',
+          traslados: calculationData.traslados ? 'PRESENTE' : 'AUSENTE'
+        });
+      } else {
+        console.log('ℹ️ No se encontraron datos de QuoteCalculation para regenerar PDF quote_id:', id);
+      }
+    } catch (error) {
+      console.error('❌ Error buscando QuoteCalculation para regenerar PDF:', error);
+    }
+
     const enrichedQuote = {
       ...quote.toJSON(),
       precio_por_persona: precio_por_persona,
       precio_por_persona_formateado: precio_por_persona.toFixed(2),
       personas_que_pagan: personasQuePagan,
+      
+      // ✅ AGREGAR: Datos de cálculo detallado si existen
+      calculation: calculationData,
+      
       calculation_metadata: {
         has_price: !!quote.precio_total,
         has_passengers: quote.numero_personas > 0,
         price_per_person_available: !!(quote.precio_total && personasQuePagan > 0),
         infants_dont_pay: true, // ✅ Indicar que infantes no pagan
+        has_detailed_calculation: !!calculationData,
       },
       pdf_data: {
         precio_total_cop: quote.precio_total ? `$${parseFloat(quote.precio_total).toLocaleString('es-CO')}` : null,
@@ -2664,17 +2722,44 @@ getQuoteById: async (req, res) => {
         });
       }
 
+      // ✅ NUEVO: Buscar datos de cálculo detallado si existen
+      let calculationData = null;
+      try {
+        const quoteCalculation = await QuoteCalculation.findOne({
+          where: { quote_id: id }
+        });
+        
+        if (quoteCalculation) {
+          calculationData = quoteCalculation.toJSON();
+          console.log('✅ Datos de QuoteCalculation encontrados para preview PDF:', {
+            id: calculationData.id,
+            tiquetes: calculationData.tiquetes ? 'PRESENTE' : 'AUSENTE',
+            hotel: calculationData.hotel ? 'PRESENTE' : 'AUSENTE',
+            traslados: calculationData.traslados ? 'PRESENTE' : 'AUSENTE'
+          });
+        } else {
+          console.log('ℹ️ No se encontraron datos de QuoteCalculation para preview PDF quote_id:', id);
+        }
+      } catch (error) {
+        console.error('❌ Error buscando QuoteCalculation para preview PDF:', error);
+      }
+
       // ✅ FIX: Crear versión enriquecida de la cotización (IGUAL QUE EN sendQuote)
       const enrichedQuote = {
         ...quote.toJSON(),
         precio_por_persona: precio_por_persona,
         precio_por_persona_formateado: precio_por_persona.toFixed(2),
         personas_que_pagan: personasQuePagan,
+        
+        // ✅ AGREGAR: Datos de cálculo detallado si existen
+        calculation: calculationData,
+        
         calculation_metadata: {
           has_price: !!quote.precio_total,
           has_passengers: quote.numero_personas > 0,
           price_per_person_available: !!(quote.precio_total && personasQuePagan > 0),
           infants_dont_pay: true,
+          has_detailed_calculation: !!calculationData,
         },
         pdf_data: {
           precio_total_cop: quote.precio_total ? `$${parseFloat(quote.precio_total).toLocaleString('es-CO')}` : null,
