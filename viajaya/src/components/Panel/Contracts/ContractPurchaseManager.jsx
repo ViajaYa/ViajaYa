@@ -5,6 +5,9 @@ import { toast } from 'react-toastify';
 import ItemCard from './ItemCard';
 import PurchaseUploadModal from './PurchaseUploadModal';
 import DeadlineUpdateModal from './DeadlineUpdateModal';
+// ✅ NUEVO: Modales de cuotas
+import CreateInstallmentsModal from './CreateInstallmentsModal';
+import InstallmentsManagementModal from './InstallmentsManagementModal';
 import {
   // Actions
   fetchContractItemsWithPurchases,
@@ -13,6 +16,10 @@ import {
   markPaymentCompleted,
   signContractWithAutoConversion, // ✅ Ya lo tienes
   convertQuoteToContractItems,
+  // ✅ NUEVO: Actions de cuotas
+  createPurchaseWithInstallments,
+  fetchPurchaseInstallments,
+  payInstallment,
   
   // Selectors existentes
   selectPurchaseItems,
@@ -27,7 +34,12 @@ import {
   selectCompletedPurchases,
   selectHasAutoConvertedItems,
   selectAutoConversionSummary,
-  selectIsSignedWithItems
+  selectIsSignedWithItems,
+  // ✅ NUEVO: Selectors de cuotas
+  selectInstallments,
+  selectInstallmentsLoading,
+  selectCreatingInstallments,
+  selectPayingInstallment
 } from '../../../redux/slices/contractSlice';
 
 // Icons
@@ -62,12 +74,24 @@ const ContractPurchaseManager = () => {
   const hasAutoConvertedItems = useSelector(selectHasAutoConvertedItems);
   const autoConversionSummary = useSelector(selectAutoConversionSummary);
   const isSignedWithItems = useSelector(selectIsSignedWithItems);
+  
+  // ✅ NUEVO: Selectores de cuotas
+  const installments = useSelector(selectInstallments);
+  const installmentsLoading = useSelector(selectInstallmentsLoading);
+  const creatingInstallments = useSelector(selectCreatingInstallments);
+  const payingInstallment = useSelector(selectPayingInstallment);
+
   // Estados locales
   const [filter, setFilter] = useState('all');
   const [sortBy, setSortBy] = useState('priority');
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showDeadlineModal, setShowDeadlineModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
+  
+  // ✅ NUEVO: Estados de cuotas
+  const [showCreateInstallmentsModal, setShowCreateInstallmentsModal] = useState(false);
+  const [showInstallmentsModal, setShowInstallmentsModal] = useState(false);
+  const [selectedPurchase, setSelectedPurchase] = useState(null);
 
   // ✅ CONFIGURACIÓN DE TIPOS DE ITEMS - AJUSTADO AL MODELO REAL
   const itemConfig = React.useMemo(() => ({
@@ -494,6 +518,60 @@ const ContractPurchaseManager = () => {
     }
   };
 
+  // ✅ NUEVO: Funciones para manejo de cuotas
+  const handleCreateInstallments = (item) => {
+    console.log('🔍 Item seleccionado para cuotas:', item);
+    console.log('🔍 ID del item:', item?.id);
+    setSelectedItem(item);
+    setShowCreateInstallmentsModal(true);
+  };
+
+  const handleViewInstallments = async (purchase) => {
+    setSelectedPurchase(purchase);
+    try {
+      await dispatch(fetchPurchaseInstallments(purchase.id));
+      setShowInstallmentsModal(true);
+    } catch (error) {
+      toast.error('Error cargando cuotas');
+    }
+  };
+
+  const handleSubmitInstallments = async (formData) => {
+    try {
+      console.log('🔍 Datos a enviar:', formData);
+      console.log('🔍 Item seleccionado:', selectedItem);
+      console.log('🔍 ID del item:', selectedItem?.id);
+      
+      await dispatch(createPurchaseWithInstallments({
+        itemId: selectedItem.id,
+        purchaseData: formData
+      })).unwrap();
+      
+      toast.success('Compra con cuotas creada exitosamente');
+      setShowCreateInstallmentsModal(false);
+      setSelectedItem(null);
+    } catch (error) {
+      toast.error(`Error creando compra con cuotas: ${error}`);
+    }
+  };
+
+  const handlePayInstallment = async (installmentId, paymentData) => {
+    try {
+      await dispatch(payInstallment({
+        installmentId,
+        ...paymentData
+      })).unwrap();
+      
+      toast.success('Cuota pagada exitosamente');
+      // Recargar cuotas
+      if (selectedPurchase) {
+        await dispatch(fetchPurchaseInstallments(selectedPurchase.id));
+      }
+    } catch (error) {
+      toast.error(`Error registrando pago: ${error}`);
+    }
+  };
+
   // ✅ RENDERIZAR LOADING
   if (loading && items.length === 0) {
     return (
@@ -545,28 +623,7 @@ return (
           )}
         </div>
         
-        <div className="flex space-x-3">
-          {/* ✅ BOTÓN DE IMPORTACIÓN INTELIGENTE */}
-          <button 
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={handleConvertFromQuote}
-            disabled={loading}
-          >
-            <FontAwesomeIcon 
-              icon={loading ? faSpinner : faDownload} 
-              className={`mr-2 ${loading ? 'animate-spin' : ''}`} 
-            />
-            {hasAutoConvertedItems 
-              ? 'Re-importar desde Cotización' 
-              : 'Importar desde Cotización'
-            }
-          </button>
-          
-          <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-            <FontAwesomeIcon icon={faUpload} className="mr-2" />
-            Subir Masivo
-          </button>
-        </div>
+        
       </div>
 
       {/* ✅ BANNER INFORMATIVO CUANDO NO HAY ITEMS */}
@@ -784,6 +841,11 @@ return (
               uploading={uploadingReceipt}
               updatingDeadline={updatingDeadline}
               markingPayment={markingPayment}
+              // ✅ NUEVO: Props de cuotas
+              onCreateInstallments={() => handleCreateInstallments(item)}
+              onViewInstallments={handleViewInstallments}
+              creatingInstallments={creatingInstallments}
+              loadingInstallments={installmentsLoading}
             />
           ))}
 
@@ -849,6 +911,33 @@ return (
         }}
         onSubmit={handleUpdateDeadline}
         updating={updatingDeadline}
+      />
+    )}
+
+    {/* ✅ NUEVO: Modales de cuotas */}
+    {showCreateInstallmentsModal && selectedItem && (
+      <CreateInstallmentsModal
+        item={selectedItem}
+        onClose={() => {
+          setShowCreateInstallmentsModal(false);
+          setSelectedItem(null);
+        }}
+        onSubmit={handleSubmitInstallments}
+        creating={creatingInstallments}
+      />
+    )}
+
+    {showInstallmentsModal && selectedPurchase && (
+      <InstallmentsManagementModal
+        purchase={selectedPurchase}
+        installments={installments || []}
+        onClose={() => {
+          setShowInstallmentsModal(false);
+          setSelectedPurchase(null);
+        }}
+        onPayInstallment={handlePayInstallment}
+        loading={installmentsLoading}
+        payingInstallment={payingInstallment}
       />
     )}
 

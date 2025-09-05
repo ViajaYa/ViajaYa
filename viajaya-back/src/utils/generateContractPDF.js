@@ -104,9 +104,51 @@ const ensurePDFDirectory = () => {
   return pdfDir;
 };
 
-// ✅ Función para formatear fechas en español - CORREGIDO para usar utilidades consistentes
+// ✅ Función para formatear fechas en español - CORREGIDO para manejar fechas-only sin zona horaria
 const formatearFecha = (fecha) => {
-  return formatForPDF(fecha); // Usar utilidad consistente en lugar de new Date().toLocaleDateString
+  if (!fecha) return 'Fecha no disponible';
+  
+  try {
+    // ✅ DETECTAR si es un Date object o string con hora exactamente a medianoche UTC
+    let isDateOnlyFormat = false;
+    let dateISOString = '';
+    
+    if (typeof fecha === 'object' && fecha instanceof Date) {
+      // ✅ CONVERTIR Date object a ISO string para análisis
+      dateISOString = fecha.toISOString();
+      
+      // ✅ VERIFICAR si termina en T00:00:00.000Z (indica fecha-only)
+      isDateOnlyFormat = dateISOString.endsWith('T00:00:00.000Z');
+    } else if (typeof fecha === 'string') {
+      // ✅ CASO STRING: verificar directamente
+      dateISOString = fecha;
+      isDateOnlyFormat = /^\d{4}-\d{2}-\d{2}T00:00:00\.000Z$/.test(fecha);
+    }
+    
+    if (isDateOnlyFormat && dateISOString) {
+      // Es una fecha "solo fecha" almacenada como timestamp UTC a medianoche
+      // Extraer solo la parte de fecha (YYYY-MM-DD) y tratarla como fecha local
+      const dateOnly = dateISOString.substring(0, 10); // "2025-10-01"
+      const [year, month, day] = dateOnly.split('-');
+      
+      // Crear fecha local sin conversión de timezone
+      const localDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      
+      // Formatear directamente con JavaScript nativo
+      return localDate.toLocaleDateString('es-CO', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    }
+    
+    // Para otros formatos, usar el sistema existente
+    return formatForPDF(fecha);
+  } catch (error) {
+    console.error('Error formateando fecha en PDF:', error);
+    return 'Error en fecha';
+  }
 };
 
 // ✅ Función para formatear moneda colombiana

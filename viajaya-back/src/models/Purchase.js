@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize) => {
-sequelize.define('purchase', {
+  return sequelize.define('purchase', {
 
     contract_item_id: {
       type: DataTypes.UUID,
@@ -57,7 +57,28 @@ sequelize.define('purchase', {
     observaciones: {
       type: DataTypes.TEXT,
       allowNull: true
+    },
+    // ✅ NUEVOS CAMPOS PARA MANEJO DE CUOTAS
+    tipo_pago: {
+      type: DataTypes.ENUM('contado', 'cuotas'),
+      defaultValue: 'contado'
+    },
+    numero_cuotas: {
+      type: DataTypes.INTEGER,
+      allowNull: true
+    },
+    cuotas_pagadas: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0
+    },
+    saldo_pendiente: {
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: true
     }
+  }, {
+    tableName: 'purchases',
+    timestamps: false, // ✅ Deshabilitamos timestamps por ahora
+    // Cuando la base esté lista, cambiar a true
   });
 
 };

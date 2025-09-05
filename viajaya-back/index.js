@@ -12,19 +12,19 @@ conn.sync({ alter: true })
         await seedCommissionConfigs(); // Cargar comisiones por defecto si no existen
         
         app.listen(3001, () => {
-            console.log("🚀 Server listening on port 3001");
-            console.log("🔐 Sistema de roles configurado");
-            console.log("📊 Roles disponibles:");
-            console.log("   1: Cliente");
-            console.log("   2: Asesor");  
-            console.log("   3: Líder");
-            console.log("   4: Gerente");
-            console.log("   5: Admin");
-            console.log("   6: Contador");
-            console.log("   7: Owner");
-            console.log("👤 Usuarios de prueba:");
-            console.log("   Admin: admin@viajaya.com / Admin123!");
-            console.log("   Owner: owner@viajaya.com / Owner123!");
+            // console.log("🚀 Server listening on port 3001");
+            // console.log("🔐 Sistema de roles configurado");
+            // console.log("📊 Roles disponibles:");
+            // console.log("   1: Cliente");
+            // console.log("   2: Asesor");  
+            // console.log("   3: Líder");
+            // console.log("   4: Gerente");
+            // console.log("   5: Admin");
+            // console.log("   6: Contador");
+            // console.log("   7: Owner");
+            // console.log("👤 Usuarios de prueba:");
+            // console.log("   Admin: admin@viajaya.com / Admin123!");
+            // console.log("   Owner: owner@viajaya.com / Owner123!");
         });
     })
     .catch((error) => {
