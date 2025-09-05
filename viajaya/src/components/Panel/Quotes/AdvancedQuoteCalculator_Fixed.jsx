@@ -681,6 +681,39 @@ useEffect(() => {
     }
   }, [configuredCommissions]);
 
+  // ✅ NUEVO: useEffect para recalcular noches cuando cambien las fechas
+  useEffect(() => {
+    if (form.tiquetes?.fecha_ida && form.tiquetes?.fecha_vuelta) {
+      const fechaIdaDate = new Date(form.tiquetes.fecha_ida + 'T00:00:00');
+      const fechaVueltaDate = new Date(form.tiquetes.fecha_vuelta + 'T00:00:00');
+      
+      if (fechaVueltaDate > fechaIdaDate) {
+        const diffTime = fechaVueltaDate.getTime() - fechaIdaDate.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const noches = diffDays;
+        
+        // Solo actualizar si es diferente para evitar loops infinitos
+        if (form.hotel.noches !== noches) {
+          console.log('🏨 RECALCULANDO NOCHES EN useEffect:', {
+            fechaIda: form.tiquetes.fecha_ida,
+            fechaVuelta: form.tiquetes.fecha_vuelta,
+            nochesCalculadas: noches,
+            nochesActuales: form.hotel.noches
+          });
+          
+          setForm(prev => ({
+            ...prev,
+            hotel: {
+              ...prev.hotel,
+              noches: noches,
+              costo_total: noches * parseFloat(prev.hotel.costo_noche || 0)
+            }
+          }));
+        }
+      }
+    }
+  }, [form.tiquetes?.fecha_ida, form.tiquetes?.fecha_vuelta, form.hotel.costo_noche, form.hotel.noches]);
+
   const handleInputChange = (categoria, campo, valor, subcampo = null) => {
     setForm(prev => {
       const newForm = JSON.parse(JSON.stringify(prev));
@@ -731,19 +764,29 @@ useEffect(() => {
       } else {
         newForm[categoria][campo] = valor;
 
-        // ✅ NUEVO: Calcular automáticamente noches del hotel cuando cambien las fechas
+        // ✅ CORREGIDO: Calcular automáticamente noches del hotel cuando cambien las fechas
         if (categoria === 'tiquetes' && (campo === 'fecha_ida' || campo === 'fecha_vuelta')) {
           const fechaIda = newForm.tiquetes.fecha_ida;
           const fechaVuelta = newForm.tiquetes.fecha_vuelta;
           
           if (fechaIda && fechaVuelta) {
-            const fechaIdaDate = new Date(fechaIda);
-            const fechaVueltaDate = new Date(fechaVuelta);
+            const fechaIdaDate = new Date(fechaIda + 'T00:00:00');
+            const fechaVueltaDate = new Date(fechaVuelta + 'T00:00:00');
             
             if (fechaVueltaDate > fechaIdaDate) {
               const diffTime = fechaVueltaDate.getTime() - fechaIdaDate.getTime();
               const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-              const noches = Math.max(0, diffDays - 1);
+              const noches = diffDays; // ✅ CORREGIDO: Las noches son igual a los días de diferencia
+              
+              console.log('🏨 CÁLCULO DE NOCHES:', {
+                fechaIda,
+                fechaVuelta,
+                fechaIdaDate,
+                fechaVueltaDate,
+                diffTime,
+                diffDays,
+                noches
+              });
               
               // Actualizar automáticamente las noches del hotel
               newForm.hotel.noches = noches;
@@ -1405,14 +1448,18 @@ useEffect(() => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Noches</label>
+                  <label className="block text-sm font-medium mb-1">Noches (calculado automáticamente)</label>
                   <input
                     type="number"
-                    value={form.hotel.noches}
-                    onChange={e => handleInputChange('hotel', 'noches', e.target.value)}
-                    className="w-full border rounded px-3 py-2"
+                    value={form.hotel.noches || 0}
+                    readOnly
+                    className="w-full border rounded px-3 py-2 bg-gray-100 cursor-not-allowed text-gray-700"
                     min="0"
+                    title="Este campo se calcula automáticamente basado en las fechas de ida y vuelta"
                   />
+                  <div className="text-xs text-gray-500 mt-1">
+                    Se calcula automáticamente: Fecha de vuelta - Fecha de ida
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Precio por Noche (por persona)</label>

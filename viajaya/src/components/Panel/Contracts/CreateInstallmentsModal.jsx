@@ -24,16 +24,15 @@ const CreateInstallmentsModal = ({ item, onClose, onSubmit, creating }) => {
 
   const [errors, setErrors] = useState({});
 
-  // Actualizar cuotas cuando cambie el número de cuotas o monto total
-  const updateCuotas = useCallback((numeroCuotas, montoTotal) => {
-    const montoPorCuota = montoTotal / numeroCuotas;
+  // Actualizar cuotas cuando cambie SOLO el número de cuotas (preservar montos existentes)
+  const updateCuotas = useCallback((numeroCuotas) => {
     const nuevasCuotas = [];
     
     for (let i = 1; i <= numeroCuotas; i++) {
       const cuotaExistente = cuotas.find(c => c.numero === i);
       nuevasCuotas.push({
         numero: i,
-        monto: montoPorCuota,
+        monto: cuotaExistente?.monto || 0, // Preservar monto existente o 0
         fecha_vencimiento: cuotaExistente?.fecha_vencimiento || ''
       });
     }
@@ -41,10 +40,10 @@ const CreateInstallmentsModal = ({ item, onClose, onSubmit, creating }) => {
     setCuotas(nuevasCuotas);
   }, [cuotas]);
 
-  // Inicializar cuotas cuando se monta el componente
+  // Inicializar cuotas cuando cambie SOLO el número de cuotas
   useEffect(() => {
-    updateCuotas(formData.numero_cuotas, formData.monto_total);
-  }, [formData.numero_cuotas, formData.monto_total, updateCuotas]); // Dependencias necesarias
+    updateCuotas(formData.numero_cuotas);
+  }, [formData.numero_cuotas, updateCuotas]);
 
   // Calcular monto por cuota
   const montoPorCuota = formData.monto_total / formData.numero_cuotas;
@@ -57,6 +56,15 @@ const CreateInstallmentsModal = ({ item, onClose, onSubmit, creating }) => {
       monto: montoPorCuota
     }));
     setCuotas(nuevasCuotas);
+  };
+
+  // Sincronizar monto total con la suma de cuotas
+  const sincronizarMontoTotal = () => {
+    const sumaCuotas = cuotas.reduce((sum, cuota) => sum + cuota.monto, 0);
+    setFormData(prev => ({
+      ...prev,
+      monto_total: sumaCuotas
+    }));
   };
 
   // Validar formulario
@@ -138,22 +146,20 @@ const CreateInstallmentsModal = ({ item, onClose, onSubmit, creating }) => {
     nuevasCuotas[index].monto = parseFloat(monto) || 0;
     setCuotas(nuevasCuotas);
 
-    // Actualizar monto total basado en la suma de cuotas
-    const nuevoMontoTotal = nuevasCuotas.reduce((sum, cuota) => sum + cuota.monto, 0);
-    setFormData(prev => ({
-      ...prev,
-      monto_total: nuevoMontoTotal
-    }));
-
-    // Limpiar error de monto
+    // Limpiar errores relacionados con montos
     const errorKey = `monto_cuota_${index}`;
-    if (errors[errorKey]) {
+    if (errors[errorKey] || errors.suma_cuotas) {
       setErrors(prev => ({
         ...prev,
-        [errorKey]: undefined
+        [errorKey]: undefined,
+        suma_cuotas: undefined
       }));
     }
   };
+
+  // Calcular suma actual de cuotas
+  const sumaCuotas = cuotas.reduce((sum, cuota) => sum + (cuota.monto || 0), 0);
+  const diferencia = sumaCuotas - formData.monto_total;
 
   // Manejar envío
   const handleSubmit = (e) => {
@@ -350,14 +356,24 @@ const CreateInstallmentsModal = ({ item, onClose, onSubmit, creating }) => {
                   <h4 className="text-sm font-medium text-gray-700">
                     Configurar Cuotas Individuales:
                   </h4>
-                  <button
-                    type="button"
-                    onClick={distribuirMontoEquitativo}
-                    className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
-                    disabled={creating}
-                  >
-                    Distribuir Equitativamente
-                  </button>
+                  <div className="flex space-x-2">
+                    <button
+                      type="button"
+                      onClick={distribuirMontoEquitativo}
+                      className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+                      disabled={creating}
+                    >
+                      Distribuir Equitativamente
+                    </button>
+                    <button
+                      type="button"
+                      onClick={sincronizarMontoTotal}
+                      className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
+                      disabled={creating}
+                    >
+                      Sincronizar Total
+                    </button>
+                  </div>
                 </div>
                 <div className="space-y-3">
                   {cuotas.map((cuota, index) => (
@@ -379,8 +395,7 @@ const CreateInstallmentsModal = ({ item, onClose, onSubmit, creating }) => {
                             }`}
                             placeholder="0"
                             disabled={creating}
-                            min="0"
-                            step="0.01"
+                            
                           />
                           {errors[`monto_cuota_${index}`] && (
                             <p className="text-red-500 text-xs mt-1">{errors[`monto_cuota_${index}`]}</p>
@@ -419,25 +434,75 @@ const CreateInstallmentsModal = ({ item, onClose, onSubmit, creating }) => {
                   </div>
                 )}
                 
-                {/* Mostrar suma actual */}
-                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded">
+                {/* Mostrar suma actual y validación */}
+                <div className={`mt-3 p-3 rounded border ${
+                  Math.abs(sumaCuotas - formData.monto_total) < 0.01 
+                    ? 'bg-green-50 border-green-200' 
+                    : 'bg-red-50 border-red-200'
+                }`}>
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-blue-700">Suma de cuotas:</span>
-                    <span className="font-semibold text-blue-800">
-                      ${cuotas.reduce((sum, cuota) => sum + cuota.monto, 0).toLocaleString('es-CO', {
+                    <span className={`${
+                      Math.abs(sumaCuotas - formData.monto_total) < 0.01 
+                        ? 'text-green-700' 
+                        : 'text-red-700'
+                    }`}>
+                      Suma de cuotas:
+                    </span>
+                    <span className={`font-semibold ${
+                      Math.abs(sumaCuotas - formData.monto_total) < 0.01 
+                        ? 'text-green-800' 
+                        : 'text-red-800'
+                    }`}>
+                      ${sumaCuotas.toLocaleString('es-CO', {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2
                       })}
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-sm mt-1">
-                    <span className="text-blue-700">Monto total:</span>
-                    <span className="font-semibold text-blue-800">
+                    <span className={`${
+                      Math.abs(sumaCuotas - formData.monto_total) < 0.01 
+                        ? 'text-green-700' 
+                        : 'text-red-700'
+                    }`}>
+                      Monto total:
+                    </span>
+                    <span className={`font-semibold ${
+                      Math.abs(sumaCuotas - formData.monto_total) < 0.01 
+                        ? 'text-green-800' 
+                        : 'text-red-800'
+                    }`}>
                       ${formData.monto_total.toLocaleString('es-CO', {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2
                       })}
                     </span>
+                  </div>
+                  
+                  {/* Mostrar diferencia si existe */}
+                  {Math.abs(diferencia) >= 0.01 && (
+                    <div className="flex justify-between items-center text-sm mt-2 pt-2 border-t border-red-300">
+                      <span className="text-red-700 font-medium">Diferencia:</span>
+                      <span className="font-bold text-red-800">
+                        ${Math.abs(diferencia).toLocaleString('es-CO', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        })} {diferencia > 0 ? '(exceso)' : '(faltante)'}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Mensaje de estado */}
+                  <div className="mt-2 text-center">
+                    {Math.abs(diferencia) < 0.01 ? (
+                      <span className="text-green-700 text-sm font-medium">
+                        ✓ Los montos coinciden correctamente
+                      </span>
+                    ) : (
+                      <span className="text-red-700 text-sm font-medium">
+                        ⚠ Los montos no coinciden - Ajuste las cuotas o el total
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
