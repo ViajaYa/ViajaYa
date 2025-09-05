@@ -138,10 +138,24 @@ const addDaysFromNow = (days) => {
 
 // 📅 FORMATEO PARA DOCUMENTOS PDF
 const formatForPDF = (date) => {
-  if (!date) return '';
+  if (!date) return 'Fecha no disponible';
   
-  const dt = dateInColombia(date);
-  if (!dt || !dt.isValid) return '';
+  let dt = null;
+  
+  // ✅ CASO ESPECIAL: Si es una fecha ISO que termina en T00:00:00.000Z
+  // Esto significa que es una fecha "solo fecha" almacenada como timestamp UTC
+  // La tratamos como fecha local en Colombia para evitar desfase de días
+  if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}T00:00:00\.000Z$/.test(date)) {
+    // Extraer solo la parte de fecha (YYYY-MM-DD)
+    const dateOnly = date.substring(0, 10);
+    // Crear fecha local en Colombia sin conversión de timezone
+    dt = DateTime.fromISO(`${dateOnly}T00:00:00`, { zone: COLOMBIA_TIMEZONE });
+  } else {
+    // Para otros formatos, usar el método normal
+    dt = dateInColombia(date);
+  }
+  
+  if (!dt || !dt.isValid) return 'Fecha no disponible';
   
   return dt.toLocaleString(
     { 
@@ -152,6 +166,25 @@ const formatForPDF = (date) => {
     },
     { locale: COLOMBIA_LOCALE }
   );
+};
+
+// 📅 FORMATEO SIMPLE PARA DOCUMENTOS (DD/MM/YYYY)
+const formatForPDFSimple = (date) => {
+  if (!date) return 'Fecha no disponible';
+  
+  let dt = null;
+  
+  // ✅ CASO ESPECIAL: Si es una fecha ISO que termina en T00:00:00.000Z
+  if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}T00:00:00\.000Z$/.test(date)) {
+    const dateOnly = date.substring(0, 10);
+    dt = DateTime.fromISO(`${dateOnly}T00:00:00`, { zone: COLOMBIA_TIMEZONE });
+  } else {
+    dt = dateInColombia(date);
+  }
+  
+  if (!dt || !dt.isValid) return 'Fecha no disponible';
+  
+  return dt.toLocaleString({ day: '2-digit', month: '2-digit', year: 'numeric' }, { locale: COLOMBIA_LOCALE });
 };
 
 module.exports = {
@@ -168,6 +201,7 @@ module.exports = {
   endOfDay,
   addDaysFromNow,
   formatForPDF,
+  formatForPDFSimple,
   COLOMBIA_TIMEZONE,
   COLOMBIA_LOCALE
 };

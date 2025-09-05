@@ -1,11 +1,11 @@
-import  { useState } from 'react';
+import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  faCalendarAlt, faUpload, faDownload, faEdit,
-  faMoneyBillWave, faCheckCircle, faTimesCircle,
-  faExclamationTriangle, faClock, faEye, faTrash,
-  faSpinner, faBell
+  faCalendarAlt, faUpload, faDownload,
+  faCheckCircle, faClock, faEye,
+  faSpinner, faBell, faCoins, faList,
+  faPlus, faExclamationTriangle
 } from '@fortawesome/free-solid-svg-icons';
 import ComprobanteViewerModal from './ComprobanteViewerModal';
 
@@ -19,7 +19,12 @@ const ItemCard = ({
   onMarkPaymentCompleted,
   uploading = false,
   updatingDeadline = false,
-  markingPayment = false
+  markingPayment = false,
+  // ✅ NUEVO: Props para sistema de cuotas
+  onCreateInstallments,
+  onViewInstallments,
+  creatingInstallments = false,
+  loadingInstallments = false
 }) => {
   const [showDetails, setShowDetails] = useState(false);
   const [showConfirmPayment, setShowConfirmPayment] = useState(false);
@@ -53,6 +58,49 @@ const ItemCard = ({
     
     if (days > 0) return `${days}d ${hours}h restantes`;
     return `${hours}h restantes`;
+  };
+
+  // ✅ NUEVO: Funciones helper para sistema de cuotas
+  const purchaseHasInstallments = (purchase) => {
+    return purchase && (purchase.numero_cuotas > 1 || 
+           (purchase.PurchaseInstallments && purchase.PurchaseInstallments.length > 0));
+  };
+
+  const getPurchaseInstallments = (purchase) => {
+    return purchase?.PurchaseInstallments || [];
+  };
+
+  const getInstallmentsSummary = (purchase) => {
+    const installments = getPurchaseInstallments(purchase);
+    if (!installments || installments.length === 0) return null;
+
+    const total = installments.length;
+    const paid = installments.filter(inst => inst.estado === 'pagado').length;
+    const pending = total - paid;
+    const progress = total > 0 ? Math.round((paid / total) * 100) : 0;
+    
+    const totalAmount = installments.reduce((sum, inst) => sum + parseFloat(inst.monto_cuota || 0), 0);
+    const paidAmount = installments
+      .filter(inst => inst.estado === 'pagado')
+      .reduce((sum, inst) => sum + parseFloat(inst.monto_cuota || 0), 0);
+    
+    // Contar cuotas vencidas (pendientes con fecha de vencimiento pasada)
+    const now = new Date();
+    const overdue = installments.filter(inst => 
+      inst.estado === 'pendiente' && 
+      inst.fecha_vencimiento && 
+      new Date(inst.fecha_vencimiento) < now
+    ).length;
+
+    return {
+      total,
+      paid,
+      pending,
+      progress,
+      totalAmount,
+      paidAmount,
+      overdue
+    };
   };
 
   // ✅ DETERMINAR SI PERMITE ACCIONES
@@ -216,6 +264,83 @@ const ItemCard = ({
           </div>
         )}
 
+        {/* ✅ NUEVO: Información de cuotas */}
+        {purchaseInfo && purchaseHasInstallments(purchaseInfo) && (
+          <div className="bg-purple-50 rounded-lg p-3 mb-4">
+            <h4 className="font-medium text-purple-900 mb-2 flex items-center">
+              <FontAwesomeIcon icon={faCoins} className="mr-2" />
+              Sistema de Cuotas
+            </h4>
+            
+            {(() => {
+              const summary = getInstallmentsSummary(purchaseInfo);
+              return summary ? (
+                <div className="space-y-3">
+                  {/* Estadísticas básicas */}
+                  <div className="grid grid-cols-3 gap-3 text-sm">
+                    <div className="text-center">
+                      <p className="text-purple-600 font-medium">{summary.total}</p>
+                      <p className="text-purple-700 text-xs">Total Cuotas</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-green-600 font-medium">{summary.paid}</p>
+                      <p className="text-purple-700 text-xs">Pagadas</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-yellow-600 font-medium">{summary.pending}</p>
+                      <p className="text-purple-700 text-xs">Pendientes</p>
+                    </div>
+                  </div>
+
+                  {/* Barra de progreso */}
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-purple-700">Progreso de Pagos</span>
+                      <span className="text-purple-700">{summary.progress}%</span>
+                    </div>
+                    <div className="w-full bg-purple-200 rounded-full h-2">
+                      <div 
+                        className="bg-purple-600 h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${summary.progress}%` }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  {/* Resumen financiero */}
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-purple-600">Total:</span>
+                      <span className="ml-2 text-purple-900 font-medium">
+                        ${summary.totalAmount.toLocaleString('es-CO')}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-purple-600">Pagado:</span>
+                      <span className="ml-2 text-green-600 font-medium">
+                        ${summary.paidAmount.toLocaleString('es-CO')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Alertas de cuotas vencidas */}
+                  {summary.overdue > 0 && (
+                    <div className="bg-red-100 border border-red-200 rounded p-2">
+                      <p className="text-red-800 text-xs flex items-center">
+                        <FontAwesomeIcon icon={faExclamationTriangle} className="mr-2" />
+                        {summary.overdue} cuota{summary.overdue !== 1 ? 's' : ''} vencida{summary.overdue !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-purple-700 text-sm">
+                  Compra configurada con {purchaseInfo.numero_cuotas} cuotas - Cargando información...
+                </p>
+              );
+            })()}
+          </div>
+        )}
+
         {/* ✅ DETALLE EXPANDIBLE */}
         {item.detalle && (
           <div className="mb-4">
@@ -313,6 +438,35 @@ const ItemCard = ({
               Descargar
             </a>
           )}
+
+          {/* ✅ NUEVO: Botones para sistema de cuotas */}
+          {canUpload && onCreateInstallments && !purchaseInfo && (
+            <button
+              onClick={onCreateInstallments}
+              disabled={creatingInstallments}
+              className="flex items-center px-3 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <FontAwesomeIcon 
+                icon={creatingInstallments ? faSpinner : faPlus} 
+                className={`mr-2 ${creatingInstallments ? 'animate-spin' : ''}`} 
+              />
+              {creatingInstallments ? 'Creando...' : 'Crear con Cuotas'}
+            </button>
+          )}
+
+          {purchaseInfo && purchaseHasInstallments(purchaseInfo) && onViewInstallments && (
+            <button
+              onClick={() => onViewInstallments(purchaseInfo)}
+              disabled={loadingInstallments}
+              className="flex items-center px-3 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <FontAwesomeIcon 
+                icon={loadingInstallments ? faSpinner : faList} 
+                className={`mr-2 ${loadingInstallments ? 'animate-spin' : ''}`} 
+              />
+              {loadingInstallments ? 'Cargando...' : 'Ver Cuotas'}
+            </button>
+          )}
         </div>
 
         {/* ✅ MODAL CONFIRMACIÓN DE PAGO */}
@@ -394,7 +548,12 @@ ItemCard.propTypes = {
   onMarkPaymentCompleted: PropTypes.func.isRequired,
   uploading: PropTypes.bool,
   updatingDeadline: PropTypes.bool,
-  markingPayment: PropTypes.bool
+  markingPayment: PropTypes.bool,
+  // ✅ NUEVO: PropTypes para sistema de cuotas
+  onCreateInstallments: PropTypes.func,
+  onViewInstallments: PropTypes.func,
+  creatingInstallments: PropTypes.bool,
+  loadingInstallments: PropTypes.bool
 };
 
 export default ItemCard;

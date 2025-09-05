@@ -104,9 +104,51 @@ const ensurePDFDirectory = () => {
   return pdfDir;
 };
 
-// ✅ Función para formatear fechas en español - CORREGIDO para usar utilidades consistentes
+// ✅ Función para formatear fechas en español - CORREGIDO para manejar fechas-only sin zona horaria
 const formatearFecha = (fecha) => {
-  return formatForPDF(fecha); // Usar utilidad consistente en lugar de new Date().toLocaleDateString
+  if (!fecha) return 'Fecha no disponible';
+  
+  try {
+    // ✅ DETECTAR si es un Date object o string con hora exactamente a medianoche UTC
+    let isDateOnlyFormat = false;
+    let dateISOString = '';
+    
+    if (typeof fecha === 'object' && fecha instanceof Date) {
+      // ✅ CONVERTIR Date object a ISO string para análisis
+      dateISOString = fecha.toISOString();
+      
+      // ✅ VERIFICAR si termina en T00:00:00.000Z (indica fecha-only)
+      isDateOnlyFormat = dateISOString.endsWith('T00:00:00.000Z');
+    } else if (typeof fecha === 'string') {
+      // ✅ CASO STRING: verificar directamente
+      dateISOString = fecha;
+      isDateOnlyFormat = /^\d{4}-\d{2}-\d{2}T00:00:00\.000Z$/.test(fecha);
+    }
+    
+    if (isDateOnlyFormat && dateISOString) {
+      // Es una fecha "solo fecha" almacenada como timestamp UTC a medianoche
+      // Extraer solo la parte de fecha (YYYY-MM-DD) y tratarla como fecha local
+      const dateOnly = dateISOString.substring(0, 10); // "2025-10-01"
+      const [year, month, day] = dateOnly.split('-');
+      
+      // Crear fecha local sin conversión de timezone
+      const localDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      
+      // Formatear directamente con JavaScript nativo
+      return localDate.toLocaleDateString('es-CO', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    }
+    
+    // Para otros formatos, usar el sistema existente
+    return formatForPDF(fecha);
+  } catch (error) {
+    console.error('Error formateando fecha en PDF:', error);
+    return 'Error en fecha';
+  }
 };
 
 // ✅ Función para formatear moneda colombiana
@@ -167,16 +209,18 @@ const numeroALetras = (numero) => {
 // ✅ Función para crear header del contrato (basado en el modelo)
 const createContractHeader = (doc) => {
   const pageWidth = doc.page.width;
-  const margin = 40;
-  const headerHeight = 80;
-  // Fondo azul (mantener color original)
+  const margin = 25; // Mismo margen que cotización
+  const headerHeight = 70; // Mismo alto que cotización
+  
+  // ✅ Fondo azul (usar mismo color que cotización)
   doc.rect(0, 0, pageWidth, headerHeight)
-     .fillColor('#00bcd4')
+     .fillColor('#5475A8') // ColorAzul2 del PDF de cotización
      .fill();
 
-  // Logo a la izquierda (intenta varios archivos)
+  // ✅ Logo a la izquierda (misma lógica que cotización)
+  let logoBottom = 6;
   const logoCandidates = [
-    
+    path.join(__dirname, '../assets/logoNuevo.png'), 
     path.join(__dirname, '../assets/NuevoLogo.png'),
     path.join(__dirname, '../assets/logo2.png')
   ];
@@ -184,112 +228,254 @@ const createContractHeader = (doc) => {
   for (const logoPath of logoCandidates) {
     try {
       if (fs.existsSync(logoPath)) {
-        doc.image(logoPath, margin, 16, { width: 48, height: 48 });
+        doc.image(logoPath, margin, 10, { width: 52, height: 52 });
+        logoBottom = 6 + 52;
         logoLoaded = true;
         break;
       }
-    } catch (error) {}
+    } catch (error) {
+      console.log(`⚠️ No se pudo cargar el logo (${logoPath}):`, error.message);
+    }
   }
   if (!logoLoaded) {
-    doc.fontSize(8).fillColor('white').text('Logo no disponible', margin, 30);
+    doc.fontSize(8).fillColor('white').text('Logo no disponible', margin, 20);
+    console.log('⚠️ Ningún logo pudo ser cargado.');
   }
 
-  // Datos empresa a la derecha del logo
+  // ✅ Datos empresa debajo del logo (mismo estilo que cotización)
   doc.fontSize(13)
      .fillColor('white')
      .font('Helvetica-Bold')
-     .text('VIAJA YA', margin + 60, 20)
+     .text('VIAJA YA', margin + 55, 14)
      .fontSize(8)
      .font('Helvetica')
-     .text('Hacemos realidad tus sueños de viaje', margin + 60, 36)
-     .text('info@viajaya.com | +57 320 492 44 44', margin + 60, 48)
-     .text('Bogotá, Colombia', margin + 60, 60);
+     .text('Hacemos realidad tus sueños de viaje', margin + 55, 28)
+     .text('info@viajaya.com | +57 320 492 44 44', margin + 55, 40)
+     .text('Bogotá, Colombia', margin + 55, 52);
 
-  // Número de contrato a la derecha
+  // ✅ Número de contrato a la derecha (mismo estilo que cotización)
   if (doc._currentContractNumber) {
     doc.fontSize(12).fillColor('white').font('Helvetica-Bold')
-      .text(`Contrato: ${doc._currentContractNumber}`, pageWidth - 180, 20, { width: 150, align: 'right' });
+      .text(`Contrato: ${doc._currentContractNumber}`, pageWidth - 180, 15, { width: 150, align: 'right' });
   }
 
-  return headerHeight + 20;
+  return headerHeight + 20; // Retornar posición Y después del header
 };
 
-// ✅ Función para crear título del contrato
-const createContractTitle = (doc, yPos) => {
-  const margin = 40;
+// ✅ Función para crear footer en todas las páginas
+const createContractFooter = (doc) => {
   const pageWidth = doc.page.width;
+  const pageHeight = doc.page.height;
+  const footerHeight = 35;
+  const footerY = pageHeight - footerHeight;
   
-  doc.fontSize(12)
-     .fillColor('#000000')
+  // Rectángulo de footer con color corporativo
+  doc.rect(0, footerY, pageWidth, footerHeight)
+     .fillColor('#5475A8') // Mismo color que el header
+     .fill();
+  
+  // Línea decorativa superior
+  doc.rect(0, footerY - 1, pageWidth, 1)
+     .fillColor('#7b2cbf') // Morado corporativo
+     .fill();
+  
+  // Información de contacto - línea 1
+  doc.fontSize(6)
+     .fillColor('#ffffff')
      .font('Helvetica-Bold')
-     .text('CONTRATO DE PRESTACIÓN DE SERVICIOS Y/O PRODUCTOS TURÍSTICOS DE:', 
-           margin, yPos, {
-             width: pageWidth - 2 * margin,
+     .text('NIT: 1032406128 | RNT: 122035 | Tel: 320 492 44 44 | Email: info@viajaya.com', 
+           20, footerY + 6, {
+             width: pageWidth - 40,
              align: 'center'
            });
   
-  doc.fontSize(11)
-     .font('Helvetica-Bold')
-     .text('OPERADOR TURÍSTICO Y AGENCIA DE VIAJES VIAJA YA RNT 122035', 
-           margin, yPos + 20, {
-             width: pageWidth - 2 * margin,
+  // Información de contacto - línea 2
+  doc.fontSize(6)
+     .font('Helvetica')
+     .text('Oficina: CC Sunrise local 15', 
+           20, footerY + 18, {
+             width: pageWidth - 40,
              align: 'center'
            });
   
-  return yPos + 60;
+  return footerY; // Retornar posición Y del footer para límite de contenido
 };
 
-// ✅ Función para crear cláusulas del contrato
-const createContractClauses = (doc, contractData, yPos) => {
-  const margin = 40;
+// ✅ Función para crear título del contrato con espaciado mejorado
+const createContractTitle = (doc, yPos) => {
+  const margin = 25;
   const pageWidth = doc.page.width;
   const contentWidth = pageWidth - 2 * margin;
   
-  // CLÁUSULA PRIMERA
-  doc.fontSize(10)
-     .fillColor('#000000')
-     .font('Helvetica-Bold')
-     .text('CLÁUSULA PRIMERA. PARTES: ', margin, yPos);
+  // Agregar espacio inicial
+  yPos += 15;
   
-  doc.font('Helvetica')
-     .text(`El presente contrato será suscrito entre MAYERLY ALEJANDRA HENAO HIGUERA identificado con número de cédula ciudadanía No 1032406128 quien en primer lugar bajo primer comercial "OPERADOR TURÍSTICO Y AGENCIA DE VIAJES VIAJA YA", con domicilio en Bogotá DC, en la Oficina Principal Centro Comercial Plaza En sueño 2 PISO , con NIT 1032406128 y Registro Nacional de Turismo N°122035, que en adelante será denominado VENDEDOR. Por otra parte, el COMPRADOR, quien se encuentra debidamente identificado en los datos de la reserva y en el capítulo correspondiente del presente contrato.`, 
-           margin, yPos + 15, {
-             width: contentWidth,
-             align: 'justify',
-             lineGap: 2
+  // ✅ Título principal con fondo (usando colores de cotización)
+  doc.rect(margin, yPos, contentWidth, 32) // Reducido de 35 a 32
+     .fillColor('#dc86c7') // MoradoSuave del PDF de cotización
+     .fill();
+  
+  doc.fontSize(14) // Reducido de 16 a 14
+     .fillColor('white')
+     .font('Helvetica-Bold')
+     .text('CONTRATO DE PRESTACIÓN DE SERVICIOS Y/O PRODUCTOS TURÍSTICOS', 
+           margin + 10, yPos + 9, { // Ajustado centrado vertical
+             width: contentWidth - 20,
+             align: 'center'
            });
   
-  yPos += 100;
+  yPos += 45; // Reducido de 50 a 45
   
-  // PÁRRAFO PRIMERO
-  doc.fontSize(10)
+  // ✅ Subtítulo
+  doc.rect(margin, yPos, contentWidth, 28) // Más alto
+     .fillColor('#421261') // fondoPopup del PDF de cotización
+     .fill();
+  
+  doc.fontSize(12)
+     .fillColor('white')
      .font('Helvetica-Bold')
-     .text('PÁRRAFO PRIMERO: EL OPERADOR TURÍSTICO Y AGENCIA DE VIAJES – VIAJAYA ', margin, yPos);
-  
-  doc.font('Helvetica')
-     .text('es una agencia de viajes y turismo dedicada a la comercialización y venta de productos y servicios turísticos, entre otros, conforme se señala en el Certificado de Existencia y Representación Legal, y en el Registro Nacional de Turismo RNT regulado por FONTUR', 
-           margin, yPos + 15, {
-             width: contentWidth,
-             align: 'justify',
-             lineGap: 2
+     .text('OPERADOR TURÍSTICO Y AGENCIA DE VIAJES VIAJA YA RNT 122035', 
+           margin + 10, yPos + 8, { // Mejor centrado vertical
+             width: contentWidth - 20,
+             align: 'center'
            });
   
-  yPos += 80;
+  return yPos + 45; // Más espacio después del subtítulo
+};
+
+// ✅ Función para crear cláusulas del contrato con espaciado corregido
+const createContractClauses = (doc, contractData, yPos) => {
+  const margin = 25;
+  const pageWidth = doc.page.width;
+  const contentWidth = pageWidth - 2 * margin;
   
-  // CLÁUSULA SEGUNDA
-  doc.fontSize(10)
+  // ✅ Función helper para verificar espacio en página
+  const checkPageSpace = (requiredSpace) => {
+    if (yPos + requiredSpace > doc.page.height - 80) {
+      doc.addPage();
+      // Agregar header en nueva página
+      const headerHeight = createContractHeader(doc);
+      doc._currentContractNumber = contractData.contract_number; // Asegurar número en header
+      yPos = headerHeight + 30; // Más espacio después del header
+      return true;
+    }
+    return false;
+  };
+
+  // Agregar espacio inicial
+  yPos += 20;
+  
+  checkPageSpace(200); // Más espacio requerido
+
+  // ✅ CLÁUSULA PRIMERA con header colorido
+  doc.rect(margin, yPos, contentWidth, 25) // Header más alto
+     .fillColor('#573b58') // botonPopup del PDF de cotización
+     .fill();
+  
+  doc.fontSize(11)
+     .fillColor('white')
      .font('Helvetica-Bold')
-     .text('CLAUSULA SEGUNDA. Objeto: ', margin, yPos);
+     .text('CLÁUSULA PRIMERA. PARTES:', margin + 8, yPos + 7); // Centrado verticalmente
   
-  doc.font('Helvetica')
-     .text('EL COMPRADOR a través de este contrato acuerda con EL VENDEDOR la compra de un paquete turístico a cambio de un precio y conforme a las especificaciones que a continuación se detallan:', 
-           margin, yPos + 15, {
-             width: contentWidth,
-             align: 'justify',
-             lineGap: 2
-           });
+  yPos += 40; // Más espacio después del header
   
-  return yPos + 80;
+  // ✅ Contenido de la cláusula primera con mejor formato
+  const clausulaPrimera = `El presente contrato será suscrito entre MAYERLY ALEJANDRA HENAO HIGUERA identificada con número de cédula de ciudadanía No. 1032406128, quien funciona bajo el nombre comercial "OPERADOR TURÍSTICO Y AGENCIA DE VIAJES VIAJA YA", con domicilio en Bogotá D.C., en la Oficina Principal Centro Comercial Plaza Ensueño 2° PISO, con NIT 1032406128 y Registro Nacional de Turismo N° 122035, que en adelante será denominado VENDEDOR. Por otra parte, el COMPRADOR, quien se encuentra debidamente identificado en los datos de la reserva y en el capítulo correspondiente del presente contrato.`;
+  
+  doc.fontSize(9)
+     .fillColor('#1f2937') // textoOscuro del PDF de cotización
+     .font('Helvetica')
+     .text(clausulaPrimera, margin + 5, yPos, {
+       width: contentWidth - 10,
+       align: 'justify',
+       lineGap: 4 // Más espacio entre líneas
+     });
+  
+  yPos += 110; // Más espacio después del texto
+  
+  checkPageSpace(140);
+  
+  // ✅ PARÁGRAFO PRIMERO con header colorido
+  doc.rect(margin, yPos, contentWidth, 25) // Header más alto
+     .fillColor('#b85aa1') // ColorMorado del PDF de cotización
+     .fill();
+  
+  doc.fontSize(10)
+     .fillColor('white')
+     .font('Helvetica-Bold')
+     .text('PARÁGRAFO PRIMERO: EL OPERADOR TURÍSTICO Y AGENCIA DE VIAJES – VIAJAYA', margin + 8, yPos + 7);
+  
+  yPos += 40; // Más espacio después del header
+  
+  const paragrafo = `es una agencia de viajes y turismo dedicada a la comercialización y venta de productos y servicios turísticos, entre otros, conforme se señala en el Certificado de Existencia y Representación Legal, y en el Registro Nacional de Turismo RNT regulado por FONTUR.`;
+  
+  doc.fontSize(9)
+     .fillColor('#1f2937')
+     .font('Helvetica')
+     .text(paragrafo, margin + 5, yPos, {
+       width: contentWidth - 10,
+       align: 'justify',
+       lineGap: 4
+     });
+  
+  yPos += 70; // Más espacio después del texto
+  
+  checkPageSpace(140);
+  
+  // ✅ CLÁUSULA SEGUNDA con header colorido
+  doc.rect(margin, yPos, contentWidth, 25) // Header más alto
+     .fillColor('#573b58') // botonPopup del PDF de cotización
+     .fill();
+  
+  doc.fontSize(11)
+     .fillColor('white')
+     .font('Helvetica-Bold')
+     .text('CLÁUSULA SEGUNDA. OBJETO:', margin + 8, yPos + 7);
+  
+  yPos += 40; // Más espacio después del header
+  
+  const clausulaSegunda = `EL COMPRADOR a través de este contrato acuerda con EL VENDEDOR la compra de un paquete turístico a cambio de un precio y conforme a las especificaciones que a continuación se detallan:`;
+  
+  doc.fontSize(9)
+     .fillColor('#1f2937')
+     .font('Helvetica')
+     .text(clausulaSegunda, margin + 5, yPos, {
+       width: contentWidth - 10,
+       align: 'justify',
+       lineGap: 4
+     });
+  
+  return yPos + 80; // Más espacio al final
+};
+
+// ✅ Función helper para agregar líneas divisorias
+const addSectionDivider = (doc, yPos, margin, contentWidth, style = 'solid') => {
+  if (style === 'solid') {
+    // Línea sólida
+    doc.strokeColor('#7b2cbf')
+       .lineWidth(1)
+       .moveTo(margin + 10, yPos)
+       .lineTo(margin + contentWidth - 10, yPos)
+       .stroke();
+  } else if (style === 'dashed') {
+    // Línea punteada
+    doc.strokeColor('#b85aa1')
+       .lineWidth(1)
+       .dash(3, 2)
+       .moveTo(margin + 10, yPos)
+       .lineTo(margin + contentWidth - 10, yPos)
+       .stroke()
+       .undash();
+  } else if (style === 'thick') {
+    // Línea gruesa
+    doc.strokeColor('#573b58')
+       .lineWidth(2)
+       .moveTo(margin + 5, yPos)
+       .lineTo(margin + contentWidth - 5, yPos)
+       .stroke();
+  }
+  
+  return yPos + 15; // Espacio después de la línea
 };
 
 // ✅ Función para crear sección de reserva (página 2)
@@ -341,15 +527,23 @@ const createReservaSection = (doc, contractData) => {
      .text('NUMERO DE CONTRATO: ' + contractData.contract_number, 
            margin + contentWidth/2 + 5, boxY + 8);
   
-  yPos = boxY + headerHeight + 10;
+  yPos = boxY + headerHeight + 40; // Aumentado de 25 a 40 para mayor separación
   
-  // Datos del titular
+  // ================== SECCIÓN 1: DATOS DEL TITULAR ==================
+  // Agregar un pequeño fondo blanco para asegurar visibilidad
+  doc.rect(margin + 3, yPos - 2, contentWidth - 6, 16)
+     .fillColor('#ffffff')
+     .fill();
+  
   doc.fontSize(10)
      .fillColor('#000000')
      .font('Helvetica-Bold')
-     .text('DATOS RESERVA Y DATOS PERSONALES DEL TITULAR DEL CONTRATO', margin + 5, yPos);
+     .text('DATOS DE RESERVA Y DATOS PERSONALES DEL TITULAR', margin + 5, yPos, {
+       width: contentWidth - 10,
+       align: 'left'
+     });
   
-  yPos += 20;
+  yPos += 35; // Aumentado de 20 a 35 para dar más espacio después del título largo
   
   // Información del titular en 2 columnas
   const colWidth = (contentWidth - 20) / 2;
@@ -377,7 +571,7 @@ const createReservaSection = (doc, contractData) => {
     },
     { 
       label: 'Dirección:', 
-      value: 'Información no disponible' // TODO: Agregar campo dirección al modelo
+      value: 'Información no disponible'
     },
     { 
       label: 'Origen:', 
@@ -403,33 +597,41 @@ const createReservaSection = (doc, contractData) => {
     }
   ];
   
-  // Dibujar datos en formato tabla
+  // Dibujar datos en formato tabla corregido
+  let currentRow = 0;
   titularData.forEach((item, index) => {
     if (index % 2 === 0) { // Columna izquierda
       doc.fontSize(8)
          .fillColor('#000000')
          .font('Helvetica-Bold')
-         .text(item.label, margin + 5, yPos);
+         .text(item.label, margin + 5, yPos + (currentRow * 30));
       
       doc.fontSize(8)
          .font('Helvetica')
-         .text(item.value, margin + 5, yPos + 10);
+         .text(item.value, margin + 5, yPos + (currentRow * 30) + 10);
     } else { // Columna derecha
       doc.fontSize(8)
          .fillColor('#000000')
          .font('Helvetica-Bold')
-         .text(item.label, margin + 5 + colWidth, yPos - 20);
+         .text(item.label, margin + 5 + colWidth, yPos + (currentRow * 30));
       
       doc.fontSize(8)
          .font('Helvetica')
-         .text(item.value, margin + 5 + colWidth, yPos - 10);
+         .text(item.value, margin + 5 + colWidth, yPos + (currentRow * 30) + 10);
       
-      yPos += 30;
+      currentRow++; // Solo incrementar fila después de completar ambas columnas
     }
   });
   
+  // Ajustar yPos después de todas las filas
+  yPos += (Math.ceil(titularData.length / 2) * 30);
+  
+  // ✅ LÍNEA DIVISORIA DESPUÉS DE DATOS DEL TITULAR
+  yPos = addSectionDivider(doc, yPos + 10, margin, contentWidth, 'thick');
+  
+  // ================== SECCIÓN 2: INFORMACIÓN DE TRANSPORTE ==================
+  
   // ✅ TRASLADOS - Información detallada del backend
-  yPos += 10;
   const traslados = contractData.quote_calculation_analysis?.items_detallados?.find(item => item.tipo === 'traslados');
   let trasladosTexto = 'TRASLADOS: ';
   
@@ -449,39 +651,8 @@ const createReservaSection = (doc, contractData) => {
     } else {
       trasladosTexto += `NO INCLUIDOS - Costo adicional: ${formatearMoneda(traslados.valor)} APLICA SI: _ NO: X`;
     }
-    
-    // Agregar información de costos individuales
-    if (detalles.aeropuerto_hotel_ida?.costo || detalles.hotel_aeropuerto_vuelta?.costo) {
-      trasladosTexto += ' (';
-      const costosDetalle = [];
-      if (detalles.aeropuerto_hotel_ida?.costo) {
-        costosDetalle.push(`ida: ${formatearMoneda(detalles.aeropuerto_hotel_ida.costo)}`);
-      }
-      if (detalles.hotel_aeropuerto_vuelta?.costo) {
-        costosDetalle.push(`vuelta: ${formatearMoneda(detalles.hotel_aeropuerto_vuelta.costo)}`);
-      }
-      trasladosTexto += costosDetalle.join(', ') + ')';
-    }
   } else {
-    // Fallback a datos anteriores
-    const trasladosOld = contractData.Quote?.Calculation?.traslados;
-    if (trasladosOld) {
-      const trasladosIncluidos = [];
-      if (trasladosOld.aeropuerto_hotel_ida?.incluido) {
-        trasladosIncluidos.push('aeropuerto hotel');
-      }
-      if (trasladosOld.hotel_aeropuerto_vuelta?.incluido) {
-        trasladosIncluidos.push('hotel aeropuerto');
-      }
-      
-      if (trasladosIncluidos.length > 0) {
-        trasladosTexto += trasladosIncluidos.join(' - ') + ' APLICA SI: X NO: _';
-      } else {
-        trasladosTexto += 'NO INCLUIDOS APLICA SI: _ NO: X';
-      }
-    } else {
-      trasladosTexto += 'INFORMACIÓN NO DISPONIBLE';
-    }
+    trasladosTexto += 'INFORMACIÓN NO DISPONIBLE';
   }
   
   doc.fontSize(9)
@@ -491,8 +662,12 @@ const createReservaSection = (doc, contractData) => {
        width: contentWidth - 10
      });
   
+  yPos += 20;
+  
+  // ✅ LÍNEA DIVISORIA DESPUÉS DE TRASLADOS
+  yPos = addSectionDivider(doc, yPos, margin, contentWidth, 'dashed');
+  
   // ✅ TIQUETES - Información detallada del backend
-  yPos += 15;
   const tiquetes = contractData.quote_calculation_analysis?.items_detallados?.find(item => item.tipo === 'tickets');
   let tiquetesTexto = 'TIQUETES: ';
   
@@ -512,16 +687,7 @@ const createReservaSection = (doc, contractData) => {
       tiquetesTexto += ` - Vuelta: ${formatearFecha(detalles.fecha_vuelta)}`;
     }
   } else {
-    // Fallback a datos anteriores si no existe la nueva estructura
-    const tiquetesOld = contractData.Quote?.Calculation?.tiquetes;
-    if (tiquetesOld) {
-      tiquetesTexto += tiquetesOld.tipo === 'ida_vuelta' ? 'ida y regreso' : 'solo ida';
-      if (tiquetesOld.proveedor) {
-        tiquetesTexto += ` - Aerolínea: ${tiquetesOld.proveedor.toUpperCase()}`;
-      }
-    } else {
-      tiquetesTexto += 'información no disponible';
-    }
+    tiquetesTexto += 'información no disponible';
   }
   
   doc.fontSize(8)
@@ -530,8 +696,9 @@ const createReservaSection = (doc, contractData) => {
        width: contentWidth - 10
      });
   
+  yPos += 25;
+  
   // ✅ EQUIPAJE - Información detallada del backend
-  yPos += 20;
   const equipaje = contractData.quote_calculation_analysis?.items_detallados?.find(item => item.tipo === 'equipaje');
   let equipajeTexto = 'DIMENSIONES DE EQUIPAJE: ';
   
@@ -545,9 +712,6 @@ const createReservaSection = (doc, contractData) => {
     if (detalles.bodega?.incluido) {
       incluidoItems.push('equipaje de bodega incluido');
     }
-    if (detalles.equipaje_extra?.incluido) {
-      incluidoItems.push('equipaje extra incluido');
-    }
     
     if (incluidoItems.length > 0) {
       equipajeTexto += `${incluidoItems.join(', ')} - Costo total: ${formatearMoneda(equipaje.valor)} - verificar dimensiones con aerolínea. EL QR de check in se entregará 24 horas antes – APLICA ley aérea`;
@@ -555,25 +719,7 @@ const createReservaSection = (doc, contractData) => {
       equipajeTexto += `Costo equipaje adicional: ${formatearMoneda(equipaje.valor)} - 40*35*25 tipo morral-mochila 8 a 10° kilos de peso - la mochila debe ir bajo asientos aéreos (No se asegura silla continua dependemos de aerolínea) EL QR de check in se entregará 24 horas antes – APLICA ley aérea`;
     }
   } else {
-    // Fallback a datos anteriores
-    const equipajeOld = contractData.Quote?.Calculation?.equipaje;
-    if (equipajeOld) {
-      const detalles = [];
-      if (equipajeOld.cabina?.incluido) {
-        detalles.push('equipaje de cabina incluido');
-      }
-      if (equipajeOld.bodega?.incluido) {
-        detalles.push('equipaje de bodega incluido');
-      }
-      
-      if (detalles.length > 0) {
-        equipajeTexto += `${detalles.join(', ')} - verificar dimensiones con aerolínea. EL QR de check in se entregará 24 horas antes – APLICA ley aérea`;
-      } else {
-        equipajeTexto += '40*35*25 tipo morral-mochila 8 a 10° kilos de peso - la mochila debe ir bajo asientos aéreos (No se asegura silla continua dependemos de aerolínea) EL QR de check in se entregará 24 horas antes – APLICA ley aérea';
-      }
-    } else {
-      equipajeTexto += 'verificar con aerolínea - EL QR de check in se entregará 24 horas antes – APLICA ley aérea';
-    }
+    equipajeTexto += 'verificar con aerolínea - EL QR de check in se entregará 24 horas antes – APLICA ley aérea';
   }
   
   doc.fontSize(8)
@@ -583,9 +729,13 @@ const createReservaSection = (doc, contractData) => {
        align: 'justify'
      });
   
-  yPos += 60;
+  yPos += 50;
   
-  // ✅ ALOJAMIENTO - Información detallada del backend
+  // ✅ LÍNEA DIVISORIA ANTES DE ALOJAMIENTO
+  yPos = addSectionDivider(doc, yPos, margin, contentWidth, 'solid');
+  
+  // ================== SECCIÓN 3: ALOJAMIENTO ==================
+  
   const hotel = contractData.quote_calculation_analysis?.items_detallados?.find(item => item.tipo === 'hotel');
   const alimentacion = contractData.quote_calculation_analysis?.items_detallados?.find(item => item.tipo === 'alimentacion');
   const seguros = contractData.quote_calculation_analysis?.items_detallados?.find(item => item.tipo === 'seguros');
@@ -608,13 +758,6 @@ const createReservaSection = (doc, contractData) => {
       `Valor total hotel: ${formatearMoneda(hotel.valor)}`,
     ];
     
-    if (detalles.ubicacion) {
-      hotelInfo.push(`Ubicación: ${detalles.ubicacion}`);
-    }
-    if (detalles.proveedor) {
-      hotelInfo.push(`Proveedor: ${detalles.proveedor}`);
-    }
-    
     // Información de alimentación detallada
     if (alimentacion && alimentacion.detalles) {
       let alimentacionTexto = 'Tipo Alimentación: ';
@@ -636,40 +779,9 @@ const createReservaSection = (doc, contractData) => {
       }
       
       alimentacionTexto += ` - Costo: ${formatearMoneda(alimentacion.valor)}`;
-      
-      if (alimentacion.detalles.observaciones) {
-        alimentacionTexto += `. ${alimentacion.detalles.observaciones}`;
-      } else {
-        alimentacionTexto += '. Check in: Primer día 3 pm y Check out: Último día según hotel.';
-      }
-      
-      if (alimentacion.detalles.proveedor) {
-        alimentacionTexto += ` Proveedor: ${alimentacion.detalles.proveedor}`;
-      }
+      alimentacionTexto += '. Check in: Primer día 3 pm y Check out: Último día según hotel.';
       
       hotelInfo.push(alimentacionTexto);
-    }
-    
-    // Información detallada de seguros
-    if (seguros && seguros.valor > 0) {
-      const segDetalles = seguros.detalles;
-      let segurosTexto = `Seguros incluidos - Costo total: ${formatearMoneda(seguros.valor)}`;
-      
-      if (segDetalles.asistencia_medica?.incluido) {
-        segurosTexto += ` - Asistencia médica: ${segDetalles.asistencia_medica.tipo || 'Básica'}`;
-        if (segDetalles.asistencia_medica.proveedor) {
-          segurosTexto += ` (${segDetalles.asistencia_medica.proveedor})`;
-        }
-      }
-      
-      if (segDetalles.cancelacion?.incluido) {
-        segurosTexto += ' - Seguro de cancelación incluido';
-        if (segDetalles.cancelacion.proveedor) {
-          segurosTexto += ` (${segDetalles.cancelacion.proveedor})`;
-        }
-      }
-      
-      hotelInfo.push(segurosTexto);
     }
     
     // Mostrar información del hotel
@@ -681,36 +793,14 @@ const createReservaSection = (doc, contractData) => {
          });
       yPos += 12;
     });
-  } else {
-    // Fallback a estructura anterior
-    const hotelOld = contractData.Quote?.Calculation?.hotel;
-    if (hotelOld) {
-      doc.fontSize(9)
-         .fillColor('#000000')
-         .font('Helvetica-Bold')
-         .text('ALOJAMIENTO:', margin + 5, yPos);
-      
-      yPos += 15;
-      
-      const hotelInfo = [
-        `Nombre de Hotel: ${hotelOld.nombre || 'Por confirmar'}`,
-        `Acomodación: ${hotelOld.acomodacion || 'No especificada'}`,
-        `No de Noches: ${hotelOld.noches || 'No especificado'}`,
-        `Categoría: ${hotelOld.categoria || 'No especificada'}`,
-      ];
-      
-      hotelInfo.forEach(info => {
-        doc.fontSize(8)
-           .font('Helvetica')
-           .text(info, margin + 5, yPos, {
-             width: contentWidth - 10
-           });
-        yPos += 12;
-      });
-    }
   }
   
   yPos += 10;
+  
+  // ✅ LÍNEA DIVISORIA ANTES DE DESCRIPCIÓN
+  yPos = addSectionDivider(doc, yPos, margin, contentWidth, 'thick');
+  
+  // ================== SECCIÓN 4: DESCRIPCIÓN DEL SERVICIO ==================
   
   // Sección de descripción del servicio
   doc.rect(margin, yPos, contentWidth, 25)
@@ -724,7 +814,7 @@ const createReservaSection = (doc, contractData) => {
   
   yPos += 35;
   
-  // ✅ Información del plan - basada en datos reales detallados
+  // Plan info y actividades
   const calculation = contractData.Quote?.Calculation;
   const alimentacionDetallada = contractData.quote_calculation_analysis?.items_detallados?.find(item => item.tipo === 'alimentacion');
   
@@ -745,25 +835,8 @@ const createReservaSection = (doc, contractData) => {
         planInfo = `PLAN ESTÁNDAR ${contractData.Quote?.destino || ''}`;
         break;
     }
-  } else if (calculation?.alimentacion?.tipo) {
-    // Fallback a estructura anterior
-    switch(calculation.alimentacion.tipo) {
-      case 'pension_completa':
-        planInfo = `PLAN PENSIÓN COMPLETA ${contractData.Quote?.destino || ''}`;
-        break;
-      case 'media_pension':
-        planInfo = `PLAN MEDIA PENSIÓN ${contractData.Quote?.destino || ''}`;
-        break;
-      case 'desayuno':
-        planInfo = `PLAN CON DESAYUNO ${contractData.Quote?.destino || ''}`;
-        break;
-      case 'ninguna':
-        planInfo = `PLAN ESTÁNDAR ${contractData.Quote?.destino || ''}`;
-        break;
-    }
   }
   
-  // Agregar información de origen si está disponible
   if (contractData.Quote?.origen) {
     planInfo += ` desde ${contractData.Quote.origen}`;
   }
@@ -775,7 +848,10 @@ const createReservaSection = (doc, contractData) => {
   
   yPos += 15;
   
-  // ✅ Actividades adicionales - basadas en excursiones detalladas
+  // ✅ MINI LÍNEA DIVISORIA
+  yPos = addSectionDivider(doc, yPos, margin, contentWidth, 'dashed');
+  
+  // Actividades adicionales
   const excursiones = contractData.quote_calculation_analysis?.items_detallados?.filter(item => item.tipo === 'excursiones');
   let actividadesTexto = 'Actividades Adicionales: ';
   
@@ -789,14 +865,7 @@ const createReservaSection = (doc, contractData) => {
     }).join(', ');
     actividadesTexto += nombreExcursiones;
   } else {
-    // Fallback a estructura anterior
-    const excursionesOld = calculation?.excursiones;
-    if (excursionesOld && excursionesOld.length > 0) {
-      const nombreExcursiones = excursionesOld.map(exc => exc.nombre || 'Excursión').join(', ');
-      actividadesTexto += nombreExcursiones;
-    } else {
-      actividadesTexto += 'NO APLICA';
-    }
+    actividadesTexto += 'NO APLICA';
   }
   
   doc.fontSize(8)
@@ -817,7 +886,7 @@ const createReservaSection = (doc, contractData) => {
   
   yPos += 15;
   
-  // ✅ Asistencia médica - basada en seguros detallados
+  // Asistencia médica
   const segurosDetallados = contractData.quote_calculation_analysis?.items_detallados?.find(item => item.tipo === 'seguros');
   let asistenciaTexto = 'Asistencia médica: ';
   
@@ -831,22 +900,10 @@ const createReservaSection = (doc, contractData) => {
     if (segDetalles?.asistencia_medica?.proveedor) {
       asistenciaTexto += ` (${segDetalles.asistencia_medica.proveedor})`;
     }
-    if (segDetalles?.cancelacion?.incluido) {
-      asistenciaTexto += ' y Seguro de cancelación incluido';
-    }
     
     asistenciaTexto += ` - Costo total seguros: ${formatearMoneda(segurosDetallados.valor)}`;
   } else {
-    // Fallback a estructura anterior
-    const segurosOld = contractData.Quote?.Calculation?.seguros;
-    if (segurosOld && segurosOld.costo_total > 0) {
-      asistenciaTexto += 'SI Aplica (se entrega un día antes de su fecha de viaje y verifique su cobertura)';
-      if (segurosOld.asistencia_medica?.tipo) {
-        asistenciaTexto += ` y Seguro ${segurosOld.asistencia_medica.tipo}`;
-      }
-    } else {
-      asistenciaTexto += 'Verificar disponibilidad según destino';
-    }
+    asistenciaTexto += 'Verificar disponibilidad según destino';
   }
   
   doc.fontSize(8)
@@ -855,8 +912,12 @@ const createReservaSection = (doc, contractData) => {
        width: contentWidth - 10
      });
   
-  // ✅ DATOS DE LOS VIAJEROS - Información real
-  yPos += 30;
+  // ✅ LÍNEA DIVISORIA ANTES DE DATOS DE VIAJEROS
+  yPos += 25;
+  yPos = addSectionDivider(doc, yPos, margin, contentWidth, 'thick');
+  
+  // ================== SECCIÓN 5: DATOS DE LOS VIAJEROS ==================
+  
   doc.fontSize(9)
      .fillColor('#000000')
      .font('Helvetica-Bold')
@@ -864,11 +925,11 @@ const createReservaSection = (doc, contractData) => {
   
   // Información de pasajeros reales
   if (contractData.Quote?.Passengers && contractData.Quote.Passengers.length > 0) {
-    const blockHeight = 20 + 12 + 12 + 12 + 10; // Altura estimada por pasajero (66)
+    const blockHeight = 20 + 12 + 12 + 12 + 10;
     const pageHeight = doc.page.height;
     const bottomMargin = 60;
+    
     contractData.Quote.Passengers.forEach((passenger, index) => {
-      // Si no hay suficiente espacio, salto de página manual y header
       if (yPos + blockHeight > pageHeight - bottomMargin) {
         doc.addPage();
         createContractHeader(doc);
@@ -879,31 +940,43 @@ const createReservaSection = (doc, contractData) => {
           .text('DATOS DE LOS VIAJEROS (continuación)', margin + 5, yPos);
         yPos += 20;
       }
+      
       yPos += 20;
+      
+      // ✅ MINI LÍNEA ANTES DE CADA PASAJERO
+      if (index > 0) {
+        yPos = addSectionDivider(doc, yPos - 5, margin, contentWidth, 'dashed');
+      }
+      
       doc.fontSize(8)
          .font('Helvetica-Bold')
-         .text(`${passenger.nombre.toUpperCase()} ${passenger.apellido.toUpperCase()}:`, margin + 5, yPos);
+         .text(`Pasajero ${index + 1}: ${passenger.nombre.toUpperCase()} ${passenger.apellido.toUpperCase()}`, margin + 5, yPos);
       yPos += 12;
       doc.fontSize(8)
          .font('Helvetica')
-         .text(`${passenger.tipo_documento.toUpperCase()}. ${passenger.documento_identidad}`, margin + 5, yPos);
+         .text(`${passenger.tipo_documento.toUpperCase()}: ${passenger.documento_identidad}`, margin + 5, yPos);
       yPos += 12;
       doc.fontSize(8)
-         .text(`Celular: ${cliente?.phone || 'No registrado'}`, margin + 5, yPos);
+         .text(`Celular: ${contractData.Cliente?.phone || 'No registrado'}`, margin + 5, yPos);
       yPos += 12;
       doc.fontSize(8)
          .text(`Fecha de nacimiento: ${formatearFecha(passenger.fecha_nacimiento)}`, margin + 5, yPos);
-      // Agregar espacio entre pasajeros
-      if (index < contractData.Quote.Passengers.length - 1) {
-        yPos += 10;
-      }
     });
   }
+  
+  // Footer simple para página 2
+  doc.fontSize(7)
+     .fillColor('#666666')
+     .text('NIT: 1032406128 | RNT: 122035 | Tel: 320 492 44 44 | Email: info@viajaya.com', 
+           margin, 750, {
+             width: contentWidth,
+             align: 'center'
+           });
   
   return yPos + 30;
 };
 
-// ✅ Función para crear página 3 con información financiera
+// ✅ Función mejorada para crear página 3 con plan de pagos y acuerdos
 const createFinancialSection = (doc, contractData) => {
   doc.addPage();
   
@@ -915,403 +988,894 @@ const createFinancialSection = (doc, contractData) => {
   const contentWidth = pageWidth - 2 * margin;
   let yPos = 120;
   
-  // ✅ Información de precios - datos reales detallados CON CÁLCULO CORREGIDO
-  const precioTotal = parseFloat(contractData.precio_total || 0);
+  // ================== SECCIÓN 1: ACUERDO DE PAGO ==================
   
-  // ✅ CALCULAR: Personas que pagan (excluye infantes)
-  const quote = contractData.Quote || contractData;
-  const personasQuePagan = calcularPersonasQuePagan({
-    adultos: quote?.adultos || 0,
-    menores: quote?.menores || 0,
-    infantes: quote?.infantes || 0
-  });
+  // Header principal
+  doc.rect(margin, yPos, contentWidth, 30)
+     .fillColor('#7b2cbf')
+     .fill();
   
-  // ✅ PRECIO CORRECTO: Dividir por personas que pagan, no por total de pasajeros
-  const precioPorPersona = personasQuePagan > 0 ? precioTotal / personasQuePagan : 0;
-  const analysis = contractData.quote_calculation_analysis;
-  
-  // Crear cuadro de precios con más detalles
-  const priceBoxHeight = analysis ? 220 : 150;
-  
-  doc.rect(margin, yPos, contentWidth, priceBoxHeight)
-     .fillColor('#ffffff')
-     .fill()
-     .strokeColor('#000000')
-     .lineWidth(1)
-     .stroke();
-  
-  yPos += 20;
-  
-  doc.fontSize(12)
-     .fillColor('#000000')
-     .font('Helvetica-Bold')
-     .text(`VALOR PRECIO POR PERSONA QUE PAGA: $ ${formatearMoneda(precioPorPersona).replace('$', '')}`, margin + 10, yPos);
-  
-  yPos += 20;
-  doc.fontSize(12)
-     .text(`Personas que pagan: ${personasQuePagan} de ${contractData.numero_pasajeros || quote?.numero_personas} pasajeros`, margin + 10, yPos);
-  
-  yPos += 20;
   doc.fontSize(14)
+     .fillColor('#ffffff')
+     .font('Helvetica-Bold')
+     .text('ACUERDO DE PAGO', margin + 10, yPos + 8);
+  
+  yPos += 45;
+  
+  // Información del acuerdo
+  const acuerdoTexto = `Nos permitimos informarle que 30 días antes de su fecha de viaje debe estar a paz y salvo con el valor total de su reserva; quedan pactadas las cuotas en este acuerdo.`;
+  
+  doc.fontSize(9)
+     .fillColor('#000000')
+     .font('Helvetica')
+     .text(acuerdoTexto, margin + 5, yPos, {
+       width: contentWidth - 10,
+       align: 'justify',
+       lineGap: 3
+     });
+  
+  yPos += 40;
+  
+  // ✅ LÍNEA DIVISORIA
+  yPos = addSectionDivider(doc, yPos, margin, contentWidth, 'dashed');
+  
+  // Información de pagos
+  const pagosTexto = `Tenga en cuenta consignar a las cuentas bancarias autorizadas y enviar sus soportes de pago al siguiente correo: soportedepagosviajaya@gmail.com para evitar cambios o cancelaciones de sus servicios, foto legible donde se puede evidenciar fecha, número de aprobación y valor cancelado.`;
+  
+  doc.fontSize(8)
+     .fillColor('#000000')
+     .font('Helvetica')
+     .text(pagosTexto, margin + 5, yPos, {
+       width: contentWidth - 10,
+       align: 'justify',
+       lineGap: 3
+     });
+  
+  yPos += 45;
+  
+  const responsabilidadTexto = `Es de responsabilidad del titular enviar e informar sus pagos mensuales.`;
+  
+  doc.fontSize(9)
      .fillColor('#7b2cbf')
      .font('Helvetica-Bold')
-     .text(`VALOR PRECIO TOTAL CONTRATO: ${formatearMoneda(precioTotal)}`, margin + 10, yPos);
+     .text(responsabilidadTexto, margin + 5, yPos, {
+       width: contentWidth - 10,
+       align: 'justify'
+     });
   
-  // Mostrar desglose de costos si está disponible
-  if (analysis && analysis.items_detallados) {
-    yPos += 25;
+  yPos += 30;
+  
+  // ✅ LÍNEA DIVISORIA GRUESA
+  yPos = addSectionDivider(doc, yPos, margin, contentWidth, 'thick');
+  
+  // ================== SECCIÓN 2: CLÁUSULA TERCERA PRECIO ==================
+  
+  doc.rect(margin, yPos, contentWidth, 25)
+     .fillColor('#573b58')
+     .fill();
+  
+  doc.fontSize(12)
+     .fillColor('#ffffff')
+     .font('Helvetica-Bold')
+     .text('CLÁUSULA TERCERA - PRECIO', margin + 10, yPos + 6);
+  
+  yPos += 40;
+  
+  // ================== TABLA DE PAGOS ==================
+  
+  // Headers de la tabla
+  const tableHeaders = ['PAGO', 'VALOR', 'FECHA DE PAGO'];
+  const colWidths = [contentWidth * 0.3, contentWidth * 0.35, contentWidth * 0.35];
+  let xPos = margin;
+  
+  // Fondo del header
+  doc.rect(margin, yPos, contentWidth, 25)
+     .fillColor('#b85aa1')
+     .fill();
+  
+  // Texto del header
+  tableHeaders.forEach((header, index) => {
+    doc.fontSize(10)
+       .fillColor('#ffffff')
+       .font('Helvetica-Bold')
+       .text(header, xPos + 5, yPos + 7, {
+         width: colWidths[index] - 10,
+         align: 'center'
+       });
+    xPos += colWidths[index];
+  });
+  
+  yPos += 30;
+  
+  // ✅ Obtener información de pagos reales del contrato
+  const precioTotal = parseFloat(contractData.precio_total || contractData.total_amount || 0);
+  const payments = contractData.payments || [];
+  
+  // Si no hay pagos definidos, crear pagos de ejemplo basados en el total
+  let pagosParaMostrar = [];
+  
+  if (payments && payments.length > 0) {
+    // Usar pagos reales del contrato
+    pagosParaMostrar = payments.map((payment, index) => ({
+      concepto: `CUOTA ${index === 0 ? 'INICIAL' : index}`,
+      valor: payment.amount,
+      fecha: formatearFecha(payment.payment_date || payment.fecha_pago)
+    }));
+  } else {
+    // Crear plan de pagos automático
+    const cuotaInicial = Math.round(precioTotal * 0.4); // 40% inicial
+    const saldoRestante = precioTotal - cuotaInicial;
+    const cuota1 = Math.round(saldoRestante * 0.6); // 60% del saldo
+    const cuota2 = precioTotal - cuotaInicial - cuota1; // El resto
+    
+    // Fechas de ejemplo (puedes ajustar según lógica de negocio)
+    const fechaActual = new Date();
+    const fecha1 = new Date(fechaActual);
+    fecha1.setMonth(fecha1.getMonth() + 1);
+    const fecha2 = new Date(fechaActual);
+    fecha2.setMonth(fecha2.getMonth() + 2);
+    
+    pagosParaMostrar = [
+      {
+        concepto: 'CUOTA INICIAL',
+        valor: cuotaInicial,
+        fecha: formatearFecha(new Date().toISOString())
+      },
+      {
+        concepto: 'CUOTA 1',
+        valor: cuota1,
+        fecha: formatearFecha(fecha1.toISOString())
+      },
+      {
+        concepto: 'CUOTA 2',
+        valor: cuota2,
+        fecha: formatearFecha(fecha2.toISOString())
+      }
+    ];
+  }
+  
+  // Dibujar filas de la tabla
+  pagosParaMostrar.forEach((pago, index) => {
+    // Fondo alternado para las filas
+    if (index % 2 === 0) {
+      doc.rect(margin, yPos, contentWidth, 22)
+         .fillColor('#f8f9fa')
+         .fill();
+    }
+    
+    // Bordes de la fila
+    doc.rect(margin, yPos, contentWidth, 22)
+       .strokeColor('#dee2e6')
+       .lineWidth(0.5)
+       .stroke();
+    
+    xPos = margin;
+    
+    // Concepto
     doc.fontSize(9)
        .fillColor('#000000')
        .font('Helvetica-Bold')
-       .text('DESGLOSE DE COSTOS:', margin + 10, yPos);
+       .text(pago.concepto, xPos + 5, yPos + 6, {
+         width: colWidths[0] - 10,
+         align: 'center'
+       });
+    xPos += colWidths[0];
     
-    yPos += 15;
+    // Valor
+    doc.fontSize(9)
+       .font('Helvetica')
+       .text(`$${formatearMoneda(pago.valor).replace('$', '')}`, xPos + 5, yPos + 6, {
+         width: colWidths[1] - 10,
+         align: 'center'
+       });
+    xPos += colWidths[1];
+    
+    // Fecha
+    doc.fontSize(9)
+       .text(pago.fecha, xPos + 5, yPos + 6, {
+         width: colWidths[2] - 10,
+         align: 'center'
+       });
+    
+    yPos += 22;
+  });
+  
+  // Fila de total
+  doc.rect(margin, yPos, contentWidth, 25)
+     .fillColor('#dc86c7')
+     .fill();
+  
+  xPos = margin;
+  
+  doc.fontSize(11)
+     .fillColor('#ffffff')
+     .font('Helvetica-Bold')
+     .text('TOTAL', xPos + 5, yPos + 7, {
+       width: colWidths[0] - 10,
+       align: 'center'
+     });
+  xPos += colWidths[0];
+  
+  doc.fontSize(11)
+     .text(`$${formatearMoneda(precioTotal).replace('$', '')}`, xPos + 5, yPos + 7, {
+       width: colWidths[1] - 10,
+       align: 'center'
+     });
+  
+  yPos += 40;
+  
+  // ✅ LÍNEA DIVISORIA
+  yPos = addSectionDivider(doc, yPos, margin, contentWidth, 'solid');
+  
+  // ================== INFORMACIÓN ADICIONAL ==================
+  
+  // Información del desglose de costos si está disponible
+  const analysis = contractData.quote_calculation_analysis;
+  if (analysis && analysis.items_detallados) {
+    doc.fontSize(10)
+       .fillColor('#000000')
+       .font('Helvetica-Bold')
+       .text('DESGLOSE DE COSTOS INCLUIDOS:', margin + 5, yPos);
+    
+    yPos += 20;
     
     analysis.items_detallados.forEach(item => {
-      if (item.requiere_compra && item.valor > 0) {
+      if (item.valor > 0) {
+        const itemTexto = `• ${item.tipo.toUpperCase()}: ${formatearMoneda(item.valor)}`;
         doc.fontSize(8)
            .font('Helvetica')
-           .text(`• ${item.descripcion}: ${formatearMoneda(item.valor)}`, margin + 15, yPos);
+           .text(itemTexto, margin + 10, yPos);
         yPos += 12;
       }
     });
     
-    // Mostrar información financiera adicional si está disponible
-    if (analysis.financials) {
-      yPos += 10;
-      doc.fontSize(8)
-         .font('Helvetica-Bold')
-         .text(`Costo base: ${formatearMoneda(analysis.financials.costo_base)}`, margin + 15, yPos);
-      yPos += 10;
-      doc.fontSize(8)
-         .text(`Total comisiones: ${formatearMoneda(analysis.financials.total_comisiones)}`, margin + 15, yPos);
-    }
+    yPos += 10;
+    // ✅ MINI LÍNEA DIVISORIA
+    yPos = addSectionDivider(doc, yPos, margin, contentWidth, 'dashed');
   }
   
-  yPos += 20;
+  // ================== NOTAS IMPORTANTES ==================
+  
   doc.fontSize(10)
-     .fillColor('#000000')
+     .fillColor('#7b2cbf')
      .font('Helvetica-Bold')
-     .text(`VALOR TOTAL DEL CONTRATO EN LETRA: ${numeroALetras(precioTotal)} pesos (pesos M/CTE)`, 
-           margin + 10, yPos, {
-             width: contentWidth - 20,
-             align: 'justify'
+     .text('NOTAS IMPORTANTES:', margin + 5, yPos);
+  
+  yPos += 15;
+  
+  const notasImportantes = [
+    '• Los pagos deben realizarse en las fechas establecidas para garantizar la reserva.',
+    '• Cualquier retraso en los pagos puede resultar en cancelación de servicios.',
+    '• Los comprobantes de pago deben enviarse inmediatamente al correo especificado.',
+    '• No se aceptan pagos en efectivo directamente, solo transferencias bancarias.',
+    '• El titular es responsable de informar todos los pagos realizados.'
+  ];
+  
+  notasImportantes.forEach(nota => {
+    doc.fontSize(8)
+       .fillColor('#000000')
+       .font('Helvetica')
+       .text(nota, margin + 5, yPos, {
+         width: contentWidth - 10,
+         lineGap: 2
+       });
+    yPos += 15;
+  });
+  
+  // Footer simple para página 3
+  doc.fontSize(7)
+     .fillColor('#666666')
+     .text('NIT: 1032406128 | RNT: 122035 | Tel: 320 492 44 44 | Email: info@viajaya.com', 
+           margin, 750, {
+             width: contentWidth,
+             align: 'center'
            });
   
-  yPos += 50;
-  
-  // ✅ Información de cuotas si aplica - datos reales
-  if (contractData.forma_pago === 'cuotas') {
-    const cuotaInicial = contractData.tiene_cuota_inicial ? parseFloat(contractData.cuota_inicial_monto || 0) : 0;
-    const saldoPendiente = parseFloat(contractData.saldo_pendiente || contractData.monto_restante || 0);
-    const numeroCuotas = contractData.numero_cuotas_restantes || 0;
-    
-    doc.fontSize(10)
-       .text(`CUOTA INICIAL: ${formatearMoneda(cuotaInicial)} SALDO: $ ${formatearMoneda(saldoPendiente)} No cuotas: ${numeroCuotas}`, 
-             margin + 10, yPos);
-    
-    yPos += 15;
-    
-    if (contractData.valor_cuota_restante) {
-      const valorCuota = parseFloat(contractData.valor_cuota_restante);
-      doc.fontSize(9)
-         .text(`Valor de cuotas: ${formatearMoneda(valorCuota)} —VER ACUERDO DE PAGO —(siguiente página confirmas fechas)`, 
-               margin + 10, yPos, {
-                 width: contentWidth - 20
-               });
-    }
-  } else {
-    doc.fontSize(10)
-       .text(`FORMA DE PAGO: PAGO ÚNICO - VALOR TOTAL: ${formatearMoneda(precioTotal)}`, 
-             margin + 10, yPos);
-  }
-  
-  yPos += 50;
-  
-  // ✅ Tabla de equipo de trabajo - datos reales del backend
-  console.log('🔍 Debug contractData structure:', {
-    hasQuote: !!contractData.Quote,
-    quoteKeys: contractData.Quote ? Object.keys(contractData.Quote) : 'No Quote',
-    fullQuote: contractData.Quote
-  });
-  
-  console.log('🔍 Debug equipo de trabajo:', {
-    asesor: contractData.Quote?.Asesor,
-    lider: contractData.Quote?.Lider,
-    gerente: contractData.Quote?.Gerente
-  });
-  
-  doc.fontSize(10)
-     .fillColor('#000000')
-     .font('Helvetica-Bold')
-     .text('Equipo de trabajo:', margin + 10, yPos);
-  
-  yPos += 20;
-  
-  // Información del asesor
-  const asesor = contractData.Quote?.Asesor;
-  const asesorInfo = asesor ? 
-    `${asesor.name} ${asesor.lastname} - ${asesor.email}` : 
-    'Por asignar';
-  
-  console.log('🔍 Asesor info:', asesorInfo);
-  
-  doc.fontSize(10)
-     .fillColor('#000000')
-     .font('Helvetica-Bold')
-     .text('Asesor comercial:', margin + 10, yPos);
-  
-  doc.fontSize(9)
-     .fillColor('#7b2cbf')
-     .font('Helvetica')
-     .text(asesorInfo, margin + 150, yPos, {
-       width: contentWidth - 160
-     });
-  
-  yPos += 20;
-  
-  // Información del líder
-  const lider = contractData.Quote?.Lider;
-  const liderInfo = lider ? 
-    `${lider.name} ${lider.lastname} - ${lider.email}` : 
-    'Por asignar';
-  
-  console.log('🔍 Lider info:', liderInfo);
-  
-  doc.fontSize(10)
-     .fillColor('#000000')
-     .font('Helvetica-Bold')
-     .text('Líder comercial:', margin + 10, yPos);
-  
-  doc.fontSize(9)
-     .fillColor('#7b2cbf')
-     .font('Helvetica')
-     .text(liderInfo, margin + 150, yPos, {
-       width: contentWidth - 160
-     });
-  
-  yPos += 20;
-  
-  // Información del gerente
-  const gerente = contractData.Quote?.Gerente;
-  const gerenteInfo = gerente ? 
-    `${gerente.name} ${gerente.lastname} - ${gerente.email}` : 
-    'Alejandra Henao - gerencia@viajaya.com';
-  
-  console.log('🔍 Gerente info:', gerenteInfo);
-  
-  doc.fontSize(10)
-     .fillColor('#000000')
-     .font('Helvetica-Bold')
-     .text('Gerente de zona:', margin + 10, yPos);
-  
-  doc.fontSize(9)
-     .fillColor('#7b2cbf')
-     .font('Helvetica')
-     .text(gerenteInfo, margin + 150, yPos, {
-       width: contentWidth - 160
-     });
-  
-  return yPos + 50;
+  return yPos + 30;
 };
 
-// ✅ Función para crear página 4 con acuerdo de pago
-const createPaymentSection = (doc, contractData) => {
-  doc.addPage();
-  
-  // Header colorido en página 4
-  createContractHeader(doc);
-  
+// ✅ Función para crear páginas de cláusulas adicionales (texto estático)
+const createAdditionalClausesPages = (doc, contractData) => {
   const margin = 40;
   const pageWidth = doc.page.width;
   const contentWidth = pageWidth - 2 * margin;
+  
+  // ================== PÁGINA 4: NOTA Y PARÁGRAFO PRIMERO ==================
+  doc.addPage();
+  createContractHeader(doc);
   let yPos = 120;
   
-  // Cuadro de acuerdo de pago
-  const paymentBoxHeight = 500;
-  
-  doc.rect(margin, yPos, contentWidth, paymentBoxHeight)
-     .fillColor('#7b2cbf')
+  // NOTA IMPORTANTE
+  doc.rect(margin, yPos, contentWidth, 25)
+     .fillColor('#e74c3c')
      .fill();
   
-  // Header del acuerdo
   doc.fontSize(12)
      .fillColor('#ffffff')
      .font('Helvetica-Bold')
-     .text('ACUERDO DE PAGO', margin + 10, yPos + 15, {
-       width: contentWidth - 20,
-       align: 'center'
+     .text('NOTA IMPORTANTE', margin + 10, yPos + 6);
+  
+  yPos += 40;
+  
+  const notaTexto = `Ningún asesor está autorizado en recibir efectivo todo será cancelado en puntos de ventas o cuentas bancarias - es bajo su responsabilidad entregar efectivo`;
+  
+  doc.fontSize(10)
+     .fillColor('#e74c3c')
+     .font('Helvetica-Bold')
+     .text(notaTexto, margin + 5, yPos, {
+       width: contentWidth - 10,
+       align: 'justify',
+       lineGap: 4
      });
   
   yPos += 50;
+  yPos = addSectionDivider(doc, yPos, margin, contentWidth, 'thick');
   
-  // Texto del acuerdo
+  // PARÁGRAFO PRIMERO
+  doc.fontSize(11)
+     .fillColor('#000000')
+     .font('Helvetica-Bold')
+     .text('PARÁGRAFO PRIMERO:', margin + 5, yPos);
+  
+  yPos += 20;
+  
+  const parrafo1Texto = `El precio del contrato incluye los cargos, suplementos e impuestos (Tasas aeroportuarias, cargo de combustible, retenciones de ley, cargo por seguro, impuestos de ley). En los vuelos comerciales de itinerario no está incluido el equipaje de bodega conforme a las políticas de cada aerolínea.`;
+  
   doc.fontSize(9)
-     .fillColor('#ffffff')
+     .fillColor('#000000')
      .font('Helvetica')
-     .text('Nos permitimos informarle que 30 días antes de su fecha de viaje debe estar a paz y salvo con el valor total de su reserva; quedan pactadas las cuotas en este acuerdo', 
-           margin + 10, yPos, {
-             width: contentWidth - 20,
-             align: 'justify'
+     .text(parrafo1Texto, margin + 5, yPos, {
+       width: contentWidth - 10,
+       align: 'justify',
+       lineGap: 3
+     });
+  
+  yPos += 60;
+  
+  // NO INCLUYE
+  doc.fontSize(10)
+     .fillColor('#7b2cbf')
+     .font('Helvetica-Bold')
+     .text('NO INCLUYE:', margin + 5, yPos);
+  
+  yPos += 20;
+  
+  const noIncluye = [
+    '1. Tarjetas de turismo (excepción Cuba).',
+    '2. Tarjetas de entrada al destino seleccionado.',
+    '3. Otros impuestos establecidos por las autoridades competentes',
+    '4. Conceptos no especificados en el plan adquirido.',
+    '5. El SERVICIO de equipaje cubierto en el plan, será únicamente el indicado en el cuadro de "DATOS RESERVA". Cualquier cambio en las condiciones del equipaje serán asumidas directamente por el pasajero y dependerán de las dimensiones y peso del equipaje, la anticipación con que se avise del servicio adicional, las condiciones del viaje y de las políticas de la aerolínea.'
+  ];
+  
+  noIncluye.forEach(item => {
+    doc.fontSize(8)
+       .fillColor('#000000')
+       .font('Helvetica')
+       .text(item, margin + 10, yPos, {
+         width: contentWidth - 20,
+         align: 'justify',
+         lineGap: 2
+       });
+    yPos += item.includes('equipaje') ? 65 : 20;
+  });
+  
+  yPos += 20;
+  
+  const equipajeTexto = `VIAJAYA realizará la verificación del costo adicional y procederá a trasladar el cobro al COMPRADOR para su respectivo pago. En caso de que el equipaje exceda el peso autorizado por cada aerolínea, el COMPRADOR se compromete a asumir los costos adicionales. En caso de pérdida del equipaje, o demora en el mismo, la aerolínea será la responsable en los términos del reglamento aeronáutico civil No. 3 Actividades aéreas civiles.`;
+  
+  doc.fontSize(8)
+     .text(equipajeTexto, margin + 10, yPos, {
+       width: contentWidth - 20,
+       align: 'justify',
+       lineGap: 2
+     });
+  
+  // Footer para página 4
+  doc.fontSize(7)
+     .fillColor('#666666')
+     .text('NIT: 1032406128 | RNT: 122035 | Tel: 320 492 44 44 | Email: info@viajaya.com', 
+           margin, 750, {
+             width: contentWidth,
+             align: 'center'
            });
+  
+  // ================== PÁGINA 5: PARÁGRAFO SEGUNDO Y CLÁUSULAS ==================
+  doc.addPage();
+  createContractHeader(doc);
+  yPos = 120;
+  
+  // PARÁGRAFO SEGUNDO
+  doc.fontSize(11)
+     .fillColor('#000000')
+     .font('Helvetica-Bold')
+     .text('PARÁGRAFO SEGUNDO: INFANTE Y NIÑO:', margin + 5, yPos);
+  
+  yPos += 20;
+  
+  const parrafo2Texto = `Entiéndase por infante, todo aquel que no ha cumplido 2 años de edad a la fecha de regreso del viaje; niño(a) el mayor a 2 años y que no ha cumplido 12 años de edad a la fecha de regreso del viaje; pasajero mayor todo aquel mayor de 12 años que no ha cumplido 65 años a la fecha de regreso del viaje; pasajero tercera edad todo aquel mayor a 65 años. El ingreso de infantes y niños a los hoteles y vuelos se encuentra restringido si no cuenta con la presencia del guardián legal, padre, tutor o carta de permiso del mismo. (Sujeto a condiciones de Migración Colombia y cada una de las aerolíneas).`;
+  
+  doc.fontSize(8)
+     .fillColor('#000000')
+     .font('Helvetica')
+     .text(parrafo2Texto, margin + 5, yPos, {
+       width: contentWidth - 10,
+       align: 'justify',
+       lineGap: 3
+     });
+  
+  yPos += 100;
+  yPos = addSectionDivider(doc, yPos, margin, contentWidth, 'solid');
+  
+  // CLÁUSULA TERCERA PRECIO
+  doc.rect(margin, yPos, contentWidth, 25)
+     .fillColor('#7b2cbf')
+     .fill();
+  
+  doc.fontSize(11)
+     .fillColor('#ffffff')
+     .font('Helvetica-Bold')
+     .text('CLÁUSULA TERCERA - PRECIO', margin + 10, yPos + 6);
   
   yPos += 40;
-  doc.fontSize(9)
-     .text('Tenga en cuenta consignar a las cuentas bancarias autorizadas y enviar sus soportes de pago al siguiente correo:', 
-           margin + 10, yPos, {
-             width: contentWidth - 20,
-             align: 'justify'
-           });
   
-  yPos += 25;
-  doc.fontSize(9)
-     .fillColor('#00bcd4')
-     .font('Helvetica-Bold')
-     .text('soportedepagosviajaya@gmail.com', margin + 10, yPos);
+  const clausula3Texto = `El COMPRADOR se compromete a pagar la totalidad de este contrato de manera incondicional a la orden del VENDEDOR la suma total indicada en el cuadro "DATOS RESERVA"- específicamente en la casilla total Valor contrato que hace parte de la cláusula segunda del presente contrato, dinero que se consignará exclusivamente en las cuentas autorizadas y nombradas en el acuerdo de pago enviar sus soportes legibles al correo: soportedepagosviajaya@gmail.com en este email autorizado enviar los soportes legibles y es su obligación dar a conocer sus abonos mensuales`;
   
-  yPos += 25;
   doc.fontSize(9)
-     .fillColor('#ffffff')
+     .fillColor('#000000')
      .font('Helvetica')
-     .text('para evitar cambios o cancelaciones de sus servicios, foto legible donde se pueda evidenciar fecha, número de aprobación y valor cancelado', 
-           margin + 10, yPos, {
-             width: contentWidth - 20,
-             align: 'justify'
-           });
+     .text(clausula3Texto, margin + 5, yPos, {
+       width: contentWidth - 10,
+       align: 'justify',
+       lineGap: 3
+     });
   
-  yPos += 30;
+  yPos += 80;
+  yPos = addSectionDivider(doc, yPos, margin, contentWidth, 'dashed');
+  
+  // CLÁUSULA CUARTA
+  doc.fontSize(11)
+     .fillColor('#7b2cbf')
+     .font('Helvetica-Bold')
+     .text('CLÁUSULA CUARTA - FORMA DE PAGO PARA VIAJES CON FECHA SUPERIOR A 31 DÍAS (VENTA PROGRAMADA):', margin + 5, yPos);
+  
+  yPos += 25;
+  
+  const clausula4Texto = `Si el viaje se realiza entre (31) días calendario o más, contados a partir del perfeccionamiento del presente contrato, EL COMPRADOR deberá pagar una cuota inicial para reservar, atendiendo el acuerdo comercial descrito en el presente contrato. El saldo se pagará en el número cuotas mensuales restantes y hasta completar el 100% del valor final del plan, atendiendo el acuerdo comercial de pago descrito en el presente contrato, con un plazo máximo de 30 días calendario antes de la fecha de viaje.`;
+  
   doc.fontSize(9)
-     .text('Es de responsabilidad del titular enviar e informar sus pagos mensuales CLAUSULA TERCERA PRECIO', 
-           margin + 10, yPos, {
-             width: contentWidth - 20,
-             align: 'justify'
+     .fillColor('#000000')
+     .font('Helvetica')
+     .text(clausula4Texto, margin + 5, yPos, {
+       width: contentWidth - 10,
+       align: 'justify',
+       lineGap: 3
+     });
+  
+  yPos += 80;
+  
+  // CLÁUSULA QUINTA
+  doc.fontSize(11)
+     .fillColor('#7b2cbf')
+     .font('Helvetica-Bold')
+     .text('CLÁUSULA QUINTA - FORMA DE PAGO PARA VIAJES CON FECHA INFERIOR A 30 DÍAS (VENTA AL DÍA):', margin + 5, yPos);
+  
+  yPos += 25;
+  
+  const clausula5Texto = `Si el viaje se realiza dentro de los treinta (30) días calendario siguiente al recibo del presente contrato en el correo electrónico DEL COMPRADOR, éste debe pagar el 100% del valor final de manera inmediata.`;
+  
+  doc.fontSize(9)
+     .fillColor('#000000')
+     .font('Helvetica')
+     .text(clausula5Texto, margin + 5, yPos, {
+       width: contentWidth - 10,
+       align: 'justify',
+       lineGap: 3
+     });
+  
+  // Footer para página 5
+  doc.fontSize(7)
+     .fillColor('#666666')
+     .text('NIT: 1032406128 | RNT: 122035 | Tel: 320 492 44 44 | Email: info@viajaya.com', 
+           margin, 750, {
+             width: contentWidth,
+             align: 'center'
            });
   
-  yPos += 50;
+  // ================== PÁGINA 6: CLÁUSULAS ADICIONALES ==================
+  doc.addPage();
+  createContractHeader(doc);
+  yPos = 120;
   
-  // ✅ Tabla de pagos - solo si es en cuotas
-  if (contractData.forma_pago === 'cuotas' && contractData.fechas_vencimiento_cuotas) {
-    const tableY = yPos;
-    const colWidths = [150, 120, 130];
-    const headers = ['PAGO', 'VALOR', 'FECHA DE PAGO'];
+  // CLÁUSULA SEXTA
+  doc.fontSize(11)
+     .fillColor('#7b2cbf')
+     .font('Helvetica-Bold')
+     .text('CLÁUSULA SEXTA - PERFECCIONAMIENTO:', margin + 5, yPos);
+  
+  yPos += 20;
+  
+  const clausula6Texto = `El contrato celebrado entre las partes se perfecciona desde el momento que se efectúe el primer pago por parte de EL COMPRADOR por cualquiera de los medios de pago o recaudo oficiales del VENDEDOR y al momento de confirmarse la reserva por parte de EL VENDEDOR, y las prestaciones principales a cargo de EL VENDEDOR se harán efectivas cuando se realice la totalidad del pago del contrato pactado y en las fechas determinadas contractualmente.`;
+  
+  doc.fontSize(9)
+     .fillColor('#000000')
+     .font('Helvetica')
+     .text(clausula6Texto, margin + 5, yPos, {
+       width: contentWidth - 10,
+       align: 'justify',
+       lineGap: 3
+     });
+  
+  yPos += 80;
+  yPos = addSectionDivider(doc, yPos, margin, contentWidth, 'solid');
+  
+  // CLÁUSULA SÉPTIMA
+  doc.fontSize(11)
+     .fillColor('#7b2cbf')
+     .font('Helvetica-Bold')
+     .text('CLÁUSULA SÉPTIMA - CAMBIOS Y CANCELACIONES:', margin + 5, yPos);
+  
+  yPos += 20;
+  
+  const clausula7Parte1 = `EL COMPRADOR podrá cambiar o cancelar el paquete turístico o viaje, en cuyo caso deberá pagar la mayor diferencia resultante o solicitar la devolución de la diferencia en servicios y/o receptivos ofrecidos por la compañía si el cambio o variación del servicio es imputable AL COMPRADOR; o en dinero si la variación o cambio en el servicio es atribuible AL VENDEDOR, exceptuando las modificaciones que en virtud de la cláusula de responsabilidad se puedan efectuar.`;
+  
+  doc.fontSize(8)
+     .fillColor('#000000')
+     .font('Helvetica')
+     .text(clausula7Parte1, margin + 5, yPos, {
+       width: contentWidth - 10,
+       align: 'justify',
+       lineGap: 3
+     });
+  
+  yPos += 80;
+  
+  const clausula7Parte2 = `Cualquier cambio en la reserva del paquete turístico, desarrollo del producto y/o servicio adquirido y demás condiciones o cancelaciones, los podrá realizar EL COMPRADOR mediante escrito físico ante las oficinas de EL VENDEDOR o al correo electrónico: mayordomodeviajesviajaya@gmail.com teniendo en cuenta que serán aplicables las condiciones de la tabla de penalidades de la cláusula décima segunda (12) y el reajuste de tarifa por cambios o demás adiciones, que en su momento se liquidarán a EL COMPRADOR y serán de pago inmediato y total.`;
+  
+  doc.fontSize(8)
+     .fillColor('#000000')
+     .font('Helvetica')
+     .text(clausula7Parte2, margin + 5, yPos, {
+       width: contentWidth - 10,
+       align: 'justify',
+       lineGap: 3
+     });
+  
+  yPos += 90;
+  
+  const clausula7Parte3 = `EL VENDEDOR podrá efectuar los cambios determinados por los prestadores de los servicios, de acuerdo con la cláusula de responsabilidad y con los términos y condiciones establecidos por ellos, con el fin de garantizar el éxito del viaje.`;
+  
+  doc.fontSize(8)
+     .fillColor('#000000')
+     .font('Helvetica')
+     .text(clausula7Parte3, margin + 5, yPos, {
+       width: contentWidth - 10,
+       align: 'justify',
+       lineGap: 3
+     });
+  
+  // Footer para página 6
+  doc.fontSize(7)
+     .fillColor('#666666')
+     .text('NIT: 1032406128 | RNT: 122035 | Tel: 320 492 44 44 | Email: info@viajaya.com', 
+           margin, 750, {
+             width: contentWidth,
+             align: 'center'
+           });
+  
+  // ================== PÁGINA 7: CLÁUSULAS FINALES ==================
+  doc.addPage();
+  createContractHeader(doc);
+  yPos = 120;
+  
+  // Continuación CLÁUSULA SÉPTIMA - casos de cancelación
+  const clausula7Cancelacion = `EL VENDEDOR procederá a cancelar las reservas respectivas, en los siguientes casos: 1) Si dentro de las 24 horas siguientes a la fijación de la reserva, no se ha efectuado el pago correspondiente para mantenerla. 2) cuando EL COMPRADOR no efectúe el pago de dos (2) cuotas mensuales consecutivas. 3) en caso de que este contrato no esté pagado en su totalidad por lo menos treinta (30) días calendario antes de la fecha de viaje o veinte (20) días calendario antes de la fecha de viaje dependiendo si es una venta programada o es una venta al día.`;
+  
+  doc.fontSize(8)
+     .fillColor('#e74c3c')
+     .font('Helvetica-Bold')
+     .text(clausula7Cancelacion, margin + 5, yPos, {
+       width: contentWidth - 10,
+       align: 'justify',
+       lineGap: 3
+     });
+  
+  yPos += 100;
+  yPos = addSectionDivider(doc, yPos, margin, contentWidth, 'thick');
+  
+  // CLÁUSULA OCTAVA
+  doc.fontSize(11)
+     .fillColor('#7b2cbf')
+     .font('Helvetica-Bold')
+     .text('CLÁUSULA OCTAVA - TERMINACIÓN:', margin + 5, yPos);
+  
+  yPos += 20;
+  
+  const clausula8Texto = `EL VENDEDOR: podrá dar por terminado con justa causa el presente contrato cuando EL COMPRADOR no cumpla con el pago oportuno parcial o total de este contrato. En caso de terminación del contrato, por cualquiera de las partes, el VENDEDOR procederá a liquidar y requerir el pago de los valores proporcionales que corresponda por el "no show" en el hotel, costo de haber reservado sillas en vuelos y los gastos en los que incurra EL VENDEDOR por la reservación ante sus proveedores, LAS PARTES reconocen el mérito ejecutivo que presta este contrato.`;
+  
+  doc.fontSize(9)
+     .fillColor('#000000')
+     .font('Helvetica')
+     .text(clausula8Texto, margin + 5, yPos, {
+       width: contentWidth - 10,
+       align: 'justify',
+       lineGap: 3
+     });
+  
+  yPos += 100;
+  yPos = addSectionDivider(doc, yPos, margin, contentWidth, 'dashed');
+  
+  // CLÁUSULA NOVENA
+  doc.fontSize(11)
+     .fillColor('#7b2cbf')
+     .font('Helvetica-Bold')
+     .text('CLÁUSULA NOVENA - VERIFICACIÓN DE TÉRMINOS:', margin + 5, yPos);
+  
+  yPos += 20;
+  
+  const clausula9Texto = `EL COMPRADOR, acepta que no hay promesas, ni condiciones verbales adicionales, ya que el presente contrato contempla todas las estipulaciones, condiciones y servicios que por el mismo aceptan y adquieren.`;
+  
+  doc.fontSize(9)
+     .fillColor('#000000')
+     .font('Helvetica')
+     .text(clausula9Texto, margin + 5, yPos, {
+       width: contentWidth - 10,
+       align: 'justify',
+       lineGap: 3
+     });
+  
+  yPos += 60;
+  
+  // CLÁUSULA DÉCIMA PRIMERA
+  doc.fontSize(11)
+     .fillColor('#7b2cbf')
+     .font('Helvetica-Bold')
+     .text('CLÁUSULA DÉCIMA PRIMERA - OBLIGACIONES DE LAS PARTES:', margin + 5, yPos);
+  
+  yPos += 20;
+  
+  const clausula11Texto = `Además de las obligaciones contempladas en la legislación aplicable al contrato en materia turística y comercial, EL COMPRADOR manifiesta que fue informado adecuadamente del alcance de la cláusula de responsabilidad que como prestador de servicios turísticos tiene EL VENDEDOR según la Ley de Turismo, y EL COMPRADOR manifiesta que recibe copia de la Cláusula de Responsabilidad inmersa en este contrato.`;
+  
+  doc.fontSize(9)
+     .fillColor('#000000')
+     .font('Helvetica')
+     .text(clausula11Texto, margin + 5, yPos, {
+       width: contentWidth - 10,
+       align: 'justify',
+       lineGap: 3
+     });
+  
+  yPos += 80;
+  
+  // CLÁUSULA DÉCIMA SEGUNDA
+  doc.fontSize(11)
+     .fillColor('#e74c3c')
+     .font('Helvetica-Bold')
+     .text('CLÁUSULA DÉCIMA SEGUNDA - PENALIDADES:', margin + 5, yPos);
+  
+  yPos += 20;
+  
+  const clausula12Texto = `Las penalidades del presente contrato, serán aplicables para cada persona de la reserva y son las que a continuación se describen, las cuales son conocidas, informadas, explicadas y aceptadas por EL COMPRADOR, en los casos de cancelación de viaje se deducirá el 100% de la Garantía de Viaje por pasajero`;
+  
+  doc.fontSize(9)
+     .fillColor('#e74c3c')
+     .font('Helvetica-Bold')
+     .text(clausula12Texto, margin + 5, yPos, {
+       width: contentWidth - 10,
+       align: 'justify',
+       lineGap: 3
+     });
+  
+  yPos += 80;
+  
+  // ================== TABLA DE PENALIDADES ==================
+  
+  // Crear tabla de penalidades
+  const createPenaltiesTable = (doc, startY) => {
+    const tableStartX = margin;
+    const tableWidth = contentWidth;
     
-    // Headers de la tabla
-    let currentX = margin + 10;
-    headers.forEach((header, index) => {
-      doc.rect(currentX, tableY, colWidths[index], 25)
-         .fillColor('#ffffff')
-         .fill()
-         .strokeColor('#000000')
-         .lineWidth(1)
-         .stroke();
-      
-      doc.fontSize(9)
-         .fillColor('#000000')
-         .font('Helvetica-Bold')
-         .text(header, currentX + 5, tableY + 8);
-      
-      currentX += colWidths[index];
-    });
+    // Definir columnas y sus anchos
+    const columns = [
+      { header: 'Descripción del servicio', width: tableWidth * 0.20 },
+      { header: 'Cambio de nombre1', width: tableWidth * 0.08 },
+      { header: '', width: tableWidth * 0.08 }, // Cambio de nombre2
+      { header: 'Cambio de fecha', width: tableWidth * 0.08 },
+      { header: '', width: tableWidth * 0.08 }, // Cambio de fecha2
+      { header: 'Cambio de destino2', width: tableWidth * 0.08 },
+      { header: '', width: tableWidth * 0.08 }, // Cambio de destino2
+      { header: 'Cancelación', width: tableWidth * 0.08 },
+      { header: '', width: tableWidth * 0.08 }  // Cancelación2
+    ];
     
-    yPos += 25;
+    let currentY = startY;
     
-    // ✅ Filas de pagos - datos reales
-    const pagos = [];
+    // Header principal de la tabla con colores
+    doc.rect(tableStartX, currentY, tableWidth, 25)
+       .fillColor('#8e44ad')
+       .fill();
     
-    // Cuota inicial si existe
-    if (contractData.tiene_cuota_inicial && contractData.cuota_inicial_monto > 0) {
-      pagos.push({
-        concepto: 'CUOTA INICIAL',
-        valor: formatearMoneda(contractData.cuota_inicial_monto || 0).replace('$', ''),
-        fecha: contractData.fecha_vencimiento_inicial ? formatearFecha(contractData.fecha_vencimiento_inicial) : 'Por definir'
-      });
-    }
+    // Títulos principales
+    let currentX = tableStartX;
     
-    // Cuotas restantes - usar fechas reales
-    if (contractData.fechas_vencimiento_cuotas && contractData.fechas_vencimiento_cuotas.length > 0) {
-      contractData.fechas_vencimiento_cuotas.forEach((fecha, index) => {
-        pagos.push({
-          concepto: `CUOTA ${index + 1}`,
-          valor: formatearMoneda(contractData.valor_cuota_restante || 0).replace('$', ''),
-          fecha: formatearFecha(fecha)
-        });
-      });
-    }
-    
-    // Si no hay cuotas definidas pero es pago en cuotas, mostrar mensaje
-    if (pagos.length === 0) {
-      doc.fontSize(9)
-         .fillColor('#ffffff')
-         .font('Helvetica')
-         .text('Las fechas de pago serán definidas con el asesor comercial', 
-               margin + 10, yPos, {
-                 width: contentWidth - 20,
-                 align: 'center'
-               });
-    } else {
-      // Dibujar filas de pagos
-      pagos.forEach((pago, rowIndex) => {
-        currentX = margin + 10;
-        const rowY = yPos + (rowIndex * 25);
-        
-        [pago.concepto, pago.valor, pago.fecha].forEach((cell, colIndex) => {
-          doc.rect(currentX, rowY, colWidths[colIndex], 25)
-             .fillColor('#ffffff')
-             .fill()
-             .strokeColor('#000000')
-             .lineWidth(1)
-             .stroke();
-          
-          doc.fontSize(8)
-             .fillColor('#000000')
-             .font('Helvetica')
-             .text(cell, currentX + 5, rowY + 8);
-          
-          currentX += colWidths[colIndex];
-        });
-      });
-      
-      yPos += (pagos.length * 25) + 30;
-    }
-  } else {
-    // Si es pago único
-    doc.fontSize(9)
+    // Descripción del servicio
+    doc.fontSize(8)
        .fillColor('#ffffff')
        .font('Helvetica-Bold')
-       .text(`PAGO ÚNICO: ${formatearMoneda(contractData.precio_total)}`, 
-             margin + 10, yPos, {
-               width: contentWidth - 20,
-               align: 'center'
-             });
+       .text('Descripción del servicio', currentX + 2, currentY + 8, {
+         width: columns[0].width - 4,
+         align: 'center'
+       });
+    currentX += columns[0].width;
     
-    yPos += 20;
-    doc.fontSize(9)
+    // Cambio de nombre (2 columnas)
+    doc.text('Cambio de nombre1', currentX + 2, currentY + 8, {
+       width: (columns[1].width + columns[2].width) - 4,
+       align: 'center'
+     });
+    currentX += columns[1].width + columns[2].width;
+    
+    // Cambio de fecha (2 columnas)
+    doc.text('Cambio de fecha', currentX + 2, currentY + 8, {
+       width: (columns[3].width + columns[4].width) - 4,
+       align: 'center'
+     });
+    currentX += columns[3].width + columns[4].width;
+    
+    // Cambio de destino (2 columnas)
+    doc.text('Cambio de destino2', currentX + 2, currentY + 8, {
+       width: (columns[5].width + columns[6].width) - 4,
+       align: 'center'
+     });
+    currentX += columns[5].width + columns[6].width;
+    
+    // Cancelación (2 columnas)
+    doc.text('Cancelación', currentX + 2, currentY + 8, {
+       width: (columns[7].width + columns[8].width) - 4,
+       align: 'center'
+     });
+    
+    currentY += 25;
+    
+    // Sub-headers con rangos de días
+    doc.rect(tableStartX, currentY, tableWidth, 20)
+       .fillColor('#9b59b6')
+       .fill();
+    
+    currentX = tableStartX + columns[0].width; // Empezar después de "Descripción del servicio"
+    
+    const rangeLabels = [
+      'Mayor a 8 días', 'Menor o igual a 8 días',
+      'Mayor a 30 días', 'Menor o igual a 30 Días',
+      'Mayor a 30 días', 'Menor o igual a 30 días',
+      'Mayor a 30 días', 'Menor igual a 30 días'
+    ];
+    
+    doc.fontSize(6)
        .fillColor('#ffffff')
-       .font('Helvetica')
-       .text('El pago debe realizarse antes del inicio del viaje según las condiciones acordadas', 
-             margin + 10, yPos, {
-               width: contentWidth - 20,
-               align: 'center'
-             });
-  }
+       .font('Helvetica');
+    
+    rangeLabels.forEach((label, index) => {
+      const colWidth = index < 2 ? columns[index + 1].width : columns[index + 1].width;
+      doc.text(label, currentX + 1, currentY + 6, {
+        width: colWidth - 2,
+        align: 'center'
+      });
+      currentX += colWidth;
+    });
+    
+    currentY += 20;
+    
+    // Filas de datos
+    const rowData = [
+      {
+        service: 'Transporte aéreo CHARTER Y COMERCIAL',
+        values: ['Según Tarifa', 'Según Tarifa', '100%', '100%', '100%', '100%', '100%', '100%']
+      },
+      {
+        service: 'Servicio Turístico: Alojamiento, receptivos incluidos y CSI (Cargos, suplementos e impuestos)',
+        values: ['N/A', '', '30%', '100%', '30%', '100%', '30%', '100%']
+      }
+    ];
+    
+    rowData.forEach((row, rowIndex) => {
+      const rowHeight = row.service.length > 50 ? 35 : 25;
+      
+      // Fondo alternado para las filas
+      if (rowIndex % 2 === 0) {
+        doc.rect(tableStartX, currentY, tableWidth, rowHeight)
+           .fillColor('#f8f9fa')
+           .fill();
+      }
+      
+      // Bordes de la fila
+      doc.rect(tableStartX, currentY, tableWidth, rowHeight)
+         .strokeColor('#dee2e6')
+         .lineWidth(0.5)
+         .stroke();
+      
+      currentX = tableStartX;
+      
+      // Descripción del servicio
+      doc.fontSize(7)
+         .fillColor('#000000')
+         .font('Helvetica')
+         .text(row.service, currentX + 2, currentY + 4, {
+           width: columns[0].width - 4,
+           align: 'left'
+         });
+      currentX += columns[0].width;
+      
+      // Valores de penalidades
+      row.values.forEach((value, index) => {
+        const colWidth = columns[index + 1].width;
+        
+        doc.fontSize(7)
+           .fillColor('#000000')
+           .font('Helvetica-Bold')
+           .text(value, currentX + 1, currentY + 8, {
+             width: colWidth - 2,
+             align: 'center'
+           });
+        
+        // Dibujar línea vertical entre columnas
+        doc.moveTo(currentX, currentY)
+           .lineTo(currentX, currentY + rowHeight)
+           .strokeColor('#dee2e6')
+           .lineWidth(0.5)
+           .stroke();
+        
+        currentX += colWidth;
+      });
+      
+      currentY += rowHeight;
+    });
+    
+    // Bordes exteriores de la tabla
+    doc.rect(tableStartX, startY, tableWidth, currentY - startY)
+       .strokeColor('#000000')
+       .lineWidth(1)
+       .stroke();
+    
+    return currentY;
+  };
   
-  return yPos;
+  yPos = createPenaltiesTable(doc, yPos);
+  
+  yPos += 30;
+  
+  // Nota adicional sobre penalidades
+  doc.fontSize(8)
+     .fillColor('#e74c3c')
+     .font('Helvetica-Bold')
+     .text('NOTA: Todas las penalidades se aplican por pasajero y están sujetas a las condiciones específicas de cada proveedor de servicios.', 
+           margin + 5, yPos, {
+             width: contentWidth - 10,
+             align: 'justify',
+             lineGap: 2
+           });
+
+  return yPos + 50;
 };
 
 // ✅ Función principal para generar el PDF del contrato
+// ✅ Actualizar la función principal para usar el nuevo diseño
 const generateContractPDF = async (contractData, saveToFile = true) => {
   try {
     console.log('🔄 Generando PDF de contrato:', contractData.contract_number);
     
-    // Crear el documento PDF
+    // Crear el documento PDF con mismo margin que cotización
     const doc = new PDFDocument({ 
-      margin: 40,
+      margin: 25, // Mismo margin que cotización
       size: 'A4'
     });
 
+    // ✅ Asignar número de contrato al documento para uso en headers
+    doc._currentContractNumber = contractData.contract_number;
+
     const pageWidth = doc.page.width;
     const pageHeight = doc.page.height;
-    const margin = 40;
+    const margin = 25;
     const contentWidth = pageWidth - 2 * margin;
 
     // Si se debe guardar como archivo
@@ -1324,72 +1888,229 @@ const generateContractPDF = async (contractData, saveToFile = true) => {
       doc.pipe(stream);
     }
 
-    // ================= PÁGINA 1 - PORTADA =================
+    // ================= PÁGINA 1 - PORTADA CON NUEVO DISEÑO =================
     let yPosition = createContractHeader(doc);
     yPosition = createContractTitle(doc, yPosition);
     yPosition = createContractClauses(doc, contractData, yPosition);
-
-    // ================= PÁGINA 2 - INFORMACIÓN DE RESERVA =================
+    
+    // Footer simple para página 1
+    doc.fontSize(7)
+       .fillColor('#666666')
+       .text('NIT: 1032406128 | RNT: 122035 | Tel: 320 492 44 44 | Email: info@viajaya.com', 
+             margin, 750, {
+               width: contentWidth,
+               align: 'center'
+             });
+    
+    // ================= CONTINUAR CON LAS DEMÁS PÁGINAS... =================
+    // (mantener el resto de las funciones existentes)
     createReservaSection(doc, contractData);
-
-    // ================= PÁGINA 3 - INFORMACIÓN FINANCIERA =================
     createFinancialSection(doc, contractData);
-
-    // ================= PÁGINA 4 - ACUERDO DE PAGO =================
-    createPaymentSection(doc, contractData);
-
+    createAdditionalClausesPages(doc, contractData);
 
     // ================= ÚLTIMA HOJA: DATOS DE LA EMPRESA Y FIRMA =================
     doc.addPage();
-    let yPos = 100;
+    createContractHeader(doc);
+    let yPos = 120;
 
-    // Datos de la empresa
+    // Datos de la empresa con diseño mejorado
+    doc.rect(margin, yPos, contentWidth, 25)
+       .fillColor('#2be0e9') // ColorAzul del PDF de cotización
+       .fill();
+
     doc.fontSize(14)
-      .fillColor('#1e40af')
+      .fillColor('white')
       .font('Helvetica-Bold')
-      .text('VIAJA YA - OPERADOR TURÍSTICO Y AGENCIA DE VIAJES', margin, yPos, {
-        width: contentWidth,
+      .text('VIAJA YA - OPERADOR TURÍSTICO Y AGENCIA DE VIAJES', margin + 5, yPos + 6, {
+        width: contentWidth - 10,
         align: 'center'
       });
-    yPos += 30;
-    doc.fontSize(10)
-      .fillColor('#000000')
-      .font('Helvetica')
-      .text('NIT: 1032406128', margin, yPos, { width: contentWidth, align: 'center' });
-    yPos += 15;
-    doc.text('RNT: 122035', margin, yPos, { width: contentWidth, align: 'center' });
-    yPos += 15;
-    doc.text('Oficina principal: Centro Comercial Plaza Ensueño 2° Piso, Bogotá D.C.', margin, yPos, { width: contentWidth, align: 'center' });
-    yPos += 15;
-    doc.text('Tel: 320 492 44 44', margin, yPos, { width: contentWidth, align: 'center' });
-    yPos += 15;
-    doc.text('Email: info@viajaya.com.co', margin, yPos, { width: contentWidth, align: 'center' });
-    yPos += 30;
+    
+    yPos += 40;
+    
+    // Información de la empresa
+    const empresaInfo = [
+      'NIT: 1032406128',
+      'RNT: 122035',
+      'Oficina principal: Centro Comercial Plaza Ensueño 2° Piso, Bogotá D.C.',
+      'Tel: 320 492 44 44',
+      'Email: info@viajaya.com'
+    ];
 
-    // Firma
+    empresaInfo.forEach(info => {
+      doc.fontSize(10)
+         .fillColor('#000000')
+         .font('Helvetica')
+         .text(info, margin, yPos, { width: contentWidth, align: 'center' });
+      yPos += 15;
+    });
+
+    yPos += 20;
+
+    // ================= SECCIÓN DE FIRMAS EN DOS COLUMNAS =================
+    
+    const firmasSectionHeight = 150;
+    const firmaColumnWidth = contentWidth / 2 - 10;
+    const leftColumnX = margin;
+    const rightColumnX = margin + firmaColumnWidth + 20;
+    
+    // Fondo para la sección de firmas
+    doc.rect(margin, yPos, contentWidth, firmasSectionHeight)
+       .fillColor('#f8f9fa')
+       .fill()
+       .strokeColor('#dee2e6')
+       .lineWidth(1)
+       .stroke();
+    
+    yPos += 20;
+    
+    // =========== COLUMNA IZQUIERDA: FIRMA DE LA EMPRESA ===========
+    
+    // Título de la columna izquierda
+    doc.fontSize(11)
+       .fillColor('#7b2cbf')
+       .font('Helvetica-Bold')
+       .text('FIRMA DEL VENDEDOR', leftColumnX + 5, yPos, {
+         width: firmaColumnWidth - 10,
+         align: 'center'
+       });
+    
+    // Línea divisoria vertical entre columnas
+    doc.moveTo(margin + firmaColumnWidth + 10, yPos - 10)
+       .lineTo(margin + firmaColumnWidth + 10, yPos + firmasSectionHeight - 30)
+       .strokeColor('#dee2e6')
+       .lineWidth(1)
+       .stroke();
+    
+    // Firma de la empresa (más pequeña)
     const firmaPath = path.join(__dirname, '../assets/firma.png');
     try {
-      doc.image(firmaPath, (pageWidth - 200) / 2, yPos, { width: 200 });
-      yPos += 90;
+      doc.image(firmaPath, leftColumnX + 25, yPos + 15, { width: 120 });
     } catch (e) {
-      doc.fontSize(10).fillColor('red').text('No se pudo cargar la firma', margin, yPos);
-      yPos += 20;
+      doc.fontSize(9).fillColor('red').text('Firma no disponible', leftColumnX + 25, yPos + 15);
     }
-
-    doc.fontSize(12)
-      .fillColor('#000000')
-      .font('Helvetica-Bold')
-      .text('MAYERLY ALEJANDRA HENAO HIGUERA', margin, yPos, { width: contentWidth, align: 'center' });
+    
+    // Información del representante legal
+    doc.fontSize(9)
+       .fillColor('#000000')
+       .font('Helvetica-Bold')
+       .text('MAYERLY ALEJANDRA HENAO HIGUERA', leftColumnX + 5, yPos + 85, {
+         width: firmaColumnWidth - 10,
+         align: 'center'
+       });
+    
+    doc.fontSize(8)
+       .font('Helvetica')
+       .text('Representante Legal', leftColumnX + 5, yPos + 98, {
+         width: firmaColumnWidth - 10,
+         align: 'center'
+       });
+    
+    doc.fontSize(8)
+       .text('VIAJA YA - OPERADOR TURÍSTICO', leftColumnX + 5, yPos + 110, {
+         width: firmaColumnWidth - 10,
+         align: 'center'
+       });
+    
+    // =========== COLUMNA DERECHA: FIRMA DEL CLIENTE ===========
+    
+    // Título de la columna derecha
+    doc.fontSize(11)
+       .fillColor('#7b2cbf')
+       .font('Helvetica-Bold')
+       .text('FIRMA DEL COMPRADOR', rightColumnX + 5, yPos, {
+         width: firmaColumnWidth - 10,
+         align: 'center'
+       });
+    
+    // Espacio para firma del cliente
+    const firmaClienteY = yPos + 25;
+    const firmaClienteHeight = 50;
+    
+    // Rectángulo para la firma del cliente
+    doc.rect(rightColumnX + 15, firmaClienteY, firmaColumnWidth - 30, firmaClienteHeight)
+       .fillColor('#ffffff')
+       .fill()
+       .strokeColor('#7b2cbf')
+       .lineWidth(1)
+       .stroke();
+    
+    // Texto indicativo dentro del rectángulo
+    doc.fontSize(8)
+       .fillColor('#999999')
+       .font('Helvetica-Oblique')
+       .text('Espacio para firma', rightColumnX + 20, firmaClienteY + 20, {
+         width: firmaColumnWidth - 40,
+         align: 'center'
+       });
+    
+    // Línea para la firma
+    doc.moveTo(rightColumnX + 20, firmaClienteY + firmaClienteHeight + 10)
+       .lineTo(rightColumnX + firmaColumnWidth - 20, firmaClienteY + firmaClienteHeight + 10)
+       .strokeColor('#000000')
+       .lineWidth(1)
+       .stroke();
+    
+    // Información del comprador
+    const nombreComprador = contractData.nombre_pasajero_principal || 
+                           contractData.nombre_titular || 
+                           'NOMBRE DEL COMPRADOR';
+    
+    doc.fontSize(9)
+       .fillColor('#000000')
+       .font('Helvetica-Bold')
+       .text(nombreComprador.toUpperCase(), rightColumnX + 5, yPos + 85, {
+         width: firmaColumnWidth - 10,
+         align: 'center'
+       });
+    
+    doc.fontSize(8)
+       .font('Helvetica')
+       .text('Comprador', rightColumnX + 5, yPos + 98, {
+         width: firmaColumnWidth - 10,
+         align: 'center'
+       });
+    
+    // Información del documento del comprador si está disponible
+    const documentoComprador = contractData.documento_titular || contractData.numero_documento;
+    if (documentoComprador) {
+      doc.fontSize(8)
+         .text(`C.C. ${documentoComprador}`, rightColumnX + 5, yPos + 110, {
+           width: firmaColumnWidth - 10,
+           align: 'center'
+         });
+    }
+    
+    yPos += firmasSectionHeight + 20;
+    
+    // ================= INFORMACIÓN ADICIONAL DE CONTACTO =================
+    
+    // Línea divisoria
+    yPos = addSectionDivider(doc, yPos, margin, contentWidth, 'solid');
+    
+    // Información de contacto en formato compacto
+    doc.fontSize(8)
+       .fillColor('#666666')
+       .font('Helvetica')
+       .text('NIT: 1032406128 | RNT: 122035 | Tel: 320 492 44 44 | Email: info@viajaya.com', 
+             margin, yPos, {
+               width: contentWidth,
+               align: 'center'
+             });
+    
     yPos += 15;
-    doc.fontSize(10)
-      .font('Helvetica')
-      .text('Representante Legal', margin, yPos, { width: contentWidth, align: 'center' });
+    
+    doc.fontSize(8)
+       .text('Oficina: Centro Comercial Plaza Ensueño 2° Piso, Bogotá D.C.', 
+             margin, yPos, {
+               width: contentWidth,
+               align: 'center'
+             });
 
     // Finalizar el documento
     doc.end();
 
     if (saveToFile) {
-      // ✅ Esperar a que se complete la escritura
       await new Promise((resolve, reject) => {
         stream.on('finish', resolve);
         stream.on('error', reject);
@@ -1408,7 +2129,6 @@ const generateContractPDF = async (contractData, saveToFile = true) => {
         buffer: fs.readFileSync(filepath)
       };
     } else {
-      // Para vista previa, retornar solo el buffer
       return new Promise((resolve, reject) => {
         const buffers = [];
         doc.on('data', buffers.push.bind(buffers));
@@ -1440,5 +2160,5 @@ module.exports = {
   createContractClauses,
   createReservaSection,
   createFinancialSection,
-  createPaymentSection
+  createAdditionalClausesPages
 };

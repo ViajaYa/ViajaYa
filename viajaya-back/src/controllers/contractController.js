@@ -24,25 +24,75 @@ const {
 const { formatForPDF } = require("../utils/dateUtils");
 
 // ✅ HELPER: Formatear fecha sin problemas de zona horaria (para templates HTML)
-const formatDateForEmail = (dateStr) => {
-  if (!dateStr) return 'Fecha no disponible';
+const formatDateForEmail = (dateInput) => {
+  if (!dateInput) return 'Fecha no disponible';
   
   try {
-    const formattedDate = formatForPDF(dateStr);
-    if (formattedDate === 'Fecha no disponible') {
+    // ✅ DEBUG: Log para verificar qué fecha llega
+    console.log('🔍 DEBUG formatDateForEmail - Fecha recibida:', dateInput);
+    console.log('🔍 DEBUG formatDateForEmail - Tipo:', typeof dateInput);
+    
+    // ✅ DETECTAR si es un Date object o string con hora exactamente a medianoche UTC
+    let isDateOnlyFormat = false;
+    let dateISOString = '';
+    
+    if (typeof dateInput === 'object' && dateInput instanceof Date) {
+      // ✅ CONVERTIR Date object a ISO string para análisis
+      dateISOString = dateInput.toISOString();
+      console.log('🔍 DEBUG: ISO string del Date object:', dateISOString);
+      
+      // ✅ VERIFICAR si termina en T00:00:00.000Z (indica fecha-only)
+      isDateOnlyFormat = dateISOString.endsWith('T00:00:00.000Z');
+      console.log('🔍 DEBUG: Es Date object fecha-only:', isDateOnlyFormat);
+    } else if (typeof dateInput === 'string') {
+      // ✅ CASO STRING: verificar directamente
+      dateISOString = dateInput;
+      isDateOnlyFormat = /^\d{4}-\d{2}-\d{2}T00:00:00\.000Z$/.test(dateInput);
+      console.log('🔍 DEBUG: Es string fecha-only:', isDateOnlyFormat);
+    }
+    
+    console.log('🔍 DEBUG formatDateForEmail - Test fecha-only:', isDateOnlyFormat);
+    
+    // ✅ SOLUCIÓN DIRECTA: Manejo específico para fechas ISO con T00:00:00.000Z
+    let finalDate = null;
+    
+    if (isDateOnlyFormat && dateISOString) {
+      console.log('🔍 DEBUG: Entrando en lógica especial para fecha-only');
+      
+      // Es una fecha "solo fecha" almacenada como timestamp UTC a medianoche
+      // Extraer solo la parte de fecha (YYYY-MM-DD) y tratarla como fecha local
+      const dateOnly = dateISOString.substring(0, 10); // "2025-10-01"
+      console.log('🔍 DEBUG: Fecha extraída:', dateOnly);
+      
+      const [year, month, day] = dateOnly.split('-');
+      console.log('🔍 DEBUG: Año, mes, día:', year, month, day);
+      
+      // Crear fecha local sin conversión de timezone
+      const localDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      console.log('🔍 DEBUG: Fecha local creada:', localDate);
+      
+      // Formatear directamente con JavaScript nativo para evitar problemas de Luxon
+      finalDate = localDate.toLocaleDateString('es-CO', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      
+      console.log('🔍 DEBUG: Fecha formateada con lógica especial:', finalDate);
+    } else {
+      console.log('🔍 DEBUG: Usando formatForPDF estándar');
+      // Para otros formatos, usar el sistema existente
+      finalDate = formatForPDF(dateInput);
+    }
+    
+    console.log('🔍 DEBUG formatDateForEmail - Fecha formateada FINAL:', finalDate);
+    
+    if (!finalDate || finalDate === 'Fecha no disponible') {
       return 'Fecha no disponible';
     }
     
-    // Convertir formato DD/MM/YYYY a formato largo en español
-    const [day, month, year] = formattedDate.split('/');
-    const date = new Date(year, month - 1, day); // mes es 0-indexado
-    
-    return date.toLocaleDateString("es-ES", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+    return finalDate;
     
   } catch (error) {
     console.error('Error formateando fecha:', error);
@@ -55,7 +105,16 @@ const formatDateSimple = (dateStr) => {
   if (!dateStr) return 'N/A';
   
   try {
-    return formatForPDF(dateStr);
+    // ✅ USAR EL SISTEMA EXISTENTE: formatForPDFSimple maneja correctamente las fechas
+    const { formatForPDFSimple } = require("../utils/dateUtils");
+    const formattedDate = formatForPDFSimple ? formatForPDFSimple(dateStr) : formatForPDF(dateStr);
+    
+    if (!formattedDate || formattedDate === 'Fecha no disponible') {
+      return 'N/A';
+    }
+    
+    return formattedDate;
+    
   } catch (error) {
     console.error('Error formateando fecha simple:', error);
     return 'Error en fecha';
@@ -1806,6 +1865,7 @@ convertQuoteToItems: async (req, res) => {
 
       // ✅ TICKETS - Estructura JSONB (SIN PRECIOS)
       if (calc.tiquetes && typeof calc.tiquetes === 'object') {
+        
         const tiquetesCosto = parseFloat(calc.tiquetes.costo_total || 0);
         if (tiquetesCosto > 0) {
           serviciosIncluidos.push({
@@ -1823,6 +1883,8 @@ convertQuoteToItems: async (req, res) => {
           });
         }
       }
+
+      console.log(calc)
 
       // ✅ HOTEL - Estructura JSONB (SIN PRECIOS)
       if (calc.hotel && typeof calc.hotel === 'object') {
@@ -2150,7 +2212,7 @@ convertQuoteToItems: async (req, res) => {
             <!-- Información del Contrato -->
             <div class="contract-info">
               <h2>🏖️ ${contract.Quote?.destino?.toUpperCase()}</h2>
-              
+              <p>Detalles de su viaje:</p>
               <div class="info-grid">
                 <div class="info-item">
                   <label>📅 FECHA DE SALIDA</label>
@@ -3284,10 +3346,95 @@ servePDF: async (req, res) => {
       });
     }
   },
+
+  // 🧪 FUNCIÓN DE PRUEBA PARA VER PDF - TEMPORAL
+  generateTestPDF: async (req, res) => {
+    try {
+      console.log('🧪 Generando PDF de prueba...');
+      
+      // Datos de prueba para el contrato
+      const testContractData = {
+        contract_number: 'TEST-2024-001',
+        quote: {
+          tipo_viaje: 'Nacional',
+          destino: 'Cartagena, Colombia',
+          fecha_inicio: '2024-12-15',
+          fecha_fin: '2024-12-20',
+          numero_personas: 4
+        },
+        cliente: {
+          nombre: 'Juan Pérez Gómez',
+          cedula: '12345678',
+          telefono: '300 123 4567',
+          email: 'juan.perez@email.com',
+          direccion: 'Calle 123 #45-67, Bogotá'
+        },
+        total_amount: 2500000,
+        payments: [
+          {
+            amount: 1250000,
+            payment_date: '2024-11-01',
+            payment_method: 'Transferencia',
+            status: 'paid'
+          },
+          {
+            amount: 1250000,
+            payment_date: '2024-12-01',
+            payment_method: 'Efectivo',
+            status: 'pending'
+          }
+        ],
+        items: [
+          {
+            descripcion: 'Paquete turístico Cartagena 5 días/4 noches',
+            quantity: 4,
+            unit_price: 625000,
+            total_price: 2500000
+          }
+        ],
+        passengers: [
+          {
+            nombre: 'Juan Pérez',
+            cedula: '12345678',
+            telefono: '300 123 4567'
+          },
+          {
+            nombre: 'María García',
+            cedula: '87654321',
+            telefono: '300 765 4321'
+          },
+          {
+            nombre: 'Carlos Pérez',
+            cedula: '11223344',
+            telefono: '300 112 2334'
+          },
+          {
+            nombre: 'Ana García',
+            cedula: '44332211',
+            telefono: '300 443 3221'
+          }
+        ]
+      };
+
+      // Generar el PDF
+      const pdfResult = await generateContractPDF(testContractData, false);
+
+      // Configurar headers para mostrar PDF en navegador
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'inline; filename=contrato-prueba.pdf');
+      
+      // Enviar el PDF
+      res.send(pdfResult.buffer);
+      
+    } catch (error) {
+      console.error('❌ Error generando PDF de prueba:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error generando PDF de prueba',
+        error: error.message
+      });
+    }
+  },
 };
-
- 
-
-
 
 module.exports = contractController;

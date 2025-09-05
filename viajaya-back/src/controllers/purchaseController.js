@@ -1,4 +1,4 @@
-const { Purchase, ContractItem, Contract, Quote, User, sequelize } = require('../db');
+const { Purchase, PurchaseInstallment, ContractItem, Contract, Quote, User, conn: sequelize } = require('../db');
 const { Op } = require('sequelize');
 
 // ✅ MANTENER: Crear una compra para un item (función existente mejorada)
@@ -157,14 +157,23 @@ const getContractItemsWithPurchases = async (req, res) => {
             'id', 'costo', 'fecha_compra', 'fecha_vencimiento_pago',
             'comprobante_url', 'cloudinary_public_id', 'tipo_comprobante', 
             'estado_pago', 'diferencia_precio', 'moneda', 'observaciones',
-            'proveedor', 'createdAt'
+            'proveedor', 'tipo_pago', 'numero_cuotas', 'cuotas_pagadas', 
+            'saldo_pendiente'
+          ],
+          include: [
+            {
+              model: PurchaseInstallment,
+              as: 'Installments',
+              required: false
+            }
           ]
         }
       ],
       order: [
         ['tipo', 'ASC'],
         ['descripcion', 'ASC'],
-        [{ model: Purchase, as: 'Purchases' }, 'fecha_compra', 'DESC']
+        [{ model: Purchase, as: 'Purchases' }, 'id', 'DESC'],
+        [{ model: Purchase, as: 'Purchases' }, { model: PurchaseInstallment, as: 'Installments' }, 'numero_cuota', 'ASC']
       ]
     });
 
@@ -663,6 +672,243 @@ const servePDFFile = async (req, res) => {
   }
 };
 
+// ✅ NUEVA: Crear compra con plan de cuotas
+const createPurchaseWithInstallments = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  
+  try {
+    const { itemId } = req.params;
+    const {
+      proveedor,
+      costo,
+      fecha_compra,
+      tipo_pago, // 'contado' o 'cuotas'
+      cuotas_plan, // Array de cuotas si tipo_pago es 'cuotas'
+      observaciones,
+      tipo_comprobante,
+      moneda
+    } = req.body;
+
+    const item = await ContractItem.findByPk(itemId);
+    if (!item) {
+      await transaction.rollback();
+      return res.status(404).json({ message: 'Item no encontrado' });
+    }
+
+    const precioCotizado = parseFloat(item.precio_total || 0);
+    const precioReal = parseFloat(costo || 0);
+    const diferenciaPrecio = precioReal - precioCotizado;
+
+    // Crear la compra principal
+    const purchase = await Purchase.create({
+      contract_item_id: itemId,
+      proveedor,
+      costo: precioReal,
+      fecha_compra,
+      tipo_pago,
+      numero_cuotas: tipo_pago === 'cuotas' ? cuotas_plan.length : 1,
+      cuotas_pagadas: 0,
+      saldo_pendiente: precioReal,
+      estado_pago: 'pendiente',
+      observaciones,
+      tipo_comprobante: tipo_comprobante || 'factura',
+      moneda: moneda || 'COP',
+      diferencia_precio: diferenciaPrecio
+    }, { transaction });
+
+    let installments = [];
+
+    if (tipo_pago === 'cuotas' && cuotas_plan && cuotas_plan.length > 0) {
+      // Crear las cuotas individuales
+      for (let i = 0; i < cuotas_plan.length; i++) {
+        const cuota = cuotas_plan[i];
+        const installment = await PurchaseInstallment.create({
+          purchase_id: purchase.id,
+          numero_cuota: i + 1,
+          monto_cuota: cuota.monto,
+          fecha_vencimiento: cuota.fecha_vencimiento,
+          observaciones: cuota.observaciones || null
+        }, { transaction });
+        
+        installments.push(installment);
+      }
+    } else {
+      // Pago único - crear una sola "cuota"
+      const installment = await PurchaseInstallment.create({
+        purchase_id: purchase.id,
+        numero_cuota: 1,
+        monto_cuota: precioReal,
+        fecha_vencimiento: req.body.fecha_vencimiento_pago || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 días por defecto
+      }, { transaction });
+      
+      installments.push(installment);
+    }
+
+    // Actualizar status del item
+    await item.update({
+      status: 'comprado_pendiente',
+      costo_proveedor: precioReal
+    }, { transaction });
+
+    await transaction.commit();
+
+    res.status(201).json({
+      success: true,
+      message: `Compra creada exitosamente ${tipo_pago === 'cuotas' ? 'con plan de cuotas' : 'pago único'}`,
+      purchase: await Purchase.findByPk(purchase.id, {
+        include: [{ model: PurchaseInstallment, as: 'Installments' }]
+      }),
+      installments,
+      price_difference: {
+        cotizado: precioCotizado,
+        real: precioReal,
+        diferencia: diferenciaPrecio,
+        tipo: diferenciaPrecio >= 0 ? 'sobrecosto' : 'ahorro'
+      }
+    });
+
+  } catch (error) {
+    await transaction.rollback();
+    console.error('Error creando compra con cuotas:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error creando compra',
+      error: error.message
+    });
+  }
+};
+
+// ✅ NUEVA: Pagar una cuota específica
+const payInstallment = async (req, res) => {
+  try {
+    const { installmentId } = req.params;
+    const { fecha_pago, metodo_pago, observaciones } = req.body;
+
+    const installment = await PurchaseInstallment.findByPk(installmentId, {
+      include: [{ model: Purchase, as: 'Purchase' }]
+    });
+
+    if (!installment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Cuota no encontrada'
+      });
+    }
+
+    // Actualizar la cuota
+    await installment.update({
+      estado: 'pagado',
+      fecha_pago: fecha_pago || new Date(),
+      metodo_pago,
+      observaciones,
+      comprobante_pago_url: req.file ? req.file.secure_url : null,
+      cloudinary_public_id: req.file ? req.file.public_id : null
+    });
+
+    // Actualizar estadísticas de la compra principal
+    const purchase = installment.Purchase;
+    const allInstallments = await PurchaseInstallment.findAll({
+      where: { purchase_id: purchase.id }
+    });
+
+    const cuotasPagadas = allInstallments.filter(inst => inst.estado === 'pagado').length;
+    const saldoPendiente = allInstallments
+      .filter(inst => inst.estado !== 'pagado')
+      .reduce((sum, inst) => sum + parseFloat(inst.monto_cuota), 0);
+
+    const estadoCompra = cuotasPagadas === allInstallments.length ? 'pagado' : 'pendiente';
+
+    await purchase.update({
+      cuotas_pagadas: cuotasPagadas,
+      saldo_pendiente: saldoPendiente,
+      estado_pago: estadoCompra
+    });
+
+    // Si está completamente pagado, actualizar el item
+    if (estadoCompra === 'pagado') {
+      const contractItem = await ContractItem.findByPk(purchase.contract_item_id);
+      await contractItem.update({ status: 'comprado_pagado' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Cuota pagada exitosamente',
+      installment: await PurchaseInstallment.findByPk(installmentId),
+      purchase_summary: {
+        cuotas_pagadas: cuotasPagadas,
+        total_cuotas: allInstallments.length,
+        saldo_pendiente: saldoPendiente,
+        estado: estadoCompra
+      }
+    });
+
+  } catch (error) {
+    console.error('Error pagando cuota:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al pagar cuota',
+      error: error.message
+    });
+  }
+};
+
+// ✅ NUEVA: Obtener detalles de cuotas de una compra
+const getPurchaseInstallments = async (req, res) => {
+  try {
+    const { purchaseId } = req.params;
+    
+    const purchase = await Purchase.findByPk(purchaseId, {
+      include: [
+        {
+          model: PurchaseInstallment,
+          as: 'Installments',
+          order: [['numero_cuota', 'ASC']]
+        }
+      ]
+    });
+
+    if (!purchase) {
+      return res.status(404).json({
+        success: false,
+        message: 'Compra no encontrada'
+      });
+    }
+
+    // Calcular estadísticas
+    const installments = purchase.Installments || [];
+    const stats = {
+      total_cuotas: installments.length,
+      cuotas_pagadas: installments.filter(inst => inst.estado === 'pagado').length,
+      cuotas_pendientes: installments.filter(inst => inst.estado === 'pendiente').length,
+      cuotas_vencidas: installments.filter(inst => {
+        return inst.estado === 'pendiente' && new Date(inst.fecha_vencimiento) < new Date();
+      }).length,
+      monto_total: installments.reduce((sum, inst) => sum + parseFloat(inst.monto_cuota), 0),
+      monto_pagado: installments
+        .filter(inst => inst.estado === 'pagado')
+        .reduce((sum, inst) => sum + parseFloat(inst.monto_cuota), 0),
+      saldo_pendiente: installments
+        .filter(inst => inst.estado !== 'pagado')
+        .reduce((sum, inst) => sum + parseFloat(inst.monto_cuota), 0)
+    };
+
+    res.json({
+      success: true,
+      purchase,
+      installments,
+      stats
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo cuotas:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener cuotas',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   // ✅ FUNCIONES EXISTENTES
   createPurchase,
@@ -676,6 +922,11 @@ module.exports = {
   updateItemDeadline,
   markPaymentCompleted,
   getContractPurchaseStats,
+  
+  // ✅ NUEVAS FUNCIONES PARA CUOTAS
+  createPurchaseWithInstallments,
+  payInstallment,
+  getPurchaseInstallments,
   
   // 🔧 PROXY PARA SERVIR PDFs
   servePDFFile

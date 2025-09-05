@@ -58,6 +58,7 @@ const {
   Invoice,
   ContractItem,
   Purchase,
+  PurchaseInstallment,
   UserDocument,
   Passenger,
   CommissionConfig,
@@ -449,6 +450,18 @@ Purchase.belongsTo(ContractItem,
     as: 'ContractItem' 
   });
 
+// ✅ RELACIONES PURCHASE - PURCHASE INSTALLMENTS
+// Una compra puede tener múltiples cuotas
+Purchase.hasMany(PurchaseInstallment, {
+  foreignKey: 'purchase_id',
+  as: 'Installments'
+});
+
+PurchaseInstallment.belongsTo(Purchase, {
+  foreignKey: 'purchase_id',
+  as: 'Purchase'
+});
+
 Invoice.belongsTo(User, { 
   as: 'AprobadaPor', 
   foreignKey: 'aprobada_por' 
@@ -512,3 +525,5 @@ module.exports = {
   ...sequelize.models, // para poder importar los modelos así: const { Product, User } = require('./db.js');
   conn: sequelize,     // para importart la conexión { conn } = require('./db.js');
 };
+
+

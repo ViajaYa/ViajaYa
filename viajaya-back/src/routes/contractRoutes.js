@@ -30,6 +30,10 @@ router.get('/:id/download-pdf', contractController.downloadContractPDF);
 
 // Vista previa del PDF (sin guardar)
 router.get('/:id/preview-pdf', contractController.generateContractPDF);
+
+// 🧪 ENDPOINT DE PRUEBA PARA PDF - TEMPORAL
+router.get('/test/pdf-preview', contractController.generateTestPDF);
+
 router.get('/:id/email-preview', contractController.previewContractEmail);
 // Firmar contrato
 router.post('/:id/sign', contractController.signContract);
@@ -80,7 +84,12 @@ router.patch('/purchases/:purchaseId/mark-paid', purchaseController.markPaymentC
 // Eliminar compra
 router.delete('/purchases/:purchaseId', purchaseController.deletePurchase);
 
-
-
+// ✅ NUEVAS RUTAS PARA CUOTAS
+// Crear compra con plan de cuotas
+router.post('/items/:itemId/purchases-with-installments', purchaseController.createPurchaseWithInstallments);
+// Ver cuotas de una compra
+router.get('/purchases/:purchaseId/installments', purchaseController.getPurchaseInstallments);
+// Pagar cuota específica (con posible archivo adjunto)
+router.put('/installments/:installmentId/pay', uploadComprobante.single('comprobante'), purchaseController.payInstallment);
 
 module.exports = router;

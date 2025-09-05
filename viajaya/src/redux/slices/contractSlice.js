@@ -46,6 +46,12 @@ const initialState = {
     uploadingReceipt: false,
     updatingDeadline: false,
     markingPayment: false,
+    // ✅ NUEVO: Estados para sistema de cuotas
+    installments: [],
+    installmentsLoading: false,
+    installmentsError: null,
+    payingInstallment: false,
+    creatingInstallments: false,
   },
 };
 
@@ -639,6 +645,122 @@ export const fetchContractPayments = createAsyncThunk(
   }
 );
 
+// ✅ NUEVO: Crear compra con cuotas
+export const createPurchaseWithInstallments = createAsyncThunk(
+  "contract/createPurchaseWithInstallments",
+  async ({ itemId, purchaseData }, { rejectWithValue, getState }) => {
+    try {
+      const { auth } = getState();
+      console.log('💳 Creating purchase with installments for item:', itemId);
+
+      const response = await axios.post(
+        getApiUrl(`/contracts/items/${itemId}/purchases-with-installments`),
+        purchaseData,
+        {
+          headers: {
+            Authorization: `Bearer ${auth.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      console.log('💳 Purchase with installments response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error creating purchase with installments:', error);
+      if (error.response) {
+        return rejectWithValue(error.response.data.message || "Error creando compra con cuotas");
+      }
+      return rejectWithValue(error.message || "Error de conexión");
+    }
+  }
+);
+
+// ✅ NUEVO: Obtener cuotas de una compra
+export const fetchPurchaseInstallments = createAsyncThunk(
+  "contract/fetchPurchaseInstallments",
+  async (purchaseId, { rejectWithValue, getState }) => {
+    try {
+      const { auth } = getState();
+      console.log('📋 Fetching installments for purchase:', purchaseId);
+
+      const response = await axios.get(getApiUrl(`/contracts/purchases/${purchaseId}/installments`), {
+        headers: {
+          Authorization: `Bearer ${auth.token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      console.log('📋 Purchase installments response:', response.data);
+      return { purchaseId, installments: response.data.installments || [] };
+    } catch (error) {
+      console.error('❌ Error fetching purchase installments:', error);
+      if (error.response) {
+        return rejectWithValue(error.response.data.message || "Error obteniendo cuotas de la compra");
+      }
+      return rejectWithValue(error.message || "Error de conexión");
+    }
+  }
+);
+
+// ✅ NUEVO: Pagar una cuota específica
+export const payInstallment = createAsyncThunk(
+  "contract/payInstallment",
+  async ({ installmentId, paymentData }, { rejectWithValue, getState }) => {
+    try {
+      const { auth } = getState();
+      console.log('💰 Paying installment:', installmentId);
+
+      const response = await axios.patch(
+        getApiUrl(`/contracts/installments/${installmentId}/pay`),
+        paymentData,
+        {
+          headers: {
+            Authorization: `Bearer ${auth.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      console.log('💰 Pay installment response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error paying installment:', error);
+      if (error.response) {
+        return rejectWithValue(error.response.data.message || "Error pagando cuota");
+      }
+      return rejectWithValue(error.message || "Error de conexión");
+    }
+  }
+);
+
+// ✅ NUEVO: Obtener resumen financiero de compras con cuotas
+export const fetchPurchasesFinancialSummary = createAsyncThunk(
+  "contract/fetchPurchasesFinancialSummary",
+  async (contractId, { rejectWithValue, getState }) => {
+    try {
+      const { auth } = getState();
+      console.log('📊 Fetching purchases financial summary for contract:', contractId);
+
+      const response = await axios.get(getApiUrl(`/contracts/${contractId}/purchases-financial-summary`), {
+        headers: {
+          Authorization: `Bearer ${auth.token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      console.log('📊 Purchases financial summary response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error fetching purchases financial summary:', error);
+      if (error.response) {
+        return rejectWithValue(error.response.data.message || "Error obteniendo resumen financiero de compras");
+      }
+      return rejectWithValue(error.message || "Error de conexión");
+    }
+  }
+);
+
 // Slice
 const contractSlice = createSlice({
   name: "contract",
@@ -767,6 +889,42 @@ const contractSlice = createSlice({
         state.currentContract.status = status;
       }
     }
+  },
+
+  // ✅ NUEVO: Limpiar cuotas
+  clearInstallments: (state) => {
+    state.purchaseManagement.installments = [];
+    state.purchaseManagement.installmentsError = null;
+  },
+
+  // ✅ NUEVO: Actualizar estado después del pago de cuota
+  updateAfterInstallmentPayment: (state, action) => {
+    const { installment, purchase } = action.payload;
+    
+    // Actualizar la cuota en la lista
+    const installmentIndex = state.purchaseManagement.installments.findIndex(
+      inst => inst.id === installment.id
+    );
+    if (installmentIndex !== -1) {
+      state.purchaseManagement.installments[installmentIndex] = installment;
+    }
+    
+    // Actualizar la compra relacionada en items
+    state.purchaseManagement.items.forEach(item => {
+      if (item.Purchases) {
+        const purchaseIndex = item.Purchases.findIndex(p => p.id === purchase.id);
+        if (purchaseIndex !== -1) {
+          item.Purchases[purchaseIndex] = purchase;
+          
+          // Actualizar status del item basado en el estado de la compra
+          if (purchase.saldo_pendiente <= 0) {
+            item.status = 'comprado_pagado';
+          } else {
+            item.status = 'comprado_pendiente';
+          }
+        }
+      }
+    });
   }
 },
   
@@ -1248,6 +1406,138 @@ const contractSlice = createSlice({
       state.contractPaymentsLoading = false;
       state.contractPaymentsError = action.payload;
       state.contractPayments = [];
+    })
+
+    // ✅ NUEVO: Create Purchase With Installments
+    .addCase(createPurchaseWithInstallments.pending, (state) => {
+      state.purchaseManagement.creatingInstallments = true;
+      state.purchaseManagement.error = null;
+    })
+    .addCase(createPurchaseWithInstallments.fulfilled, (state, action) => {
+      state.purchaseManagement.creatingInstallments = false;
+      
+      const { purchase, installments } = action.payload;
+      
+      // Actualizar el item con la nueva compra
+      const itemIndex = state.purchaseManagement.items.findIndex(
+        item => item.id === purchase.contract_item_id
+      );
+      
+      if (itemIndex !== -1) {
+        if (!state.purchaseManagement.items[itemIndex].Purchases) {
+          state.purchaseManagement.items[itemIndex].Purchases = [];
+        }
+        state.purchaseManagement.items[itemIndex].Purchases.unshift(purchase);
+        state.purchaseManagement.items[itemIndex].status = 'comprado_pendiente';
+      }
+      
+      // Agregar las cuotas al estado
+      if (installments && installments.length > 0) {
+        state.purchaseManagement.installments = [
+          ...state.purchaseManagement.installments,
+          ...installments
+        ];
+      }
+      
+      console.log('✅ Purchase with installments created successfully');
+    })
+    .addCase(createPurchaseWithInstallments.rejected, (state, action) => {
+      state.purchaseManagement.creatingInstallments = false;
+      state.purchaseManagement.error = action.payload;
+    })
+
+    // ✅ NUEVO: Fetch Purchase Installments
+    .addCase(fetchPurchaseInstallments.pending, (state) => {
+      state.purchaseManagement.installmentsLoading = true;
+      state.purchaseManagement.installmentsError = null;
+    })
+    .addCase(fetchPurchaseInstallments.fulfilled, (state, action) => {
+      state.purchaseManagement.installmentsLoading = false;
+      
+      const { purchaseId, installments } = action.payload;
+      
+      // Reemplazar las cuotas existentes de esta compra
+      const otherInstallments = state.purchaseManagement.installments.filter(
+        inst => inst.purchase_id !== purchaseId
+      );
+      
+      state.purchaseManagement.installments = [
+        ...otherInstallments,
+        ...installments
+      ];
+      
+      console.log('✅ Purchase installments loaded:', installments.length);
+    })
+    .addCase(fetchPurchaseInstallments.rejected, (state, action) => {
+      state.purchaseManagement.installmentsLoading = false;
+      state.purchaseManagement.installmentsError = action.payload;
+    })
+
+    // ✅ NUEVO: Pay Installment
+    .addCase(payInstallment.pending, (state) => {
+      state.purchaseManagement.payingInstallment = true;
+      state.purchaseManagement.error = null;
+    })
+    .addCase(payInstallment.fulfilled, (state, action) => {
+      state.purchaseManagement.payingInstallment = false;
+      
+      const { installment, purchase } = action.payload;
+      
+      // Actualizar la cuota pagada
+      const installmentIndex = state.purchaseManagement.installments.findIndex(
+        inst => inst.id === installment.id
+      );
+      if (installmentIndex !== -1) {
+        state.purchaseManagement.installments[installmentIndex] = installment;
+      }
+      
+      // Actualizar la compra en items
+      state.purchaseManagement.items.forEach(item => {
+        if (item.Purchases) {
+          const purchaseIndex = item.Purchases.findIndex(p => p.id === purchase.id);
+          if (purchaseIndex !== -1) {
+            item.Purchases[purchaseIndex] = purchase;
+            
+            // Actualizar status del item
+            if (purchase.saldo_pendiente <= 0) {
+              item.status = 'comprado_pagado';
+            } else {
+              item.status = 'comprado_pendiente';
+            }
+          }
+        }
+      });
+      
+      console.log('✅ Installment paid successfully');
+    })
+    .addCase(payInstallment.rejected, (state, action) => {
+      state.purchaseManagement.payingInstallment = false;
+      state.purchaseManagement.error = action.payload;
+    })
+
+    // ✅ NUEVO: Fetch Purchases Financial Summary
+    .addCase(fetchPurchasesFinancialSummary.pending, (state) => {
+      state.purchaseManagement.loading = true;
+      state.purchaseManagement.error = null;
+    })
+    .addCase(fetchPurchasesFinancialSummary.fulfilled, (state, action) => {
+      state.purchaseManagement.loading = false;
+      
+      // Agregar el resumen financiero a las estadísticas
+      if (state.purchaseManagement.stats) {
+        state.purchaseManagement.stats = {
+          ...state.purchaseManagement.stats,
+          ...action.payload.financial_summary
+        };
+      } else {
+        state.purchaseManagement.stats = action.payload.financial_summary;
+      }
+      
+      console.log('✅ Purchases financial summary loaded');
+    })
+    .addCase(fetchPurchasesFinancialSummary.rejected, (state, action) => {
+      state.purchaseManagement.loading = false;
+      state.purchaseManagement.error = action.payload;
     });
   },
 });
@@ -1269,6 +1559,8 @@ export const {
   clearContractPayments,
   updateContractAfterPayment,
   updateAfterAutoConversion,
+  clearInstallments,
+  updateAfterInstallmentPayment,
  
 
 } = contractSlice.actions;
@@ -1294,6 +1586,67 @@ export const selectPurchaseError = (state) => state.contract.purchaseManagement.
 export const selectUploadingReceipt = (state) => state.contract.purchaseManagement.uploadingReceipt;
 export const selectUpdatingDeadline = (state) => state.contract.purchaseManagement.updatingDeadline;
 export const selectMarkingPayment = (state) => state.contract.purchaseManagement.markingPayment;
+
+// ✅ NUEVO: Selectores para sistema de cuotas
+export const selectInstallments = (state) => state.contract.purchaseManagement.installments;
+export const selectInstallmentsLoading = (state) => state.contract.purchaseManagement.installmentsLoading;
+export const selectInstallmentsError = (state) => state.contract.purchaseManagement.installmentsError;
+export const selectPayingInstallment = (state) => state.contract.purchaseManagement.payingInstallment;
+export const selectCreatingInstallments = (state) => state.contract.purchaseManagement.creatingInstallments;
+
+// ✅ NUEVO: Selectores calculados para cuotas
+export const selectInstallmentsByPurchase = (purchaseId) => (state) =>
+  state.contract.purchaseManagement.installments.filter(inst => inst.purchase_id === purchaseId);
+
+export const selectPendingInstallments = (state) =>
+  state.contract.purchaseManagement.installments.filter(inst => inst.estado === 'pendiente');
+
+export const selectPaidInstallments = (state) =>
+  state.contract.purchaseManagement.installments.filter(inst => inst.estado === 'pagado');
+
+export const selectOverdueInstallments = (state) => {
+  const now = new Date();
+  return state.contract.purchaseManagement.installments.filter(inst => {
+    if (inst.estado === 'pagado') return false;
+    const dueDate = new Date(inst.fecha_vencimiento);
+    return dueDate < now;
+  });
+};
+
+export const selectUpcomingInstallments = (state) => {
+  const now = new Date();
+  const threeDaysFromNow = new Date(now.getTime() + (3 * 24 * 60 * 60 * 1000));
+  
+  return state.contract.purchaseManagement.installments.filter(inst => {
+    if (inst.estado === 'pagado') return false;
+    const dueDate = new Date(inst.fecha_vencimiento);
+    return dueDate >= now && dueDate <= threeDaysFromNow;
+  });
+};
+
+export const selectInstallmentsSummary = (state) => {
+  const installments = state.contract.purchaseManagement.installments;
+  
+  const total = installments.length;
+  const paid = installments.filter(inst => inst.estado === 'pagado').length;
+  const pending = installments.filter(inst => inst.estado === 'pendiente').length;
+  
+  const totalAmount = installments.reduce((sum, inst) => sum + parseFloat(inst.monto_cuota || 0), 0);
+  const paidAmount = installments
+    .filter(inst => inst.estado === 'pagado')
+    .reduce((sum, inst) => sum + parseFloat(inst.monto_cuota || 0), 0);
+  const pendingAmount = totalAmount - paidAmount;
+  
+  return {
+    total,
+    paid,
+    pending,
+    totalAmount,
+    paidAmount,
+    pendingAmount,
+    paymentProgress: total > 0 ? ((paid / total) * 100).toFixed(1) : 0
+  };
+};
 
 // ✅ NUEVO: Selectores calculados
 export const selectItemsByStatus = (status) => (state) =>

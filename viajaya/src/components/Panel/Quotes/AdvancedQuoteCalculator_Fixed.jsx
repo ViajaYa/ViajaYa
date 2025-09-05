@@ -1328,7 +1328,7 @@ useEffect(() => {
                     onChange={e => handleInputChange('traslados', 'aeropuerto_hotel_ida', e.target.checked, 'incluido')}
                     className="rounded"
                   />
-                  <label className="flex-1">Aeropuerto → Hotel (Ida)</label>
+                  <label className="flex-1">Aeropuerto → Hotel → Aeropuerto </label>
                   <div className="w-32">
                     <input
                       type="number"
@@ -1341,26 +1341,7 @@ useEffect(() => {
                     <small className="text-gray-500">por persona</small>
                   </div>
                 </div>
-                <div className="flex items-center space-x-4">
-                  <input
-                    type="checkbox"
-                    checked={form.traslados.hotel_aeropuerto_vuelta?.incluido}
-                    onChange={e => handleInputChange('traslados', 'hotel_aeropuerto_vuelta', e.target.checked, 'incluido')}
-                    className="rounded"
-                  />
-                  <label className="flex-1">Hotel → Aeropuerto (Vuelta)</label>
-                  <div className="w-32">
-                    <input
-                      type="number"
-                      value={form.traslados.hotel_aeropuerto_vuelta?.costo}
-                      onChange={e => handleInputChange('traslados', 'hotel_aeropuerto_vuelta', e.target.value, 'costo')}
-                      className="w-full border rounded px-2 py-1"
-                      placeholder="0"
-                      disabled={!form.traslados.hotel_aeropuerto_vuelta?.incluido}
-                    />
-                    <small className="text-gray-500">por persona</small>
-                  </div>
-                </div>
+                
               </div>
               <div className="mt-3 p-2 bg-blue-50 rounded">
                 <strong>Total Traslados por persona: ${Number(form.traslados.costo_total).toLocaleString()}</strong>
