@@ -505,8 +505,8 @@ const createReservaSection = (doc, contractData) => {
   // Headers del cuadro
   const headerHeight = 25;
   
-  // Header izquierdo - FECHA DE RESERVA
-  doc.rect(margin, boxY, contentWidth/2, headerHeight)
+  // Header único - FECHA DE RESERVA (ocupando todo el ancho)
+  doc.rect(margin, boxY, contentWidth, headerHeight)
      .fillColor('#7b2cbf')
      .fill();
   
@@ -515,17 +515,6 @@ const createReservaSection = (doc, contractData) => {
      .font('Helvetica-Bold')
      .text('FECHA DE RESERVA: ' + formatearFecha(contractData.fecha_firma), 
            margin + 5, boxY + 8);
-  
-  // Header derecho - NUMERO DE CONTRATO
-  doc.rect(margin + contentWidth/2, boxY, contentWidth/2, headerHeight)
-     .fillColor('#7b2cbf')
-     .fill();
-  
-  doc.fontSize(10)
-     .fillColor('#ffffff')
-     .font('Helvetica-Bold')
-     .text('NUMERO DE CONTRATO: ' + contractData.contract_number, 
-           margin + contentWidth/2 + 5, boxY + 8);
   
   yPos = boxY + headerHeight + 40; // Aumentado de 25 a 40 para mayor separación
   
@@ -633,10 +622,29 @@ const createReservaSection = (doc, contractData) => {
   
   // ✅ TRASLADOS - Información detallada del backend
   const traslados = contractData.quote_calculation_analysis?.items_detallados?.find(item => item.tipo === 'traslados');
-  let trasladosTexto = 'TRASLADOS: ';
+let trasladosTexto = 'TRASLADOS: ';
+
+if (traslados && traslados.detalles) {
+  const detalles = traslados.detalles;
+  const trasladosIncluidos = [];
   
-  if (traslados && traslados.detalles) {
-    const detalles = traslados.detalles;
+  if (detalles.aeropuerto_hotel_ida?.incluido) {
+    trasladosIncluidos.push('aeropuerto → hotel');
+  }
+  if (detalles.hotel_aeropuerto_vuelta?.incluido) {
+    trasladosIncluidos.push('hotel → aeropuerto');
+  }
+  
+  if (trasladosIncluidos.length > 0) {
+    trasladosTexto += `${trasladosIncluidos.join(' y ')} INCLUIDOS - Costo total: ${formatearMoneda(traslados.valor)} APLICA SI: X NO: _`;
+  } else {
+    trasladosTexto += `NO INCLUIDOS - Costo adicional: ${formatearMoneda(traslados.valor)} APLICA SI: _ NO: X`;
+  }
+} else {
+  // ✅ BUSCAR EN LA ESTRUCTURA REAL DEL CONTRATO
+  const trasladosCalculation = contractData.Quote?.Calculation?.traslados;
+  if (trasladosCalculation && trasladosCalculation.costo_total > 0) {
+    const detalles = trasladosCalculation;
     const trasladosIncluidos = [];
     
     if (detalles.aeropuerto_hotel_ida?.incluido) {
@@ -647,13 +655,14 @@ const createReservaSection = (doc, contractData) => {
     }
     
     if (trasladosIncluidos.length > 0) {
-      trasladosTexto += `${trasladosIncluidos.join(' y ')} INCLUIDOS - Costo total: ${formatearMoneda(traslados.valor)} APLICA SI: X NO: _`;
+      trasladosTexto += `${trasladosIncluidos.join(' y ')} INCLUIDOS - Costo total: ${formatearMoneda(detalles.costo_total)} APLICA SI: X NO: _`;
     } else {
-      trasladosTexto += `NO INCLUIDOS - Costo adicional: ${formatearMoneda(traslados.valor)} APLICA SI: _ NO: X`;
+      trasladosTexto += `Costo: ${formatearMoneda(detalles.costo_total)} - APLICA SI: X NO: _`;
     }
   } else {
-    trasladosTexto += 'INFORMACIÓN NO DISPONIBLE';
+    trasladosTexto += 'NO INCLUIDOS - APLICA SI: _ NO: X';
   }
+}
   
   doc.fontSize(9)
      .fillColor('#000000')
@@ -669,26 +678,44 @@ const createReservaSection = (doc, contractData) => {
   
   // ✅ TIQUETES - Información detallada del backend
   const tiquetes = contractData.quote_calculation_analysis?.items_detallados?.find(item => item.tipo === 'tickets');
-  let tiquetesTexto = 'TIQUETES: ';
+let tiquetesTexto = 'TIQUETES: ';
+
+if (tiquetes) {
+  const detalles = tiquetes.detalles;
+  tiquetesTexto += detalles.tipo === 'ida_vuelta' ? 'IDA Y REGRESO' : 'SOLO IDA';
+  tiquetesTexto += ` - ${detalles.origen} ↔ ${detalles.destino}`;
+  if (detalles.proveedor) {
+    tiquetesTexto += ` - Aerolínea: ${detalles.proveedor.toUpperCase()}`;
+  }
+  tiquetesTexto += ` - Valor: ${formatearMoneda(tiquetes.valor)}`;
   
-  if (tiquetes) {
-    const detalles = tiquetes.detalles;
-    tiquetesTexto += detalles.tipo === 'ida_vuelta' ? 'IDA Y REGRESO' : 'SOLO IDA';
-    tiquetesTexto += ` - ${detalles.origen} ↔ ${detalles.destino}`;
-    if (detalles.proveedor) {
-      tiquetesTexto += ` - Aerolínea: ${detalles.proveedor.toUpperCase()}`;
+  if (detalles.fecha_ida) {
+    tiquetesTexto += ` - Ida: ${formatearFecha(detalles.fecha_ida)}`;
+  }
+  if (detalles.fecha_vuelta) {
+    tiquetesTexto += ` - Vuelta: ${formatearFecha(detalles.fecha_vuelta)}`;
+  }
+} else {
+  // ✅ BUSCAR EN LA ESTRUCTURA REAL DEL CONTRATO
+  const tiquetesCalculation = contractData.Quote?.Calculation?.tiquetes;
+  if (tiquetesCalculation) {
+    tiquetesTexto += tiquetesCalculation.tipo === 'ida_vuelta' ? 'IDA Y REGRESO' : 'SOLO IDA';
+    tiquetesTexto += ` - ${tiquetesCalculation.origen} ↔ ${tiquetesCalculation.destino}`;
+    if (tiquetesCalculation.proveedor) {
+      tiquetesTexto += ` - Aerolínea: ${tiquetesCalculation.proveedor.toUpperCase()}`;
     }
-    tiquetesTexto += ` - Valor: ${formatearMoneda(tiquetes.valor)}`;
+    tiquetesTexto += ` - Valor: ${formatearMoneda(tiquetesCalculation.costo_total)}`;
     
-    if (detalles.fecha_ida) {
-      tiquetesTexto += ` - Ida: ${formatearFecha(detalles.fecha_ida)}`;
+    if (tiquetesCalculation.fecha_ida) {
+      tiquetesTexto += ` - Ida: ${formatearFecha(tiquetesCalculation.fecha_ida)}`;
     }
-    if (detalles.fecha_vuelta) {
-      tiquetesTexto += ` - Vuelta: ${formatearFecha(detalles.fecha_vuelta)}`;
+    if (tiquetesCalculation.fecha_vuelta) {
+      tiquetesTexto += ` - Vuelta: ${formatearFecha(tiquetesCalculation.fecha_vuelta)}`;
     }
   } else {
-    tiquetesTexto += 'información no disponible';
+    tiquetesTexto += 'INFORMACIÓN NO DISPONIBLE';
   }
+}
   
   doc.fontSize(8)
      .font('Helvetica')
@@ -700,27 +727,45 @@ const createReservaSection = (doc, contractData) => {
   
   // ✅ EQUIPAJE - Información detallada del backend
   const equipaje = contractData.quote_calculation_analysis?.items_detallados?.find(item => item.tipo === 'equipaje');
-  let equipajeTexto = 'DIMENSIONES DE EQUIPAJE: ';
+let equipajeTexto = 'DIMENSIONES DE EQUIPAJE: ';
+
+if (equipaje && equipaje.detalles) {
+  const detalles = equipaje.detalles;
+  const incluidoItems = [];
   
-  if (equipaje && equipaje.detalles) {
-    const detalles = equipaje.detalles;
+  if (detalles.cabina?.incluido) {
+    incluidoItems.push('equipaje de cabina incluido');
+  }
+  if (detalles.bodega?.incluido) {
+    incluidoItems.push('equipaje de bodega incluido');
+  }
+  
+  if (incluidoItems.length > 0) {
+    equipajeTexto += `${incluidoItems.join(', ')} - Costo total: ${formatearMoneda(equipaje.valor)} - verificar dimensiones con aerolínea. EL QR de check in se entregará 24 horas antes – APLICA ley aérea`;
+  } else {
+    equipajeTexto += `Costo equipaje adicional: ${formatearMoneda(equipaje.valor)} - 40*35*25 tipo morral-mochila 8 a 10° kilos de peso - la mochila debe ir bajo asientos aéreos (No se asegura silla continua dependemos de aerolínea) EL QR de check in se entregará 24 horas antes – APLICA ley aérea`;
+  }
+} else {
+  // ✅ BUSCAR EN LA ESTRUCTURA REAL DEL CONTRATO
+  const equipajeCalculation = contractData.Quote?.Calculation?.equipaje;
+  if (equipajeCalculation && equipajeCalculation.costo_total > 0) {
+    const detalles = equipajeCalculation;
     const incluidoItems = [];
     
-    if (detalles.cabina?.incluido) {
-      incluidoItems.push('equipaje de cabina incluido');
-    }
-    if (detalles.bodega?.incluido) {
-      incluidoItems.push('equipaje de bodega incluido');
+    if (detalles.equipaje_extra?.incluido) {
+      incluidoItems.push('equipaje extra incluido');
     }
     
     if (incluidoItems.length > 0) {
-      equipajeTexto += `${incluidoItems.join(', ')} - Costo total: ${formatearMoneda(equipaje.valor)} - verificar dimensiones con aerolínea. EL QR de check in se entregará 24 horas antes – APLICA ley aérea`;
+      equipajeTexto += `${incluidoItems.join(', ')} - Costo total: ${formatearMoneda(detalles.costo_total)} - verificar dimensiones con aerolínea. EL QR de check in se entregará 24 horas antes – APLICA ley aérea`;
     } else {
-      equipajeTexto += `Costo equipaje adicional: ${formatearMoneda(equipaje.valor)} - 40*35*25 tipo morral-mochila 8 a 10° kilos de peso - la mochila debe ir bajo asientos aéreos (No se asegura silla continua dependemos de aerolínea) EL QR de check in se entregará 24 horas antes – APLICA ley aérea`;
+      equipajeTexto += `Equipaje estándar incluido - Costo adicional: ${formatearMoneda(detalles.costo_total)} - 40*35*25 tipo morral-mochila 8 a 10° kilos de peso - la mochila debe ir bajo asientos aéreos (No se asegura silla continua dependemos de aerolínea) EL QR de check in se entregará 24 horas antes – APLICA ley aérea`;
     }
   } else {
     equipajeTexto += 'verificar con aerolínea - EL QR de check in se entregará 24 horas antes – APLICA ley aérea';
   }
+}
+
   
   doc.fontSize(8)
      .font('Helvetica')
@@ -737,10 +782,15 @@ const createReservaSection = (doc, contractData) => {
   // ================== SECCIÓN 3: ALOJAMIENTO ==================
   
   const hotel = contractData.quote_calculation_analysis?.items_detallados?.find(item => item.tipo === 'hotel');
-  const alimentacion = contractData.quote_calculation_analysis?.items_detallados?.find(item => item.tipo === 'alimentacion');
-  const seguros = contractData.quote_calculation_analysis?.items_detallados?.find(item => item.tipo === 'seguros');
-  
-  if (hotel) {
+const alimentacion = contractData.quote_calculation_analysis?.items_detallados?.find(item => item.tipo === 'alimentacion');
+const seguros = contractData.quote_calculation_analysis?.items_detallados?.find(item => item.tipo === 'seguros');
+
+if (hotel) {
+  // Usar datos de quote_calculation_analysis
+} else {
+  // ✅ BUSCAR EN LA ESTRUCTURA REAL DEL CONTRATO
+  const hotelCalculation = contractData.Quote?.Calculation?.hotel;
+  if (hotelCalculation) {
     doc.fontSize(9)
        .fillColor('#000000')
        .font('Helvetica-Bold')
@@ -748,20 +798,20 @@ const createReservaSection = (doc, contractData) => {
     
     yPos += 15;
     
-    const detalles = hotel.detalles;
     const hotelInfo = [
-      `Nombre de Hotel: ${detalles.nombre || 'Por confirmar'}`,
-      `Categoría: ${detalles.categoria?.replace('_', ' ') || 'No especificada'}`,
-      `Acomodación: ${detalles.acomodacion || 'No especificada'}`,
-      `No de Noches: ${detalles.noches || 'No especificado'} noches`,
-      `Costo por noche: ${formatearMoneda(detalles.costo_noche || 0)}`,
-      `Valor total hotel: ${formatearMoneda(hotel.valor)}`,
+      `Nombre de Hotel: ${hotelCalculation.nombre || 'Por confirmar'}`,
+      `Categoría: ${hotelCalculation.categoria?.replace('_', ' ') || 'No especificada'}`,
+      `Acomodación: ${hotelCalculation.acomodacion || 'No especificada'}`,
+      `No de Noches: ${hotelCalculation.noches || 'No especificado'} noches`,
+      `Costo por noche: ${formatearMoneda(hotelCalculation.costo_noche || 0)}`,
+      `Valor total hotel: ${formatearMoneda(hotelCalculation.costo_total || 0)}`,
     ];
     
-    // Información de alimentación detallada
-    if (alimentacion && alimentacion.detalles) {
+    // Información de alimentación detallada CORREGIDA
+    const alimentacionCalculation = contractData.Quote?.Calculation?.alimentacion;
+    if (alimentacionCalculation && alimentacionCalculation.tipo) {
       let alimentacionTexto = 'Tipo Alimentación: ';
-      switch(alimentacion.detalles.tipo) {
+      switch(alimentacionCalculation.tipo) {
         case 'pension_completa':
           alimentacionTexto += 'Pensión completa (Desayuno, almuerzo y cena)';
           break;
@@ -775,10 +825,10 @@ const createReservaSection = (doc, contractData) => {
           alimentacionTexto += 'No incluida';
           break;
         default:
-          alimentacionTexto += alimentacion.detalles.tipo || 'No especificada';
+          alimentacionTexto += alimentacionCalculation.tipo || 'No especificada';
       }
       
-      alimentacionTexto += ` - Costo: ${formatearMoneda(alimentacion.valor)}`;
+      alimentacionTexto += ` - Costo: ${formatearMoneda(alimentacionCalculation.costo_total || 0)}`;
       alimentacionTexto += '. Check in: Primer día 3 pm y Check out: Último día según hotel.';
       
       hotelInfo.push(alimentacionTexto);
@@ -794,6 +844,7 @@ const createReservaSection = (doc, contractData) => {
       yPos += 12;
     });
   }
+}
   
   yPos += 10;
   
@@ -888,23 +939,35 @@ const createReservaSection = (doc, contractData) => {
   
   // Asistencia médica
   const segurosDetallados = contractData.quote_calculation_analysis?.items_detallados?.find(item => item.tipo === 'seguros');
-  let asistenciaTexto = 'Asistencia médica: ';
+let asistenciaTexto = 'Asistencia médica: ';
+
+if (segurosDetallados && segurosDetallados.valor > 0) {
+  asistenciaTexto += 'SI Aplica (se entrega un día antes de su fecha de viaje y verifique su cobertura)';
   
-  if (segurosDetallados && segurosDetallados.valor > 0) {
+  const segDetalles = segurosDetallados.detalles;
+  if (segDetalles?.tipo) {
+    asistenciaTexto += ` - Tipo: ${segDetalles.tipo}`;
+  }
+  if (segDetalles?.proveedor) {
+    asistenciaTexto += ` (${segDetalles.proveedor})`;
+  }
+  
+  asistenciaTexto += ` - Costo total seguros: ${formatearMoneda(segurosDetallados.valor)}`;
+} else {
+  // ✅ BUSCAR EN LA ESTRUCTURA REAL DEL CONTRATO
+  const segurosCalculation = contractData.Quote?.Calculation?.seguros;
+  if (segurosCalculation?.asistencia_medica?.costo && parseFloat(segurosCalculation.asistencia_medica.costo) > 0) {
     asistenciaTexto += 'SI Aplica (se entrega un día antes de su fecha de viaje y verifique su cobertura)';
     
-    const segDetalles = segurosDetallados.detalles;
-    if (segDetalles?.asistencia_medica?.tipo) {
-      asistenciaTexto += ` - Tipo: ${segDetalles.asistencia_medica.tipo}`;
-    }
-    if (segDetalles?.asistencia_medica?.proveedor) {
-      asistenciaTexto += ` (${segDetalles.asistencia_medica.proveedor})`;
+    if (segurosCalculation.asistencia_medica.tipo) {
+      asistenciaTexto += ` - Tipo: ${segurosCalculation.asistencia_medica.tipo}`;
     }
     
-    asistenciaTexto += ` - Costo total seguros: ${formatearMoneda(segurosDetallados.valor)}`;
+    asistenciaTexto += ` - Costo: ${formatearMoneda(segurosCalculation.asistencia_medica.costo)}`;
   } else {
     asistenciaTexto += 'Verificar disponibilidad según destino';
   }
+}
   
   doc.fontSize(8)
      .font('Helvetica')
@@ -918,16 +981,14 @@ const createReservaSection = (doc, contractData) => {
   
   // ================== SECCIÓN 5: DATOS DE LOS VIAJEROS ==================
   
-  doc.fontSize(9)
-     .fillColor('#000000')
-     .font('Helvetica-Bold')
-     .text('DATOS DE LOS VIAJEROS', margin + 5, yPos);
-  
   // Información de pasajeros reales
   if (contractData.Quote?.Passengers && contractData.Quote.Passengers.length > 0) {
     const blockHeight = 20 + 12 + 12 + 12 + 10;
     const pageHeight = doc.page.height;
     const bottomMargin = 60;
+    
+    // ✅ TÍTULO SOLO CUANDO SE NECESITE (primera vez o nueva página)
+    let titleShown = false;
     
     contractData.Quote.Passengers.forEach((passenger, index) => {
       if (yPos + blockHeight > pageHeight - bottomMargin) {
@@ -939,6 +1000,15 @@ const createReservaSection = (doc, contractData) => {
           .font('Helvetica-Bold')
           .text('DATOS DE LOS VIAJEROS (continuación)', margin + 5, yPos);
         yPos += 20;
+        titleShown = true;
+      } else if (!titleShown) {
+        // Mostrar título solo la primera vez
+        doc.fontSize(9)
+           .fillColor('#000000')
+           .font('Helvetica-Bold')
+           .text('DATOS DE LOS VIAJEROS', margin + 5, yPos);
+        yPos += 20;
+        titleShown = true;
       }
       
       yPos += 20;
@@ -1102,36 +1172,108 @@ const createFinancialSection = (doc, contractData) => {
       fecha: formatearFecha(payment.payment_date || payment.fecha_pago)
     }));
   } else {
-    // Crear plan de pagos automático
-    const cuotaInicial = Math.round(precioTotal * 0.4); // 40% inicial
-    const saldoRestante = precioTotal - cuotaInicial;
-    const cuota1 = Math.round(saldoRestante * 0.6); // 60% del saldo
-    const cuota2 = precioTotal - cuotaInicial - cuota1; // El resto
-    
-    // Fechas de ejemplo (puedes ajustar según lógica de negocio)
-    const fechaActual = new Date();
-    const fecha1 = new Date(fechaActual);
-    fecha1.setMonth(fecha1.getMonth() + 1);
-    const fecha2 = new Date(fechaActual);
-    fecha2.setMonth(fecha2.getMonth() + 2);
-    
-    pagosParaMostrar = [
-      {
+    // ✅ USAR LOS DATOS REALES DEL CONTRATO PARA CREAR PLAN DE PAGOS
+    if (contractData.forma_pago === 'contado') {
+      // Pago al contado
+      pagosParaMostrar = [
+        {
+          concepto: 'PAGO TOTAL',
+          valor: precioTotal,
+          fecha: formatearFecha(contractData.fecha_firma)
+        }
+      ];
+    } else if (contractData.tiene_cuota_inicial) {
+      // Plan de cuotas con cuota inicial
+      const cuotaInicial = parseFloat(contractData.cuota_inicial_monto || 0);
+      const montoRestante = parseFloat(contractData.monto_restante || 0);
+      const numeroCuotasRestantes = parseInt(contractData.numero_cuotas_restantes || 0);
+      const valorCuotaRestante = parseFloat(contractData.valor_cuota_restante || 0);
+      
+      // Cuota inicial
+      pagosParaMostrar.push({
         concepto: 'CUOTA INICIAL',
         valor: cuotaInicial,
-        fecha: formatearFecha(new Date().toISOString())
-      },
-      {
-        concepto: 'CUOTA 1',
-        valor: cuota1,
-        fecha: formatearFecha(fecha1.toISOString())
-      },
-      {
-        concepto: 'CUOTA 2',
-        valor: cuota2,
-        fecha: formatearFecha(fecha2.toISOString())
+        fecha: formatearFecha(contractData.fecha_vencimiento_inicial || contractData.fecha_firma)
+      });
+      
+      // Agregar cuotas restantes
+      for (let i = 0; i < numeroCuotasRestantes; i++) {
+        const fechaCuota = contractData.fechas_vencimiento_cuotas?.[i] || 
+                          new Date(Date.now() + (i + 1) * 30 * 24 * 60 * 60 * 1000).toISOString();
+        
+        pagosParaMostrar.push({
+          concepto: `CUOTA ${i + 1}`,
+          valor: valorCuotaRestante,
+          fecha: formatearFecha(fechaCuota)
+        });
       }
-    ];
+    } else {
+      // Plan básico basado en fechas del viaje
+      const fechaFirma = new Date(contractData.fecha_firma);
+      const fechaViaje = new Date(contractData.fecha_inicio_viaje);
+      const diasHastaViaje = Math.ceil((fechaViaje - fechaFirma) / (1000 * 60 * 60 * 24));
+      
+      if (diasHastaViaje > 60) {
+        // Plan de 3 cuotas para viajes con más de 60 días
+        const cuota1 = Math.round(precioTotal * 0.4); // 40% inicial
+        const cuota2 = Math.round(precioTotal * 0.35); // 35% 
+        const cuota3 = precioTotal - cuota1 - cuota2; // El resto
+        
+        const fecha1 = fechaFirma;
+        const fecha2 = new Date(fechaFirma);
+        fecha2.setMonth(fecha2.getMonth() + 1);
+        const fecha3 = new Date(fechaViaje);
+        fecha3.setDate(fecha3.getDate() - 30); // 30 días antes del viaje
+        
+        pagosParaMostrar = [
+          {
+            concepto: 'CUOTA INICIAL',
+            valor: cuota1,
+            fecha: formatearFecha(fecha1.toISOString())
+          },
+          {
+            concepto: 'CUOTA 1',
+            valor: cuota2,
+            fecha: formatearFecha(fecha2.toISOString())
+          },
+          {
+            concepto: 'CUOTA FINAL',
+            valor: cuota3,
+            fecha: formatearFecha(fecha3.toISOString())
+          }
+        ];
+      } else if (diasHastaViaje > 30) {
+        // Plan de 2 cuotas para viajes entre 30-60 días
+        const cuota1 = Math.round(precioTotal * 0.5); // 50% inicial
+        const cuota2 = precioTotal - cuota1; // El resto
+        
+        const fecha1 = fechaFirma;
+        const fecha2 = new Date(fechaViaje);
+        fecha2.setDate(fecha2.getDate() - 30); // 30 días antes del viaje
+        
+        pagosParaMostrar = [
+          {
+            concepto: 'CUOTA INICIAL',
+            valor: cuota1,
+            fecha: formatearFecha(fecha1.toISOString())
+          },
+          {
+            concepto: 'CUOTA FINAL',
+            valor: cuota2,
+            fecha: formatearFecha(fecha2.toISOString())
+          }
+        ];
+      } else {
+        // Pago inmediato para viajes en menos de 30 días
+        pagosParaMostrar = [
+          {
+            concepto: 'PAGO INMEDIATO',
+            valor: precioTotal,
+            fecha: formatearFecha(contractData.fecha_firma)
+          }
+        ];
+      }
+    }
   }
   
   // Dibujar filas de la tabla
