@@ -106,7 +106,15 @@ function generateTripInclusions(quote) {
   }
 
   // 4. ALIMENTACIÓN
-  if (calculation.alimentacion && calculation.alimentacion.costo_total > 0) {
+  console.log("🍽️ DEBUG ALIMENTACIÓN EN PDF:", {
+    tiene_calculation_alimentacion: !!calculation.alimentacion,
+    alimentacion_completa: calculation.alimentacion,
+    costo_total: calculation.alimentacion?.costo_total,
+    tipo: calculation.alimentacion?.tipo,
+    quote_alimentacion: quote.alimentacion
+  });
+  
+  if (calculation.alimentacion && (calculation.alimentacion.costo_total > 0 || calculation.alimentacion.tipo)) {
     const tipoAlimentacion = calculation.alimentacion.tipo || quote.alimentacion;
     const detallesAlimentacion = [];
     
@@ -125,14 +133,21 @@ function generateTripInclusions(quote) {
       detallesAlimentacion.push('Desayuno buffet');
     }
 
-    inclusiones.push({
-      titulo: 'ALIMENTACIÓN',
-      descripcion: getAlimentacionLabel(tipoAlimentacion),
-      detalles: detallesAlimentacion
-    });
+    // Solo agregar si hay tipo de alimentación definido
+    if (tipoAlimentacion && tipoAlimentacion !== 'ninguna') {
+      inclusiones.push({
+        titulo: 'ALIMENTACIÓN',
+        descripcion: getAlimentacionLabel(tipoAlimentacion),
+        detalles: detallesAlimentacion
+      });
+    }
   }
 
-  // 5. EQUIPAJE ADICIONAL
+  // 5. EQUIPAJE - SIEMPRE MOSTRAR BÁSICO
+  const detallesEquipaje = ['Equipaje de cabina incluido (morral)'];
+  let descripcionEquipaje = 'Equipaje básico incluido';
+  
+  // Verificar si hay equipaje adicional/extra
   if (calculation.equipaje) {
     console.log("🧳 DEBUG EQUIPAJE EN PDF:", {
       equipaje_completo: calculation.equipaje,
@@ -142,37 +157,24 @@ function generateTripInclusions(quote) {
       costo_total: calculation.equipaje.costo_total
     });
 
-    const detallesEquipaje = ['Equipaje de cabina incluido (morral)'];
-    let descripcionEquipaje = 'Equipaje incluido';
-    
     // Verificar equipaje extra (nuevo formato)
     if (calculation.equipaje.equipaje_extra?.incluido) {
-      descripcionEquipaje = 'Equipaje extra incluido';
+      descripcionEquipaje = 'Equipaje básico + extra incluido';
       detallesEquipaje.push('Maleta de 23kg en bodega incluida');
     } 
     // Verificar equipaje de bodega (formato anterior)
     else if (calculation.equipaje.bodega?.incluido) {
-      descripcionEquipaje = 'Equipaje de bodega incluido';
+      descripcionEquipaje = 'Equipaje básico + bodega incluido';
       detallesEquipaje.push('Maleta de 23kg en bodega incluida');
-    } else if (calculation.equipaje.bodega?.costo > 0) {
-      descripcionEquipaje = 'Equipaje de bodega disponible';
-      detallesEquipaje.push('Maleta de 23kg disponible con costo extra');
-    } else if (calculation.equipaje.bodega) {
-      descripcionEquipaje = 'Equipaje de bodega disponible';
-      detallesEquipaje.push('Maleta de 23kg disponible');
     }
-    // Si hay costo total pero no está en los formatos anteriores
-    else if (calculation.equipaje.costo_total && calculation.equipaje.costo_total > 0) {
-      descripcionEquipaje = 'Equipaje extra disponible';
-      detallesEquipaje.push('Servicios de equipaje adicional');
-    }
-
-    inclusiones.push({
-      titulo: 'EQUIPAJE',
-      descripcion: descripcionEquipaje,
-      detalles: detallesEquipaje
-    });
   }
+
+  // SIEMPRE agregar la sección de equipaje
+  inclusiones.push({
+    titulo: 'EQUIPAJE',
+    descripcion: descripcionEquipaje,
+    detalles: detallesEquipaje
+  });
 
   // 6. ASISTENCIA MÉDICA
   if (calculation.seguros && calculation.seguros.asistencia_medica && calculation.seguros.asistencia_medica.costo > 0) {
@@ -277,15 +279,17 @@ function generateTripInclusions(quote) {
     console.log("🔍 DEBUG RESULTADO FINAL:", {
       descripcionTours,
       detallesTours,
-      va_a_agregar_inclusion: detallesTours.length > 0
+      detalles_sin_vacios: detallesTours.filter(d => d.trim() !== '' && d !== 'TOURS OPCIONALES:'),
+      va_a_agregar_inclusion: detallesTours.filter(d => d.trim() !== '' && d !== 'TOURS OPCIONALES:').length > 0
     });
 
-    // ✅ SOLO AGREGAR SI HAY CONTENIDO
-    if (detallesTours.length > 0) {
+    // ✅ SOLO AGREGAR SI HAY CONTENIDO REAL (sin líneas vacías ni headers)
+    const detallesReales = detallesTours.filter(d => d.trim() !== '' && d !== 'TOURS OPCIONALES:');
+    if (detallesReales.length > 0 && descripcionTours.trim() !== '') {
       inclusiones.push({
         titulo: 'TOURS Y EXCURSIONES',
         descripcion: descripcionTours,
-        detalles: detallesTours
+        detalles: detallesReales
       });
     }
   }
