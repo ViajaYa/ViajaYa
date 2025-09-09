@@ -4,7 +4,7 @@ const path = require('path');
 
 // ✅ Función para generar información detallada de inclusiones del viaje
 function generateTripInclusions(quote) {
-   console.log("🔍 DEBUG generateTripInclusions - INICIO:", {
+  console.log("🔍 DEBUG generateTripInclusions - INICIO:", {
     quote_id: quote.id,
     tiene_calculation: !!quote.calculation,
     excursiones_directas: quote.excursiones,
@@ -23,7 +23,7 @@ function generateTripInclusions(quote) {
 
   const inclusiones = [];
 
-  // 1. TIQUETES AÉREOS
+  // 1. TRANSPORTE AÉREO
   if (calculation.tiquetes && calculation.tiquetes.costo_total > 0) {
     const tipoTiquete = calculation.tiquetes.tipo || 'ida_vuelta';
     const aerolinea = calculation.tiquetes.proveedor || 'Aerolínea por confirmar';
@@ -76,51 +76,45 @@ function generateTripInclusions(quote) {
     const trasladoIda = calculation.traslados.aeropuerto_hotel_ida;
     const trasladoVuelta = calculation.traslados.hotel_aeropuerto_vuelta;
     
-    let descripcionTraslados = '';
-    const detallesTraslados = [];
+    const detallesTraslados = [
+      'TRASLADO LLEGADA/SALIDA: AEROPUERTO-HOTEL/HOTEL-AEROPUERTO'
+    ];
     
     // Verificar si hay traslados incluidos
     const tieneIda = trasladoIda?.incluido;
     const tieneVuelta = trasladoVuelta?.incluido;
     
-    if (tieneIda && tieneVuelta) {
-      descripcionTraslados = 'Traslados aeropuerto ↔ hotel (ida y vuelta)';
-      detallesTraslados.push('✓ Traslado de llegada: Aeropuerto → Hotel');
-      detallesTraslados.push('✓ Traslado de salida: Hotel → Aeropuerto');
-    } else if (tieneIda && !tieneVuelta) {
-      descripcionTraslados = 'Traslado aeropuerto → hotel (solo ida)';
-      detallesTraslados.push('✓ Traslado de llegada: Aeropuerto → Hotel');
-      detallesTraslados.push('✗ Traslado de salida: NO incluido');
-    } else if (!tieneIda && tieneVuelta) {
-      descripcionTraslados = 'Traslado hotel → aeropuerto (solo vuelta)';
-      detallesTraslados.push('✗ Traslado de llegada: NO incluido');
-      detallesTraslados.push('✓ Traslado de salida: Hotel → Aeropuerto');
-    } else {
-      descripcionTraslados = 'Traslados terrestres';
-      detallesTraslados.push('Servicios de transporte terrestre según cotización');
-    }
-    
-    // Agregar información del proveedor si está disponible
-    if (trasladoIda?.proveedor || trasladoVuelta?.proveedor) {
-      const proveedor = trasladoIda?.proveedor || trasladoVuelta?.proveedor;
-      detallesTraslados.push(`Proveedor: ${proveedor}`);
-    }
-    
-    // Agregar tipo de vehículo si está disponible
-    if (trasladoIda?.tipo_vehiculo || trasladoVuelta?.tipo_vehiculo) {
-      const tipoVehiculo = trasladoIda?.tipo_vehiculo || trasladoVuelta?.tipo_vehiculo;
-      detallesTraslados.push(`Tipo de vehículo: ${tipoVehiculo}`);
+    if (tieneIda || tieneVuelta) {
+      // Agregar información del proveedor si está disponible
+      if (trasladoIda?.proveedor || trasladoVuelta?.proveedor) {
+        const proveedor = trasladoIda?.proveedor || trasladoVuelta?.proveedor;
+        detallesTraslados.push(`Proveedor: ${proveedor}`);
+      }
+      
+      // Agregar tipo de vehículo si está disponible
+      if (trasladoIda?.tipo_vehiculo || trasladoVuelta?.tipo_vehiculo) {
+        const vehiculo = trasladoIda?.tipo_vehiculo || trasladoVuelta?.tipo_vehiculo;
+        detallesTraslados.push(`Vehículo: ${vehiculo}`);
+      }
     }
 
     inclusiones.push({
       titulo: 'TRASLADOS',
-      descripcion: descripcionTraslados,
+      descripcion: 'Servicios de traslado incluidos',
       detalles: detallesTraslados
     });
   }
 
   // 4. ALIMENTACIÓN
-  if (calculation.alimentacion && calculation.alimentacion.costo_total > 0) {
+  console.log("🍽️ DEBUG ALIMENTACIÓN EN PDF:", {
+    tiene_calculation_alimentacion: !!calculation.alimentacion,
+    alimentacion_completa: calculation.alimentacion,
+    costo_total: calculation.alimentacion?.costo_total,
+    tipo: calculation.alimentacion?.tipo,
+    quote_alimentacion: quote.alimentacion
+  });
+  
+  if (calculation.alimentacion && (calculation.alimentacion.costo_total > 0 || calculation.alimentacion.tipo)) {
     const tipoAlimentacion = calculation.alimentacion.tipo || quote.alimentacion;
     const detallesAlimentacion = [];
     
@@ -139,35 +133,48 @@ function generateTripInclusions(quote) {
       detallesAlimentacion.push('Desayuno buffet');
     }
 
-    inclusiones.push({
-      titulo: 'ALIMENTACIÓN',
-      descripcion: getAlimentacionLabel(tipoAlimentacion),
-      detalles: detallesAlimentacion
-    });
+    // Solo agregar si hay tipo de alimentación definido
+    if (tipoAlimentacion && tipoAlimentacion !== 'ninguna') {
+      inclusiones.push({
+        titulo: 'ALIMENTACIÓN',
+        descripcion: getAlimentacionLabel(tipoAlimentacion),
+        detalles: detallesAlimentacion
+      });
+    }
   }
 
-  // 5. EQUIPAJE ADICIONAL
-  if (calculation.equipaje && calculation.equipaje.bodega?.incluido) {
-    inclusiones.push({
-      titulo: 'EQUIPAJE',
-      descripcion: 'Equipaje de bodega incluido',
-      detalles: [
-        'Maleta de 23kg en bodega',
-        'Equipaje de cabina (morral)',
-        'Sin costo adicional'
-      ]
+  // 5. EQUIPAJE - SIEMPRE MOSTRAR BÁSICO
+  const detallesEquipaje = ['Equipaje de cabina incluido (morral)'];
+  let descripcionEquipaje = 'Equipaje básico incluido';
+  
+  // Verificar si hay equipaje adicional/extra
+  if (calculation.equipaje) {
+    console.log("🧳 DEBUG EQUIPAJE EN PDF:", {
+      equipaje_completo: calculation.equipaje,
+      tiene_equipaje_extra: !!calculation.equipaje.equipaje_extra,
+      equipaje_extra_incluido: calculation.equipaje.equipaje_extra?.incluido,
+      tiene_bodega: !!calculation.equipaje.bodega,
+      costo_total: calculation.equipaje.costo_total
     });
-  } else if (calculation.equipaje && calculation.equipaje.bodega?.costo > 0) {
-    inclusiones.push({
-      titulo: 'EQUIPAJE',
-      descripcion: 'Equipaje de bodega disponible',
-      detalles: [
-        'Maleta de 23kg disponible',
-        `Costo adicional: ${formatPrice(calculation.equipaje.bodega.costo)} por persona`,
-        'Equipaje de cabina incluido'
-      ]
-    });
+
+    // Verificar equipaje extra (nuevo formato)
+    if (calculation.equipaje.equipaje_extra?.incluido) {
+      descripcionEquipaje = 'Equipaje básico + extra incluido';
+      detallesEquipaje.push('Maleta de 23kg en bodega incluida');
+    } 
+    // Verificar equipaje de bodega (formato anterior)
+    else if (calculation.equipaje.bodega?.incluido) {
+      descripcionEquipaje = 'Equipaje básico + bodega incluido';
+      detallesEquipaje.push('Maleta de 23kg en bodega incluida');
+    }
   }
+
+  // SIEMPRE agregar la sección de equipaje
+  inclusiones.push({
+    titulo: 'EQUIPAJE',
+    descripcion: descripcionEquipaje,
+    detalles: detallesEquipaje
+  });
 
   // 6. ASISTENCIA MÉDICA
   if (calculation.seguros && calculation.seguros.asistencia_medica && calculation.seguros.asistencia_medica.costo > 0) {
@@ -191,99 +198,101 @@ function generateTripInclusions(quote) {
   }
 
   // 7. TOURS Y EXCURSIONES
- if (calculation.excursiones && calculation.excursiones.length > 0) {
-  console.log("🔍 DEBUG EXCURSIONES EN PDF:", {
-    excursiones_existe: !!calculation.excursiones,
-    es_array: Array.isArray(calculation.excursiones),
-    longitud: calculation.excursiones.length,
-    primer_elemento: calculation.excursiones[0]
-  });
-
-  const excursionesIncluidas = calculation.excursiones.filter(exc => exc.obligatoria);
-  const excursionesOpcionales = calculation.excursiones.filter(exc => !exc.obligatoria);
-  
-  console.log("🔍 DEBUG FILTROS:", {
-    incluidas: excursionesIncluidas.length,
-    opcionales: excursionesOpcionales.length
-  });
-
-  let descripcionTours = '';
-  const detallesTours = [];
-  
-  // Procesar excursiones incluidas
-  if (excursionesIncluidas.length > 0) {
-    descripcionTours = `${excursionesIncluidas.length} tour${excursionesIncluidas.length > 1 ? 's' : ''} incluido${excursionesIncluidas.length > 1 ? 's' : ''}`;
-    
-    excursionesIncluidas.forEach(exc => {
-      let detalleExcursion = `• ${exc.nombre}`;
-      
-      if (exc.descripcion && exc.descripcion.trim()) {
-        detalleExcursion += ` - ${exc.descripcion}`;
-      }
-      
-      if (exc.duracion && exc.duracion.trim()) {
-        detalleExcursion += ` (${exc.duracion})`;
-      }
-      
-      detallesTours.push(detalleExcursion);
-      
-      if (exc.proveedor && exc.proveedor.trim()) {
-        detallesTours.push(`  Operador: ${exc.proveedor}`);
-      }
-      
-      if (exc.costo == 0 || exc.costo === '0') {
-        detallesTours.push(`  ✓ Incluido sin costo adicional`);
-      }
+  if (calculation.excursiones && calculation.excursiones.length > 0) {
+    console.log("🔍 DEBUG EXCURSIONES EN PDF:", {
+      excursiones_existe: !!calculation.excursiones,
+      es_array: Array.isArray(calculation.excursiones),
+      longitud: calculation.excursiones.length,
+      primer_elemento: calculation.excursiones[0]
     });
-  }
-  
-  // Procesar excursiones opcionales
-  if (excursionesOpcionales.length > 0) {
-    if (descripcionTours) {
-      descripcionTours += ` + ${excursionesOpcionales.length} opcional${excursionesOpcionales.length > 1 ? 'es' : ''}`;
-    } else {
-      descripcionTours = `${excursionesOpcionales.length} tour${excursionesOpcionales.length > 1 ? 's' : ''} opcional${excursionesOpcionales.length > 1 ? 'es' : ''}`;
-    }
+
+    const excursionesIncluidas = calculation.excursiones.filter(exc => exc.obligatoria);
+    const excursionesOpcionales = calculation.excursiones.filter(exc => !exc.obligatoria);
     
+    console.log("🔍 DEBUG FILTROS:", {
+      incluidas: excursionesIncluidas.length,
+      opcionales: excursionesOpcionales.length
+    });
+
+    let descripcionTours = '';
+    const detallesTours = [];
+    
+    // Procesar excursiones incluidas
     if (excursionesIncluidas.length > 0) {
-      detallesTours.push(''); // Línea separadora
-      detallesTours.push('TOURS OPCIONALES:');
+      descripcionTours = `${excursionesIncluidas.length} tour${excursionesIncluidas.length > 1 ? 's' : ''} incluido${excursionesIncluidas.length > 1 ? 's' : ''}`;
+      
+      excursionesIncluidas.forEach(exc => {
+        let detalleExcursion = `• ${exc.nombre}`;
+        
+        if (exc.descripcion && exc.descripcion.trim()) {
+          detalleExcursion += ` - ${exc.descripcion}`;
+        }
+        
+        if (exc.duracion && exc.duracion.trim()) {
+          detalleExcursion += ` (${exc.duracion})`;
+        }
+        
+        detallesTours.push(detalleExcursion);
+        
+        if (exc.proveedor && exc.proveedor.trim()) {
+          detallesTours.push(`  Operador: ${exc.proveedor}`);
+        }
+        
+        if (exc.costo == 0 || exc.costo === '0') {
+          detallesTours.push(`  ✓ Incluido sin costo adicional`);
+        }
+      });
     }
     
-    excursionesOpcionales.forEach(exc => {
-      let detalleExcursion = `• ${exc.nombre}`;
-      
-      if (exc.descripcion && exc.descripcion.trim()) {
-        detalleExcursion += ` - ${exc.descripcion}`;
+    // Procesar excursiones opcionales
+    if (excursionesOpcionales.length > 0) {
+      if (descripcionTours) {
+        descripcionTours += ` + ${excursionesOpcionales.length} opcional${excursionesOpcionales.length > 1 ? 'es' : ''}`;
+      } else {
+        descripcionTours = `${excursionesOpcionales.length} tour${excursionesOpcionales.length > 1 ? 's' : ''} opcional${excursionesOpcionales.length > 1 ? 'es' : ''}`;
       }
       
-      if (exc.duracion && exc.duracion.trim()) {
-        detalleExcursion += ` (${exc.duracion})`;
+      if (excursionesIncluidas.length > 0) {
+        detallesTours.push(''); // Línea separadora
+        detallesTours.push('TOURS OPCIONALES:');
       }
       
-      detallesTours.push(detalleExcursion);
-      
-      if (exc.proveedor && exc.proveedor.trim()) {
-        detallesTours.push(`  Operador: ${exc.proveedor}`);
-      }
-    });
-  }
+      excursionesOpcionales.forEach(exc => {
+        let detalleExcursion = `• ${exc.nombre}`;
+        
+        if (exc.descripcion && exc.descripcion.trim()) {
+          detalleExcursion += ` - ${exc.descripcion}`;
+        }
+        
+        if (exc.duracion && exc.duracion.trim()) {
+          detalleExcursion += ` (${exc.duracion})`;
+        }
+        
+        detallesTours.push(detalleExcursion);
+        
+        if (exc.proveedor && exc.proveedor.trim()) {
+          detallesTours.push(`  Operador: ${exc.proveedor}`);
+        }
+      });
+    }
 
-  console.log("🔍 DEBUG RESULTADO FINAL:", {
-    descripcionTours,
-    detallesTours,
-    va_a_agregar_inclusion: detallesTours.length > 0
-  });
-
-  // ✅ SOLO AGREGAR SI HAY CONTENIDO
-  if (detallesTours.length > 0) {
-    inclusiones.push({
-      titulo: 'TOURS Y EXCURSIONES',
-      descripcion: descripcionTours,
-      detalles: detallesTours
+    console.log("🔍 DEBUG RESULTADO FINAL:", {
+      descripcionTours,
+      detallesTours,
+      detalles_sin_vacios: detallesTours.filter(d => d.trim() !== '' && d !== 'TOURS OPCIONALES:'),
+      va_a_agregar_inclusion: detallesTours.filter(d => d.trim() !== '' && d !== 'TOURS OPCIONALES:').length > 0
     });
+
+    // ✅ SOLO AGREGAR SI HAY CONTENIDO REAL (sin líneas vacías ni headers)
+    const detallesReales = detallesTours.filter(d => d.trim() !== '' && d !== 'TOURS OPCIONALES:');
+    if (detallesReales.length > 0 && descripcionTours.trim() !== '') {
+      inclusiones.push({
+        titulo: 'TOURS Y EXCURSIONES',
+        descripcion: descripcionTours,
+        detalles: detallesReales
+      });
+    }
   }
-}
 
   // 8. SERVICIOS ADICIONALES
   if (calculation.extras && calculation.extras.length > 0) {
@@ -319,20 +328,6 @@ function generateObservations(quote, calculation) {
     });
   }
   
-  // Observaciones específicas según servicios
-  if (calculation.seguros && calculation.seguros.length > 0) {
-    const segurosInfo = calculation.seguros
-      .filter(seguro => seguro.informacion_adicional && seguro.informacion_adicional.trim())
-      .map(seguro => seguro.informacion_adicional);
-    
-    if (segurosInfo.length > 0) {
-      observaciones.push({
-        tipo: 'INFORMACIÓN DE SEGUROS',
-        contenido: segurosInfo.join(' • ')
-      });
-    }
-  }
-  
   return observaciones;
 }
 
@@ -346,7 +341,6 @@ function calcularNoches(fechaIda, fechaRegreso) {
   return noches;
 }
 
-// ✅ Función auxiliar para obtener datos de cálculo desde el quote
 // ✅ Función auxiliar para obtener datos de cálculo desde el quote
 function getCalculationData(quote) {
   console.log("🔍 DEBUG getCalculationData:", {
@@ -373,7 +367,7 @@ function getCalculationData(quote) {
     equipaje: quote.equipaje || {},
     seguros: quote.seguros || {},
     extras: quote.extras || [],
-    excursiones: quote.excursiones || [], // ✅ Asegurar que esté como array
+    excursiones: quote.excursiones || [],
     asistencia_medica: quote.seguros?.asistencia_medica || {}
   };
 }
@@ -398,24 +392,6 @@ function getAlimentacionLabel(tipo) {
   return tipos[tipo] || tipo || 'Por confirmar';
 }
 
-// ✅ Función para agregar espacio seguro
-function addSafeSpace(doc, space = 15) {
-  doc.y += space;
-  return doc.y;
-}
-
-// ✅ Función para verificar espacio en página
-function checkSafePageSpace(doc, requiredSpace = 50) {
-  const pageHeight = doc.page.height;
-  const margin = 25;
-  if (doc.y + requiredSpace > pageHeight - margin - 50) {
-    doc.addPage();
-    doc.y = margin + 20;
-    return true;
-  }
-  return false;
-}
-
 // ✅ Obtener etiqueta de acomodación
 function getAcomodacionLabel(acomodacion) {
   const acomodaciones = {
@@ -434,424 +410,6 @@ function getTipoHotelLabel(tipo) {
     'superior': 'Hotel superior'
   };
   return tipos[tipo] || tipo || 'Por confirmar';
-}
-
-// ✅ Generar desglose detallado profesional
-function generateBudgetBreakdown(quote) {
-  try {
-    console.log("🔍 Iniciando generateBudgetBreakdown profesional...");
-    const calculation = getCalculationData(quote);
-    console.log("✅ getCalculationData completado");
-    
-    // Calcular personas que pagan (adultos + menores, no incluir infantes)
-    const adultos = quote.adultos || 0;
-    const menores = quote.menores || 0;
-    const infantes = quote.infantes || 0;
-    const personas_que_pagan = adultos + menores;
-    
-    console.log(`👥 Pasajeros: ${adultos} adultos, ${menores} menores (2-14 años), ${infantes} infantes (0-2 años)`);
-    console.log(`💰 Personas que pagan: ${personas_que_pagan} (adultos + menores)`);
-    
-    let breakdown = [];
-    
-    // 1. TIQUETES AÉREOS (sin iconos problemáticos)
-    console.log("🔍 Procesando tiquetes aéreos...");
-    if (calculation.tiquetes && calculation.tiquetes.costo_total > 0) {
-      const tipoTiquete = calculation.tiquetes.tipo || 'ida_vuelta';
-      let descripcionTiquete = '';
-      
-      if (tipoTiquete === 'ida_vuelta') {
-        descripcionTiquete = 'Tiquetes aéreos ida y vuelta';
-      } else if (tipoTiquete === 'ida') {
-        descripcionTiquete = 'Tiquetes aéreos solo ida';
-      } else {
-        descripcionTiquete = 'Tiquetes aéreos';
-      }
-      
-      const detallesTiquete = [
-        `Ruta: ${calculation.tiquetes.origen || quote.origen || 'Colombia'} -> ${calculation.tiquetes.destino || quote.destino}`,
-        `Tipo: ${tipoTiquete === 'ida_vuelta' ? 'Ida y vuelta' : tipoTiquete === 'ida' ? 'Solo ida' : 'Por confirmar'}`,
-        `Aerolínea: ${calculation.tiquetes.proveedor || 'Por confirmar'}`,
-        `Fecha salida: ${calculation.tiquetes.fecha_ida ? new Date(calculation.tiquetes.fecha_ida + 'T12:00:00').toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : quote.fecha_ida ? new Date(quote.fecha_ida + 'T12:00:00').toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Por confirmar'}`,
-      ];
-      
-      if (tipoTiquete === 'ida_vuelta') {
-        detallesTiquete.push(`Fecha regreso: ${calculation.tiquetes.fecha_vuelta ? new Date(calculation.tiquetes.fecha_vuelta + 'T12:00:00').toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : quote.fecha_regreso ? new Date(quote.fecha_regreso + 'T12:00:00').toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Por confirmar'}`);
-      }
-      
-      // Agregar información de equipaje incluido
-      if (calculation.equipaje?.cabina?.incluido) {
-        detallesTiquete.push('Incluye: Equipaje de cabina (maleta pequeña tipo morral 40x35x25 cm)');
-      }
-      
-      breakdown.push({
-        category: 'TRANSPORTE AEREO',
-        items: [{
-          description: descripcionTiquete,
-          details: detallesTiquete,
-          totalPerPerson: calculation.tiquetes.costo_total,
-          totalGeneral: calculation.tiquetes.costo_total * personas_que_pagan
-        }]
-      });
-    }
-    
-    // 2. TRASLADOS TERRESTRES (sin iconos)
-    console.log("🔍 Procesando traslados terrestres...");
-    if (calculation.traslados && calculation.traslados.costo_total > 0) {
-      const trasladosItems = [];
-      
-      // Verificar traslados específicos
-      const trasladoIda = calculation.traslados.aeropuerto_hotel_ida;
-      const trasladoVuelta = calculation.traslados.hotel_aeropuerto_vuelta;
-      
-      if (trasladoIda?.incluido || trasladoVuelta?.incluido || calculation.traslados.costo_total > 0) {
-        let descripcionTraslados = '';
-        const detallesTraslados = [];
-        
-        if (trasladoIda?.incluido && trasladoVuelta?.incluido) {
-          descripcionTraslados = 'Traslados aeropuerto <-> hotel (ida y vuelta)';
-          detallesTraslados.push('- Traslado aeropuerto -> hotel (llegada)');
-          detallesTraslados.push('- Traslado hotel -> aeropuerto (salida)');
-        } else if (trasladoIda?.incluido) {
-          descripcionTraslados = 'Traslado aeropuerto -> hotel';
-          detallesTraslados.push('- Solo traslado de llegada incluido');
-        } else if (trasladoVuelta?.incluido) {
-          descripcionTraslados = 'Traslado hotel -> aeropuerto';
-          detallesTraslados.push('- Solo traslado de salida incluido');
-        } else {
-          descripcionTraslados = 'Traslados terrestres';
-          detallesTraslados.push('- Servicios de transporte terrestre');
-        }
-        
-        // Agregar información del proveedor si está disponible
-        if (trasladoIda?.proveedor || trasladoVuelta?.proveedor) {
-          const proveedor = trasladoIda?.proveedor || trasladoVuelta?.proveedor;
-          detallesTraslados.push(`Proveedor: ${proveedor}`);
-        }
-        
-        // Agregar otros traslados si existen
-        if (calculation.traslados.otros && calculation.traslados.otros.length > 0) {
-          calculation.traslados.otros.forEach(otro => {
-            detallesTraslados.push(`- ${otro.descripcion || 'Traslado adicional'}`);
-          });
-        }
-        
-        trasladosItems.push({
-          description: descripcionTraslados,
-          details: detallesTraslados,
-          totalPerPerson: calculation.traslados.costo_total,
-          totalGeneral: calculation.traslados.costo_total * personas_que_pagan
-        });
-      }
-      
-      if (trasladosItems.length > 0) {
-        breakdown.push({
-          category: 'TRASLADOS TERRESTRES',
-          items: trasladosItems
-        });
-      }
-    }
-    
-    // 3. ALOJAMIENTO (sin iconos)
-    console.log("🔍 Procesando alojamiento...");
-    if (calculation.hotel && calculation.hotel.costo_total > 0) {
-      const noches = calculation.hotel.noches || calcularNoches(quote.fecha_ida, quote.fecha_regreso);
-      const dias = noches ? noches + 1 : null;
-      
-      const detallesHotel = [];
-      
-      // Información básica del hotel
-      if (calculation.hotel.nombre) {
-        detallesHotel.push(`Hotel: ${calculation.hotel.nombre}`);
-      }
-      
-      // Categoría del hotel
-      const categoria = calculation.hotel.categoria || quote.tipo_hotel;
-      if (categoria) {
-        detallesHotel.push(`Categoria: ${getTipoHotelLabel(categoria)}`);
-      }
-      
-      // Acomodación
-      const acomodacion = calculation.hotel.acomodacion || quote.acomodacion;
-      if (acomodacion) {
-        detallesHotel.push(`Habitacion: ${getAcomodacionLabel(acomodacion)}`);
-      }
-      
-      // Duración
-      if (noches && dias) {
-        detallesHotel.push(`Duracion: ${noches} noche${noches > 1 ? 's' : ''} / ${dias} dia${dias > 1 ? 's' : ''}`);
-      }
-      
-      // Ubicación
-      if (calculation.hotel.ubicacion) {
-        detallesHotel.push(`Ubicacion: ${calculation.hotel.ubicacion}`);
-      }
-      
-      // Costo por noche si está disponible
-      if (calculation.hotel.costo_noche > 0) {
-        detallesHotel.push(`Costo por noche: ${formatPrice(calculation.hotel.costo_noche)}`);
-      }
-      
-      // Proveedor
-      if (calculation.hotel.proveedor) {
-        detallesHotel.push(`Proveedor: ${calculation.hotel.proveedor}`);
-      }
-      
-      // Observaciones adicionales
-      if (calculation.hotel.observaciones) {
-        detallesHotel.push(`Observaciones: ${calculation.hotel.observaciones}`);
-      }
-      
-      breakdown.push({
-        category: 'ALOJAMIENTO',
-        items: [{
-          description: `Hospedaje en ${calculation.hotel.nombre || quote.destino}`,
-          details: detallesHotel,
-          totalPerPerson: calculation.hotel.costo_total,
-          totalGeneral: calculation.hotel.costo_total * personas_que_pagan
-        }]
-      });
-    }
-    
-    // 4. ALIMENTACIÓN (sin iconos)
-    console.log("🔍 Procesando alimentación...");
-    if (calculation.alimentacion && calculation.alimentacion.costo_total > 0) {
-      const tipoAlimentacion = calculation.alimentacion.tipo || quote.alimentacion;
-      const detallesAlimentacion = [];
-      
-      // Descripción del plan de alimentación
-      detallesAlimentacion.push(`Plan: ${getAlimentacionLabel(tipoAlimentacion)}`);
-      
-      // Detalles específicos según el tipo
-      if (tipoAlimentacion === 'todo_incluido') {
-        detallesAlimentacion.push('Incluye: Desayuno, almuerzo y cena');
-        detallesAlimentacion.push('Incluye: Bebidas alcoholicas y no alcoholicas');
-        detallesAlimentacion.push('Incluye: Snacks durante el dia');
-        detallesAlimentacion.push('Incluye: Licores nacionales');
-      } else if (tipoAlimentacion === 'pension_completa') {
-        detallesAlimentacion.push('Incluye: Desayuno buffet');
-        detallesAlimentacion.push('Incluye: Almuerzo');
-        detallesAlimentacion.push('Incluye: Cena');
-        detallesAlimentacion.push('No incluye: Bebidas');
-      } else if (tipoAlimentacion === 'media_pension' || tipoAlimentacion === 'desayuno_cena') {
-        detallesAlimentacion.push('Incluye: Desayuno buffet');
-        detallesAlimentacion.push('Incluye: Cena');
-        detallesAlimentacion.push('No incluye: Almuerzo');
-        detallesAlimentacion.push('No incluye: Bebidas');
-      } else if (tipoAlimentacion === 'desayuno') {
-        detallesAlimentacion.push('Incluye: Desayuno buffet');
-        detallesAlimentacion.push('No incluye: Almuerzo y cena');
-      }
-      
-      // Proveedor
-      if (calculation.alimentacion.proveedor) {
-        detallesAlimentacion.push(`Servido por: ${calculation.alimentacion.proveedor}`);
-      } else {
-        detallesAlimentacion.push('Servido por: Hotel');
-      }
-      
-      // Observaciones adicionales
-      if (calculation.alimentacion.observaciones) {
-        detallesAlimentacion.push(`Observaciones: ${calculation.alimentacion.observaciones}`);
-      }
-      
-      breakdown.push({
-        category: 'ALIMENTACION',
-        items: [{
-          description: `Plan de alimentacion - ${getAlimentacionLabel(tipoAlimentacion)}`,
-          details: detallesAlimentacion,
-          totalPerPerson: calculation.alimentacion.costo_total,
-          totalGeneral: calculation.alimentacion.costo_total * personas_que_pagan
-        }]
-      });
-    }
-    
-    // 5. EQUIPAJE (sin iconos)
-    console.log("🔍 Procesando equipaje...");
-    if (calculation.equipaje && (calculation.equipaje.costo_total > 0 || calculation.equipaje.cabina?.incluido)) {
-      const equipajeItems = [];
-      const detallesEquipaje = [];
-      
-      // Equipaje de cabina
-      if (calculation.equipaje.cabina?.incluido) {
-        detallesEquipaje.push('Incluido: Equipaje de cabina');
-        detallesEquipaje.push('   Dimensiones: 40x35x25 cm (tipo morral)');
-        detallesEquipaje.push('   Peso maximo: 10 kg');
-      }
-      
-      // Equipaje de bodega
-      if (calculation.equipaje.bodega?.incluido) {
-        detallesEquipaje.push('Incluido: Equipaje de bodega');
-        if (calculation.equipaje.bodega.costo > 0) {
-          detallesEquipaje.push(`   Costo: ${formatPrice(calculation.equipaje.bodega.costo)} por persona`);
-        }
-      } else if (calculation.equipaje.bodega?.costo > 0) {
-        detallesEquipaje.push('Disponible: Equipaje de bodega');
-        detallesEquipaje.push(`   Costo adicional: ${formatPrice(calculation.equipaje.bodega.costo)} por persona`);
-        detallesEquipaje.push('   Peso maximo: 23 kg');
-      } else {
-        detallesEquipaje.push('No incluido: Equipaje de bodega');
-        detallesEquipaje.push('   Disponible con costo adicional');
-      }
-      
-      // Equipaje extra
-      if (calculation.equipaje.equipaje_extra?.incluido) {
-        detallesEquipaje.push('Incluido: Equipaje adicional');
-        if (calculation.equipaje.equipaje_extra.costo > 0) {
-          detallesEquipaje.push(`   Valor: ${formatPrice(calculation.equipaje.equipaje_extra.costo)}`);
-        }
-      } else if (calculation.equipaje.equipaje_extra?.costo > 0) {
-        detallesEquipaje.push('Disponible: Equipaje adicional');
-        detallesEquipaje.push(`   Costo: ${formatPrice(calculation.equipaje.equipaje_extra.costo)} por persona`);
-      }
-      
-      // Solo agregar si hay contenido
-      if (detallesEquipaje.length > 0) {
-        breakdown.push({
-          category: 'EQUIPAJE',
-          items: [{
-            description: 'Servicios de equipaje',
-            details: detallesEquipaje,
-            totalPerPerson: calculation.equipaje.costo_total || 0,
-            totalGeneral: (calculation.equipaje.costo_total || 0) * personas_que_pagan
-          }]
-        });
-      }
-    }
-    
-    // 6. ASISTENCIA MÉDICA (sin iconos)
-    console.log("🔍 Procesando asistencia médica...");
-    if (calculation.seguros && calculation.seguros.asistencia_medica && calculation.seguros.asistencia_medica.costo > 0) {
-      const detallesAsistencia = [];
-      
-      // Tipo de asistencia
-      const tipoAsistencia = calculation.seguros.asistencia_medica.tipo;
-      if (tipoAsistencia) {
-        detallesAsistencia.push(`Tipo: ${tipoAsistencia}`);
-      }
-      
-      // Proveedor
-      if (calculation.seguros.asistencia_medica.proveedor) {
-        detallesAsistencia.push(`Proveedor: ${calculation.seguros.asistencia_medica.proveedor}`);
-      }
-      
-      // Cobertura básica
-      detallesAsistencia.push('Incluye: Cobertura medica durante el viaje');
-      detallesAsistencia.push('Incluye: Atencion medica de emergencia');
-      detallesAsistencia.push('Incluye: Medicamentos basicos');
-      detallesAsistencia.push('Incluye: Repatriacion en caso necesario');
-      detallesAsistencia.push('Disponible: Linea de atencion 24/7');
-      
-      breakdown.push({
-        category: 'ASISTENCIA MEDICA',
-        items: [{
-          description: 'Asistencia medica de viaje',
-          details: detallesAsistencia,
-          totalPerPerson: calculation.seguros.asistencia_medica.costo,
-          totalGeneral: calculation.seguros.asistencia_medica.costo * personas_que_pagan
-        }]
-      });
-    }
-    
-    // 7. EXCURSIONES Y TOURS (sin iconos)
-    console.log("🔍 Procesando excursiones y tours...");
-    if (calculation.excursiones && calculation.excursiones.length > 0) {
-      const excursionesItems = calculation.excursiones.map(excursion => {
-        const detallesExcursion = [];
-        
-        if (excursion.descripcion) {
-          detallesExcursion.push(`Descripcion: ${excursion.descripcion}`);
-        }
-        
-        if (excursion.duracion) {
-          detallesExcursion.push(`Duracion: ${excursion.duracion}`);
-        }
-        
-        if (excursion.proveedor) {
-          detallesExcursion.push(`Operador: ${excursion.proveedor}`);
-        }
-        
-        if (excursion.obligatoria) {
-          detallesExcursion.push('Estado: Incluida en el paquete');
-        } else {
-          detallesExcursion.push('Estado: Opcional - con costo adicional');
-        }
-        
-        return {
-          description: `${excursion.nombre || 'Excursion'}`,
-          details: detallesExcursion,
-          totalPerPerson: excursion.costo || 0,
-          totalGeneral: (excursion.costo || 0) * personas_que_pagan
-        };
-      });
-      
-      breakdown.push({
-        category: 'EXCURSIONES Y TOURS',
-        items: excursionesItems
-      });
-    }
-    
-    // 8. SERVICIOS ADICIONALES (sin iconos)
-    console.log("🔍 Procesando servicios adicionales...");
-    if (calculation.extras && calculation.extras.length > 0) {
-      const extrasItems = calculation.extras.map(extra => {
-        const detallesExtra = [];
-        
-        if (extra.descripcion) {
-          detallesExtra.push(`Descripcion: ${extra.descripcion}`);
-        }
-        
-        if (extra.proveedor) {
-          detallesExtra.push(`Proveedor: ${extra.proveedor}`);
-        }
-        
-        // Determinar tipo de servicio
-        let tipoServicio = 'Servicio adicional';
-        if (extra.tipo === 'servicio_extra') {
-          tipoServicio = 'Servicio extra';
-          detallesExtra.push('Costo: Unico para todo el grupo');
-        } else if (extra.tipo === 'excursion') {
-          tipoServicio = 'Excursion';
-          detallesExtra.push('Costo: Por persona');
-        } else if (extra.tipo === 'actividad_basica') {
-          tipoServicio = 'Actividad incluida';
-          detallesExtra.push('Costo: Sin costo adicional');
-        }
-        
-        detallesExtra.unshift(`Tipo: ${tipoServicio}`);
-        
-        return {
-          description: `${extra.nombre || 'Servicio adicional'}`,
-          details: detallesExtra,
-          totalPerPerson: extra.tipo === 'servicio_extra' ? extra.costo / personas_que_pagan : extra.costo,
-          totalGeneral: extra.costo,
-          isServiceExtra: extra.tipo === 'servicio_extra'
-        };
-      });
-      
-      breakdown.push({
-        category: 'SERVICIOS ADICIONALES',
-        items: extrasItems
-      });
-    }
-    
-    console.log("✅ generateBudgetBreakdown profesional completado exitosamente");
-    return breakdown;
-    
-  } catch (error) {
-    console.error("❌ Error en generateBudgetBreakdown:", error);
-    // Retornar breakdown básico en caso de error
-    const personas_que_pagan = (quote.adultos || 0) + (quote.menores || 0);
-    return [{
-      category: 'PRECIO TOTAL',
-      items: [{
-        description: 'Paquete completo de viaje',
-        details: ['Todos los servicios incluidos segun cotizacion'],
-        totalPerPerson: quote.precio_por_persona || quote.precio_total / personas_que_pagan,
-        totalGeneral: quote.precio_total || 0
-      }]
-    }];
-  }
 }
 
 // 🎨 Colores corporativos
@@ -874,36 +432,33 @@ const ensurePDFDirectory = () => {
   return pdfDir;
 };
 
-
-// ✅ Generar PDF
+// ✅ Generar PDF OPTIMIZADO
 const generateQuotePDF = async (quote, saveToFile = true) => {
   console.log("🔍 Iniciando generateQuotePDF:", { saveToFile, quoteId: quote.id });
   
-  // Declarar variables fuera del try block para evitar problemas de scope
   let doc, yPosition, pageWidth, pageHeight, margin, contentWidth;
   let filepath;
   let bufferChunks = [];
   
   try {
-    doc = new PDFDocument({ margin: 25, size: 'A4' });
-    yPosition = 20;
+    doc = new PDFDocument({ margin: 30, size: 'A4' });
+    yPosition = 30;
     pageWidth = doc.page.width;
     pageHeight = doc.page.height;
-    margin = 25;
+    margin = 30;
     contentWidth = pageWidth - 2 * margin;
 
     if (saveToFile) {
-     const pdfDir = ensurePDFDirectory();
-     const filename = `cotizacion-${quote.quote_number || quote.id}.pdf`;
-     filepath = path.join(pdfDir, filename);
-     const stream = fs.createWriteStream(filepath);
-     doc.pipe(stream);
+      const pdfDir = ensurePDFDirectory();
+      const filename = `cotizacion-${quote.quote_number || quote.id}.pdf`;
+      filepath = path.join(pdfDir, filename);
+      const stream = fs.createWriteStream(filepath);
+      doc.pipe(stream);
     } else {
-     // ✅ FIX: Para vista previa, capturar el buffer
-     doc.on('data', chunk => bufferChunks.push(chunk));
-     doc.on('end', () => {
-      console.log("✅ PDF buffer generado, chunks:", bufferChunks.length);
-     });
+      doc.on('data', chunk => bufferChunks.push(chunk));
+      doc.on('end', () => {
+        console.log("✅ PDF buffer generado, chunks:", bufferChunks.length);
+      });
     }
 
     console.log("🔍 Configuración PDF completada, iniciando contenido...");
@@ -912,34 +467,39 @@ const generateQuotePDF = async (quote, saveToFile = true) => {
     throw error;
   }
 
-  // Funciones utilitarias
+  // ✅ FUNCIONES UTILITARIAS MEJORADAS
   const checkPageSpace = (requiredSpace) => {
-   if (yPosition + requiredSpace > pageHeight - 80) {
-    doc.addPage();
-    yPosition = margin + 20;
-    return true;
-   }
-   return false;
+    if (yPosition + requiredSpace > pageHeight - 100) {
+      doc.addPage();
+      yPosition = margin + 10;
+      return true;
+    }
+    return false;
   };
-  const addSpace = (space = 14) => yPosition += space;
 
+  const addSpace = (space = 12) => {
+    yPosition += space;
+  };
 
-  // Header mejorado: logo y datos empresa a la izquierda, número de cotización a la derecha
-  doc.rect(0, 0, pageWidth, 70).fillColor(COLORS.ColorAzul2).fill();
+  const addSectionSpace = () => {
+    addSpace(15);
+  };
 
-  // Logo a la izquierda (intenta varios archivos y muestra error si falla)
-  let logoBottom = 6;
+  // ✅ HEADER CORPORATIVO
+  doc.rect(0, 0, pageWidth, 75).fillColor(COLORS.ColorAzul2).fill();
+
+  // Logo
   const logoCandidates = [
-    path.join(__dirname, '../assets/logoNuevo.png'), // tu logo adjunto
-    path.join(__dirname, '../assets/NuevoLogo.png'),    // otro logo
-    path.join(__dirname, '../assets/logo2.png')         // logo anterior
+    path.join(__dirname, '../assets/logoNuevo.png'),
+    path.join(__dirname, '../assets/NuevoLogo.png'),
+    path.join(__dirname, '../assets/logo2.png')
   ];
+  
   let logoLoaded = false;
   for (const logoPath of logoCandidates) {
     try {
       if (fs.existsSync(logoPath)) {
-        doc.image(logoPath, margin, 10, { width: 52, height: 52 });
-        logoBottom = 6 + 52;
+        doc.image(logoPath, margin, 12, { width: 50, height: 50 });
         logoLoaded = true;
         break;
       }
@@ -947,136 +507,110 @@ const generateQuotePDF = async (quote, saveToFile = true) => {
       console.log(`⚠️ No se pudo cargar el logo (${logoPath}):`, error.message);
     }
   }
+
   if (!logoLoaded) {
     doc.fontSize(8).fillColor('white').text('Logo no disponible', margin, 20);
-    console.log('⚠️ Ningún logo pudo ser cargado.');
   }
 
-  // Datos empresa debajo del logo, alineados a la izquierda
-  let companyInfoY = 10;
-  if (logoBottom > 40) companyInfoY = logoBottom + 2;
-  else companyInfoY = 10;
-  doc.fontSize(13)
-     .fillColor('white')
-     .font('Helvetica-Bold')
-     .text('VIAJA YA', margin + 55, 14)
-     .fontSize(8)
-     .font('Helvetica')
-     .text('Hacemos realidad tus sueños de viaje', margin + 55, 28)
-     .text('info@viajaya.com | +57 300 123 4567', margin + 55, 40)
-     .text('Bogotá, Colombia', margin + 55, 52);
+  // Información de la empresa
+  doc.fontSize(14).fillColor('white').font('Helvetica-Bold')
+     .text('VIAJA YA', margin + 60, 15)
+     .fontSize(8).font('Helvetica')
+     .text('Hacemos realidad tus sueños de viaje', margin + 60, 30)
+     .text('info@viajaya.com | +57 300 123 4567', margin + 60, 42)
+     .text('Bogotá, Colombia', margin + 60, 54);
 
-  // Cotización número arriba a la derecha
-  doc.fontSize(12).fillColor('white').font('Helvetica-Bold')
-    .text(`Cotización: ${quote.quote_number || quote.id}`, pageWidth - 180, 15, { width: 150, align: 'right' });
+  // Número de cotización
+  doc.fontSize(11).fillColor('white').font('Helvetica-Bold')
+     .text(`Cotización: ${quote.quote_number || quote.id}`, pageWidth - 180, 20, { 
+       width: 150, 
+       align: 'right' 
+     });
 
-  yPosition = 80;
+  yPosition = 85;
 
-  // Destino principal
-  doc.rect(margin, yPosition, contentWidth, 32).fillColor(COLORS.MoradoSuave).fill();
-  doc.fontSize(18).fillColor('white').font('Helvetica-Bold')
-    .text(`VIAJE A ${quote.destino.toUpperCase()}`, margin + 10, yPosition + 8, { align: 'center', width: contentWidth - 20 });
-  yPosition += 42;
+  // ✅ TÍTULO DEL DESTINO
+  checkPageSpace(40);
+  doc.rect(margin, yPosition, contentWidth, 35).fillColor(COLORS.MoradoSuave).fill();
+  doc.fontSize(16).fillColor('white').font('Helvetica-Bold')
+     .text(`VIAJE A ${quote.destino.toUpperCase()}`, margin + 10, yPosition + 10, { 
+       align: 'center', 
+       width: contentWidth - 20 
+     });
+  yPosition += 45;
 
-
-  // Información cliente
-  checkPageSpace(60);
-  doc.rect(margin, yPosition, contentWidth, 16).fillColor(COLORS.botonPopup).fill();
+  // ✅ INFORMACIÓN DEL CLIENTE
+  checkPageSpace(80);
+  doc.rect(margin, yPosition, contentWidth, 18).fillColor(COLORS.botonPopup).fill();
   doc.fontSize(10).fillColor('white').font('Helvetica-Bold')
-     .text('INFORMACIÓN DEL CLIENTE:', margin + 8, yPosition + 4);
-  yPosition += 20;
-
-  const clienteInfo = [
-    { label: 'Cliente', value: quote.nombre_cliente || 'No especificado' },
-    { label: 'Email', value: quote.email_cliente || 'No especificado' },
-    { label: 'Teléfono', value: quote.telefono_cliente || 'No especificado' },
-    { label: 'Destino', value: `${quote.origen || 'Colombia'} → ${quote.destino}` }
-  ];
-  clienteInfo.forEach(info => {
-    doc.fontSize(8).fillColor(COLORS.textoOscuro).font('Helvetica-Bold')
-       .text(`${info.label}:`, margin + 6, yPosition, { width: 90 })
-       .fillColor(COLORS.textoGris).font('Helvetica')
-       .text(info.value, margin + 100, yPosition, { width: contentWidth - 106 });
-    addSpace(16);
-  });
-
-  // Espacio antes del resumen del viaje
-  addSpace(10);
-
-
-  // Bloque RESUMEN DEL VIAJE (limpio, sin iconos)
-  checkPageSpace(150);
-  doc.rect(margin, yPosition, contentWidth, 18).fillColor(COLORS.fondoPopup).fill();
-  doc.fontSize(10).fillColor('white').font('Helvetica-Bold')
-     .text('RESUMEN DETALLADO DEL VIAJE', margin + 8, yPosition + 5);
+     .text('INFORMACIÓN DEL CLIENTE', margin + 10, yPosition + 5);
   yPosition += 25;
 
-  // Datos principales del viaje con cálculos precisos
+  const clienteInfo = [
+    { label: 'Cliente:', value: quote.nombre_cliente || 'No especificado' },
+    { label: 'Email:', value: quote.email_cliente || 'No especificado' },
+    { label: 'Teléfono:', value: quote.telefono_cliente || 'No especificado' },
+    { label: 'Ruta:', value: `${quote.origen || 'Colombia'} → ${quote.destino}` }
+  ];
+
+  clienteInfo.forEach(info => {
+    doc.fontSize(9).fillColor(COLORS.textoOscuro).font('Helvetica-Bold')
+       .text(info.label, margin + 10, yPosition, { width: 80 })
+       .fillColor(COLORS.textoGris).font('Helvetica')
+       .text(info.value, margin + 95, yPosition, { width: contentWidth - 105 });
+    addSpace(14);
+  });
+
+  addSectionSpace();
+
+  // ✅ RESUMEN DEL VIAJE
+  checkPageSpace(120);
+  doc.rect(margin, yPosition, contentWidth, 18).fillColor(COLORS.fondoPopup).fill();
+  doc.fontSize(10).fillColor('white').font('Helvetica-Bold')
+     .text('RESUMEN DETALLADO DEL VIAJE', margin + 10, yPosition + 5);
+  yPosition += 25;
+
+  // Datos del viaje
   const fechaIda = quote.fecha_ida ? new Date(quote.fecha_ida + 'T12:00:00').toLocaleDateString('es-CO', { 
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
-  }) : null;
+  }) : 'Por confirmar';
+  
   const fechaRegreso = quote.fecha_regreso ? new Date(quote.fecha_regreso + 'T12:00:00').toLocaleDateString('es-CO', { 
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
-  }) : null;
+  }) : 'Por confirmar';
   
   const noches = calcularNoches(quote.fecha_ida, quote.fecha_regreso);
   const dias = noches ? noches + 1 : null;
   
-  // Información de pasajeros detallada
   const adultos = quote.adultos || 0;
   const menores = quote.menores || 0;
   const infantes = quote.infantes || 0;
   const totalPasajeros = adultos + menores + infantes;
   
   let detallesPasajeros = [];
-  if (adultos > 0) detallesPasajeros.push(`${adultos} adulto${adultos > 1 ? 's' : ''} (14+ años)`);
-  if (menores > 0) {
-    detallesPasajeros.push(`${menores} menor${menores > 1 ? 'es' : ''} (2-14 años)`);
-    if (quote.edades_menores && quote.edades_menores.length > 0) {
-      detallesPasajeros.push(`Edades: ${quote.edades_menores.join(', ')} años`);
-    }
-  }
-  if (infantes > 0) {
-    detallesPasajeros.push(`${infantes} infante${infantes > 1 ? 's' : ''} (0-2 años - no pagan)`);
-    if (quote.edades_infantes && quote.edades_infantes.length > 0) {
-      detallesPasajeros.push(`Edades: ${quote.edades_infantes.join(', ')} meses`);
-    }
-  }
-  
-  // Obtener datos de cálculo para información detallada
-  const calculation = getCalculationData(quote);
+  if (adultos > 0) detallesPasajeros.push(`${adultos} adulto${adultos > 1 ? 's' : ''}`);
+  if (menores > 0) detallesPasajeros.push(`${menores} menor${menores > 1 ? 'es' : ''}`);
+  if (infantes > 0) detallesPasajeros.push(`${infantes} infante${infantes > 1 ? 's' : ''} (no pagan)`);
 
-  // Construir el resumen profesional (sin iconos)
   const resumenViaje = [
-    { 
-      label: 'Destino', 
-      value: `${quote.destino}${noches && dias ? ` (${noches} noche${noches > 1 ? 's' : ''} / ${dias} dia${dias > 1 ? 's' : ''})` : ''}`,
-      highlight: true 
-    },
-    { label: 'Origen', value: quote.origen || 'Colombia' },
-    { label: 'Fecha de salida', value: fechaIda || 'Por confirmar' },
-    { label: 'Fecha de regreso', value: fechaRegreso || 'Por confirmar' },
-    { label: 'Total pasajeros', value: `${totalPasajeros} persona${totalPasajeros > 1 ? 's' : ''}` },
-    { label: 'Composicion', value: detallesPasajeros.join(' + ') || 'Por confirmar' }
+    { label: 'Destino:', value: `${quote.destino}${noches && dias ? ` (${noches} noches / ${dias} días)` : ''}`, highlight: true },
+    { label: 'Salida:', value: fechaIda },
+    { label: 'Regreso:', value: fechaRegreso },
+    { label: 'Pasajeros:', value: `${totalPasajeros} persona${totalPasajeros > 1 ? 's' : ''} (${detallesPasajeros.join(' + ')})` }
   ];
 
-  // Información de transporte
+  // Obtener datos de cálculo
+  const calculation = getCalculationData(quote);
+
+  // Información de servicios
   if (calculation.tiquetes && calculation.tiquetes.costo_total > 0) {
-    const tipoTiquete = calculation.tiquetes.tipo === 'ida_vuelta' ? 'Ida y vuelta' : 
-                       calculation.tiquetes.tipo === 'ida' ? 'Solo ida' : 'Por confirmar';
-    resumenViaje.push({ label: 'Tiquetes aereos', value: `${tipoTiquete} - ${calculation.tiquetes.proveedor || 'Aerolinea por confirmar'}` });
+    const tipoTiquete = calculation.tiquetes.tipo === 'ida_vuelta' ? 'Ida y vuelta' : 'Solo ida';
+    resumenViaje.push({ 
+      label: 'Vuelos:', 
+      value: `${tipoTiquete} - ${calculation.tiquetes.proveedor || 'Aerolínea por confirmar'}` 
+    });
   }
 
-  // Información de traslados
-  if (calculation.traslados && calculation.traslados.costo_total > 0) {
-    let trasladosInfo = [];
-    if (calculation.traslados.aeropuerto_hotel_ida?.incluido) trasladosInfo.push('Aeropuerto -> Hotel');
-    if (calculation.traslados.hotel_aeropuerto_vuelta?.incluido) trasladosInfo.push('Hotel -> Aeropuerto');
-    if (trasladosInfo.length === 0) trasladosInfo.push('Traslados terrestres');
-    resumenViaje.push({ label: 'Traslados', value: `Incluidos: ${trasladosInfo.join(', ')}` });
-  }
-
-  // Información de alojamiento
   if (calculation.hotel && calculation.hotel.costo_total > 0) {
     let hotelInfo = calculation.hotel.nombre || 'Hotel por confirmar';
     const categoria = calculation.hotel.categoria || quote.tipo_hotel;
@@ -1085,404 +619,388 @@ const generateQuotePDF = async (quote, saveToFile = true) => {
     if (categoria) hotelInfo += ` (${getTipoHotelLabel(categoria)})`;
     if (acomodacion) hotelInfo += ` - ${getAcomodacionLabel(acomodacion)}`;
     
-    resumenViaje.push({ label: 'Alojamiento', value: hotelInfo });
+    resumenViaje.push({ label: 'Hotel:', value: hotelInfo });
   }
 
-  // Información de alimentación
   if (calculation.alimentacion && calculation.alimentacion.costo_total > 0) {
     const tipoAlimentacion = calculation.alimentacion.tipo || quote.alimentacion;
-    resumenViaje.push({ label: 'Alimentacion', value: getAlimentacionLabel(tipoAlimentacion) });
+    resumenViaje.push({ label: 'Alimentación:', value: getAlimentacionLabel(tipoAlimentacion) });
   }
 
-  // Información de equipaje
-  if (calculation.equipaje && (calculation.equipaje.costo_total > 0 || calculation.equipaje.cabina?.incluido)) {
-    let equipajeInfo = [];
-    if (calculation.equipaje.cabina?.incluido) equipajeInfo.push('Cabina incluido');
-    if (calculation.equipaje.bodega?.incluido) equipajeInfo.push('Bodega incluido');
-    else if (calculation.equipaje.bodega?.costo > 0) equipajeInfo.push('Bodega disponible');
-    if (equipajeInfo.length === 0) equipajeInfo.push('Equipaje basico');
-    resumenViaje.push({ label: 'Equipaje', value: equipajeInfo.join(', ') });
-  }
-
-  // Asistencia médica
-  if (calculation.seguros && calculation.seguros.asistencia_medica && calculation.seguros.asistencia_medica.costo > 0) {
-    const tipoAsistencia = calculation.seguros.asistencia_medica.tipo || 'Basica';
-    resumenViaje.push({ label: 'Asistencia medica', value: `Incluida - ${tipoAsistencia}` });
-  }
-
-  // Excursiones/Tours
-  if (calculation.excursiones && calculation.excursiones.length > 0) {
-    const numExcursiones = calculation.excursiones.length;
-    resumenViaje.push({ label: 'Tours incluidos', value: `${numExcursiones} excursion${numExcursiones > 1 ? 'es' : ''}` });
-  }
-
-  // Servicios adicionales
-  if (calculation.extras && calculation.extras.length > 0) {
-    const numExtras = calculation.extras.length;
-    resumenViaje.push({ label: 'Servicios extra', value: `${numExtras} servicio${numExtras > 1 ? 's' : ''} adicional${numExtras > 1 ? 'es' : ''}` });
-  }
-
-  // Necesidades especiales
-  if (quote.personas_atencion_especial > 0 && quote.detalles_atencion_especial) {
-    resumenViaje.push({ 
-      label: 'Atencion especial', 
-      value: `${quote.personas_atencion_especial} persona${quote.personas_atencion_especial > 1 ? 's' : ''} - ${quote.detalles_atencion_especial}` 
-    });
-  }
-
-  // Agregar líneas divisorias antes de precios
+  // Línea separadora antes de precios
   resumenViaje.push({ separator: true });
   
   // Precios
   const precioPersona = quote.precio_por_persona || (quote.precio_total / Math.max(1, adultos + menores));
   resumenViaje.push({ 
-    label: 'Precio por persona', 
+    label: 'Precio por persona:', 
     value: formatPrice(precioPersona),
     highlight: true 
   });
   resumenViaje.push({ 
-    label: 'PRECIO TOTAL', 
+    label: 'PRECIO TOTAL:', 
     value: formatPrice(quote.precio_total),
-    highlight: true,
     total: true
   });
 
-  // Renderizar el resumen
+  // Renderizar resumen
   resumenViaje.forEach(info => {
     if (info.separator) {
-      // Línea divisoria
-      doc.moveTo(margin + 6, yPosition + 6)
-         .lineTo(margin + contentWidth - 6, yPosition + 6)
+      doc.moveTo(margin + 10, yPosition + 5)
+         .lineTo(margin + contentWidth - 10, yPosition + 5)
          .strokeColor(COLORS.moradito)
          .lineWidth(1)
          .stroke();
-      addSpace(18);
+      addSpace(15);
       return;
     }
     
-    // Estilo especial para elementos destacados
     if (info.total) {
-      doc.fontSize(9).fillColor(COLORS.ColorMorado).font('Helvetica-Bold')
-         .text(`${info.label}:`, margin + 8, yPosition, { width: 130 })
-         .fontSize(10).fillColor(COLORS.fondoPopup)
-         .text(info.value, margin + 145, yPosition, { width: contentWidth - 151 });
+      doc.fontSize(10).fillColor(COLORS.ColorMorado).font('Helvetica-Bold')
+         .text(info.label, margin + 10, yPosition, { width: 120 })
+         .fontSize(11).fillColor(COLORS.fondoPopup)
+         .text(info.value, margin + 135, yPosition, { width: contentWidth - 145 });
     } else if (info.highlight) {
-      doc.fontSize(8).fillColor(COLORS.botonPopup).font('Helvetica-Bold')
-         .text(`${info.label}:`, margin + 8, yPosition, { width: 130 })
+      doc.fontSize(9).fillColor(COLORS.botonPopup).font('Helvetica-Bold')
+         .text(info.label, margin + 10, yPosition, { width: 120 })
          .fillColor(COLORS.ColorMorado).font('Helvetica-Bold')
-         .text(info.value, margin + 145, yPosition, { width: contentWidth - 151 });
+         .text(info.value, margin + 135, yPosition, { width: contentWidth - 145 });
     } else {
-      doc.fontSize(8).fillColor(COLORS.textoOscuro).font('Helvetica-Bold')
-         .text(`${info.label}:`, margin + 8, yPosition, { width: 130 })
+      doc.fontSize(9).fillColor(COLORS.textoOscuro).font('Helvetica-Bold')
+         .text(info.label, margin + 10, yPosition, { width: 120 })
          .fillColor(COLORS.textoGris).font('Helvetica')
-         .text(info.value, margin + 145, yPosition, { width: contentWidth - 151 });
+         .text(info.value, margin + 135, yPosition, { width: contentWidth - 145 });
     }
-    addSpace(16);
+    addSpace(15);
   });
 
-  // Espacio antes del bloque de precios
-  addSpace(10);
+  addSectionSpace();
 
-  // Resumen precios
+  // ✅ BLOQUE DE PRECIOS DESTACADO
   checkPageSpace(50);
-  doc.rect(margin, yPosition, contentWidth, 40).fillColor(COLORS.ColorAzul).fill();
-  doc.fontSize(14).fillColor('white').font('Helvetica-Bold')
-     .text(`PRECIO POR PERSONA: ${formatPrice(quote.precio_por_persona)}`, margin + 10, yPosition + 8, { align: 'center', width: contentWidth - 20 })
-     .fontSize(12)
-     .text(`PRECIO TOTAL: ${formatPrice(quote.precio_total)}`, margin + 10, yPosition + 24, { align: 'center', width: contentWidth - 20 });
-  addSpace(50);
+  doc.rect(margin, yPosition, contentWidth, 45).fillColor(COLORS.ColorAzul).fill();
+  doc.fontSize(13).fillColor('white').font('Helvetica-Bold')
+     .text(`PRECIO POR PERSONA: ${formatPrice(quote.precio_por_persona)}`, margin + 15, yPosition + 10, { 
+       align: 'center', 
+       width: contentWidth - 30 
+     })
+     .fontSize(11)
+     .text(`PRECIO TOTAL: ${formatPrice(quote.precio_total)}`, margin + 15, yPosition + 28, { 
+       align: 'center', 
+       width: contentWidth - 30 
+     });
+  yPosition += 55;
 
-  // ✅ NUEVA SECCIÓN: LO QUE INCLUYE EL VIAJE
-  addSpace(20);
-  checkPageSpace(100);
-  
-  // Título de la sección
-  doc.rect(margin, yPosition, contentWidth, 18).fillColor(COLORS.ColorMorado).fill();
+  addSectionSpace();
+
+  // ✅ LO QUE INCLUYE TU VIAJE - FORMATO TABLA
+  checkPageSpace(80);
+  doc.rect(margin, yPosition, contentWidth, 20).fillColor(COLORS.ColorMorado).fill();
   doc.fontSize(11).fillColor('white').font('Helvetica-Bold')
-    .text('LO QUE INCLUYE TU VIAJE', margin + 8, yPosition + 5);
-  addSpace(25);
+     .text('LO QUE INCLUYE TU VIAJE', margin + 10, yPosition + 6);
+  yPosition += 30;
   
-  // Obtener inclusiones del viaje
   const inclusiones = generateTripInclusions(quote);
   
-  // Generar observaciones adicionales
-  const observaciones = generateObservations(quote, quote.calculation || {});
-  
   if (inclusiones.length > 0) {
+    // Configuración de la tabla
+    const tableStartY = yPosition;
+    const rowHeight = 24;
+    const col1Width = 120; // Ancho columna título
+    const col2Width = contentWidth - col1Width - 20; // Ancho columna descripción
+    const col1X = margin + 10;
+    const col2X = col1X + col1Width + 10;
+    
+    // Encabezado de tabla
+    doc.rect(margin + 5, yPosition - 2, contentWidth - 10, 18).fillColor('#e5e7eb').fill();
+    doc.fontSize(9).fillColor(COLORS.textoOscuro).font('Helvetica-Bold')
+       .text('SERVICIO', col1X, yPosition + 4, { width: col1Width })
+       .text('DESCRIPCIÓN', col2X, yPosition + 4, { width: col2Width });
+    yPosition += 20;
+    
+    // Filas de la tabla
     inclusiones.forEach((inclusion, index) => {
-      checkPageSpace(60);
+      checkPageSpace(30);
       
-      // Título de la inclusión (SIN iconos problemáticos)
-      doc.fontSize(9).fillColor(COLORS.botonPopup).font('Helvetica-Bold')
-        .text(`${inclusion.titulo}`, margin + 8, yPosition);
-      addSpace(14);
+      // Fondo alternado para las filas
+      const bgColor = index % 2 === 0 ? '#f9fafb' : '#ffffff';
+      doc.rect(margin + 5, yPosition - 2, contentWidth - 10, rowHeight).fillColor(bgColor).fill();
       
-      // Descripción principal
-      doc.fontSize(8).fillColor(COLORS.textoOscuro).font('Helvetica-Bold')
-        .text(`• ${inclusion.descripcion}`, margin + 12, yPosition);
-      addSpace(12);
+      // Borde sutil
+      doc.rect(margin + 5, yPosition - 2, contentWidth - 10, rowHeight)
+         .strokeColor('#e5e7eb')
+         .lineWidth(0.5)
+         .stroke();
       
-      // Detalles de la inclusión
+      // Columna 1: Título del servicio
+      doc.fontSize(8).fillColor(COLORS.botonPopup).font('Helvetica-Bold')
+         .text(inclusion.titulo, col1X, yPosition + 2, { 
+           width: col1Width,
+           height: rowHeight - 4,
+           align: 'left'
+         });
+      
+      // Columna 2: Descripción compacta
+      let descripcionCompleta = inclusion.descripcion;
+      
+      // Agregar detalles más importantes en la misma línea
       if (inclusion.detalles && inclusion.detalles.length > 0) {
-        inclusion.detalles.forEach(detalle => {
-          doc.fontSize(8).fillColor(COLORS.textoGris).font('Helvetica')
-            .text(`  ${detalle}`, margin + 20, yPosition, { width: contentWidth - 30 });
-          addSpace(11);
-        });
+        const detallesImportantes = inclusion.detalles
+          .filter(d => d.trim() !== '' && !d.includes('TOURS OPCIONALES:'))
+          .slice(0, 2) // Solo los 2 primeros detalles más importantes
+          .join(' • ');
+        
+        if (detallesImportantes) {
+          descripcionCompleta += ` • ${detallesImportantes}`;
+        }
       }
       
-      addSpace(8);
+      doc.fontSize(7).fillColor(COLORS.textoOscuro).font('Helvetica')
+         .text(descripcionCompleta, col2X, yPosition + 2, { 
+           width: col2Width - 5,
+           height: rowHeight - 4,
+           align: 'left',
+           lineGap: 1
+         });
+      
+      yPosition += rowHeight;
     });
-  } else {
-    // Si no hay información detallada, mostrar mensaje básico
-    doc.fontSize(8).fillColor(COLORS.textoGris).font('Helvetica')
-      .text('• Los servicios incluidos se detallarán según la cotización específica', margin + 12, yPosition);
-    addSpace(12);
     
+    // Línea final de la tabla
+    doc.moveTo(margin + 5, yPosition)
+       .lineTo(margin + contentWidth - 5, yPosition)
+       .strokeColor('#e5e7eb')
+       .lineWidth(1)
+       .stroke();
+    
+    addSpace(10);
+  } else {
+    // Mensaje cuando no hay inclusiones específicas
+    doc.rect(margin + 5, yPosition - 2, contentWidth - 10, 40).fillColor('#f9fafb').fill();
     doc.fontSize(8).fillColor(COLORS.textoGris).font('Helvetica')
-      .text('• Transporte, alojamiento y servicios según destino seleccionado', margin + 12, yPosition);
-    addSpace(12);
+       .text('• Los servicios incluidos se detallarán según la cotización específica', margin + 15, yPosition + 5);
+    doc.fontSize(8).fillColor(COLORS.textoGris).font('Helvetica')
+       .text('• Transporte, alojamiento y servicios según destino seleccionado', margin + 15, yPosition + 18);
+    yPosition += 45;
   }
   
-  addSpace(20);
+  addSectionSpace();
 
-  // MENSAJE PERSONALIZADO Y OBSERVACIONES (sin iconos)
-  addSpace(30); // Más espacio antes del mensaje
-  checkPageSpace(80);
-  
-  // Mensaje inspirador
-  addSpace(10);
+  // ✅ MENSAJE PERSONALIZADO
+  checkPageSpace(100);
   doc.rect(margin, yPosition, contentWidth, 18).fillColor(COLORS.MoradoSuave).fill();
   doc.fontSize(10).fillColor('white').font('Helvetica-Bold')
-    .text('TU VIAJE ESTA A UN CLICK DE HACERSE REALIDAD!', margin + 8, yPosition + 5);
-  addSpace(25);
+     .text('TU VIAJE ESTÁ A UN CLICK DE HACERSE REALIDAD', margin + 10, yPosition + 5);
+  yPosition += 25;
   
-  // Mensaje personalizado
-  const mensajePersonalizado = `Hemos preparado esta propuesta para tu viaje de ensueño a la hermosa ${quote.destino}, combinando economia y aventura para que vivas una experiencia inolvidable.
+  const mensajePersonalizado = `Hemos preparado esta propuesta para tu viaje de ensueño a la hermosa ${quote.destino}, combinando economía y aventura para que vivas una experiencia inolvidable.
 
 El valor por viajero de este viaje es de ${formatPrice(quote.precio_por_persona || (quote.precio_total / Math.max(1, (quote.adultos || 0) + (quote.menores || 0))))} y el precio total es de ${formatPrice(quote.precio_total)}.
 
-Esperamos que esta propuesta te inspire a empacar tus maletas. Si tienes alguna pregunta sobre el itinerario o quieres personalizar algo mas, por favor, no dudes en contactarnos.
+Esperamos que esta propuesta te inspire a empacar tus maletas. Si tienes alguna pregunta sobre el itinerario o quieres personalizar algo más, por favor, no dudes en contactarnos.
 
-Estamos listos para ayudarte a crear recuerdos inolvidables!`;
+¡Estamos listos para ayudarte a crear recuerdos inolvidables!`;
   
   doc.fontSize(9).fillColor(COLORS.textoOscuro).font('Helvetica')
-    .text(mensajePersonalizado, margin + 8, yPosition, { 
-      width: contentWidth - 16, 
-      align: 'justify', 
-      lineGap: 3 
-    });
-    
-  addSpace(100);
+     .text(mensajePersonalizado, margin + 10, yPosition, { 
+       width: contentWidth - 20, 
+       align: 'justify', 
+       lineGap: 2 
+     });
+  
+  // Calcular el espacio real que ocupó el texto
+  const textoHeight = doc.heightOfString(mensajePersonalizado, {
+    width: contentWidth - 20,
+    lineGap: 2
+  });
+  yPosition += textoHeight + 15; // Agregar 15px de padding extra
 
-  // NUEVA SECCIÓN: OBSERVACIONES ESPECÍFICAS DEL VIAJE
+  addSectionSpace();
+
+  // ✅ OBSERVACIONES ESPECIALES
+  const observaciones = generateObservations(quote, quote.calculation || {});
+  
   if (observaciones.length > 0) {
-    addSpace(20);
-    checkPageSpace(70);
+    checkPageSpace(60);
     doc.rect(margin, yPosition, contentWidth, 18).fillColor(COLORS.ColorMorado).fill();
     doc.fontSize(10).fillColor('white').font('Helvetica-Bold')
-      .text('INFORMACIÓN ESPECIAL DEL VIAJE:', margin + 8, yPosition + 5);
-    addSpace(25);
+       .text('INFORMACIÓN ESPECIAL DEL VIAJE', margin + 10, yPosition + 5);
+    yPosition += 25;
     
     observaciones.forEach((obs, index) => {
-      checkPageSpace(30);
+      checkPageSpace(40);
       
-      // Título del tipo de observación
       doc.fontSize(9).fillColor(COLORS.botonPopup).font('Helvetica-Bold')
-        .text(obs.tipo + ':', margin + 8, yPosition);
-      addSpace(15);
+         .text(`${obs.tipo}:`, margin + 10, yPosition);
+      yPosition += 12;
       
-      // Contenido de la observación
       doc.fontSize(8).fillColor(COLORS.textoOscuro).font('Helvetica')
-        .text(obs.contenido, margin + 12, yPosition, { 
-          width: contentWidth - 20, 
-          align: 'justify', 
-          lineGap: 2 
-        });
-      addSpace(20);
+         .text(obs.contenido, margin + 15, yPosition, { 
+           width: contentWidth - 25, 
+           align: 'justify', 
+           lineGap: 1 
+         });
+      yPosition += 20;
       
       if (index < observaciones.length - 1) {
-        addSpace(5); // Espacio entre observaciones
+        addSpace(8);
       }
     });
     
-    addSpace(15);
+    addSectionSpace();
   }
 
-  // Observaciones específicas del viaje
-  addSpace(20); // Más espacio antes de observaciones
-  checkPageSpace(70);
+  // ✅ OBSERVACIONES IMPORTANTES
+  checkPageSpace(80);
   doc.rect(margin, yPosition, contentWidth, 18).fillColor(COLORS.botonPopup).fill();
   doc.fontSize(10).fillColor('white').font('Helvetica-Bold')
-    .text('OBSERVACIONES IMPORTANTES:', margin + 8, yPosition + 5);
-  addSpace(25);
+     .text('OBSERVACIONES IMPORTANTES', margin + 10, yPosition + 5);
+  yPosition += 25;
   
-  const observacionesCustom = quote.observaciones || 
+  const observacionesImportantes = quote.observaciones || 
     `• Precios sujetos a disponibilidad al momento de la reserva
-• Cotizacion valida por 48 horas
-• Menores de 2 años no pagan, pero requieren documentacion
-• Documentacion vigente requerida (cedula o pasaporte segun destino)
-• Informanos si algun viajero presenta alguna condicion especial
-• Los servicios estan sujetos a terminos y condiciones especificos de cada proveedor`;
+• Cotización válida por 48 horas
+• Menores de 2 años no pagan, pero requieren documentación
+• Documentación vigente requerida (cédula o pasaporte según destino)
+• Infórmanos si algún viajero presenta alguna condición especial
+• Los servicios están sujetos a términos y condiciones específicos de cada proveedor`;
     
   doc.fontSize(8).fillColor(COLORS.textoGris).font('Helvetica')
-    .text(observacionesCustom, margin + 8, yPosition, { 
-      width: contentWidth - 16, 
-      align: 'justify', 
-      lineGap: 2 
-    });
-  addSpace(65);
+     .text(observacionesImportantes, margin + 10, yPosition, { 
+       width: contentWidth - 20, 
+       align: 'justify', 
+       lineGap: 2 
+     });
+  yPosition += 60;
 
-  // SERVICIOS ADICIONALES DISPONIBLES
-  addSpace(20); // Más espacio antes de servicios adicionales
-  checkPageSpace(60);
+  addSectionSpace();
+
+  // ✅ SERVICIOS ADICIONALES
+  checkPageSpace(70);
   doc.rect(margin, yPosition, contentWidth, 18).fillColor(COLORS.fondoPopup).fill();
   doc.fontSize(10).fillColor('white').font('Helvetica-Bold')
-    .text('SERVICIOS ADICIONALES DISPONIBLES (con costo extra):', margin + 8, yPosition + 5);
-  addSpace(25);
+     .text('SERVICIOS ADICIONALES DISPONIBLES (con costo extra)', margin + 10, yPosition + 5);
+  yPosition += 25;
   
   const serviciosExtra = [
     '• Equipaje en bodega (23 kg)',
-    '• Seleccion de asiento aereo',
+    '• Selección de asiento aéreo',
     '• Paseos en destino (solicita nuestro brochure de servicios)',
-    '• Seguro de cancelacion',
+    '• Seguro de cancelación',
     '• Asistencia personalizada premium',
-    '• Alquiler de vehiculos',
-    '• Actividades y excursiones especiales'
+    '• Alquiler de vehículos'
   ];
   
   serviciosExtra.forEach(servicio => {
     doc.fontSize(8).fillColor(COLORS.textoGris).font('Helvetica')
-      .text(servicio, margin + 12, yPosition);
+       .text(servicio, margin + 15, yPosition);
     addSpace(12);
   });
   
-  addSpace(25);
+  addSectionSpace();
 
-  // ATENCIÓN PERSONALIZADA
-  addSpace(20); // Más espacio antes de atención personalizada
-  checkPageSpace(50);
+  // ✅ ATENCIÓN PERSONALIZADA
+  checkPageSpace(60);
   doc.rect(margin, yPosition, contentWidth, 18).fillColor(COLORS.ColorMorado).fill();
   doc.fontSize(10).fillColor('white').font('Helvetica-Bold')
-    .text('ATENCION PERSONALIZADA VIAJA YA:', margin + 8, yPosition + 5);
-  addSpace(25);
+     .text('ATENCIÓN PERSONALIZADA VIAJA YA', margin + 10, yPosition + 5);
+  yPosition += 25;
   
-  const atencionPersonalizada = `En Viaja Ya, contamos con un canal de atencion a los viajeros donde estaras acompañado desde un dia antes del viaje hasta que finalice. 
+  const atencionPersonalizada = `En Viaja Ya, contamos con un canal de atención a los viajeros donde estarás acompañado desde un día antes del viaje hasta que finalice.
 
 • Realizamos check-in
 • Brindamos recomendaciones personalizadas  
 • Aseguramos que tu experiencia de viaje sea la mejor
 • Soporte 24/7 durante tu viaje
-• Atencion inmediata ante cualquier inconveniente`;
+• Atención inmediata ante cualquier inconveniente`;
 
   doc.fontSize(8).fillColor(COLORS.textoOscuro).font('Helvetica')
-    .text(atencionPersonalizada, margin + 8, yPosition, { 
-      width: contentWidth - 16, 
-      align: 'justify', 
-      lineGap: 2 
-    });
-  addSpace(60);
+     .text(atencionPersonalizada, margin + 10, yPosition, { 
+       width: contentWidth - 20, 
+       align: 'justify', 
+       lineGap: 2 
+     });
+  yPosition += 60;
 
-  // CONTACTO DEL ASESOR (limpio)
-  addSpace(25); // Más espacio antes del asesor
+  addSectionSpace();
+
+  // ✅ CONTACTO DEL ASESOR
   if (quote.asesor_info && quote.asesor_info.nombre_completo && quote.asesor_info.email) {
-    checkPageSpace(45);
+    checkPageSpace(50);
     doc.rect(margin, yPosition, contentWidth, 18).fillColor(COLORS.ColorAzul2).fill();
     doc.fontSize(10).fillColor('white').font('Helvetica-Bold')
-      .text('TU ASESOR DE VIAJES:', margin + 8, yPosition + 5);
-    addSpace(25);
+       .text('TU ASESOR DE VIAJES', margin + 10, yPosition + 5);
+    yPosition += 25;
     
     doc.fontSize(9).fillColor(COLORS.textoOscuro).font('Helvetica-Bold')
-      .text('Asesor:', margin + 8, yPosition, { continued: true });
+       .text('Asesor: ', margin + 10, yPosition, { continued: true });
     doc.fillColor(COLORS.ColorMorado).font('Helvetica-Bold')
-      .text(` ${quote.asesor_info.nombre_completo}`, { continued: false });
-    addSpace(14);
+       .text(quote.asesor_info.nombre_completo, { continued: false });
+    addSpace(12);
     
     doc.fontSize(8).fillColor(COLORS.textoOscuro).font('Helvetica')
-      .text('Email:', margin + 8, yPosition, { continued: true });
+       .text('Email: ', margin + 10, yPosition, { continued: true });
     doc.fillColor(COLORS.ColorMorado).font('Helvetica')
-      .text(` ${quote.asesor_info.email}`, { 
-        link: `mailto:${quote.asesor_info.email}`, 
-        underline: true 
-      });
-    addSpace(14);
+       .text(quote.asesor_info.email, { 
+         link: `mailto:${quote.asesor_info.email}`, 
+         underline: true 
+       });
+    addSpace(12);
     
     if (quote.asesor_info.telefono) {
       doc.fontSize(8).fillColor(COLORS.textoOscuro).font('Helvetica')
-        .text('Telefono:', margin + 8, yPosition, { continued: true });
+         .text('Teléfono: ', margin + 10, yPosition, { continued: true });
       doc.fillColor(COLORS.ColorMorado).font('Helvetica')
-        .text(` ${quote.asesor_info.telefono}`, { continued: false });
-      addSpace(14);
+         .text(quote.asesor_info.telefono, { continued: false });
+      addSpace(12);
     }
     
-    addSpace(25);
+    addSectionSpace();
   }
 
-  // TÉRMINOS Y CONDICIONES (detallados pero sin iconos)
-  addSpace(20); // Más espacio antes de términos
-  const espacioRestante = pageHeight - yPosition - 80;
-  if (espacioRestante > 120) {
-    doc.rect(margin, yPosition, contentWidth, 18).fillColor(COLORS.fondoPopup).fill();
-    doc.fontSize(10).fillColor('white').font('Helvetica-Bold')
-      .text('TERMINOS Y CONDICIONES', margin + 8, yPosition + 5);
-    addSpace(25);
-
-    const terminos = [
-      '• Cotizacion valida por 48 horas desde su emision',
-      '• Precios sujetos a disponibilidad al momento de la reserva',
-      '• Menores de 2 años no pagan pero requieren documentacion',
-      '• Documentacion vigente requerida segun destino',
-      '• Cambios y cancelaciones sujetos a politicas de proveedores',
-      '• Servicios sujetos a condiciones climaticas y operacionales',
-      '• Viaja Ya actua como intermediario entre cliente y proveedores',
-      '• Aplican terminos y condiciones especificos de cada proveedor',
-      '• Para reservar se requiere anticipo minimo del 30%',
-      '• Saldo restante debe cancelarse antes del viaje'
-    ];
-    
-    terminos.forEach(termino => {
-      doc.fontSize(8).fillColor(COLORS.textoGris).font('Helvetica')
-        .text(termino, margin + 10, yPosition, { width: contentWidth - 20 });
-      addSpace(14);
-    });
-    
-    addSpace(2);
-  } else {
-    doc.fontSize(8).fillColor(COLORS.textoGris).font('Helvetica-Bold')
-      .text('Terminos: Cotizacion valida 48h. Precios sujetos a disponibilidad. Menores 2 años no pagan.', 
-            margin, yPosition, { width: contentWidth, align: 'center' });
-    addSpace(2);
+  // ✅ PIE DE PÁGINA MEJORADO
+  // Verificar si necesitamos nueva página para el pie
+  const espacioRestante = pageHeight - yPosition;
+  if (espacioRestante < 100) {
+    checkPageSpace(100);
   }
 
-  // PIE DE PÁGINA (sin iconos)
-  addSpace(2); // Más espacio antes del pie de página
-  const footerY = pageHeight - 50;
-  if (yPosition < footerY) {
-    yPosition = footerY;
+  // Posicionar el pie de página siempre en la parte inferior
+  const footerStartY = pageHeight - 80;
+  if (yPosition < footerStartY - 20) {
+    yPosition = footerStartY - 20;
   }
-  
-  // Línea divisoria
+
+  // Línea separadora elegante
   doc.moveTo(margin, yPosition)
      .lineTo(pageWidth - margin, yPosition)
      .strokeColor(COLORS.moradito)
-     .lineWidth(1)
+     .lineWidth(1.5)
      .stroke();
-  
+  yPosition += 10;
 
+  // Información de la empresa - bien espaciada
+  doc.fontSize(9).fillColor(COLORS.textoOscuro).font('Helvetica-Bold')
+     .text('VIAJA YA - Hacemos realidad tus sueños de viaje', margin, yPosition, { 
+       width: contentWidth, 
+       align: 'center' 
+     });
+  yPosition += 12;
   
-  // Información de la empresa
-  doc.fontSize(8).fillColor(COLORS.textoGris).font('Helvetica-Bold')
-    .text('VIAJA YA - Hacemos realidad tus sueños de viaje', margin, yPosition, { width: contentWidth, align: 'center' });
- 
-  
-  doc.fontSize(7).fillColor(COLORS.textoGris).font('Helvetica')
-    .text('info@viajaya.com | +57 300 123 4567 | Bogota, Colombia', margin, yPosition, { width: contentWidth, align: 'center' });
- 
+  doc.fontSize(8).fillColor(COLORS.textoGris).font('Helvetica')
+     .text('info@viajaya.com | +57 300 123 4567 | Bogotá, Colombia', margin, yPosition, { 
+       width: contentWidth, 
+       align: 'center' 
+     });
+  yPosition += 10;
   
   doc.fontSize(7).fillColor(COLORS.textoGris).font('Helvetica-Oblique')
-    .text(`Cotizacion generada el ${new Date().toLocaleDateString('es-CO', { 
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
-    })}`, margin, yPosition, { width: contentWidth, align: 'center' });
+     .text(`Cotización generada el ${new Date().toLocaleDateString('es-CO', { 
+       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+     })}`, margin, yPosition, { 
+       width: contentWidth, 
+       align: 'center' 
+     });
 
   doc.end();
   
@@ -1493,7 +1011,6 @@ Estamos listos para ayudarte a crear recuerdos inolvidables!`;
       filename: `cotizacion-${quote.quote_number || quote.id}.pdf`
     };
   } else {
-    // ✅ FIX: Para vista previa, retornar el buffer
     console.log("🔍 Esperando generación de buffer...");
     return new Promise((resolve, reject) => {
       doc.on('end', () => {
