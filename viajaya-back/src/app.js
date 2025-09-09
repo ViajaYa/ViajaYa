@@ -4,15 +4,26 @@ const morgan = require("morgan")
 const routes = require("./routes/index.js")
 
 const allowedOrigins = [
-    'http://localhost:5173', // Permitir localhost para desarrollo
-    'http://localhost:5174', // Permitir localhost para desarrollo (puerto adicional)
-    'https://viajaya.com.co'  // Permitir tu dominio en producción
-  ];
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'https://viajaya.com.co',
+    'https://www.viajaya.com.co'
+];
 
 const app = express()
-
+|
 app.use(express.json())
-app.use(cors());
+app.use(cors({
+    origin: (origin, callback) => {
+        // Permitir solicitudes sin origen (como las de Postman)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        } else {
+            return callback(new Error("No permitido por CORS"));
+        }
+    }
+}));
 app.use(morgan("dev"))
 app.use("/", routes)
 // app.use((req, res, next) => {
