@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon index.js",
+    "start": "node index.js",
     "dev": "nodemon -L index.js",
     "migrate-auth": "node src/scripts/migrationAuth.js",
     "create-admin": "node -e \"require('./src/scripts/migrationAuth').createInitialAdmin()\"",
@@ -30,9 +30,11 @@
     "multer": "^1.4.5-lts.1",
     "multer-storage-cloudinary": "^4.0.0",
     "nodemailer": "^6.9.3",
-    "nodemon": "^3.1.4",
     "pdfkit": "^0.17.1",
     "pg": "^8.11.0",
     "sequelize": "^6.32.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
   }
 }
