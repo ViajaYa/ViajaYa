@@ -91,8 +91,9 @@ export const loginUser = createAsyncThunk(
       // ✅ Debug en desarrollo
       if (import.meta.env.MODE === 'development') {
         console.log('✅ Usuario normalizado con jerarquía:', {
-          original: data.user,
-          normalized: normalizedUser,
+          userId: normalizedUser.id,
+          email: normalizedUser.email,
+          role: normalizedUser.role,
           hierarchy: {
             liderId: normalizedUser.liderId,
             gerenteId: normalizedUser.gerenteId,

@@ -40,6 +40,7 @@ const validateEnv = () => {
       appName: config.appName,
       wompiEnv: config.wompi.environment,
       devToolsEnabled: config.devToolsEnabled,
+      // No incluir datos sensibles como claves secretas o tokens
     });
   }
 };
