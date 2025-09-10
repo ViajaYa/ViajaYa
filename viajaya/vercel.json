@@ -1,10 +1,6 @@
 {
     "rewrites": [
         {
-            "source": "/api/:path*",
-            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/:path*"
-        },
-        {
             "source": "/user/:path*",
             "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/user/:path*"
         },
@@ -63,7 +59,7 @@
     ],
     "headers": [
         {
-            "source": "/(api|user|auth|financial|commissions|quotes|packages|purchases|payments|promotions|configs|dashboard|admin|uploads)/(.*)",
+            "source": "/(user|auth|financial|commissions|quotes|packages|purchases|payments|promotions|configs|dashboard|admin|uploads)/(.*)",
             "headers": [
                 { "key": "Access-Control-Allow-Credentials", "value": "true" },
                 { "key": "Access-Control-Allow-Origin", "value": "*" },
