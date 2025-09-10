@@ -21,6 +21,14 @@
             "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/quotes/:path*"
         },
         {
+            "source": "/quote-calculations/:path*",
+            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/quote-calculations/:path*"
+        },
+        {
+            "source": "/passengers/:path*",
+            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/passengers/:path*"
+        },
+        {
             "source": "/packages/:path*",
             "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/packages/:path*"
         },
@@ -59,7 +67,7 @@
     ],
     "headers": [
         {
-            "source": "/(user|auth|financial|commissions|quotes|packages|purchases|payments|promotions|configs|dashboard|admin|uploads)/(.*)",
+            "source": "/(user|auth|financial|commissions|quotes|quote-calculations|packages|purchases|payments|promotions|configs|dashboard|admin|uploads|passengers)/(.*)",
             "headers": [
                 { "key": "Access-Control-Allow-Credentials", "value": "true" },
                 { "key": "Access-Control-Allow-Origin", "value": "*" },
