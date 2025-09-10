@@ -1,6 +1,10 @@
 {
     "rewrites": [
         {
+            "source": "/api/:path*",
+            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/:path*"
+        },
+        {
             "source": "/user/:path*",
             "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/user/:path*"
         },
@@ -33,13 +37,33 @@
             "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/payments/:path*"
         },
         {
+            "source": "/promotions/:path*",
+            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/promotions/:path*"
+        },
+        {
+            "source": "/configs/:path*",
+            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/configs/:path*"
+        },
+        {
+            "source": "/dashboard/:path*",
+            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/dashboard/:path*"
+        },
+        {
+            "source": "/admin/:path*",
+            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/admin/:path*"
+        },
+        {
+            "source": "/uploads/:path*",
+            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/uploads/:path*"
+        },
+        {
             "source": "/(.*)",
             "destination": "/"
         }
     ],
     "headers": [
         {
-            "source": "/(user|auth|financial|commissions|quotes|packages|purchases|payments)/(.*)",
+            "source": "/(api|user|auth|financial|commissions|quotes|packages|purchases|payments|promotions|configs|dashboard|admin|uploads)/(.*)",
             "headers": [
                 { "key": "Access-Control-Allow-Credentials", "value": "true" },
                 { "key": "Access-Control-Allow-Origin", "value": "*" },
