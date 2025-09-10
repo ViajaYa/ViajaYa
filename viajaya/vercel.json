@@ -1,8 +1,51 @@
 {
-    "rewrites":[
+    "rewrites": [
+        {
+            "source": "/user/:path*",
+            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/user/:path*"
+        },
+        {
+            "source": "/auth/:path*",
+            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/auth/:path*"
+        },
+        {
+            "source": "/financial/:path*",
+            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/financial/:path*"
+        },
+        {
+            "source": "/commissions/:path*",
+            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/commissions/:path*"
+        },
+        {
+            "source": "/quotes/:path*",
+            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/quotes/:path*"
+        },
+        {
+            "source": "/packages/:path*",
+            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/packages/:path*"
+        },
+        {
+            "source": "/purchases/:path*",
+            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/purchases/:path*"
+        },
+        {
+            "source": "/payments/:path*",
+            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/payments/:path*"
+        },
         {
             "source": "/(.*)",
-            "destination":"/"
+            "destination": "/"
+        }
+    ],
+    "headers": [
+        {
+            "source": "/(user|auth|financial|commissions|quotes|packages|purchases|payments)/(.*)",
+            "headers": [
+                { "key": "Access-Control-Allow-Credentials", "value": "true" },
+                { "key": "Access-Control-Allow-Origin", "value": "*" },
+                { "key": "Access-Control-Allow-Methods", "value": "GET,OPTIONS,PATCH,DELETE,POST,PUT" },
+                { "key": "Access-Control-Allow-Headers", "value": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization" }
+            ]
         }
     ]
 }
