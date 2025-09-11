@@ -2,30 +2,24 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { FaRegCopy } from "react-icons/fa6";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { MdPayment, MdExitToApp } from "react-icons/md";
+import { MdPayment } from "react-icons/md";
 import api from "../../../utils/api";
-import { findUsers, setUsers } from "../../../redux/actions/actions";
 import { useDispatch, useSelector } from "react-redux";
 import { toast, Toaster } from "react-hot-toast";
-import dayjs from "dayjs";
-import "dayjs/locale/es";
 import QuotePopup from "../../popups/QuotePopup";
 import {
   faPlus,
-  faFileInvoice,
   faUsers,
   faChartLine,
   faCoins,
   faChartArea,
 } from "@fortawesome/free-solid-svg-icons";
 
-// ✅ Importar hook de permisos desde la ubicación correcta
-import { useRolePermissions, USER_ROLES } from "../../../redux/hooks/hooks";
-// ✅ Importar componente de alerta de documentación
+// ✅ Imports necesarios
+import { useRolePermissions } from "../../../redux/hooks/hooks";
 import DocumentationAlert from "../../DocumentationAlert";
 import DocumentModal from "../../DocumentModal";
-import logoImage from "../../../assets/sn/logo.png";
-// ✅ Imports del authSlice corregidos
+import logoImage from "../../../assets/logo.png";
 import {
   logout,
   selectUser,
@@ -37,14 +31,11 @@ import {
 
 import NavBar from "../../layout/NavBar/NavBar";
 
-dayjs.locale("es");
-
-// Define regular expressions for validation
+// Expresiones regulares para validación
 const emailReg = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const phoneReg = /^[0-9]{10}$/;
 
 const Profile = () => {
-  const [page, setPage] = useState(0);
   const navigate = useNavigate();
 
   // ✅ Redux state
@@ -52,21 +43,17 @@ const Profile = () => {
   const user = useSelector(selectUser);
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const authLoading = useSelector(selectAuthLoading);
-  const users = useSelector((s) => s.users);
 
-  // ✅ Hook de permisos - solo una llamada
+  // ✅ Hook de permisos
   const {
-    hasAnyRole,
-    canManageQuotes,
     canCreateQuotes,
     getRoleName,
     canAccessPanel,
     canViewOrganization,
   } = useRolePermissions();
 
-  // ✅ Estados locales
+  // ✅ Estados locales necesarios
   const [changePass, setChangePass] = useState(false);
-  const [loading, setLoading] = useState(false); // ✅ Cambiar a false inicialmente
   const [showCreateQuote, setShowCreateQuote] = useState(false);
   const [showDocumentManager, setShowDocumentManager] = useState(false);
 
@@ -81,7 +68,7 @@ const Profile = () => {
     password3: "",
   });
 
-  // ✅ Protección de ruta - Simplificada
+  // ✅ Protección de ruta
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -89,7 +76,6 @@ const Profile = () => {
       return;
     }
 
-    // Si tenemos token pero no user, esperamos a que se cargue
     if (!authLoading && !user) {
       navigate("/login");
     }
@@ -114,26 +100,6 @@ const Profile = () => {
     }
   };
 
-  // ✅ Cargar datos iniciales - Solo para admins que necesiten ver todos los usuarios
-  useEffect(() => {
-    if (user && user.role >= 5) {
-      // Solo Admin, Contador, Owner
-      setLoading(true);
-      api
-        .get("/user") // ✅ CORREGIDO: usar api en lugar de axios
-        .then((data) => {
-          dispatch(setUsers(data.data));
-        })
-        .catch((error) => {
-          console.error("Error loading users:", error);
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-    }
-    // No hay else - para usuarios con role < 5, loading ya está en false por defecto
-  }, [dispatch, user?.id, user?.role]); // Cambié las dependencias
-
   // ✅ Sincronizar formData con usuario
   useEffect(() => {
     if (user) {
@@ -156,11 +122,6 @@ const Profile = () => {
       ...prev,
       [name]: value,
     }));
-  };
-
-  // ✅ Buscar usuarios
-  const findUsuarios = (e) => {
-    dispatch(findUsers(e.target.value));
   };
 
   // ✅ Actualizar usuario
@@ -237,9 +198,7 @@ const Profile = () => {
       data.append("api_key", "612393625364863");
       data.append("timestamp", 0);
 
-      // ✅ Esta llamada está bien porque es directa a Cloudinary
       const res = await api.post(
-        // ✅ Usar api aunque sea para Cloudinary para consistencia
         "https://api.cloudinary.com/v1_1/dftvenl2z/image/upload",
         data
       );
@@ -268,7 +227,7 @@ const Profile = () => {
     }
   };
 
-  // ✅ Estados de carga - Simplificados
+  // ✅ Estados de carga
   if (authLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -277,19 +236,6 @@ const Profile = () => {
     );
   }
 
-  // ✅ Mostrar loading si estamos cargando usuarios (solo para admin)
-  if (loading && user?.role >= 5) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando datos de usuarios...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // ✅ Mostrar si no hay usuario pero hay token (esperando carga)
   if (!user && localStorage.getItem("token")) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -301,14 +247,12 @@ const Profile = () => {
     );
   }
 
-  // ✅ Redirección si no hay token ni usuario
   if (!user && !localStorage.getItem("token")) {
     return null;
   }
 
-  // Agrupar acciones por categorías - REORGANIZADO según solicitud
+  // ✅ Configuración de acciones simplificada
   const userActions = {
-    // ACCIONES PERSONALES: Todo lo que no es gestión directa
     personal: [
       ...(user?.referral_code
         ? [
@@ -328,7 +272,6 @@ const Profile = () => {
         color: "bg-purple-500 hover:bg-purple-600",
         show: true,
       },
-      // Agregar Mis Comisiones a acciones personales
       ...(user?.role >= 2 && user?.role <= 4
         ? [
             {
@@ -340,7 +283,6 @@ const Profile = () => {
             },
           ]
         : []),
-      // Agregar Capacitaciones a acciones personales
       ...(user?.role >= 2
         ? [
             {
@@ -354,9 +296,7 @@ const Profile = () => {
         : []),
     ],
 
-    // HERRAMIENTAS DE GESTIÓN: Para el header (donde están cotizaciones)
     management: [
-      // Nueva Cotización - para todos los roles >= 2
       ...(canCreateQuotes() && user?.role >= 2
         ? [
             {
@@ -368,7 +308,6 @@ const Profile = () => {
             },
           ]
         : []),
-      // Panel Admin - para roles >= 4
       ...(canAccessPanel() && user?.role >= 4
         ? [
             {
@@ -380,7 +319,6 @@ const Profile = () => {
             },
           ]
         : []),
-      // Dashboard Financiero - para roles >= 4
       ...(user?.role >= 4
         ? [
             {
@@ -392,7 +330,6 @@ const Profile = () => {
             },
           ]
         : []),
-      // Mi Equipo - para roles >= 3
       ...(canViewOrganization() && user?.role >= 3
         ? [
             {
@@ -404,7 +341,6 @@ const Profile = () => {
             },
           ]
         : []),
-      // Todos los Equipos - para roles >= 5
       ...(user?.role >= 5
         ? [
             {
@@ -494,9 +430,8 @@ const Profile = () => {
                   </div>
                 </div>
 
-                {/* Herramientas de GESTIÓN en el header - principales funciones */}
+                {/* Herramientas de gestión en el header */}
                 <div className="flex flex-wrap gap-3 justify-center md:justify-end">
-                  {/* Herramientas de gestión visibles en el header */}
                   {userActions.management
                     .filter((action) => action.show)
                     .map((action, index) => (
@@ -531,7 +466,7 @@ const Profile = () => {
             </div>
           </div>
 
-          {/* Alerta de documentación - SOLO para empleados (roles 2,3,4) */}
+          {/* Alerta de documentación - SOLO para empleados */}
           {user?.role >= 2 && user?.role <= 4 && (
             <DocumentationAlert
               user={user}
@@ -539,9 +474,8 @@ const Profile = () => {
             />
           )}
 
-          {/* Sección de Acciones Personales - TODO lo que no es gestión directa */}
+          {/* Sección de Acciones Personales */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            {/* Acciones Personales Completas */}
             {userActions.personal.length > 0 && (
               <div className="bg-white rounded-xl shadow-md p-6 lg:col-span-2">
                 <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
@@ -559,6 +493,7 @@ const Profile = () => {
               </div>
             )}
           </div>
+
           {/* Formulario de edición de perfil */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Formulario de datos personales */}
