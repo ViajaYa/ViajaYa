@@ -236,7 +236,7 @@ const AppRoutes = ({ selectedNumbers, showForm, handleFormBack }) => {
 
       {/* ✅ RUTAS PARA LÍDERES Y SUPERIORES */}
       <Route path="/panel" element={
-        <RoleRoute allowedRoles={[USER_ROLES.LIDER, USER_ROLES.GERENTE, USER_ROLES.ADMIN, USER_ROLES.OWNER]}>
+        <RoleRoute allowedRoles={[USER_ROLES.ADMIN, USER_ROLES.CONTADOR, USER_ROLES.OWNER]}>
           <Suspense fallback={<LoadingSpinner />}>
             <PanelPage />
           </Suspense>

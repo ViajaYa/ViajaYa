@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { FaRegCopy } from "react-icons/fa6";
@@ -21,9 +22,7 @@ import DocumentationAlert from "../../DocumentationAlert";
 import DocumentModal from "../../DocumentModal";
 import logoImage from "../../../assets/logo.png";
 import {
-  logout,
   selectUser,
-  selectIsAuthenticated,
   selectAuthLoading,
   updateProfile,
   changePassword,
@@ -41,7 +40,6 @@ const Profile = () => {
   // ✅ Redux state
   const dispatch = useDispatch();
   const user = useSelector(selectUser);
-  const isAuthenticated = useSelector(selectIsAuthenticated);
   const authLoading = useSelector(selectAuthLoading);
 
   // ✅ Hook de permisos
@@ -216,16 +214,7 @@ const Profile = () => {
     }
   };
 
-  // ✅ Cerrar sesión
-  const handleLogout = async () => {
-    try {
-      dispatch(logout());
-      navigate("/");
-    } catch (error) {
-      console.error("Error during logout:", error);
-      navigate("/");
-    }
-  };
+
 
   // ✅ Estados de carga
   if (authLoading) {
@@ -308,7 +297,7 @@ const Profile = () => {
             },
           ]
         : []),
-      ...(canAccessPanel() && user?.role >= 4
+      ...(canAccessPanel() && user?.role >= 5
         ? [
             {
               label: "Panel Admin",

@@ -146,7 +146,7 @@ export const useRolePermissions = () => {
   const canCreateQuotes = () => hasMinimumRole(USER_ROLES.ASESOR);
   const canApproveQuotes = () => hasMinimumRole(USER_ROLES.LIDER);
   const canManageContracts = () => hasMinimumRole(USER_ROLES.LIDER);
-  const canAccessPanel = () => hasMinimumRole(USER_ROLES.ASESOR);
+  const canAccessPanel = () => hasMinimumRole(USER_ROLES.ADMIN);
   const canViewReports = () => hasMinimumRole(USER_ROLES.LIDER);
 
   // ✅ Función helper para obtener el nombre del rol

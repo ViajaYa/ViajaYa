@@ -179,7 +179,7 @@ userRoutes.get("/organization/:userId",
 // Obtener métricas del equipo de un manager (Gerentes y superiores)
 userRoutes.get("/metrics/:managerId", 
     authenticateToken,
-    authorizeRoles(4, 5, 6, 7), // Solo Gerentes, Admins y superiores
+    authorizeRoles(5, 6, 7), // Solo Gerentes, Admins y superiores
     authorizeMetricsAccess, // ✅ Middleware específico para métricas
     logAction('VIEW_TEAM_METRICS'), // ✅ Log opcional
     getTeamMetrics
@@ -188,7 +188,7 @@ userRoutes.get("/metrics/:managerId",
 // Dashboard completo para managers (incluye ambos: estructura + métricas)
 userRoutes.get("/dashboard/:managerId", 
     authenticateToken,
-    authorizeRoles(4, 5, 6, 7), // Solo Gerentes, Admins y superiores
+    authorizeRoles(5, 6, 7), // Solo Gerentes, Admins y superiores
     authorizeMetricsAccess, // ✅ Reutilizar middleware de métricas
     logAction('VIEW_DASHBOARD'), // ✅ Log opcional
     async (req, res) => {

@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import { useState, useEffect } from "react";
 import { useReservations } from "../../hooks/useReservations";
 import { toast } from "react-toastify";
