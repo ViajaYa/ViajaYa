@@ -2,67 +2,67 @@
     "rewrites": [
         {
             "source": "/user/:path*",
-            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/user/:path*"
+            "destination": "https://viajaya-mve8.onrender.com/user/:path*"
         },
         {
             "source": "/auth/:path*",
-            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/auth/:path*"
+            "destination": "https://viajaya-mve8.onrender.com/auth/:path*"
         },
         {
             "source": "/financial/:path*",
-            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/financial/:path*"
+            "destination": "https://viajaya-mve8.onrender.com/financial/:path*"
         },
         {
             "source": "/commissions/:path*",
-            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/commissions/:path*"
+            "destination": "https://viajaya-mve8.onrender.com/commissions/:path*"
         },
         {
             "source": "/quotes/:path*",
-            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/quotes/:path*"
+            "destination": "https://viajaya-mve8.onrender.com/quotes/:path*"
         },
         {
             "source": "/quote-calculations/:path*",
-            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/quote-calculations/:path*"
+            "destination": "https://viajaya-mve8.onrender.com/quote-calculations/:path*"
         },
         {
             "source": "/passengers/:path*",
-            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/passengers/:path*"
+            "destination": "https://viajaya-mve8.onrender.com/passengers/:path*"
         },
         {
             "source": "/contracts/:path*",
-            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/contracts/:path*"
+            "destination": "https://viajaya-mve8.onrender.com/contracts/:path*"
         },
         {
             "source": "/packages/:path*",
-            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/packages/:path*"
+            "destination": "https://viajaya-mve8.onrender.com/packages/:path*"
         },
         {
             "source": "/purchases/:path*",
-            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/purchases/:path*"
+            "destination": "https://viajaya-mve8.onrender.com/purchases/:path*"
         },
         {
             "source": "/payments/:path*",
-            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/payments/:path*"
+            "destination": "https://viajaya-mve8.onrender.com/payments/:path*"
         },
         {
             "source": "/promotions/:path*",
-            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/promotions/:path*"
+            "destination": "https://viajaya-mve8.onrender.com/promotions/:path*"
         },
         {
             "source": "/configs/:path*",
-            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/configs/:path*"
+            "destination": "https://viajaya-mve8.onrender.com/configs/:path*"
         },
         {
             "source": "/dashboard/:path*",
-            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/dashboard/:path*"
+            "destination": "https://viajaya-mve8.onrender.com/dashboard/:path*"
         },
         {
             "source": "/admin/:path*",
-            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/admin/:path*"
+            "destination": "https://viajaya-mve8.onrender.com/admin/:path*"
         },
         {
             "source": "/uploads/:path*",
-            "destination": "http://viajayaweb-env.eba-9aghsg96.us-east-2.elasticbeanstalk.com/uploads/:path*"
+            "destination": "https://viajaya-mve8.onrender.com/uploads/:path*"
         },
         {
             "source": "/(.*)",
