@@ -16,18 +16,10 @@ module.exports = (sequelize) => {
     vendedor_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      references: {
-        model: 'users',
-        key: 'id'
-      }
     },
     vendedor_real_id: {
       type: DataTypes.INTEGER,
       allowNull: false, // El vendedor real que debe recibir el pago
-      references: {
-        model: 'users',
-        key: 'id'
-      }
     },
     monto: {
       type: DataTypes.DECIMAL(12, 2),
@@ -56,18 +48,10 @@ module.exports = (sequelize) => {
     aprobado_por: {
       type: DataTypes.INTEGER,
       allowNull: true,
-      references: {
-        model: 'users',
-        key: 'id'
-      }
     },
     pagado_por: {
       type: DataTypes.INTEGER,
       allowNull: true,
-      references: {
-        model: 'users',
-        key: 'id'
-      }
     },
     // Control de límites
     limite_excedido: {
@@ -81,10 +65,6 @@ module.exports = (sequelize) => {
     documento_padre_id: {
       type: DataTypes.UUID,
       allowNull: true, // Para casos de documentos derivados por límite
-      references: {
-        model: 'supportDocuments',
-        key: 'id'
-      }
     },
     // Archivos
     documento_pdf_url: {
