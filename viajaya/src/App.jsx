@@ -3,7 +3,16 @@ import { useState, useEffect } from "react";
 import { ToastContainer } from "react-toastify";
 import useAuthGuard from "./components/hooks/useAuthGuard"; // ✅ SIN llaves {}
 import AppRoutes from "./components/AppRoutes";
+import FloatingHelpButton from "./components/help/FloatingHelpButton";
 import "react-toastify/dist/ReactToastify.css";
+
+// CSS para animaciones del tooltip
+const tooltipStyles = `
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+`;
 
 function App() {
   const [selectedNumbers, setSelectedNumbers] = useState([]);
@@ -14,6 +23,17 @@ function App() {
   
   // 🎯 Ejecutar useAuthGuard solo por sus efectos (sincronización)
   useAuthGuard();
+
+  // Inyectar estilos CSS para tooltips
+  useEffect(() => {
+    const styleElement = document.createElement("style");
+    styleElement.textContent = tooltipStyles;
+    document.head.appendChild(styleElement);
+    
+    return () => {
+      document.head.removeChild(styleElement);
+    };
+  }, []);
 
   // Guardar ruta anterior
   useEffect(() => {
@@ -40,6 +60,9 @@ function App() {
         handleSelect={handleSelect}
         rutaAnterior={rutaAnterior}
       />
+      
+      {/* Sistema de ayuda flotante */}
+      <FloatingHelpButton />
       
       <ToastContainer
         position="top-right"
