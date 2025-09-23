@@ -3,38 +3,50 @@ const cors = require("cors")
 const morgan = require("morgan")
 const routes = require("./routes/index.js")
 
-// Actualización de dominios permitidos, incluyendo dominios de AWS EB
+// Actualización de dominios permitidos para Render
 const allowedOrigins = [
-
+    // Desarrollo local
     'http://localhost:5173',
     'http://localhost:5174',
+
+    // Producción - ViajaYa
     'https://viajaya.com.co',
     'https://www.viajaya.com.co',
-    'https://viajaya-mve8.onrender.com'
-    // Incluir cualquier dominio de AWS Elastic Beanstalk que se utilice
-    // Por ejemplo: 'https://[nombre-app].elasticbeanstalk.com'
-    // O cualquier otro dominio personalizado que se pueda configurar
+
+    // Render (actualizado)
+    'https://viajaya-mve8.onrender.com',
+
+    // Permitir cualquier subdominio de onrender.com para flexibilidad
+    // Esto es útil si cambias el nombre de la app o tienes múltiples entornos
 ];
 
-// Función auxiliar para permitir entornos de desarrollo
+// Función auxiliar para permitir entornos de desarrollo y Render
 const corsOptions = {
     origin: (origin, callback) => {
-        // Permitir solicitudes sin origen (como las de Postman)
+        // Permitir solicitudes sin origen (como las de Postman, curl, etc.)
         if (!origin) return callback(null, true);
-        
+
         // Permitir orígenes explícitamente listados
         if (allowedOrigins.includes(origin)) {
             return callback(null, true);
         }
-        
-        // También permitir subdominios de elasticbeanstalk.com en producción
-        if (origin.includes('elasticbeanstalk.com') || process.env.NODE_ENV === 'development') {
+
+        // Permitir cualquier subdominio de onrender.com (para Render)
+        if (origin && origin.includes('onrender.com')) {
             return callback(null, true);
         }
-        
-        callback(new Error("No permitido por CORS"));
+
+        // Permitir en desarrollo cualquier origen localhost
+        if (process.env.NODE_ENV === 'development' && origin && origin.includes('localhost')) {
+            return callback(null, true);
+        }
+
+        console.warn(`🚫 Origen no permitido por CORS: ${origin}`);
+        callback(new Error(`Origen no permitido por CORS: ${origin}`));
     },
-    credentials: true
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 };
 
 const app = express()
