@@ -4,6 +4,7 @@ const bcrypt = require("bcrypt")
 const { Op } = require("sequelize")
 require('dotenv').config()
 const { sendEmail } = require("../utils/emailService");
+const { v4: uuidv4 } = require('uuid');
 
 const crypto = require("crypto");
 
@@ -47,106 +48,128 @@ module.exports = {
     },
     
    // ✅ POSTUSER ACTUALIZADO con jerarquía automática
- postUser: async (user) => {
-        try {
-            // Validaciones básicas
-            if (!user.email || !user.password) {
-                throw new Error("Email y contraseña son requeridos");
-            }
-
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(user.email)) {
-                throw new Error("Formato de email inválido");
-            }
-
-            if (user.password.length < 6) {
-                throw new Error("La contraseña debe tener al menos 6 caracteres");
-            }
-
-            // Verifica si el email ya existe
-            const existingUser = await User.findOne({
-                where: { email: user.email.toLowerCase() }
-            });
-            if (existingUser) {
-                throw new Error("Email ya registrado");
-            }
-
-            // Encriptar contraseña
-            const saltRounds = 12;
-            const hashedPassword = await bcrypt.hash(user.password, saltRounds);
-
-            // Verificar código de referido
-            if (user.referred_by) {
-                const referringUser = await User.findOne({
-                    where: { referral_code: user.referred_by }
-                });
-                if (!referringUser) {
-                    throw new Error("Código de referido inválido");
-                }
-            }
-
-            // Verificar que el referral_code no esté en uso
-            if (user.referral_code) {
-                const existingCodeUser = await User.findOne({
-                    where: { referral_code: user.referral_code }
-                });
-                if (existingCodeUser) {
-                    throw new Error("Código de referido ya está en uso");
-                }
-            }
-
-            // ✅ Asignar jerarquía automáticamente según el rol
-            const userDataWithHierarchy = await assignHierarchy(user);
-            
-            // ✅ Preparar datos del usuario - SIN asignación automática de comisión
-            const userData = {
-                ...userDataWithHierarchy,
-                email: user.email.toLowerCase(),
-                password: hashedPassword,
-                is_active: user.is_active !== undefined ? user.is_active : true,
-                is_active_seller: user.is_active_seller || false,
-                last_login: null,
-                failed_login_attempts: 0,
-                account_locked_until: null,
-                points: 0,
-                referral_code: user.referral_code || null,
-                referred_by: user.referred_by || null,
-                // ✅ REMOVIDO: commission_percentage - ahora se maneja globalmente
-                commission_limit: user.commission_limit || 1400000.00,
-                current_commission_used: 0.00,
-                banco: user.banco || null,
-                numero_cuenta: user.numero_cuenta || null,
-                tipo_cuenta: user.tipo_cuenta || null,
-                fecha_ingreso: user.fecha_ingreso || new Date(),
-                documento_identidad: user.documento_identidad || null,
-                tipo_documento: user.tipo_documento || null,
-                fecha_nacimiento: user.fecha_nacimiento || null,
-                direccion: user.direccion || null,
-                ciudad: user.ciudad || null,
-                pais: user.pais || 'Colombia'
-            };
-
-            // Crear el nuevo usuario
-            const newUser = await User.create(userData);
-            
-            // Respuesta sin datos sensibles
-            const userResponse = { ...newUser.toJSON() };
-            delete userResponse.password;
-            delete userResponse.failed_login_attempts;
-            delete userResponse.account_locked_until;
-            delete userResponse.password_reset_token;
-            delete userResponse.email_verification_token;
-            
-            return { 
-                success: true,
-                message: "Usuario creado con éxito", 
-                user: userResponse 
-            };
-
-        } catch (error) {
-            throw new Error(error.message);
+postUser: async (user) => {
+    try {
+        // Validaciones básicas
+        if (!user.email || !user.password) {
+            throw new Error("Email y contraseña son requeridos");
         }
-    },
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(user.email)) {
+            throw new Error("Formato de email inválido");
+        }
+
+        if (user.password.length < 6) {
+            throw new Error("La contraseña debe tener al menos 6 caracteres");
+        }
+
+        // Verifica si el email ya existe
+        const existingUser = await User.findOne({
+            where: { email: user.email.toLowerCase() }
+        });
+        if (existingUser) {
+            throw new Error("Email ya registrado");
+        }
+
+        // Encriptar contraseña
+        const saltRounds = 12;
+        const hashedPassword = await bcrypt.hash(user.password, saltRounds);
+
+        // Verificar código de referido
+        if (user.referred_by) {
+            const referringUser = await User.findOne({
+                where: { referral_code: user.referred_by }
+            });
+            if (!referringUser) {
+                throw new Error("Código de referido inválido");
+            }
+        }
+
+        // ✅ Generar código de referido único por defecto
+        let referralCode = user.referral_code;
+        if (!referralCode) {
+            // Generar un UUID único si no se proporciona
+            let isUnique = false;
+            let attempts = 0;
+            const maxAttempts = 10; // Evitar bucles infinitos
+            
+            while (!isUnique && attempts < maxAttempts) {
+                referralCode = uuidv4();
+                const existingCodeUser = await User.findOne({
+                    where: { referral_code: referralCode }
+                });
+                if (!existingCodeUser) {
+                    isUnique = true;
+                }
+                attempts++;
+            }
+            
+            if (!isUnique) {
+                throw new Error("No se pudo generar un código de referido único");
+            }
+        } else {
+            // Verificar que el referral_code proporcionado no esté en uso
+            const existingCodeUser = await User.findOne({
+                where: { referral_code: referralCode }
+            });
+            if (existingCodeUser) {
+                throw new Error("Código de referido ya está en uso");
+            }
+        }
+
+        // ✅ Asignar jerarquía automáticamente según el rol
+        const userDataWithHierarchy = await assignHierarchy(user);
+        
+        // ✅ Preparar datos del usuario - SIN asignación automática de comisión
+        const userData = {
+            ...userDataWithHierarchy,
+            email: user.email.toLowerCase(),
+            password: hashedPassword,
+            is_active: user.is_active !== undefined ? user.is_active : true,
+            is_active_seller: user.is_active_seller || false,
+            last_login: null,
+            failed_login_attempts: 0,
+            account_locked_until: null,
+            points: 0,
+            referral_code: referralCode, // ✅ Ahora siempre tendrá un valor único
+            referred_by: user.referred_by || null,
+            // ✅ REMOVIDO: commission_percentage - ahora se maneja globalmente
+            commission_limit: user.commission_limit || 1400000.00,
+            current_commission_used: 0.00,
+            banco: user.banco || null,
+            numero_cuenta: user.numero_cuenta || null,
+            tipo_cuenta: user.tipo_cuenta || null,
+            fecha_ingreso: user.fecha_ingreso || new Date(),
+            documento_identidad: user.documento_identidad || null,
+            tipo_documento: user.tipo_documento || null,
+            fecha_nacimiento: user.fecha_nacimiento || null,
+            direccion: user.direccion || null,
+            ciudad: user.ciudad || null,
+            pais: user.pais || 'Colombia'
+        };
+
+        // Crear el nuevo usuario
+        const newUser = await User.create(userData);
+        
+        // Respuesta sin datos sensibles
+        const userResponse = { ...newUser.toJSON() };
+        delete userResponse.password;
+        delete userResponse.failed_login_attempts;
+        delete userResponse.account_locked_until;
+        delete userResponse.password_reset_token;
+        delete userResponse.email_verification_token;
+        
+        return { 
+            success: true,
+            message: "Usuario creado con éxito", 
+            user: userResponse 
+        };
+
+    } catch (error) {
+        throw new Error(error.message);
+    }
+},
     
    
     recoveryPass: async (email) => {
