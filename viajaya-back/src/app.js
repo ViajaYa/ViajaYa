@@ -5,10 +5,12 @@ const routes = require("./routes/index.js")
 
 // Actualización de dominios permitidos, incluyendo dominios de AWS EB
 const allowedOrigins = [
+
     'http://localhost:5173',
     'http://localhost:5174',
     'https://viajaya.com.co',
     'https://www.viajaya.com.co',
+    'https://viajaya-mve8.onrender.com'
     // Incluir cualquier dominio de AWS Elastic Beanstalk que se utilice
     // Por ejemplo: 'https://[nombre-app].elasticbeanstalk.com'
     // O cualquier otro dominio personalizado que se pueda configurar
