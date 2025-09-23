@@ -3,7 +3,7 @@ const cors = require("cors")
 const morgan = require("morgan")
 const routes = require("./routes/index.js")
 
-// Actualización de dominios permitidos para Render
+// Actualización de dominios permitidos para Render y Vercel
 const allowedOrigins = [
     // Desarrollo local
     'http://localhost:5173',
@@ -15,6 +15,9 @@ const allowedOrigins = [
 
     // Render (actualizado)
     'https://viajaya-mve8.onrender.com',
+
+    // Vercel (específico)
+    'https://viaja-786ywfg3b-viajaya1s-projects.vercel.app',
 
     // Permitir cualquier subdominio de onrender.com para flexibilidad
     // Esto es útil si cambias el nombre de la app o tienes múltiples entornos
@@ -33,6 +36,11 @@ const corsOptions = {
 
         // Permitir cualquier subdominio de onrender.com (para Render)
         if (origin && origin.includes('onrender.com')) {
+            return callback(null, true);
+        }
+
+        // Permitir cualquier subdominio de vercel.app (para Vercel)
+        if (origin && origin.includes('vercel.app')) {
             return callback(null, true);
         }
 
