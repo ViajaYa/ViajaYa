@@ -33,8 +33,8 @@
             "destination": "https://viajaya-mve8.onrender.com/contracts/:path*"
         },
         {
-            "source": "/packages/:path*",
-            "destination": "https://viajaya-mve8.onrender.com/packages/:path*"
+            "source": "/pack/:path*",
+            "destination": "https://viajaya-mve8.onrender.com/pack/:path*"
         },
         {
             "source": "/purchases/:path*",
