@@ -174,17 +174,15 @@ const contractController = {
         order: [["created_at", "DESC"]],
       });
 
-      let sequence = 1;
+      let sequence = 2001; // Iniciar desde 2001
       if (lastContract) {
         const lastSequence = parseInt(
-          lastContract.contract_number.split("-")[2]
+          lastContract.contract_number.split("-")[1] // Cambiar índice para nuevo formato
         );
         sequence = lastSequence + 1;
       }
 
-      const contract_number = `CONT-${year}${month}${day}-${String(
-        sequence
-      ).padStart(3, "0")}`;
+      const contract_number = `2000-${String(sequence - 2000).padStart(3, "0")}`;
 
       // Calcular valores de cuotas
       const precio_total = quote.precio_total;
@@ -2400,7 +2398,7 @@ convertQuoteToItems: async (req, res) => {
           <div class="footer">
             <p><strong>ViajaYa - Operador Turístico y Agencia de Viajes</strong></p>
             <p>🌟 Hacemos realidad tus sueños de viaje 🌟</p>
-            <p>📧 info@viajaya.com | 📱 +57 300 123 4567</p>
+            <p>📧 info@viajaya.com | 📱 +57 320 956 0958</p>
             <p>📍 Bogotá, Colombia | 📋 RNT 122035</p>
             <p>📸 Síguenos: <a href="https://instagram.com/viajaya_pagina_oficial">@viajaya_pagina_oficial</a></p>
           </div>
