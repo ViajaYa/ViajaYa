@@ -636,9 +636,9 @@ if (traslados && traslados.detalles) {
   }
   
   if (trasladosIncluidos.length > 0) {
-    trasladosTexto += `${trasladosIncluidos.join(' y ')} INCLUIDOS - Costo total: ${formatearMoneda(traslados.valor)} APLICA SI: X NO: _`;
+    trasladosTexto += `${trasladosIncluidos.join(' y ')} INCLUIDOS - APLICA SI: X NO: _`;
   } else {
-    trasladosTexto += `NO INCLUIDOS - Costo adicional: ${formatearMoneda(traslados.valor)} APLICA SI: _ NO: X`;
+    trasladosTexto += `NO INCLUIDOS - APLICA SI: _ NO: X`;
   }
 } else {
   // ✅ BUSCAR EN LA ESTRUCTURA REAL DEL CONTRATO
@@ -655,9 +655,9 @@ if (traslados && traslados.detalles) {
     }
     
     if (trasladosIncluidos.length > 0) {
-      trasladosTexto += `${trasladosIncluidos.join(' y ')} INCLUIDOS - Costo total: ${formatearMoneda(detalles.costo_total)} APLICA SI: X NO: _`;
+      trasladosTexto += `${trasladosIncluidos.join(' y ')} INCLUIDOS - APLICA SI: X NO: _`;
     } else {
-      trasladosTexto += `Costo: ${formatearMoneda(detalles.costo_total)} - APLICA SI: X NO: _`;
+      trasladosTexto += `Aeropuerto – hotel – aeropuerto (si aplican) - APLICA SI: X NO: _`;
     }
   } else {
     trasladosTexto += 'NO INCLUIDOS - APLICA SI: _ NO: X';
@@ -687,7 +687,7 @@ if (tiquetes) {
   if (detalles.proveedor) {
     tiquetesTexto += ` - Aerolínea: ${detalles.proveedor.toUpperCase()}`;
   }
-  tiquetesTexto += ` - Valor: ${formatearMoneda(tiquetes.valor)}`;
+  tiquetesTexto += ` según itinerario confirmado`;
   
   if (detalles.fecha_ida) {
     tiquetesTexto += ` - Ida: ${formatearFecha(detalles.fecha_ida)}`;
@@ -704,7 +704,7 @@ if (tiquetes) {
     if (tiquetesCalculation.proveedor) {
       tiquetesTexto += ` - Aerolínea: ${tiquetesCalculation.proveedor.toUpperCase()}`;
     }
-    tiquetesTexto += ` - Valor: ${formatearMoneda(tiquetesCalculation.costo_total)}`;
+    tiquetesTexto += ` según itinerario confirmado`;
     
     if (tiquetesCalculation.fecha_ida) {
       tiquetesTexto += ` - Ida: ${formatearFecha(tiquetesCalculation.fecha_ida)}`;
@@ -741,9 +741,9 @@ if (equipaje && equipaje.detalles) {
   }
   
   if (incluidoItems.length > 0) {
-    equipajeTexto += `${incluidoItems.join(', ')} - Costo total: ${formatearMoneda(equipaje.valor)} - verificar dimensiones con aerolínea. EL QR de check in se entregará 24 horas antes – APLICA ley aérea`;
+    equipajeTexto += `${incluidoItems.join(', ')} - verificar dimensiones con aerolínea. EL QR de check in se entregará 24 horas antes – APLICA ley aérea`;
   } else {
-    equipajeTexto += `Costo equipaje adicional: ${formatearMoneda(equipaje.valor)} - 40*35*25 tipo morral-mochila 8 a 10° kilos de peso - la mochila debe ir bajo asientos aéreos (No se asegura silla continua dependemos de aerolínea) EL QR de check in se entregará 24 horas antes – APLICA ley aérea`;
+    equipajeTexto += `Equipaje adicional - 40*35*25 tipo morral-mochila 8 a 10° kilos de peso - la mochila debe ir bajo asientos aéreos (No se asegura silla continua dependemos de aerolínea) EL QR de check in se entregará 24 horas antes – APLICA ley aérea`;
   }
 } else {
   // ✅ BUSCAR EN LA ESTRUCTURA REAL DEL CONTRATO
@@ -757,9 +757,9 @@ if (equipaje && equipaje.detalles) {
     }
     
     if (incluidoItems.length > 0) {
-      equipajeTexto += `${incluidoItems.join(', ')} - Costo total: ${formatearMoneda(detalles.costo_total)} - verificar dimensiones con aerolínea. EL QR de check in se entregará 24 horas antes – APLICA ley aérea`;
+      equipajeTexto += `${incluidoItems.join(', ')} - verificar dimensiones con aerolínea. EL QR de check in se entregará 24 horas antes – APLICA ley aérea`;
     } else {
-      equipajeTexto += `Equipaje estándar incluido - Costo adicional: ${formatearMoneda(detalles.costo_total)} - 40*35*25 tipo morral-mochila 8 a 10° kilos de peso - la mochila debe ir bajo asientos aéreos (No se asegura silla continua dependemos de aerolínea) EL QR de check in se entregará 24 horas antes – APLICA ley aérea`;
+      equipajeTexto += `Equipaje estándar incluido - 40*35*25 tipo morral-mochila 8 a 10° kilos de peso - la mochila debe ir bajo asientos aéreos (No se asegura silla continua dependemos de aerolínea) EL QR de check in se entregará 24 horas antes – APLICA ley aérea`;
     }
   } else {
     equipajeTexto += 'verificar con aerolínea - EL QR de check in se entregará 24 horas antes – APLICA ley aérea';
@@ -803,11 +803,11 @@ if (hotel) {
       `Categoría: ${hotelCalculation.categoria?.replace('_', ' ') || 'No especificada'}`,
       `Acomodación: ${hotelCalculation.acomodacion || 'No especificada'}`,
       `No de Noches: ${hotelCalculation.noches || 'No especificado'} noches`,
-      `Costo por noche: ${formatearMoneda(hotelCalculation.costo_noche || 0)}`,
-      `Valor total hotel: ${formatearMoneda(hotelCalculation.costo_total || 0)}`,
+      `Hotel confirmado con número de noches y acomodación`,
+      `Plan de alimentación según cotización`,
     ];
     
-    // Información de alimentación detallada CORREGIDA
+    // Información de alimentación detallada SIN PRECIO
     const alimentacionCalculation = contractData.Quote?.Calculation?.alimentacion;
     if (alimentacionCalculation && alimentacionCalculation.tipo) {
       let alimentacionTexto = 'Tipo Alimentación: ';
@@ -824,11 +824,14 @@ if (hotel) {
         case 'ninguna':
           alimentacionTexto += 'No incluida';
           break;
+        case 'todo_incluido':
+          alimentacionTexto += 'todo_incluido';
+          break;
         default:
           alimentacionTexto += alimentacionCalculation.tipo || 'No especificada';
       }
       
-      alimentacionTexto += ` - Costo: ${formatearMoneda(alimentacionCalculation.costo_total || 0)}`;
+      // ✅ PRECIO ELIMINADO según solicitud del cliente
       alimentacionTexto += '. Check in: Primer día 3 pm y Check out: Último día según hotel.';
       
       hotelInfo.push(alimentacionTexto);
@@ -902,17 +905,31 @@ if (hotel) {
   // ✅ MINI LÍNEA DIVISORIA
   yPos = addSectionDivider(doc, yPos, margin, contentWidth, 'dashed');
   
-  // Actividades adicionales
-  const excursiones = contractData.quote_calculation_analysis?.items_detallados?.filter(item => item.tipo === 'excursiones');
+  // Actividades adicionales - CORREGIDO para mostrar excursiones
   let actividadesTexto = 'Actividades Adicionales: ';
+  
+  // ✅ BUSCAR EXCURSIONES EN MÚLTIPLES LUGARES
+  let excursiones = [];
+  
+  // Opción 1: En quote_calculation_analysis
+  if (contractData.quote_calculation_analysis?.items_detallados) {
+    excursiones = contractData.quote_calculation_analysis.items_detallados.filter(item => item.tipo === 'excursiones');
+  }
+  
+  // Opción 2: En Quote.Calculation.excursiones
+  if (excursiones.length === 0 && contractData.Quote?.Calculation?.excursiones) {
+    const excurCalc = contractData.Quote.Calculation.excursiones;
+    if (excurCalc.incluido && excurCalc.detalles && excurCalc.detalles.length > 0) {
+      excursiones = excurCalc.detalles.map(exc => ({
+        descripcion: exc.nombre || exc.descripcion || 'Excursión',
+        valor: exc.precio || 0
+      }));
+    }
+  }
   
   if (excursiones && excursiones.length > 0) {
     const nombreExcursiones = excursiones.map(exc => {
-      let texto = exc.descripcion || exc.detalles?.nombre || 'Excursión';
-      if (exc.valor) {
-        texto += ` (${formatearMoneda(exc.valor)})`;
-      }
-      return texto;
+      return exc.descripcion || exc.nombre || 'Excursión';
     }).join(', ');
     actividadesTexto += nombreExcursiones;
   } else {
@@ -952,7 +969,7 @@ if (segurosDetallados && segurosDetallados.valor > 0) {
     asistenciaTexto += ` (${segDetalles.proveedor})`;
   }
   
-  asistenciaTexto += ` - Costo total seguros: ${formatearMoneda(segurosDetallados.valor)}`;
+  // Costo eliminado según solicitud del cliente
 } else {
   // ✅ BUSCAR EN LA ESTRUCTURA REAL DEL CONTRATO
   const segurosCalculation = contractData.Quote?.Calculation?.seguros;
@@ -963,7 +980,7 @@ if (segurosDetallados && segurosDetallados.valor > 0) {
       asistenciaTexto += ` - Tipo: ${segurosCalculation.asistencia_medica.tipo}`;
     }
     
-    asistenciaTexto += ` - Costo: ${formatearMoneda(segurosCalculation.asistencia_medica.costo)}`;
+    // Costo eliminado según solicitud del cliente
   } else {
     asistenciaTexto += 'Verificar disponibilidad según destino';
   }
@@ -1997,6 +2014,153 @@ const createAdditionalClausesPages = (doc, contractData) => {
              lineGap: 2
            });
 
+  yPos += 50;
+
+  // ================== NUEVA PÁGINA: CLÁUSULAS ADICIONALES ==================
+  doc.addPage();
+  createContractHeader(doc);
+  yPos = 120;
+
+  // CLÁUSULA DÉCIMA TERCERA - CONDICIONES GENERALES
+  doc.fontSize(11)
+     .fillColor('#7b2cbf')
+     .font('Helvetica-Bold')
+     .text('CLÁUSULA DÉCIMA TERCERA - CONDICIONES GENERALES:', margin + 5, yPos);
+
+  yPos += 20;
+
+  const clausula13Texto = `Cambio de nombre en vuelo comercial está sujeto a penalidades de la aerolínea. Cambio de destino a mayor categoría con fecha de viaje mayor a 30 días no aplicarpenalidad solo aplica reajuste de la tarifa vigente.
+
+Para el artículo 2.o Si después de haberse iniciado el viaje y hasta 30 días, el valor resultante una vez descontada la penalidad correspondiente, será reembolsado por la Empresa según los procedimientos establecidos por éste. Cuando sea el transporte comercial correspondiente a tarifa promocional, por tanto las penalidades aplicables serán las que establezca la aerolínea con determinación civil determine y con cargo al titular de la reserva, igualmente se informa al COMPRADOR desde este momento, que los tiquetes aéreos tienen una restricción en términos de cancelación, conforme al numeral 3.30.1.8.1 De los Reglamentos Aeronáuticos de Colombia (RAC 3)`;
+
+  const clausula13Parte2 = `Al COMPRADOR le fueron informadas ampliamente las condiciones de responsabilidad y manejo que otorga la Ley de Turismo. AL COMPRADOR le fueron informadas ampliamente los términos y condiciones que debe cumplir para viajar a su lugar de destino, también le fue informado de los servicios de asistencia al turista. El término mínimo con antelación para sus servicios turísticos del presente contrato, será de cuarenta y cinco (45) días calendario después de ejecutada esta compra para ser informado y así viajar el itinerario exacto para efectuar su reclamación directa. 3. EL VENDEDOR rechaza cualquier forma de explotación, pornografía, turismo sexual. El VENDEDOR está comprometido con la protección y prevención contra toda forma de explotación sexual que involucre niños, niñas y adolescentes en viajes y turismo, conforme a la Ley 17.823. Adicionalmente adhiere al COMPRADOR que la explotación sexual y el abuso sexual comercial de niñas, niños y adolescentes es penada y sancionada administrativa, conforme a las leyes vigentes.`;
+
+  doc.fontSize(9)
+     .fillColor('#000000')
+     .font('Helvetica')
+     .text(clausula13Texto, margin + 5, yPos, {
+       width: contentWidth - 10,
+       align: 'justify',
+       lineGap: 3
+     });
+
+  yPos += 120;
+
+  // Segunda parte de la cláusula décima tercera
+  doc.fontSize(9)
+     .fillColor('#000000')
+     .font('Helvetica')
+     .text(clausula13Parte2, margin + 5, yPos, {
+       width: contentWidth - 10,
+       align: 'justify',
+       lineGap: 3
+     });
+
+  yPos += 140;
+  yPos = addSectionDivider(doc, yPos, margin, contentWidth, 'dashed');
+
+  // CLÁUSULA DÉCIMA SEXTA - DECLARACIÓN DE LAS PARTES
+  doc.fontSize(11)
+     .fillColor('#7b2cbf')
+     .font('Helvetica-Bold')
+     .text('CLÁUSULA DÉCIMA SEXTA - DECLARACIÓN DE LAS PARTES:', margin + 5, yPos);
+
+  yPos += 20;
+
+  const clausula16Texto = `Las partes declaran que las ofertas iniciales realizadas por el VENDEDOR fueron meramente informativas, que cada una de las obligaciones y servicios adquiridos por el COMPRADOR se encuentran descritas detalladamente en el presente contrato. De igual manera, las partes declaran que cualquier modificación al presente contrato deberá constar por escrito y con la aceptación de ambas partes.`;
+
+  doc.fontSize(9)
+     .fillColor('#000000')
+     .font('Helvetica')
+     .text(clausula16Texto, margin + 5, yPos, {
+       width: contentWidth - 10,
+       align: 'justify',
+       lineGap: 3
+     });
+
+  yPos += 80;
+  yPos = addSectionDivider(doc, yPos, margin, contentWidth, 'solid');
+
+  // CLÁUSULA DÉCIMA SÉPTIMA - FIRMA DE DOCUMENTOS ADICIONALES
+  doc.fontSize(11)
+     .fillColor('#7b2cbf')
+     .font('Helvetica-Bold')
+     .text('CLÁUSULA DÉCIMA SÉPTIMA - FIRMA DE DOCUMENTOS ADICIONALES:', margin + 5, yPos);
+
+  yPos += 20;
+
+  const clausula17Texto = `El COMPRADOR se compromete a firmar todos los documentos adicionales que sean requeridos para el cumplimiento de las obligaciones derivadas del presente contrato, incluyendo pero no limitándose a: autorizaciones para menores de edad, permisos de viaje, documentos migratorios, formularios de aerolíneas, hoteles y otros proveedores de servicios turísticos.`;
+
+  doc.fontSize(9)
+     .fillColor('#000000')
+     .font('Helvetica')
+     .text(clausula17Texto, margin + 5, yPos, {
+       width: contentWidth - 10,
+       align: 'justify',
+       lineGap: 3
+     });
+
+  yPos += 80;
+
+  // Verificar si necesitamos nueva página
+  if (yPos > 650) {
+    doc.addPage();
+    createContractHeader(doc);
+    yPos = 120;
+  }
+
+  yPos = addSectionDivider(doc, yPos, margin, contentWidth, 'dashed');
+
+  // CLÁUSULA DÉCIMA OCTAVA - NORMAS QUE SE ENTIENDEN INCORPORADAS
+  doc.fontSize(11)
+     .fillColor('#7b2cbf')
+     .font('Helvetica-Bold')
+     .text('CLÁUSULA DÉCIMA OCTAVA - NORMAS QUE SE ENTIENDEN INCORPORADAS:', margin + 5, yPos);
+
+  yPos += 20;
+
+  const clausula18Texto = `Se entienden incorporadas al presente contrato todas las normas que regulan las actividades turísticas en Colombia, especialmente la Ley 300 de 1996 (Ley General de Turismo) y sus decretos reglamentarios, el Código de Comercio, las normas aeronáuticas civiles, las resoluciones del Ministerio de Comercio, Industria y Turismo, y demás normatividad vigente que resulte aplicable a la prestación de servicios turísticos.`;
+
+  doc.fontSize(9)
+     .fillColor('#000000')
+     .font('Helvetica')
+     .text(clausula18Texto, margin + 5, yPos, {
+       width: contentWidth - 10,
+       align: 'justify',
+       lineGap: 3
+     });
+
+  yPos += 80;
+  yPos = addSectionDivider(doc, yPos, margin, contentWidth, 'solid');
+
+  // CLÁUSULA DÉCIMA NOVENA - ACEPTACIÓN POR MENSAJE DE DATOS
+  doc.fontSize(11)
+     .fillColor('#7b2cbf')
+     .font('Helvetica-Bold')
+     .text('CLÁUSULA DÉCIMA NOVENA - ACEPTACIÓN POR MENSAJE DE DATOS:', margin + 5, yPos);
+
+  yPos += 20;
+
+  const clausula19Texto = `Las partes acuerdan que la comunicación a través de medios electrónicos, incluyendo correo electrónico, mensajes de texto SMS, WhatsApp y otras plataformas digitales, constituyen medios válidos para el intercambio de información relacionada con el presente contrato. El COMPRADOR acepta que las notificaciones, confirmaciones y comunicaciones enviadas por estos medios tienen plena validez jurídica, conforme a la Ley 527 de 1999 sobre Comercio Electrónico.`;
+
+  doc.fontSize(9)
+     .fillColor('#000000')
+     .font('Helvetica')
+     .text(clausula19Texto, margin + 5, yPos, {
+       width: contentWidth - 10,
+       align: 'justify',
+       lineGap: 3
+     });
+
+  // Footer para esta página
+  doc.fontSize(7)
+     .fillColor('#666666')
+     .text('NIT: 1032406128 | RNT: 122035 | Tel: 320 492 44 44 | Email: info@viajaya.com', 
+           margin, 750, {
+             width: contentWidth,
+             align: 'center'
+           });
+
   return yPos + 50;
 };
 
@@ -2088,6 +2252,50 @@ const generateContractPDF = async (contractData, saveToFile = true) => {
     });
 
     yPos += 20;
+
+    // ================= INFORMACIÓN DE COMUNICACIÓN ================== 
+    
+    // Texto informativo sobre comunicación telefónica
+    const textoInformativo = `Informamos que si su contrato tiene acuerdos de pagos mensuales se comunicaran del número telefónico. Numero (3209560958) recordándole la protección de la reserva Departamento que se encargara de cuidar su reserva y protegerla`;
+    
+    doc.fontSize(9)
+       .fillColor('#000000')
+       .font('Helvetica')
+       .text(textoInformativo, margin + 5, yPos, {
+         width: contentWidth - 10,
+         align: 'justify',
+         lineGap: 3
+       });
+
+    yPos += 50;
+
+    // Texto sobre evitar cambios de reserva
+    const textoEvitarCambios = `Para evitar que la reserva inicial cambie de su estado por favor cancelar sus acuerdos de pago a las siguientes cuentas bancarias:`;
+    
+    doc.fontSize(9)
+       .fillColor('#000000')
+       .font('Helvetica')
+       .text(textoEvitarCambios, margin + 5, yPos, {
+         width: contentWidth - 10,
+         align: 'justify',
+         lineGap: 3
+       });
+
+    yPos += 30;
+
+    // Información bancaria
+    const textoBancario = `Bancolombia de ahorros No 846-772-51165 cedula representante legal 1032406128`;
+    
+    doc.fontSize(9)
+       .fillColor('#7b2cbf')
+       .font('Helvetica-Bold')
+       .text(textoBancario, margin + 5, yPos, {
+         width: contentWidth - 10,
+         align: 'center',
+         lineGap: 3
+       });
+
+    yPos += 40;
 
     // ================= SECCIÓN DE FIRMAS EN DOS COLUMNAS =================
     
