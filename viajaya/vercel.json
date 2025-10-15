@@ -17,6 +17,10 @@
             "destination": "https://viajaya-mve8.onrender.com/commissions/:path*"
         },
         {
+            "source": "/commission-configs/:path*",
+            "destination": "https://viajaya-mve8.onrender.com/commission-configs/:path*"
+        },
+        {
             "source": "/quotes/:path*",
             "destination": "https://viajaya-mve8.onrender.com/quotes/:path*"
         },
@@ -71,7 +75,7 @@
     ],
     "headers": [
         {
-            "source": "/(user|auth|financial|commissions|quotes|quote-calculations|packages|purchases|payments|promotions|configs|dashboard|admin|uploads|passengers|contracts)/(.*)",
+            "source": "/(user|auth|financial|commissions|commission-configs|quotes|quote-calculations|packages|purchases|payments|promotions|configs|dashboard|admin|uploads|passengers|contracts|pack)/(.*)",
             "headers": [
                 { "key": "Access-Control-Allow-Credentials", "value": "true" },
                 { "key": "Access-Control-Allow-Origin", "value": "*" },

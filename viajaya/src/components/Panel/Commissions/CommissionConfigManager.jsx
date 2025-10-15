@@ -179,14 +179,18 @@ const CommissionConfigManager = () => {
 
       console.log('🔄 Enviando configuración limpia:', cleanData);
       console.log('👤 Usuario actual:', currentUser);
+      console.log('🎭 Rol del usuario:', currentUser?.role);
 
       if (editingConfig) {
         console.log('✏️ Actualizando configuración ID:', editingConfig.id);
-        await api.put(`/commission-configs/configs/${editingConfig.id}`, cleanData);
+        const response = await api.put(`/commission-configs/configs/${editingConfig.id}`, cleanData);
+        console.log('✅ Respuesta PUT:', response.data);
         setSuccess('Configuración actualizada exitosamente');
       } else {
         console.log('➕ Creando nueva configuración');
-        await api.post('/commission-configs/configs', cleanData);
+        console.log('🌐 URL completa:', `/commission-configs/configs`);
+        const response = await api.post('/commission-configs/configs', cleanData);
+        console.log('✅ Respuesta POST:', response.data);
         setSuccess('Configuración creada exitosamente');
       }
 
@@ -196,7 +200,16 @@ const CommissionConfigManager = () => {
     } catch (error) {
       console.error('❌ Error guardando configuración:', error);
       console.error('📄 Respuesta del error:', error.response?.data);
-      setError(error.response?.data?.message || 'Error al guardar la configuración');
+      console.error('🔢 Status del error:', error.response?.status);
+      console.error('📋 Headers de la petición:', error.config?.headers);
+      
+      if (error.response?.status === 405) {
+        setError('Error 405: Método no permitido. Verifica que las rutas del backend estén configuradas correctamente.');
+      } else if (error.response?.status === 403) {
+        setError('No tienes permisos para realizar esta acción. Se requiere rol de Admin o Owner.');
+      } else {
+        setError(error.response?.data?.message || 'Error al guardar la configuración');
+      }
     } finally {
       setLoading(false);
     }
