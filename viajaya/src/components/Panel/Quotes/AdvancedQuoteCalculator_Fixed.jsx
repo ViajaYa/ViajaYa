@@ -1,90 +1,108 @@
 /* eslint-disable react/prop-types */
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { createQuoteCalculation, upsertQuoteCalculation, fetchCalculationBaseData } from '../../../redux/slices/quoteCalculationSlice';
-import { selectUser } from '../../../redux/slices/authSlice';
-import { fetchCommissionsByTripType, selectConfiguredCommissions } from '../../../redux/slices/commissionSlice';
-import { toast } from 'react-toastify';
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  createQuoteCalculation,
+  upsertQuoteCalculation,
+  fetchCalculationBaseData,
+} from "../../../redux/slices/quoteCalculationSlice";
+import { selectUser } from "../../../redux/slices/authSlice";
+import {
+  fetchCommissionsByTripType,
+  selectConfiguredCommissions,
+} from "../../../redux/slices/commissionSlice";
+import { toast } from "react-toastify";
 
 // ✅ Helper para formatear fechas de manera segura (sin conversiones de timezone)
 const formatDateDisplay = (dateString) => {
-  if (!dateString) return '';
-  
+  if (!dateString) return "";
+
   try {
     // Si viene en formato YYYY-MM-DD, procesarlo directamente
-    const [year, month, day] = dateString.split('-');
+    const [year, month, day] = dateString.split("-");
     const date = new Date(year, month - 1, day);
-    
-    const opciones = { 
-      weekday: 'short', 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
+
+    const opciones = {
+      weekday: "short",
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     };
-    
-    return date.toLocaleDateString('es-ES', opciones);
+
+    return date.toLocaleDateString("es-ES", opciones);
   } catch (error) {
-    console.error('Error formateando fecha para display:', error);
+    console.error("Error formateando fecha para display:", error);
     return dateString; // Retornar original si hay error
   }
 };
 
 // ✅ Helper para calcular duración de manera segura
 const calculateDuration = (fechaIda, fechaVuelta) => {
-  if (!fechaIda || !fechaVuelta) return '';
-  
+  if (!fechaIda || !fechaVuelta) return "";
+
   try {
-    const [yearIda, monthIda, dayIda] = fechaIda.split('-');
-    const [yearVuelta, monthVuelta, dayVuelta] = fechaVuelta.split('-');
+    const [yearIda, monthIda, dayIda] = fechaIda.split("-");
+    const [yearVuelta, monthVuelta, dayVuelta] = fechaVuelta.split("-");
     const dateIda = new Date(yearIda, monthIda - 1, dayIda);
     const dateVuelta = new Date(yearVuelta, monthVuelta - 1, dayVuelta);
     const diffTime = dateVuelta.getTime() - dateIda.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     // Ahora las noches son igual a diffDays
-    return `${diffDays} día${diffDays !== 1 ? 's' : ''} (${diffDays} noche${diffDays !== 1 ? 's' : ''})`;
+    return `${diffDays} día${diffDays !== 1 ? "s" : ""} (${diffDays} noche${
+      diffDays !== 1 ? "s" : ""
+    })`;
   } catch (error) {
-    console.error('Error calculando duración:', error);
-    return '';
+    console.error("Error calculando duración:", error);
+    return "";
   }
 };
 
 // Utilidad para formatear fechas a 'YYYY-MM-DD' para inputs tipo date
 function formatDateForInput(dateStr) {
-  console.log('🔍 formatDateForInput - Input:', { dateStr, type: typeof dateStr });
-  
+  console.log("🔍 formatDateForInput - Input:", {
+    dateStr,
+    type: typeof dateStr,
+  });
+
   if (!dateStr) {
-    console.log('🔍 formatDateForInput - Sin fecha, retornando cadena vacía');
-    return '';
+    console.log("🔍 formatDateForInput - Sin fecha, retornando cadena vacía");
+    return "";
   }
-  
+
   // Verificar si ya está en formato YYYY-MM-DD
-  if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-    console.log('🔍 formatDateForInput - Fecha ya en formato correcto:', dateStr);
+  if (typeof dateStr === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    console.log(
+      "🔍 formatDateForInput - Fecha ya en formato correcto:",
+      dateStr
+    );
     return dateStr;
   }
-  
+
   // Si es una fecha ISO (YYYY-MM-DDTHH:mm:ss.sssZ), extraer solo la parte de la fecha
-  if (typeof dateStr === 'string' && dateStr.includes('T')) {
-    const result = dateStr.split('T')[0];
-    console.log('🔍 formatDateForInput - Extraída de ISO:', { input: dateStr, output: result });
+  if (typeof dateStr === "string" && dateStr.includes("T")) {
+    const result = dateStr.split("T")[0];
+    console.log("🔍 formatDateForInput - Extraída de ISO:", {
+      input: dateStr,
+      output: result,
+    });
     return result;
   }
-  
+
   // Para cualquier otro formato, intentar parsear sin zona horaria
   try {
-    if (typeof dateStr === 'string') {
+    if (typeof dateStr === "string") {
       // Si viene en formato DD/MM/YYYY o similar, no usar Date
-      if (dateStr.includes('/')) {
-        console.log('🔍 formatDateForInput - Formato no compatible:', dateStr);
-        return '';
+      if (dateStr.includes("/")) {
+        console.log("🔍 formatDateForInput - Formato no compatible:", dateStr);
+        return "";
       }
     }
-    
-    console.log('🔍 formatDateForInput - Formato no reconocido:', dateStr);
-    return '';
+
+    console.log("🔍 formatDateForInput - Formato no reconocido:", dateStr);
+    return "";
   } catch (error) {
-    console.log('🔍 formatDateForInput - Error:', error);
-    return '';
+    console.log("🔍 formatDateForInput - Error:", error);
+    return "";
   }
 }
 
@@ -92,17 +110,19 @@ const AdvancedQuoteCalculator = ({
   quote_id,
   onContinue,
   existingCalculation,
-  quoteData
+  quoteData,
 }) => {
   const dispatch = useDispatch();
-  const { loading, error, baseData, baseDataLoading } = useSelector(state => state.quoteCalculation || {});
+  const { loading, error, baseData, baseDataLoading } = useSelector(
+    (state) => state.quoteCalculation || {}
+  );
   const user = useSelector(selectUser);
   const configuredCommissions = useSelector(selectConfiguredCommissions);
 
   // Define default form values
   const defaultForm = {
-    quote_id: quote_id || '',
-    user_id: user?.id || '',
+    quote_id: quote_id || "",
+    user_id: user?.id || "",
     num_personas: 1,
     adultos: 1,
     menores: 0,
@@ -110,14 +130,17 @@ const AdvancedQuoteCalculator = ({
     edades_menores: [],
     edades_infantes: [],
     personas_atencion_especial: 0,
-    trip_type: '',
-  tiquetes: { costo_total: 0, fecha_ida: '', fecha_vuelta: '' },
-  hotel: { costo_total: 0 },
-  traslados: { costo_total: 0 },
-  alimentacion: { costo_total: 0 },
-  equipaje: { costo_total: 0, equipaje_extra: { incluido: false } },
-  seguros: { costo_total: 0, asistencia_medica: { tipo: 'ninguna', costo: 0 } },
-  asistencia_medica: { tipo: 'ninguna', costo: 0 },
+    trip_type: "",
+    tiquetes: { costo_total: 0, fecha_ida: "", fecha_vuelta: "" },
+    hotel: { costo_total: 0 },
+    traslados: { costo_total: 0 },
+    alimentacion: { costo_total: 0 },
+    equipaje: { costo_total: 0, equipaje_extra: { incluido: false } },
+    seguros: {
+      costo_total: 0,
+      asistencia_medica: { tipo: "ninguna", costo: 0 },
+    },
+    asistencia_medica: { tipo: "ninguna", costo: 0 },
     excursiones: [],
     actividades_adicionales: {},
     extras: [],
@@ -128,8 +151,8 @@ const AdvancedQuoteCalculator = ({
     total_ganancia: 0,
     precio_final_total: 0,
     precio_final_por_persona: 0,
-    estado: 'draft',
-    observaciones_generales: '',
+    estado: "draft",
+    observaciones_generales: "",
   };
 
   // Function to reset form to default values
@@ -137,27 +160,22 @@ const AdvancedQuoteCalculator = ({
     setForm({ ...defaultForm });
   }, [quote_id, user]);
 
-
-
   const [form, setForm] = useState({ ...defaultForm });
 
+  useEffect(() => {
+    // Si no hay existingCalculation, SIEMPRE resetea el formulario
+    if (!existingCalculation || Object.keys(existingCalculation).length === 0) {
+      resetFormToDefault();
+    }
+  }, [quote_id, user, existingCalculation, resetFormToDefault]);
 
-useEffect(() => {
-  // Si no hay existingCalculation, SIEMPRE resetea el formulario
-  if (!existingCalculation || Object.keys(existingCalculation).length === 0) {
-    resetFormToDefault();
-  }
-}, [quote_id, user, existingCalculation, resetFormToDefault]);
-
-
-  const [activeTab, setActiveTab] = useState('transporte');
+  const [activeTab, setActiveTab] = useState("transporte");
   const [shouldRecalculate, setShouldRecalculate] = useState(false);
   const prevQuoteIdRef = useRef(quote_id);
 
-
   // Calcula la cantidad de personas que pagan (adultos + menores)
   const calcularPersonasQuePagan = useCallback(() => {
-    return (parseInt(form.adultos || 0, 10) + parseInt(form.menores || 0, 10));
+    return parseInt(form.adultos || 0, 10) + parseInt(form.menores || 0, 10);
   }, [form.adultos, form.menores]);
 
   // Stub: Calcula el total de actividades y extras por persona
@@ -166,7 +184,10 @@ useEffect(() => {
     // Por ahora suma todos los extras y actividades si existen
     let total = 0;
     if (Array.isArray(form.extras)) {
-      total += form.extras.reduce((acc, ext) => acc + Number(ext.costo || 0), 0);
+      total += form.extras.reduce(
+        (acc, ext) => acc + Number(ext.costo || 0),
+        0
+      );
     }
     // Si tienes actividades adicionales, súmalas aquí
     // if (Array.isArray(form.actividades_adicionales)) { ... }
@@ -176,55 +197,67 @@ useEffect(() => {
   // Nuevo: función para pasar los datos calculados al padre
   const handleApplyCalculation = (e) => {
     e.preventDefault();
-    if (typeof onContinue === 'function') {
+    if (typeof onContinue === "function") {
       onContinue(form);
     }
   };
 
   // Cargar datos base al montar el componente
   useEffect(() => {
-    if (quote_id && quote_id !== 'new') {
+    if (quote_id && quote_id !== "new") {
       dispatch(fetchCalculationBaseData(quote_id));
     }
   }, [dispatch, quote_id]);
 
   useEffect(() => {
-    console.log('🔄 CALCULADORA: Verificando datos existentes...');
-    console.log('📋 CALCULADORA: quote_id:', quote_id);
-    console.log('📋 CALCULADORA: existingCalculation:', existingCalculation);
-    console.log('📋 CALCULADORA: quoteData:', quoteData);
+    console.log("🔄 CALCULADORA: Verificando datos existentes...");
+    console.log("📋 CALCULADORA: quote_id:", quote_id);
+    console.log("📋 CALCULADORA: existingCalculation:", existingCalculation);
+    console.log("📋 CALCULADORA: quoteData:", quoteData);
 
     // ✅ Si no hay quote_id o es 'new', resetear formulario
-    if (!quote_id || quote_id === 'new') {
-      console.log('🆕 CALCULADORA: Nueva cotización - reseteando formulario');
+    if (!quote_id || quote_id === "new") {
+      console.log("🆕 CALCULADORA: Nueva cotización - reseteando formulario");
       resetFormToDefault();
       return;
     }
 
     if (existingCalculation && Object.keys(existingCalculation).length > 0) {
-      console.log('✅ CALCULADORA: Cargando datos existentes en formulario');
+      console.log("✅ CALCULADORA: Cargando datos existentes en formulario");
 
       // ✅ CARGAR: Datos básicos
-      setForm(prevForm => ({
+      setForm((prevForm) => ({
         ...prevForm,
         quote_id: existingCalculation.quote_id || quote_id,
         user_id: existingCalculation.user_id || prevForm.user_id,
-        num_personas: existingCalculation.num_personas || quoteData?.numero_personas || 1,
+        num_personas:
+          existingCalculation.num_personas || quoteData?.numero_personas || 1,
         // ✅ NUEVOS: Cargar datos detallados de pasajeros - QuoteEdit ya distribuyó correctamente
         adultos: existingCalculation.adultos || quoteData?.adultos || 1,
         menores: existingCalculation.menores || quoteData?.menores || 0,
         infantes: existingCalculation.infantes || quoteData?.infantes || 0,
-        edades_menores: existingCalculation.edades_menores || quoteData?.edades_menores || [],
-        edades_infantes: existingCalculation.edades_infantes || quoteData?.edades_infantes || [],
-        personas_atencion_especial: existingCalculation.personas_atencion_especial || quoteData?.personas_atencion_especial || 0,
-        trip_type: existingCalculation.trip_type || quoteData?.trip_type || '',
+        edades_menores:
+          existingCalculation.edades_menores || quoteData?.edades_menores || [],
+        edades_infantes:
+          existingCalculation.edades_infantes ||
+          quoteData?.edades_infantes ||
+          [],
+        personas_atencion_especial:
+          existingCalculation.personas_atencion_especial ||
+          quoteData?.personas_atencion_especial ||
+          0,
+        trip_type: existingCalculation.trip_type || quoteData?.trip_type || "",
 
         // ✅ CARGAR: Tiquetes con formato correcto de fechas
         tiquetes: {
           ...prevForm.tiquetes,
           ...(existingCalculation.tiquetes || {}),
-          fecha_ida: formatDateForInput(existingCalculation.tiquetes?.fecha_ida) || prevForm.tiquetes.fecha_ida,
-          fecha_vuelta: formatDateForInput(existingCalculation.tiquetes?.fecha_vuelta) || prevForm.tiquetes.fecha_vuelta
+          fecha_ida:
+            formatDateForInput(existingCalculation.tiquetes?.fecha_ida) ||
+            prevForm.tiquetes.fecha_ida,
+          fecha_vuelta:
+            formatDateForInput(existingCalculation.tiquetes?.fecha_vuelta) ||
+            prevForm.tiquetes.fecha_vuelta,
         },
 
         // ✅ CARGAR: Hotel
@@ -240,18 +273,21 @@ useEffect(() => {
         equipaje: {
           ...prevForm.equipaje,
           ...(existingCalculation.equipaje || {}),
-          equipaje_extra: existingCalculation.equipaje?.equipaje_extra || prevForm.equipaje.equipaje_extra || { incluido: false }
+          equipaje_extra: existingCalculation.equipaje?.equipaje_extra ||
+            prevForm.equipaje.equipaje_extra || { incluido: false },
         },
 
         // ✅ CARGAR: Seguros
         seguros: {
           ...prevForm.seguros,
           ...(existingCalculation.seguros || {}),
-          asistencia_medica: existingCalculation.seguros?.asistencia_medica || prevForm.seguros.asistencia_medica || { tipo: 'ninguna', costo: 0 }
+          asistencia_medica: existingCalculation.seguros?.asistencia_medica ||
+            prevForm.seguros.asistencia_medica || { tipo: "ninguna", costo: 0 },
         },
 
         // ✅ CARGAR: Asistencia médica
-  asistencia_medica: existingCalculation.asistencia_medica || prevForm.asistencia_medica || { tipo: 'ninguna', costo: 0 },
+        asistencia_medica: existingCalculation.asistencia_medica ||
+          prevForm.asistencia_medica || { tipo: "ninguna", costo: 0 },
 
         // ✅ CARGAR: Excursiones
         excursiones: Array.isArray(existingCalculation.excursiones)
@@ -259,7 +295,9 @@ useEffect(() => {
           : prevForm.excursiones,
 
         // ✅ CARGAR: Actividades adicionales
-        actividades_adicionales: existingCalculation.actividades_adicionales || prevForm.actividades_adicionales,
+        actividades_adicionales:
+          existingCalculation.actividades_adicionales ||
+          prevForm.actividades_adicionales,
 
         // ✅ CARGAR: Extras
         extras: Array.isArray(existingCalculation.extras)
@@ -277,22 +315,26 @@ useEffect(() => {
         total_comisiones: existingCalculation.total_comisiones || 0,
         total_ganancia: existingCalculation.total_ganancia || 0,
         precio_final_total: existingCalculation.precio_final_total || 0,
-        precio_final_por_persona: existingCalculation.precio_final_por_persona || 0,
+        precio_final_por_persona:
+          existingCalculation.precio_final_por_persona || 0,
 
         // ✅ CARGAR: Estados y observaciones
-        estado: existingCalculation.estado || 'draft',
-        observaciones_generales: existingCalculation.observaciones_generales || ''
+        estado: existingCalculation.estado || "draft",
+        observaciones_generales:
+          existingCalculation.observaciones_generales || "",
       }));
 
-      console.log('✅ CALCULADORA: Datos cargados exitosamente');
+      console.log("✅ CALCULADORA: Datos cargados exitosamente");
       // ✅ MARCAR: Necesita recalcular después de que calcularTotales esté disponible
       setShouldRecalculate(true);
     } else {
-      console.log('ℹ️ CALCULADORA: No hay datos existentes, usando valores por defecto');
+      console.log(
+        "ℹ️ CALCULADORA: No hay datos existentes, usando valores por defecto"
+      );
 
       // ✅ CARGAR: Al menos datos básicos de la cotización
       if (quoteData) {
-        setForm(prevForm => ({
+        setForm((prevForm) => ({
           ...prevForm,
           quote_id: quote_id,
           num_personas: quoteData.numero_personas || 1,
@@ -303,7 +345,7 @@ useEffect(() => {
           edades_menores: quoteData.edades_menores || [],
           edades_infantes: quoteData.edades_infantes || [],
           personas_atencion_especial: quoteData.personas_atencion_especial || 0,
-          trip_type: quoteData.trip_type || '',
+          trip_type: quoteData.trip_type || "",
         }));
       }
     }
@@ -312,19 +354,25 @@ useEffect(() => {
   // Sincronizar número de personas y tipo de viaje desde backend al cargar datos base
   useEffect(() => {
     // ✅ Solo sincronizar si no es nueva cotización
-    if (baseData && baseData.quote_info && quote_id && quote_id !== 'new') {
-      setForm(prev => ({
+    if (baseData && baseData.quote_info && quote_id && quote_id !== "new") {
+      setForm((prev) => ({
         ...prev,
         num_personas: baseData.quote_info.numero_personas || 1,
         // ✅ NUEVOS: Cargar datos detallados desde baseData con lógica mejorada
-        adultos: baseData.quote_info.adultos ||
-          Math.max(1, (baseData.quote_info.numero_personas - (baseData.quote_info.ninos || 0))),
+        adultos:
+          baseData.quote_info.adultos ||
+          Math.max(
+            1,
+            baseData.quote_info.numero_personas -
+              (baseData.quote_info.ninos || 0)
+          ),
         menores: baseData.quote_info.menores || baseData.quote_info.ninos || 0,
         infantes: baseData.quote_info.infantes || 0,
         edades_menores: baseData.quote_info.edades_menores || [],
         edades_infantes: baseData.quote_info.edades_infantes || [],
-        personas_atencion_especial: baseData.quote_info.personas_atencion_especial || 0,
-        trip_type: baseData.quote_info.trip_type || '',
+        personas_atencion_especial:
+          baseData.quote_info.personas_atencion_especial || 0,
+        trip_type: baseData.quote_info.trip_type || "",
       }));
     }
   }, [baseData, quote_id]);
@@ -332,67 +380,85 @@ useEffect(() => {
   // Pre-llenar formulario con datos base y comisiones configuradas
   useEffect(() => {
     // ✅ Solo pre-llenar si no es nueva cotización
-    if (baseData && baseData.calculadora_defaults && quote_id && quote_id !== 'new') {
-      setForm(prev => ({
+    if (
+      baseData &&
+      baseData.calculadora_defaults &&
+      quote_id &&
+      quote_id !== "new"
+    ) {
+      setForm((prev) => ({
         ...prev,
         // Pre-llenar tiquetes
         tiquetes: {
           ...prev.tiquetes,
-          ...baseData.calculadora_defaults.tiquetes
+          ...baseData.calculadora_defaults.tiquetes,
         },
         // Pre-llenar hotel
         hotel: {
           ...prev.hotel,
-          ...baseData.calculadora_defaults.hotel
+          ...baseData.calculadora_defaults.hotel,
         },
         // Pre-llenar traslados
         traslados: {
           ...prev.traslados,
-          ...baseData.calculadora_defaults.traslados
+          ...baseData.calculadora_defaults.traslados,
         },
         // Pre-llenar alimentación
         alimentacion: {
           ...prev.alimentacion,
-          ...baseData.calculadora_defaults.alimentacion
+          ...baseData.calculadora_defaults.alimentacion,
         },
         // Pre-llenar comisiones configuradas
-        comisiones: JSON.parse(JSON.stringify(baseData.comisiones_configuradas)),
+        comisiones: JSON.parse(
+          JSON.stringify(baseData.comisiones_configuradas)
+        ),
         // Fechas
         fecha_viaje_inicio: baseData.calculadora_defaults.fecha_viaje_inicio,
-        fecha_viaje_fin: baseData.calculadora_defaults.fecha_viaje_fin
+        fecha_viaje_fin: baseData.calculadora_defaults.fecha_viaje_fin,
       }));
     }
   }, [baseData, quote_id]);
 
   // ✅ DEBUG: useEffect para monitorear cambios en datos de personas
   useEffect(() => {
-    console.log('👥 DEBUG datos de personas:', {
+    console.log("👥 DEBUG datos de personas:", {
       num_personas: form.num_personas,
       adultos: form.adultos,
       menores: form.menores,
       infantes: form.infantes,
-      calcularPersonasQuePagan: calcularPersonasQuePagan()
+      calcularPersonasQuePagan: calcularPersonasQuePagan(),
     });
   }, [form.num_personas, form.adultos, form.menores, form.infantes]);
 
   // ✅ NUEVO: Actualizar comisiones cuando cambia el trip_type
   useEffect(() => {
     if (form.trip_type && quote_id) {
-      console.log('🔄 Trip type cambió, recargando comisiones para:', form.trip_type);
-      dispatch(fetchCommissionsByTripType({
-        quoteId: quote_id,
-        tripType: form.trip_type
-      }));
+      console.log(
+        "🔄 Trip type cambió, recargando comisiones para:",
+        form.trip_type
+      );
+      dispatch(
+        fetchCommissionsByTripType({
+          quoteId: quote_id,
+          tripType: form.trip_type,
+        })
+      );
     }
   }, [form.trip_type, quote_id, dispatch]);
 
   // ✅ Aplicar las nuevas comisiones configuradas cuando se cargan
   useEffect(() => {
-    if (configuredCommissions && Object.keys(configuredCommissions).length > 0) {
-      console.log('✅ Aplicando nuevas comisiones configuradas:', configuredCommissions);
-      setForm(prev => ({
+    if (
+      configuredCommissions &&
+      Object.keys(configuredCommissions).length > 0
+    ) {
+      console.log(
+        "✅ Aplicando nuevas comisiones configuradas:",
+        configuredCommissions
+      );
+      setForm((prev) => ({
         ...prev,
-        comisiones: JSON.parse(JSON.stringify(configuredCommissions))
+        comisiones: JSON.parse(JSON.stringify(configuredCommissions)),
       }));
     }
   }, [configuredCommissions]);
@@ -400,17 +466,26 @@ useEffect(() => {
   // ✅ NUEVO: Detectar cambio de cotización y resetear formulario para nueva cotización
   useEffect(() => {
     // Si cambia quote_id y es una nueva cotización, resetear completamente
-    if (quote_id && prevQuoteIdRef.current && quote_id !== prevQuoteIdRef.current && quote_id === 'new') {
-      console.log('🔄 CALCULADORA: Detectado cambio a nueva cotización, reseteando formulario');
+    if (
+      quote_id &&
+      prevQuoteIdRef.current &&
+      quote_id !== prevQuoteIdRef.current &&
+      quote_id === "new"
+    ) {
+      console.log(
+        "🔄 CALCULADORA: Detectado cambio a nueva cotización, reseteando formulario"
+      );
       resetFormToDefault();
     }
-    
+
     // Si no hay cálculo existente y es una nueva cotización, asegurar reset limpio
-    if (quote_id === 'new' && !existingCalculation) {
-      console.log('🔄 CALCULADORA: Nueva cotización sin datos existentes, aplicando reset limpio');
+    if (quote_id === "new" && !existingCalculation) {
+      console.log(
+        "🔄 CALCULADORA: Nueva cotización sin datos existentes, aplicando reset limpio"
+      );
       resetFormToDefault();
     }
-    
+
     // Actualizar referencia
     prevQuoteIdRef.current = quote_id;
   }, [quote_id, existingCalculation, resetFormToDefault]);
@@ -421,32 +496,15 @@ useEffect(() => {
     const numPersonas = parseInt(form.num_personas || 1);
     const personasQuePagan = calcularPersonasQuePagan(); // ✅ Solo adultos + menores
 
-    console.log('🧮 DEBUGGING CALCULAR TOTALES:');
-  console.log('Personas que pagan:', personasQuePagan);
-  console.log('Tiquetes costo_total (por persona):', form.tiquetes?.costo_total);
-  console.log('Hotel costo_total (por persona):', form.hotel?.costo_total);
-  console.log('Traslados costo_total (por persona):', form.traslados?.costo_total);
-  console.log('Alimentacion costo_total (por persona):', form.alimentacion?.costo_total);
+    costoBase += parseFloat(form.tiquetes?.costo_total || 0);
+    costoBase += parseFloat(form.traslados?.costo_total || 0);
+    costoBase += parseFloat(form.hotel?.costo_total || 0);
+    costoBase += parseFloat(form.alimentacion?.costo_total || 0);
+    costoBase += parseFloat(form.equipaje?.costo_total || 0);
+    costoBase += parseFloat(form.seguros?.costo_total || 0);
+    costoBase += parseFloat(form.seguros?.asistencia_medica?.costo || 0);
 
-  // ✅ CORREGIDO: Los costos son POR PERSONA, NO multiplicar por personas que pagan
-  // Ya que el backend convertirá estos valores correctamente a items del contrato
-  costoBase += parseFloat(form.tiquetes?.costo_total || 0);
-  costoBase += parseFloat(form.traslados?.costo_total || 0);
-  costoBase += parseFloat(form.hotel?.costo_total || 0);
-  costoBase += parseFloat(form.alimentacion?.costo_total || 0);
-  costoBase += parseFloat(form.equipaje?.costo_total || 0);
-  costoBase += parseFloat(form.seguros?.costo_total || 0);
-  costoBase += parseFloat(form.seguros?.asistencia_medica?.costo || 0);
-
-  console.log('🎯 COSTO BASE DESPUÉS DE SERVICIOS BÁSICOS:');
-  console.log('- Tiquetes (por persona):', parseFloat(form.tiquetes?.costo_total || 0));
-  console.log('- Hotel (por persona):', parseFloat(form.hotel?.costo_total || 0));
-  console.log('- Traslados (por persona):', parseFloat(form.traslados?.costo_total || 0));
-  console.log('- Alimentación (por persona):', parseFloat(form.alimentacion?.costo_total || 0));
-  console.log('- Equipaje (por persona):', parseFloat(form.equipaje?.costo_total || 0));
-  console.log('- Seguros (por persona):', parseFloat(form.seguros?.costo_total || 0));
-  console.log('- Asistencia médica (por persona):', parseFloat(form.seguros?.asistencia_medica?.costo || 0));
-  console.log('- Costo base POR PERSONA:', costoBase);
+    // ✅ ACTUALIZADO: Calcular extras combinados según el nuevo sistema
 
     // ✅ ACTUALIZADO: Calcular extras combinados según el nuevo sistema
     let totalExtrasPersonas = 0;
@@ -455,9 +513,10 @@ useEffect(() => {
     if (form.actividades_adicionales?.incluidas) {
       // Actividades básicas agregadas (por persona)
       if (form.actividades_adicionales?.actividades?.length > 0) {
-        const totalActividades = form.actividades_adicionales.actividades.reduce((acc, actividad) => {
-          return acc + parseFloat(actividad.costo || 0);
-        }, 0);
+        const totalActividades =
+          form.actividades_adicionales.actividades.reduce((acc, actividad) => {
+            return acc + parseFloat(actividad.costo || 0);
+          }, 0);
         totalExtrasPersonas += totalActividades;
       }
 
@@ -479,57 +538,78 @@ useEffect(() => {
     }
 
     // Sumar al costo base: extras por persona se multiplican por personas que pagan
-    costoBase += (totalExtrasPersonas * personasQuePagan) + totalExtrasGenerales;
+    costoBase += totalExtrasPersonas * personasQuePagan + totalExtrasGenerales;
 
     // ✅ AHORA multiplicar el costo base por personas que pagan para obtener el total del viaje
     const costoBaseTotalViaje = costoBase * personasQuePagan;
-
-    console.log('🎯 COSTO BASE FINAL:');
-    console.log('- Costo base por persona:', costoBase);
-    console.log('- Personas que pagan:', personasQuePagan);
-    console.log('- Costo base total del viaje:', costoBaseTotalViaje);
-    console.log('- Total extras por persona:', totalExtrasPersonas, 'x', personasQuePagan, '=', totalExtrasPersonas * personasQuePagan);
-    console.log('- Total extras generales:', totalExtrasGenerales);
 
     // Calcular comisiones sobre el costo base TOTAL del viaje
     let totalComisiones = 0;
     // Helper: ensure all roles exist with default structure
     const defaultRoles = {
-      asesor: { porcentaje: 0, valor_fijo: 0, valor_por_persona: 0, tipo_calculo: 'percentage', total: 0 },
-      lider: { porcentaje: 0, valor_fijo: 0, valor_por_persona: 0, tipo_calculo: 'percentage', total: 0 },
-      gerente: { porcentaje: 0, valor_fijo: 0, valor_por_persona: 0, tipo_calculo: 'percentage', total: 0 },
-      admin: { porcentaje: 0, valor_fijo: 0, valor_por_persona: 0, tipo_calculo: 'percentage', total: 0 }
+      asesor: {
+        porcentaje: 0,
+        valor_fijo: 0,
+        valor_por_persona: 0,
+        tipo_calculo: "percentage",
+        total: 0,
+      },
+      lider: {
+        porcentaje: 0,
+        valor_fijo: 0,
+        valor_por_persona: 0,
+        tipo_calculo: "percentage",
+        total: 0,
+      },
+      gerente: {
+        porcentaje: 0,
+        valor_fijo: 0,
+        valor_por_persona: 0,
+        tipo_calculo: "percentage",
+        total: 0,
+      },
+      admin: {
+        porcentaje: 0,
+        valor_fijo: 0,
+        valor_por_persona: 0,
+        tipo_calculo: "percentage",
+        total: 0,
+      },
     };
-    const comisionesActualizadas = { ...defaultRoles, ...(form.comisiones || {}) };
+    const comisionesActualizadas = {
+      ...defaultRoles,
+      ...(form.comisiones || {}),
+    };
 
     if (costoBaseTotalViaje > 0) {
-      Object.keys(comisionesActualizadas).forEach(rol => {
-        if (rol !== 'total_comisiones' && comisionesActualizadas[rol]) {
+      Object.keys(comisionesActualizadas).forEach((rol) => {
+        if (rol !== "total_comisiones" && comisionesActualizadas[rol]) {
           const comision = comisionesActualizadas[rol];
           let totalRol = 0;
 
           // Calcular según el tipo de comisión
-          if (comision.tipo_calculo === 'fixed_per_person') {
+          if (comision.tipo_calculo === "fixed_per_person") {
             // ✅ CORRECTO: Solo se comisiona por personas que pagan (excluye infantes <2 años)
-            totalRol = parseFloat(comision.valor_por_persona || 0) * personasQuePagan;
-          } else if (comision.tipo_calculo === 'percentage') {
+            totalRol =
+              parseFloat(comision.valor_por_persona || 0) * personasQuePagan;
+          } else if (comision.tipo_calculo === "percentage") {
             const porcentaje = parseFloat(comision.porcentaje || 0);
-            totalRol = costoBaseTotalViaje * porcentaje / 100;
-          } else if (comision.tipo_calculo === 'fixed_total') {
+            totalRol = (costoBaseTotalViaje * porcentaje) / 100;
+          } else if (comision.tipo_calculo === "fixed_total") {
             totalRol = parseFloat(comision.valor_fijo || 0);
           }
 
           comisionesActualizadas[rol] = {
             ...comisionesActualizadas[rol],
-            total: totalRol
+            total: totalRol,
           };
           totalComisiones += totalRol;
         }
       });
     } else {
       // Si no hay costo base, todas las comisiones son 0
-      Object.keys(comisionesActualizadas).forEach(rol => {
-        if (rol !== 'total_comisiones' && comisionesActualizadas[rol]) {
+      Object.keys(comisionesActualizadas).forEach((rol) => {
+        if (rol !== "total_comisiones" && comisionesActualizadas[rol]) {
           comisionesActualizadas[rol].total = 0;
         }
       });
@@ -540,32 +620,28 @@ useEffect(() => {
     // Calcular ganancia sobre el costo base total del viaje (sin comisiones)
     const porcentajeGanancia = parseFloat(form.ganancia.porcentaje || 0);
     const valorFijoGanancia = parseFloat(form.ganancia.valor_fijo || 0);
-    const totalGanancia = (costoBaseTotalViaje * porcentajeGanancia / 100) + valorFijoGanancia;
+    const totalGanancia =
+      (costoBaseTotalViaje * porcentajeGanancia) / 100 + valorFijoGanancia;
 
     // Precio final = costo base total + comisiones + ganancia
-    const precioFinalTotal = costoBaseTotalViaje + totalComisiones + totalGanancia;
-    const precioFinalPorPersona = personasQuePagan > 0 ? precioFinalTotal / personasQuePagan : 0; // ✅ Dividir por personas que pagan
+    const precioFinalTotal =
+      costoBaseTotalViaje + totalComisiones + totalGanancia;
+    const precioFinalPorPersona =
+      personasQuePagan > 0 ? precioFinalTotal / personasQuePagan : 0; // ✅ Dividir por personas que pagan
 
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
       costo_base: costoBaseTotalViaje, // ✅ Guardar el costo base total del viaje
       comisiones: comisionesActualizadas,
       total_comisiones: totalComisiones,
       ganancia: {
         ...prev.ganancia,
-        total: totalGanancia
+        total: totalGanancia,
       },
       total_ganancia: totalGanancia,
       precio_final_total: precioFinalTotal,
-      precio_final_por_persona: precioFinalPorPersona
+      precio_final_por_persona: precioFinalPorPersona,
     }));
-    
-    console.log('🎯 RESULTADO FINAL CALCULAR TOTALES:');
-    console.log('- Costo Base Total del Viaje:', costoBaseTotalViaje);
-    console.log('- Total Comisiones:', totalComisiones);
-    console.log('- Total Ganancia:', totalGanancia);
-    console.log('- Precio Final Total:', precioFinalTotal);
-    console.log('- Precio Final Por Persona (', personasQuePagan, 'que pagan):', precioFinalPorPersona);
   }, [
     form.tiquetes.costo_total,
     form.traslados.costo_total,
@@ -579,31 +655,33 @@ useEffect(() => {
     form.actividades_adicionales?.costo_por_persona,
     form.actividades_adicionales?.incluidas,
     form.extras,
-  form.comisiones?.asesor?.porcentaje,
-  form.comisiones?.asesor?.valor_fijo,
-  form.comisiones?.asesor?.valor_por_persona,
-  form.comisiones?.lider?.porcentaje,
-  form.comisiones?.lider?.valor_fijo,
-  form.comisiones?.lider?.valor_por_persona,
-  form.comisiones?.gerente?.porcentaje,
-  form.comisiones?.gerente?.valor_fijo,
-  form.comisiones?.gerente?.valor_por_persona,
-  form.comisiones?.admin?.porcentaje,
-  form.comisiones?.admin?.valor_fijo,
-  form.comisiones?.admin?.valor_por_persona,
+    form.comisiones?.asesor?.porcentaje,
+    form.comisiones?.asesor?.valor_fijo,
+    form.comisiones?.asesor?.valor_por_persona,
+    form.comisiones?.lider?.porcentaje,
+    form.comisiones?.lider?.valor_fijo,
+    form.comisiones?.lider?.valor_por_persona,
+    form.comisiones?.gerente?.porcentaje,
+    form.comisiones?.gerente?.valor_fijo,
+    form.comisiones?.gerente?.valor_por_persona,
+    form.comisiones?.admin?.porcentaje,
+    form.comisiones?.admin?.valor_fijo,
+    form.comisiones?.admin?.valor_por_persona,
     form.ganancia.porcentaje,
     form.ganancia.valor_fijo,
     form.num_personas,
     // ✅ NUEVAS: Dependencias para recalcular cuando cambian los pasajeros
     form.adultos,
     form.menores,
-    form.infantes
+    form.infantes,
   ]);
 
   // ✅ RECALCULAR: Cuando se cargan datos existentes
   useEffect(() => {
     if (shouldRecalculate) {
-      console.log('🔄 CALCULADORA: Recalculando totales después de cargar datos existentes...');
+      console.log(
+        "🔄 CALCULADORA: Recalculando totales después de cargar datos existentes..."
+      );
       calcularTotales();
       setShouldRecalculate(false);
     }
@@ -612,48 +690,50 @@ useEffect(() => {
   // Pre-llenar formulario con datos base
   useEffect(() => {
     if (baseData && baseData.calculadora_defaults) {
-      setForm(prev => ({
+      setForm((prev) => ({
         ...prev,
         // Pre-llenar tiquetes
         tiquetes: {
           ...prev.tiquetes,
-          ...baseData.calculadora_defaults.tiquetes
+          ...baseData.calculadora_defaults.tiquetes,
         },
 
         // Pre-llenar hotel
         hotel: {
           ...prev.hotel,
-          ...baseData.calculadora_defaults.hotel
+          ...baseData.calculadora_defaults.hotel,
         },
 
         // Pre-llenar traslados
         traslados: {
           ...prev.traslados,
-          ...baseData.calculadora_defaults.traslados
+          ...baseData.calculadora_defaults.traslados,
         },
 
         // Pre-llenar alimentación
         alimentacion: {
           ...prev.alimentacion,
-          ...baseData.calculadora_defaults.alimentacion
+          ...baseData.calculadora_defaults.alimentacion,
         },
 
         // Pre-llenar comisiones configuradas
-        comisiones: JSON.parse(JSON.stringify(baseData.comisiones_configuradas)),
+        comisiones: JSON.parse(
+          JSON.stringify(baseData.comisiones_configuradas)
+        ),
 
         // Fechas
         fecha_viaje_inicio: baseData.calculadora_defaults.fecha_viaje_inicio,
-        fecha_viaje_fin: baseData.calculadora_defaults.fecha_viaje_fin
+        fecha_viaje_fin: baseData.calculadora_defaults.fecha_viaje_fin,
       }));
     }
   }, [baseData]);
 
   const handleSimpleInputChange = (field, value) => {
-  setForm(prev => ({
-    ...prev,
-    [field]: value
-  }));
-};
+    setForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
 
   useEffect(() => {
     calcularTotales();
@@ -662,21 +742,33 @@ useEffect(() => {
   // Actualizar comisiones cuando cambie el tipo de viaje
   useEffect(() => {
     if (quote_id && form.trip_type) {
-      console.log('🔄 Tipo de viaje cambió a:', form.trip_type, '- Obteniendo nuevas comisiones...');
-      dispatch(fetchCommissionsByTripType({
-        quoteId: quote_id,
-        tripType: form.trip_type
-      }));
+      console.log(
+        "🔄 Tipo de viaje cambió a:",
+        form.trip_type,
+        "- Obteniendo nuevas comisiones..."
+      );
+      dispatch(
+        fetchCommissionsByTripType({
+          quoteId: quote_id,
+          tripType: form.trip_type,
+        })
+      );
     }
   }, [form.trip_type, quote_id, dispatch]);
 
   // Aplicar comisiones configuradas cuando se reciban
   useEffect(() => {
-    if (configuredCommissions && Object.keys(configuredCommissions).length > 0) {
-      console.log('✅ Aplicando nuevas comisiones configuradas:', configuredCommissions);
-      setForm(prev => ({
+    if (
+      configuredCommissions &&
+      Object.keys(configuredCommissions).length > 0
+    ) {
+      console.log(
+        "✅ Aplicando nuevas comisiones configuradas:",
+        configuredCommissions
+      );
+      setForm((prev) => ({
         ...prev,
-        comisiones: JSON.parse(JSON.stringify(configuredCommissions))
+        comisiones: JSON.parse(JSON.stringify(configuredCommissions)),
       }));
     }
   }, [configuredCommissions]);
@@ -684,38 +776,45 @@ useEffect(() => {
   // ✅ NUEVO: useEffect para recalcular noches cuando cambien las fechas
   useEffect(() => {
     if (form.tiquetes?.fecha_ida && form.tiquetes?.fecha_vuelta) {
-      const fechaIdaDate = new Date(form.tiquetes.fecha_ida + 'T00:00:00');
-      const fechaVueltaDate = new Date(form.tiquetes.fecha_vuelta + 'T00:00:00');
-      
+      const fechaIdaDate = new Date(form.tiquetes.fecha_ida + "T00:00:00");
+      const fechaVueltaDate = new Date(
+        form.tiquetes.fecha_vuelta + "T00:00:00"
+      );
+
       if (fechaVueltaDate > fechaIdaDate) {
         const diffTime = fechaVueltaDate.getTime() - fechaIdaDate.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         const noches = diffDays;
-        
+
         // Solo actualizar si es diferente para evitar loops infinitos
         if (form.hotel.noches !== noches) {
-          console.log('🏨 RECALCULANDO NOCHES EN useEffect:', {
+          console.log("🏨 RECALCULANDO NOCHES EN useEffect:", {
             fechaIda: form.tiquetes.fecha_ida,
             fechaVuelta: form.tiquetes.fecha_vuelta,
             nochesCalculadas: noches,
-            nochesActuales: form.hotel.noches
+            nochesActuales: form.hotel.noches,
           });
-          
-          setForm(prev => ({
+
+          setForm((prev) => ({
             ...prev,
             hotel: {
               ...prev.hotel,
               noches: noches,
-              costo_total: noches * parseFloat(prev.hotel.costo_noche || 0)
-            }
+              costo_total: noches * parseFloat(prev.hotel.costo_noche || 0),
+            },
           }));
         }
       }
     }
-  }, [form.tiquetes?.fecha_ida, form.tiquetes?.fecha_vuelta, form.hotel.costo_noche, form.hotel.noches]);
+  }, [
+    form.tiquetes?.fecha_ida,
+    form.tiquetes?.fecha_vuelta,
+    form.hotel.costo_noche,
+    form.hotel.noches,
+  ]);
 
   const handleInputChange = (categoria, campo, valor, subcampo = null) => {
-    setForm(prev => {
+    setForm((prev) => {
       const newForm = JSON.parse(JSON.stringify(prev));
 
       if (!categoria) {
@@ -723,39 +822,51 @@ useEffect(() => {
         newForm[campo] = valor;
       } else if (subcampo) {
         // Si el campo es 'equipaje_extra' y no existe, inicializarlo
-        if (categoria === 'equipaje' && campo === 'equipaje_extra' && !newForm.equipaje.equipaje_extra) {
+        if (
+          categoria === "equipaje" &&
+          campo === "equipaje_extra" &&
+          !newForm.equipaje.equipaje_extra
+        ) {
           newForm.equipaje.equipaje_extra = { incluido: false };
         }
         // Si el campo es 'asistencia_medica' y no existe, inicializarlo
-        if (categoria === 'seguros' && campo === 'asistencia_medica' && !newForm.seguros.asistencia_medica) {
-          newForm.seguros.asistencia_medica = { tipo: 'ninguna', costo: 0 };
+        if (
+          categoria === "seguros" &&
+          campo === "asistencia_medica" &&
+          !newForm.seguros.asistencia_medica
+        ) {
+          newForm.seguros.asistencia_medica = { tipo: "ninguna", costo: 0 };
         }
         newForm[categoria][campo][subcampo] = valor;
 
         // Recalcular totales de categoría específica
-        if (categoria === 'tiquetes') {
+        if (categoria === "tiquetes") {
           newForm.tiquetes.costo_total =
             parseFloat(newForm.tiquetes.costo_ida || 0) +
             parseFloat(newForm.tiquetes.costo_vuelta || 0);
-        } else if (categoria === 'hotel') {
+        } else if (categoria === "hotel") {
           newForm.hotel.costo_total =
             parseFloat(newForm.hotel.noches || 0) *
             parseFloat(newForm.hotel.costo_noche || 0);
-        } else if (categoria === 'traslados') {
+        } else if (categoria === "traslados") {
           let totalTraslados = 0;
 
           // Sumar aeropuerto_hotel_ida si está incluido
           if (newForm.traslados.aeropuerto_hotel_ida.incluido) {
-            totalTraslados += parseFloat(newForm.traslados.aeropuerto_hotel_ida.costo || 0);
+            totalTraslados += parseFloat(
+              newForm.traslados.aeropuerto_hotel_ida.costo || 0
+            );
           }
 
           // Sumar hotel_aeropuerto_vuelta si está incluido
           if (newForm.traslados.hotel_aeropuerto_vuelta.incluido) {
-            totalTraslados += parseFloat(newForm.traslados.hotel_aeropuerto_vuelta.costo || 0);
+            totalTraslados += parseFloat(
+              newForm.traslados.hotel_aeropuerto_vuelta.costo || 0
+            );
           }
 
           // Sumar otros traslados
-          (newForm.traslados.otros || []).forEach(traslado => {
+          (newForm.traslados.otros || []).forEach((traslado) => {
             totalTraslados += parseFloat(traslado.costo || 0);
           });
 
@@ -765,46 +876,57 @@ useEffect(() => {
         newForm[categoria][campo] = valor;
 
         // ✅ CORREGIDO: Calcular automáticamente noches del hotel cuando cambien las fechas
-        if (categoria === 'tiquetes' && (campo === 'fecha_ida' || campo === 'fecha_vuelta')) {
+        if (
+          categoria === "tiquetes" &&
+          (campo === "fecha_ida" || campo === "fecha_vuelta")
+        ) {
           const fechaIda = newForm.tiquetes.fecha_ida;
           const fechaVuelta = newForm.tiquetes.fecha_vuelta;
-          
+
           if (fechaIda && fechaVuelta) {
-            const fechaIdaDate = new Date(fechaIda + 'T00:00:00');
-            const fechaVueltaDate = new Date(fechaVuelta + 'T00:00:00');
-            
+            const fechaIdaDate = new Date(fechaIda + "T00:00:00");
+            const fechaVueltaDate = new Date(fechaVuelta + "T00:00:00");
+
             if (fechaVueltaDate > fechaIdaDate) {
-              const diffTime = fechaVueltaDate.getTime() - fechaIdaDate.getTime();
+              const diffTime =
+                fechaVueltaDate.getTime() - fechaIdaDate.getTime();
               const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
               const noches = diffDays; // ✅ CORREGIDO: Las noches son igual a los días de diferencia
-              
-              console.log('🏨 CÁLCULO DE NOCHES:', {
+
+              console.log("🏨 CÁLCULO DE NOCHES:", {
                 fechaIda,
                 fechaVuelta,
                 fechaIdaDate,
                 fechaVueltaDate,
                 diffTime,
                 diffDays,
-                noches
+                noches,
               });
-              
+
               // Actualizar automáticamente las noches del hotel
               newForm.hotel.noches = noches;
-              
+
               // Recalcular costo total del hotel si ya hay costo por noche
               if (newForm.hotel.costo_noche) {
-                newForm.hotel.costo_total = noches * parseFloat(newForm.hotel.costo_noche || 0);
+                newForm.hotel.costo_total =
+                  noches * parseFloat(newForm.hotel.costo_noche || 0);
               }
             }
           }
         }
 
         // Recalcular totales cuando cambian campos directos de categoría
-        if (categoria === 'tiquetes' && (campo === 'costo_ida' || campo === 'costo_vuelta')) {
+        if (
+          categoria === "tiquetes" &&
+          (campo === "costo_ida" || campo === "costo_vuelta")
+        ) {
           newForm.tiquetes.costo_total =
             parseFloat(newForm.tiquetes.costo_ida || 0) +
             parseFloat(newForm.tiquetes.costo_vuelta || 0);
-        } else if (categoria === 'hotel' && (campo === 'noches' || campo === 'costo_noche')) {
+        } else if (
+          categoria === "hotel" &&
+          (campo === "noches" || campo === "costo_noche")
+        ) {
           newForm.hotel.costo_total =
             parseFloat(newForm.hotel.noches || 0) *
             parseFloat(newForm.hotel.costo_noche || 0);
@@ -817,105 +939,76 @@ useEffect(() => {
 
   // ✅ NUEVO: Funciones para manejar excursiones
   const addExcursion = () => {
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
-      excursiones: [...prev.excursiones, {
-        nombre: '',
-        descripcion: '',
-        duracion: '',
-        costo: 0,
-        proveedor: '',
-        obligatoria: false
-      }]
+      excursiones: [
+        ...prev.excursiones,
+        {
+          nombre: "",
+          descripcion: "",
+          duracion: "",
+          costo: 0,
+          proveedor: "",
+          obligatoria: false,
+        },
+      ],
     }));
   };
 
   const removeExcursion = (index) => {
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
-      excursiones: prev.excursiones.filter((_, i) => i !== index)
+      excursiones: prev.excursiones.filter((_, i) => i !== index),
     }));
   };
 
   const handleExcursionChange = (index, field, value) => {
-    setForm(prev => {
+    setForm((prev) => {
       const newExcursiones = [...prev.excursiones];
       newExcursiones[index][field] = value;
       return {
         ...prev,
-        excursiones: newExcursiones
+        excursiones: newExcursiones,
       };
     });
   };
 
   // ✅ NUEVO: Funciones para manejar extras
   const addExtra = () => {
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
-      extras: [...prev.extras, {
-        nombre: '',
-        descripcion: '',
-        costo: 0,
-        proveedor: ''
-      }]
+      extras: [
+        ...prev.extras,
+        {
+          nombre: "",
+          descripcion: "",
+          costo: 0,
+          proveedor: "",
+        },
+      ],
     }));
   };
 
   const removeExtra = (index) => {
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
-      extras: prev.extras.filter((_, i) => i !== index)
+      extras: prev.extras.filter((_, i) => i !== index),
     }));
   };
 
   const handleExtraChange = (index, field, value) => {
-    setForm(prev => {
+    setForm((prev) => {
       const newExtras = [...prev.extras];
       newExtras[index][field] = value;
       return {
         ...prev,
-        extras: newExtras
+        extras: newExtras,
       };
     });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    console.log("📤 COMPONENTE: Iniciando envío de datos al backend");
-    console.log("📋 COMPONENTE: Datos del formulario completo:", form);
-
-    // ✅ AGREGAR: Log detallado de cada sección
-    console.log("✈️ COMPONENTE: Tiquetes:", form.tiquetes);
-    console.log("🏨 COMPONENTE: Hotel:", form.hotel);
-    console.log("🚗 COMPONENTE: Traslados:", form.traslados);
-    console.log("🍽️ COMPONENTE: Alimentación:", form.alimentacion);
-    console.log("🛡️ COMPONENTE: Seguros:", form.seguros);
-    console.log("🎒 COMPONENTE: Equipaje:", form.equipaje);
-    console.log("🏥 COMPONENTE: Asistencia médica:", form.seguros?.asistencia_medica);
-    console.log("🎯 COMPONENTE: Excursiones:", form.excursiones);
-    console.log("🎪 COMPONENTE: Actividades adicionales:", form.actividades_adicionales);
-    console.log("➕ COMPONENTE: Extras:", form.extras);
-
-    // ✅ AGREGAR: Log de comisiones y totales
-    console.log("💼 COMPONENTE: Comisiones:", form.comisiones);
-    console.log("💰 COMPONENTE: Ganancia:", form.ganancia);
-
-    // ✅ AGREGAR: Log de totales calculados
-    console.log("📊 COMPONENTE: Totales calculados:");
-    console.log("  - Costo base:", form.costo_base);
-    console.log("  - Total comisiones:", form.total_comisiones);
-    console.log("  - Total ganancia:", form.total_ganancia);
-    console.log("  - Precio final total:", form.precio_final_total);
-    console.log("  - Precio final por persona:", form.precio_final_por_persona);
-
-    // ✅ AGREGAR: Log de configuración
-    console.log("⚙️ COMPONENTE: Configuración:");
-    console.log("  - Quote ID:", form.quote_id);
-    console.log("  - User ID:", form.user_id);
-    console.log("  - Número de personas:", form.num_personas);
-    console.log("  - Tipo de viaje:", form.trip_type);
-    console.log("  - Estado:", form.estado);
 
     // ✅ AGREGAR: Validaciones básicas antes de enviar
     if (!form.quote_id) {
@@ -930,38 +1023,23 @@ useEffect(() => {
       return;
     }
 
-   // ✅ VALIDACIÓN: Verificar que trip_type esté seleccionado
-  if (!form.trip_type) {
-    alert("Por favor selecciona el tipo de viaje antes de guardar la cotización");
-    return;
-  }
-  
-  // ✅ VALIDACIÓN: Verificar que hay un precio calculado
-  if (form.precio_final_total <= 0) {
-    console.warn("⚠️ COMPONENTE: Advertencia - El precio final es 0 o negativo");
-    if (!confirm("El precio final es $0. ¿Deseas continuar?")) {
+    // ✅ VALIDACIÓN: Verificar que trip_type esté seleccionado
+    if (!form.trip_type) {
+      alert(
+        "Por favor selecciona el tipo de viaje antes de guardar la cotización"
+      );
       return;
     }
-  }
 
-    console.log("📤 COMPONENTE: Enviando datos vía dispatch...");
-
-    // ✅ NUEVO: Log específico para debugging de excursiones/extras antes de enviar
-    console.log("🔍 DEBUGGING EXCURSIONES/EXTRAS ANTES DE ENVIAR:");
-    console.log("  - Excursiones:", {
-      length: form.excursiones?.length || 0,
-      data: form.excursiones,
-      isArray: Array.isArray(form.excursiones)
-    });
-    console.log("  - Extras:", {
-      length: form.extras?.length || 0,
-      data: form.extras,
-      isArray: Array.isArray(form.extras)
-    });
-    console.log("  - Actividades adicionales:", {
-      incluidas: form.actividades_adicionales?.incluidas,
-      data: form.actividades_adicionales,
-    });
+    // ✅ VALIDACIÓN: Verificar que hay un precio calculado
+    if (form.precio_final_total <= 0) {
+      console.warn(
+        "⚠️ COMPONENTE: Advertencia - El precio final es 0 o negativo"
+      );
+      if (!confirm("El precio final es $0. ¿Deseas continuar?")) {
+        return;
+      }
+    }
 
     // ✅ NUEVO: Combinar todas las actividades en un solo array de "extras"
     const combinedExtras = [];
@@ -970,14 +1048,14 @@ useEffect(() => {
     if (form.actividades_adicionales?.incluidas) {
       // Agregar actividades básicas si existen
       if (form.actividades_adicionales?.actividades?.length > 0) {
-        form.actividades_adicionales.actividades.forEach(actividad => {
+        form.actividades_adicionales.actividades.forEach((actividad) => {
           if (actividad.descripcion && actividad.costo > 0) {
             combinedExtras.push({
               nombre: actividad.descripcion,
               descripcion: actividad.descripcion,
               costo: parseFloat(actividad.costo),
-              proveedor: actividad.proveedor || '',
-              tipo: 'actividad_basica'
+              proveedor: actividad.proveedor || "",
+              tipo: "actividad_basica",
             });
           }
         });
@@ -985,14 +1063,14 @@ useEffect(() => {
 
       // Agregar excursiones
       if (form.excursiones?.length > 0) {
-        form.excursiones.forEach(excursion => {
+        form.excursiones.forEach((excursion) => {
           if (excursion.nombre && excursion.costo > 0) {
             combinedExtras.push({
               nombre: excursion.nombre,
-              descripcion: excursion.descripcion || '',
+              descripcion: excursion.descripcion || "",
               costo: parseFloat(excursion.costo),
-              proveedor: excursion.proveedor || '',
-              tipo: 'excursion'
+              proveedor: excursion.proveedor || "",
+              tipo: "excursion",
             });
           }
         });
@@ -1000,69 +1078,47 @@ useEffect(() => {
 
       // Agregar extras
       if (form.extras?.length > 0) {
-        form.extras.forEach(extra => {
+        form.extras.forEach((extra) => {
           if (extra.nombre && extra.costo > 0) {
             combinedExtras.push({
               nombre: extra.nombre,
-              descripcion: extra.descripcion || '',
+              descripcion: extra.descripcion || "",
               costo: parseFloat(extra.costo),
-              proveedor: extra.proveedor || '',
-              tipo: 'servicio_extra'
+              proveedor: extra.proveedor || "",
+              tipo: "servicio_extra",
             });
           }
         });
       }
     }
 
-    console.log("🔄 COMBINANDO ACTIVIDADES EN EXTRAS:");
-    console.log("  - Total items combinados:", combinedExtras.length);
-    console.log("  - Array combinado:", combinedExtras);
-
     // ✅ NUEVO: Preparar datos modificados para enviar
     const dataToSend = {
       ...form,
       extras: combinedExtras, // ✅ Solo enviar el array combinado como "extras"
       excursiones: [], // ✅ Vaciar excursiones porque van en extras
-      actividades_adicionales: { // ✅ Mantener solo el flag de inclusión
+      actividades_adicionales: {
+        // ✅ Mantener solo el flag de inclusión
         incluidas: form.actividades_adicionales?.incluidas || false,
-        detalle: '',
+        detalle: "",
         costo_por_persona: 0,
-        proveedor: ''
+        proveedor: "",
       },
       trip_type: form.trip_type,
       // ✅ NUEVO: Asegurar que las fechas se envíen correctamente
       fecha_viaje_inicio: form.tiquetes?.fecha_ida || null,
       fecha_viaje_fin: form.tiquetes?.fecha_vuelta || null,
       // ✅ NUEVO: Marcar que la cotización está lista para ser completada
-      ready_for_completion: form.trip_type && form.precio_final_total > 0
+      ready_for_completion: form.trip_type && form.precio_final_total > 0,
     };
 
-    console.log('🗓️ FECHAS ENVIADAS AL BACKEND:', {
-      fecha_ida_calculadora: form.tiquetes?.fecha_ida,
-      fecha_vuelta_calculadora: form.tiquetes?.fecha_vuelta,
-      fecha_viaje_inicio: dataToSend.fecha_viaje_inicio,
-      fecha_viaje_fin: dataToSend.fecha_viaje_fin
-    });
-
-    console.log("📤 DATOS FINALES A ENVIAR:", dataToSend);
-    console.log("📤 EXTRAS FINALES:", dataToSend.extras);
-    console.log("🏥 ASISTENCIA MÉDICA ENVIADA:", dataToSend.seguros?.asistencia_medica);
-    console.log("🍽️ ALIMENTACIÓN ENVIADA:", dataToSend.alimentacion);
-    console.log("🛡️ SEGUROS COMPLETO:", dataToSend.seguros);
-
     try {
-      console.log("💾 CALCULADORA: Usando upsertQuoteCalculation para guardar/actualizar");
-      
       // ✅ NUEVO: Mostrar notificación de inicio de guardado
       const toastId = toast.loading("Guardando calculadora de presupuesto...");
-      
+
       const result = await dispatch(upsertQuoteCalculation(dataToSend));
-      console.log("📨 CALCULADORA: Resultado del dispatch:", result);
 
-      if (result.meta.requestStatus === 'fulfilled') {
-        console.log("✅ COMPONENTE: Cálculo guardado exitosamente");
-        console.log("✅ COMPONENTE: Payload de respuesta:", result.payload);
-
+      if (result.meta.requestStatus === "fulfilled") {
         // ✅ NUEVO: Actualizar notificación de éxito
         toast.update(toastId, {
           render: "✅ Presupuesto guardado exitosamente",
@@ -1072,18 +1128,22 @@ useEffect(() => {
         });
 
         // ✅ NUEVO: Alert de confirmación adicional
-        alert(`✅ Presupuesto guardado correctamente\n\n` +
-              `💰 Precio final: $${form.precio_final_total?.toLocaleString()}\n` +
-              `👥 Por persona: $${form.precio_final_por_persona?.toLocaleString()}\n` +
-              `🧑‍🤝‍🧑 Personas que pagan: ${calcularPersonasQuePagan()}`);
+        alert(
+          `✅ Presupuesto guardado correctamente\n\n` +
+            `💰 Precio final: $${form.precio_final_total?.toLocaleString()}\n` +
+            `👥 Por persona: $${form.precio_final_por_persona?.toLocaleString()}\n` +
+            `🧑‍🤝‍🧑 Personas que pagan: ${calcularPersonasQuePagan()}`
+        );
 
         if (onContinue) {
-          console.log("🔄 COMPONENTE: Ejecutando callback onContinue...");
           onContinue(result.payload);
         }
       } else {
-        console.error("❌ COMPONENTE: El dispatch fue rechazado:", result.error);
-        
+        console.error(
+          "❌ COMPONENTE: El dispatch fue rechazado:",
+          result.error
+        );
+
         // ✅ NUEVO: Actualizar notificación de error
         toast.update(toastId, {
           render: "❌ Error al guardar el presupuesto",
@@ -1091,26 +1151,33 @@ useEffect(() => {
           isLoading: false,
           autoClose: 5000,
         });
-        
-        alert("❌ Error al guardar el presupuesto. Por favor intenta nuevamente.");
+
+        alert(
+          "❌ Error al guardar el presupuesto. Por favor intenta nuevamente."
+        );
       }
     } catch (error) {
-      console.error("❌ COMPONENTE: Error en try-catch del handleSubmit:", error);
+      console.error(
+        "❌ COMPONENTE: Error en try-catch del handleSubmit:",
+        error
+      );
       console.error("❌ COMPONENTE: Error stack:", error.stack);
-      
+
       // ✅ NUEVO: Notificación de error en catch
       toast.error("❌ Error inesperado al guardar el presupuesto");
-      alert("❌ Error inesperado al guardar el presupuesto. Revisa la consola para más detalles.");
+      alert(
+        "❌ Error inesperado al guardar el presupuesto. Revisa la consola para más detalles."
+      );
     }
   };
 
   const tabs = [
-    { id: 'transporte', label: 'Transporte', icon: '✈️' },
-    { id: 'alojamiento', label: 'Alojamiento', icon: '🏨' },
-    { id: 'servicios', label: 'Servicios', icon: '🛡️' },
-    { id: 'actividades', label: 'Actividades', icon: '🎯' },
-    { id: 'comisiones', label: 'Comisiones', icon: '💼' },
-    { id: 'resumen', label: 'Resumen', icon: '📊' }
+    { id: "transporte", label: "Transporte", icon: "✈️" },
+    { id: "alojamiento", label: "Alojamiento", icon: "🏨" },
+    { id: "servicios", label: "Servicios", icon: "🛡️" },
+    { id: "actividades", label: "Actividades", icon: "🎯" },
+    { id: "comisiones", label: "Comisiones", icon: "💼" },
+    { id: "resumen", label: "Resumen", icon: "📊" },
   ];
 
   if (baseDataLoading) {
@@ -1129,12 +1196,25 @@ useEffect(() => {
       {/* Información de la cotización */}
       {baseData && (
         <div className="bg-gray-50 rounded-lg p-4 mb-6">
-          <h3 className="font-semibold text-gray-700 mb-2">Información de la Cotización</h3>
+          <h3 className="font-semibold text-gray-700 mb-2">
+            Información de la Cotización
+          </h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-            <div><strong>Cliente:</strong> {baseData.quote_info.nombre_cliente || baseData.jerarquia_ventas.cliente?.name || '-'}</div>
-            <div><strong>Destino:</strong> {baseData.quote_info.destino}</div>
-            <div><strong>Personas:</strong> {baseData.quote_info.numero_personas}</div>
-            <div><strong>Tipo:</strong> {baseData.quote_info.trip_type}</div>
+            <div>
+              <strong>Cliente:</strong>{" "}
+              {baseData.quote_info.nombre_cliente ||
+                baseData.jerarquia_ventas.cliente?.name ||
+                "-"}
+            </div>
+            <div>
+              <strong>Destino:</strong> {baseData.quote_info.destino}
+            </div>
+            <div>
+              <strong>Personas:</strong> {baseData.quote_info.numero_personas}
+            </div>
+            <div>
+              <strong>Tipo:</strong> {baseData.quote_info.trip_type}
+            </div>
           </div>
         </div>
       )}
@@ -1142,14 +1222,15 @@ useEffect(() => {
       {/* Tabs de navegación */}
       <div className="border-b border-gray-200 mb-6">
         <nav className="-mb-px flex space-x-8">
-          {tabs.map(tab => (
+          {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${activeTab === tab.id
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+              className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === tab.id
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
             >
               {tab.icon} {tab.label}
             </button>
@@ -1161,10 +1242,14 @@ useEffect(() => {
       <div className="bg-gray-50 p-4 rounded-lg mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Tipo de Viaje</label>
+            <label className="block text-sm font-medium mb-1">
+              Tipo de Viaje
+            </label>
             <select
               value={form.trip_type}
-              onChange={(e) => handleInputChange('', 'trip_type', e.target.value)}
+              onChange={(e) =>
+                handleInputChange("", "trip_type", e.target.value)
+              }
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">-- Seleccionar tipo de viaje --</option>
@@ -1175,38 +1260,55 @@ useEffect(() => {
             </select>
             {!form.trip_type && (
               <p className="text-sm text-amber-600 mt-1">
-                ⚠️ Selecciona el tipo de viaje para calcular comisiones correctamente
+                ⚠️ Selecciona el tipo de viaje para calcular comisiones
+                correctamente
               </p>
             )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Fecha de Ida</label>
-              <input
-                type="date"
-                value={formatDateForInput(form.tiquetes?.fecha_ida)}
-                onChange={(e) => handleInputChange('tiquetes', 'fecha_ida', e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+            <label className="block text-sm font-medium mb-1">
+              Fecha de Ida
+            </label>
+            <input
+              type="date"
+              value={formatDateForInput(form.tiquetes?.fecha_ida)}
+              onChange={(e) =>
+                handleInputChange("tiquetes", "fecha_ida", e.target.value)
+              }
+              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Fecha de Regreso</label>
-              <input
-                type="date"
-                value={formatDateForInput(form.tiquetes?.fecha_vuelta)}
-                onChange={(e) => handleInputChange('tiquetes', 'fecha_vuelta', e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+            <label className="block text-sm font-medium mb-1">
+              Fecha de Regreso
+            </label>
+            <input
+              type="date"
+              value={formatDateForInput(form.tiquetes?.fecha_vuelta)}
+              onChange={(e) =>
+                handleInputChange("tiquetes", "fecha_vuelta", e.target.value)
+              }
+              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Número de Personas</label>
+            <label className="block text-sm font-medium mb-1">
+              Número de Personas
+            </label>
             <input
               type="number"
               min="1"
               value={form.num_personas}
-              onChange={(e) => handleInputChange('', 'num_personas', parseInt(e.target.value) || 1)}
+              onChange={(e) =>
+                handleInputChange(
+                  "",
+                  "num_personas",
+                  parseInt(e.target.value) || 1
+                )
+              }
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -1220,10 +1322,11 @@ useEffect(() => {
               <div className="text-sm">
                 {form.trip_type ? (
                   <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-md font-medium">
-                    {form.trip_type === 'nacional' && 'Viaje Nacional'}
-                    {form.trip_type === 'internacional' && 'Viaje Internacional'}
-                    {form.trip_type === 'operadorLlano' && 'Operador Llano'}
-                    {form.trip_type === 'hotel' && 'Hotel'}
+                    {form.trip_type === "nacional" && "Viaje Nacional"}
+                    {form.trip_type === "internacional" &&
+                      "Viaje Internacional"}
+                    {form.trip_type === "operadorLlano" && "Operador Llano"}
+                    {form.trip_type === "hotel" && "Hotel"}
                   </span>
                 ) : (
                   <span className="text-gray-500 italic">No seleccionado</span>
@@ -1232,12 +1335,18 @@ useEffect(() => {
             </div>
 
             <div>
-              <h4 className="font-medium text-gray-700 mb-2">Número de Personas</h4>
-              <div className="text-lg font-semibold text-gray-900">{form.num_personas}</div>
+              <h4 className="font-medium text-gray-700 mb-2">
+                Número de Personas
+              </h4>
+              <div className="text-lg font-semibold text-gray-900">
+                {form.num_personas}
+              </div>
             </div>
 
             <div>
-              <h4 className="font-medium text-gray-700 mb-2">Desglose de Costos</h4>
+              <h4 className="font-medium text-gray-700 mb-2">
+                Desglose de Costos
+              </h4>
               <div className="text-sm">
                 <div className="flex items-center">
                   <span className="font-medium text-green-700">
@@ -1259,7 +1368,9 @@ useEffect(() => {
           {/* ✅ NUEVA: Información de fechas y duración */}
           {(form.tiquetes?.fecha_ida || form.tiquetes?.fecha_vuelta) && (
             <div className="mt-4 pt-4 border-t border-gray-200">
-              <h4 className="font-medium text-gray-700 mb-2">Información del Viaje</h4>
+              <h4 className="font-medium text-gray-700 mb-2">
+                Información del Viaje
+              </h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                 {form.tiquetes?.fecha_ida && (
                   <div>
@@ -1281,7 +1392,10 @@ useEffect(() => {
                   <div>
                     <span className="text-gray-600">Duración:</span>
                     <div className="font-medium">
-                      {calculateDuration(form.tiquetes.fecha_ida, form.tiquetes.fecha_vuelta)}
+                      {calculateDuration(
+                        form.tiquetes.fecha_ida,
+                        form.tiquetes.fecha_vuelta
+                      )}
                     </div>
                   </div>
                 )}
@@ -1291,55 +1405,60 @@ useEffect(() => {
         </div>
       </div>
 
-  <form onSubmit={handleApplyCalculation}>
+      <form onSubmit={handleApplyCalculation}>
         {/* Sección Transporte */}
-        {activeTab === 'transporte' && (
+        {activeTab === "transporte" && (
           <div className="space-y-6">
             {/* Tiquetes Aéreos */}
             <div className="border rounded-lg p-4">
               <h4 className="font-semibold mb-3">Tiquetes Aéreos</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Tipo de Tiquete</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Tipo de Tiquete
+                  </label>
                   <select
                     value={form.tiquetes.tipo}
-                    onChange={e => handleInputChange('tiquetes', 'tipo', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("tiquetes", "tipo", e.target.value)
+                    }
                     className="w-full border rounded px-3 py-2"
                   >
-
                     <option value="ida_vuelta">Ida y Vuelta</option>
                     <option value="sin_tiquetes">Sin Tiquetes</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Proveedor</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Proveedor
+                  </label>
                   <input
                     type="text"
                     value={form.tiquetes.proveedor}
-                    onChange={e => handleInputChange('tiquetes', 'proveedor', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("tiquetes", "proveedor", e.target.value)
+                    }
                     className="w-full border rounded px-3 py-2"
                     placeholder="Ej: Avianca, LATAM"
                   />
                 </div>
-                {form.tiquetes.tipo !== 'sin_tiquetes' && (
+                {form.tiquetes.tipo !== "sin_tiquetes" && (
                   <>
-                    {/* <div>
-                      <label className="block text-sm font-medium mb-1">Valor (por persona)</label>
-                      <input
-                        type="number"
-                        value={form.tiquetes.costo_ida}
-                        onChange={e => handleInputChange('tiquetes', 'costo_ida', e.target.value)}
-                        className="w-full border rounded px-3 py-2"
-                        placeholder="0"
-                      />
-                    </div> */}
-                    {form.tiquetes.tipo === 'ida_vuelta' && (
+                    {form.tiquetes.tipo === "ida_vuelta" && (
                       <div>
-                        <label className="block text-sm font-medium mb-1">Precio (por persona)</label>
+                        <label className="block text-sm font-medium mb-1">
+                          Precio (por persona)
+                        </label>
                         <input
                           type="number"
                           value={form.tiquetes.costo_vuelta}
-                          onChange={e => handleInputChange('tiquetes', 'costo_vuelta', e.target.value)}
+                          onChange={(e) =>
+                            handleInputChange(
+                              "tiquetes",
+                              "costo_vuelta",
+                              e.target.value
+                            )
+                          }
                           className="w-full border rounded px-3 py-2"
                           placeholder="0"
                         />
@@ -1349,9 +1468,18 @@ useEffect(() => {
                 )}
               </div>
               <div className="mt-3 p-2 bg-blue-50 rounded">
-                <strong>Total Tiquetes por persona: ${Number(form.tiquetes.costo_total).toLocaleString()}</strong>
+                <strong>
+                  Total Tiquetes por persona: $
+                  {Number(form.tiquetes.costo_total).toLocaleString()}
+                </strong>
                 <br />
-                <strong>Total para {calcularPersonasQuePagan()} persona(s) que pagan: ${Number(form.tiquetes.costo_total * calcularPersonasQuePagan()).toLocaleString()}</strong>
+                <strong>
+                  Total para {calcularPersonasQuePagan()} persona(s) que pagan:
+                  $
+                  {Number(
+                    form.tiquetes.costo_total * calcularPersonasQuePagan()
+                  ).toLocaleString()}
+                </strong>
                 {form.infantes > 0 && (
                   <div className="text-sm text-gray-600 mt-1">
                     + {form.infantes} infante(s) (gratis)
@@ -1368,15 +1496,31 @@ useEffect(() => {
                   <input
                     type="checkbox"
                     checked={form.traslados.aeropuerto_hotel_ida?.incluido}
-                    onChange={e => handleInputChange('traslados', 'aeropuerto_hotel_ida', e.target.checked, 'incluido')}
+                    onChange={(e) =>
+                      handleInputChange(
+                        "traslados",
+                        "aeropuerto_hotel_ida",
+                        e.target.checked,
+                        "incluido"
+                      )
+                    }
                     className="rounded"
                   />
-                  <label className="flex-1">Aeropuerto → Hotel → Aeropuerto </label>
+                  <label className="flex-1">
+                    Aeropuerto → Hotel → Aeropuerto{" "}
+                  </label>
                   <div className="w-32">
                     <input
                       type="number"
                       value={form.traslados.aeropuerto_hotel_ida?.costo}
-                      onChange={e => handleInputChange('traslados', 'aeropuerto_hotel_ida', e.target.value, 'costo')}
+                      onChange={(e) =>
+                        handleInputChange(
+                          "traslados",
+                          "aeropuerto_hotel_ida",
+                          e.target.value,
+                          "costo"
+                        )
+                      }
                       className="w-full border rounded px-2 py-1"
                       placeholder="0"
                       disabled={!form.traslados.aeropuerto_hotel_ida?.incluido}
@@ -1384,12 +1528,20 @@ useEffect(() => {
                     <small className="text-gray-500">por persona</small>
                   </div>
                 </div>
-                
               </div>
               <div className="mt-3 p-2 bg-blue-50 rounded">
-                <strong>Total Traslados por persona: ${Number(form.traslados.costo_total).toLocaleString()}</strong>
+                <strong>
+                  Total Traslados por persona: $
+                  {Number(form.traslados.costo_total).toLocaleString()}
+                </strong>
                 <br />
-                <strong>Total para {calcularPersonasQuePagan()} persona(s) que pagan: ${Number(form.traslados.costo_total * calcularPersonasQuePagan()).toLocaleString()}</strong>
+                <strong>
+                  Total para {calcularPersonasQuePagan()} persona(s) que pagan:
+                  $
+                  {Number(
+                    form.traslados.costo_total * calcularPersonasQuePagan()
+                  ).toLocaleString()}
+                </strong>
                 {form.infantes > 0 && (
                   <div className="text-sm text-gray-600 mt-1">
                     + {form.infantes} infante(s) (gratis)
@@ -1401,27 +1553,35 @@ useEffect(() => {
         )}
 
         {/* Sección Alojamiento */}
-        {activeTab === 'alojamiento' && (
+        {activeTab === "alojamiento" && (
           <div className="space-y-6">
             {/* Hotel */}
             <div className="border rounded-lg p-4">
               <h4 className="font-semibold mb-3">Hotel</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Nombre del Hotel</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Nombre del Hotel
+                  </label>
                   <input
                     type="text"
                     value={form.hotel.nombre}
-                    onChange={e => handleInputChange('hotel', 'nombre', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("hotel", "nombre", e.target.value)
+                    }
                     className="w-full border rounded px-3 py-2"
                     placeholder="Nombre del hotel"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Categoría</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Categoría
+                  </label>
                   <select
                     value={form.hotel.categoria}
-                    onChange={e => handleInputChange('hotel', 'categoria', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("hotel", "categoria", e.target.value)
+                    }
                     className="w-full border rounded px-3 py-2"
                   >
                     <option value="1_estrella">1 Estrella</option>
@@ -1434,10 +1594,14 @@ useEffect(() => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Acomodación</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Acomodación
+                  </label>
                   <select
                     value={form.hotel.acomodacion}
-                    onChange={e => handleInputChange('hotel', 'acomodacion', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("hotel", "acomodacion", e.target.value)
+                    }
                     className="w-full border rounded px-3 py-2"
                   >
                     <option value="sencilla">Sencilla</option>
@@ -1448,7 +1612,9 @@ useEffect(() => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Noches (calculado automáticamente)</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Noches (calculado automáticamente)
+                  </label>
                   <input
                     type="number"
                     value={form.hotel.noches || 0}
@@ -1461,21 +1627,93 @@ useEffect(() => {
                     Se calcula automáticamente: Fecha de vuelta - Fecha de ida
                   </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Precio por Noche (por persona)</label>
+                
+                {/* 🆕 Campo principal: Precio TOTAL del hotel (todos los pasajeros, todas las noches) */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-1 text-blue-700">
+                    💡 Precio Total del Hotel (de la plataforma)
+                  </label>
                   <input
                     type="number"
-                    value={form.hotel.costo_noche}
-                    onChange={e => handleInputChange('hotel', 'costo_noche', e.target.value)}
-                    className="w-full border rounded px-3 py-2"
+                    value={form.hotel.precio_total_plataforma || ''}
+                    onChange={(e) => {
+                      const precioTotalPlataforma = parseFloat(e.target.value) || 0;
+                      const pasajeros = calcularPersonasQuePagan();
+                      const noches = form.hotel.noches || 1;
+                      
+                      // Calcular: Total ÷ Pasajeros ÷ Noches = Precio por noche por persona
+                      const costoTotal = pasajeros > 0 ? precioTotalPlataforma / pasajeros : 0;
+                      const costoPorNoche = (pasajeros > 0 && noches > 0) ? precioTotalPlataforma / (pasajeros * noches) : 0;
+                      
+                      setForm(prev => ({
+                        ...prev,
+                        hotel: {
+                          ...prev.hotel,
+                          precio_total_plataforma: precioTotalPlataforma,
+                          costo_total: costoTotal,
+                          costo_noche: costoPorNoche
+                        }
+                      }));
+                    }}
+                    className="w-full border-2 border-blue-300 rounded px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                    min="0"
+                    placeholder="Ej: 2500000"
+                  />
+                  <div className="text-xs text-blue-600 mt-1 font-medium">
+                    ✨ Ingresa el precio total que ves en la plataforma (incluye {calcularPersonasQuePagan()} persona(s) × {form.hotel.noches || 0} noche(s))
+                  </div>
+                </div>
+
+                {/* Campos calculados automáticamente */}
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-600">
+                    📊 Precio por Persona (calculado)
+                  </label>
+                  <input
+                    type="number"
+                    value={form.hotel.costo_total || 0}
+                    readOnly
+                    className="w-full border rounded px-3 py-2 bg-gray-50 cursor-not-allowed text-gray-700"
                     min="0"
                   />
+                  <div className="text-xs text-gray-500 mt-1">
+                    {calcularPersonasQuePagan() > 0 
+                      ? `$${Number(form.hotel.precio_total_plataforma || 0).toLocaleString()} ÷ ${calcularPersonasQuePagan()} = $${Number(form.hotel.costo_total || 0).toLocaleString()}`
+                      : 'Esperando número de pasajeros...'}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-600">
+                    📊 Precio por Noche por Persona (calculado)
+                  </label>
+                  <input
+                    type="number"
+                    value={form.hotel.costo_noche || 0}
+                    readOnly
+                    className="w-full border rounded px-3 py-2 bg-gray-50 cursor-not-allowed text-gray-700"
+                    min="0"
+                  />
+                  <div className="text-xs text-gray-500 mt-1">
+                    {(calcularPersonasQuePagan() > 0 && form.hotel.noches > 0)
+                      ? `$${Number(form.hotel.precio_total_plataforma || 0).toLocaleString()} ÷ ${calcularPersonasQuePagan()} ÷ ${form.hotel.noches} = $${Number(form.hotel.costo_noche || 0).toLocaleString()}`
+                      : 'Esperando datos completos...'}
+                  </div>
                 </div>
               </div>
               <div className="mt-3 p-2 bg-blue-50 rounded">
-                <strong>Total Hotel por persona: ${Number(form.hotel.costo_total).toLocaleString()}</strong>
+                <strong>
+                  Total Hotel por persona: $
+                  {Number(form.hotel.costo_total).toLocaleString()}
+                </strong>
                 <br />
-                <strong>Total para {calcularPersonasQuePagan()} persona(s) que pagan: ${Number(form.hotel.costo_total * calcularPersonasQuePagan()).toLocaleString()}</strong>
+                <strong>
+                  Total para {calcularPersonasQuePagan()} persona(s) que pagan:
+                  $
+                  {Number(
+                    form.hotel.costo_total * calcularPersonasQuePagan()
+                  ).toLocaleString()}
+                </strong>
                 {form.infantes > 0 && (
                   <div className="text-sm text-gray-600 mt-1">
                     + {form.infantes} infante(s) (gratis)
@@ -1489,34 +1727,60 @@ useEffect(() => {
               <h4 className="font-semibold mb-3">Alimentación</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Tipo de Alimentación</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Tipo de Alimentación
+                  </label>
                   <select
                     value={form.alimentacion.tipo}
-                    onChange={e => handleInputChange('alimentacion', 'tipo', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("alimentacion", "tipo", e.target.value)
+                    }
                     className="w-full border rounded px-3 py-2"
                   >
                     <option value="ninguna">Ninguna</option>
                     <option value="desayuno">Desayuno</option>
                     <option value="media_pension">Desayuno y cena</option>
-                    <option value="pension_completa">Desayuno, almuerzo y cena</option>
-                    <option value="todo_incluido">Todo Incluido (Desayuno, almuerzo y cena + bebidas y licores + snacks)</option>
+                    <option value="pension_completa">
+                      Desayuno, almuerzo y cena
+                    </option>
+                    <option value="todo_incluido">
+                      Todo Incluido (Desayuno, almuerzo y cena + bebidas y
+                      licores + snacks)
+                    </option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Precio Total (por persona)</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Precio Total (por persona)
+                  </label>
                   <input
                     type="number"
                     value={form.alimentacion.costo_total}
-                    onChange={e => handleInputChange('alimentacion', 'costo_total', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange(
+                        "alimentacion",
+                        "costo_total",
+                        e.target.value
+                      )
+                    }
                     className="w-full border rounded px-3 py-2"
                     min="0"
                   />
                 </div>
               </div>
               <div className="mt-3 p-2 bg-blue-50 rounded">
-                <strong>Total Alimentación por persona: ${Number(form.alimentacion.costo_total).toLocaleString()}</strong>
+                <strong>
+                  Total Alimentación por persona: $
+                  {Number(form.alimentacion.costo_total).toLocaleString()}
+                </strong>
                 <br />
-                <strong>Total para {calcularPersonasQuePagan()} persona(s) que pagan: ${Number(form.alimentacion.costo_total * calcularPersonasQuePagan()).toLocaleString()}</strong>
+                <strong>
+                  Total para {calcularPersonasQuePagan()} persona(s) que pagan:
+                  $
+                  {Number(
+                    form.alimentacion.costo_total * calcularPersonasQuePagan()
+                  ).toLocaleString()}
+                </strong>
                 {form.infantes > 0 && (
                   <div className="text-sm text-gray-600 mt-1">
                     + {form.infantes} infante(s) (gratis)
@@ -1528,7 +1792,7 @@ useEffect(() => {
         )}
 
         {/* Sección Servicios */}
-        {activeTab === 'servicios' && (
+        {activeTab === "servicios" && (
           <div className="space-y-6">
             {/* Seguros */}
             {/* <div className="border rounded-lg p-4">
@@ -1579,27 +1843,52 @@ useEffect(() => {
                     <input
                       type="checkbox"
                       checked={form.equipaje.equipaje_extra?.incluido}
-                      onChange={e => handleInputChange('equipaje', 'equipaje_extra', e.target.checked, 'incluido')}
+                      onChange={(e) =>
+                        handleInputChange(
+                          "equipaje",
+                          "equipaje_extra",
+                          e.target.checked,
+                          "incluido"
+                        )
+                      }
                     />
-                    <label className="text-sm font-medium">Equipaje Extra</label>
+                    <label className="text-sm font-medium">
+                      Equipaje Extra
+                    </label>
                   </div>
-
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Precio Total Equipaje (por persona)</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Precio Total Equipaje (por persona)
+                  </label>
                   <input
                     type="number"
                     value={form.equipaje.costo_total}
-                    onChange={e => handleInputChange('equipaje', 'costo_total', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange(
+                        "equipaje",
+                        "costo_total",
+                        e.target.value
+                      )
+                    }
                     className="w-full border rounded px-3 py-2"
                     min="0"
                   />
                 </div>
               </div>
               <div className="mt-3 p-2 bg-blue-50 rounded">
-                <strong>Total Equipaje por persona: ${Number(form.equipaje.costo_total).toLocaleString()}</strong>
+                <strong>
+                  Total Equipaje por persona: $
+                  {Number(form.equipaje.costo_total).toLocaleString()}
+                </strong>
                 <br />
-                <strong>Total para {calcularPersonasQuePagan()} persona(s) que pagan: ${Number(form.equipaje.costo_total * calcularPersonasQuePagan()).toLocaleString()}</strong>
+                <strong>
+                  Total para {calcularPersonasQuePagan()} persona(s) que pagan:
+                  $
+                  {Number(
+                    form.equipaje.costo_total * calcularPersonasQuePagan()
+                  ).toLocaleString()}
+                </strong>
                 {form.infantes > 0 && (
                   <div className="text-sm text-gray-600 mt-1">
                     + {form.infantes} infante(s) (gratis)
@@ -1613,10 +1902,19 @@ useEffect(() => {
               <h4 className="font-semibold mb-3">Asistencia Médica</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Tipo de Asistencia</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Tipo de Asistencia
+                  </label>
                   <select
-                    value={form.seguros?.asistencia_medica?.tipo || 'ninguna'}
-                    onChange={e => handleInputChange('seguros', 'asistencia_medica', e.target.value, 'tipo')}
+                    value={form.seguros?.asistencia_medica?.tipo || "ninguna"}
+                    onChange={(e) =>
+                      handleInputChange(
+                        "seguros",
+                        "asistencia_medica",
+                        e.target.value,
+                        "tipo"
+                      )
+                    }
                     className="w-full border rounded px-3 py-2"
                   >
                     <option value="ninguna">Ninguna</option>
@@ -1626,20 +1924,41 @@ useEffect(() => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Valor Total (por persona)</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Valor Total (por persona)
+                  </label>
                   <input
                     type="number"
                     value={form.seguros?.asistencia_medica?.costo || 0}
-                    onChange={e => handleInputChange('seguros', 'asistencia_medica', e.target.value, 'costo')}
+                    onChange={(e) =>
+                      handleInputChange(
+                        "seguros",
+                        "asistencia_medica",
+                        e.target.value,
+                        "costo"
+                      )
+                    }
                     className="w-full border rounded px-3 py-2"
                     min="0"
                   />
                 </div>
               </div>
               <div className="mt-3 p-2 bg-blue-50 rounded">
-                <strong>Total Asistencia Médica por persona: ${Number(form.seguros?.asistencia_medica?.costo || 0).toLocaleString()}</strong>
+                <strong>
+                  Total Asistencia Médica por persona: $
+                  {Number(
+                    form.seguros?.asistencia_medica?.costo || 0
+                  ).toLocaleString()}
+                </strong>
                 <br />
-                <strong>Total para {calcularPersonasQuePagan()} persona(s) que pagan: ${Number((form.seguros?.asistencia_medica?.costo || 0) * calcularPersonasQuePagan()).toLocaleString()}</strong>
+                <strong>
+                  Total para {calcularPersonasQuePagan()} persona(s) que pagan:
+                  $
+                  {Number(
+                    (form.seguros?.asistencia_medica?.costo || 0) *
+                      calcularPersonasQuePagan()
+                  ).toLocaleString()}
+                </strong>
                 {form.infantes > 0 && (
                   <div className="text-sm text-gray-600 mt-1">
                     + {form.infantes} infante(s) (gratis)
@@ -1651,7 +1970,7 @@ useEffect(() => {
         )}
 
         {/* Sección Actividades */}
-        {activeTab === 'actividades' && (
+        {activeTab === "actividades" && (
           <div className="space-y-6">
             <div className="border rounded-lg p-4">
               <h4 className="font-semibold mb-3">Actividades Adicionales</h4>
@@ -1662,10 +1981,19 @@ useEffect(() => {
                   type="checkbox"
                   id="incluir-actividades"
                   checked={form.actividades_adicionales?.incluidas || false}
-                  onChange={(e) => handleInputChange('actividades_adicionales', 'incluidas', e.target.checked)}
+                  onChange={(e) =>
+                    handleInputChange(
+                      "actividades_adicionales",
+                      "incluidas",
+                      e.target.checked
+                    )
+                  }
                   className="mr-2"
                 />
-                <label htmlFor="incluir-actividades" className="text-sm font-medium">
+                <label
+                  htmlFor="incluir-actividades"
+                  className="text-sm font-medium"
+                >
                   Incluir actividades adicionales
                 </label>
               </div>
@@ -1673,15 +2001,17 @@ useEffect(() => {
               {/* ✅ NUEVO: Campos de actividades cuando está habilitado */}
               {form.actividades_adicionales?.incluidas && (
                 <div className="space-y-4">
-
-
-
                   {/* ✅ SECCIÓN: Excursiones */}
                   <div className="mt-6 border rounded-lg p-4 bg-gray-50">
-                    <h5 className="font-medium mb-3 text-gray-700">Excursiones Específicas</h5>
+                    <h5 className="font-medium mb-3 text-gray-700">
+                      Excursiones Específicas
+                    </h5>
 
                     {form.excursiones.map((excursion, idx) => (
-                      <div key={idx} className="mb-4 p-4 border rounded-lg bg-white">
+                      <div
+                        key={idx}
+                        className="mb-4 p-4 border rounded-lg bg-white"
+                      >
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1690,8 +2020,14 @@ useEffect(() => {
                             <input
                               type="text"
                               placeholder="Ej: City Tour, Excursión en barco"
-                              value={excursion.nombre || ''}
-                              onChange={(e) => handleExcursionChange(idx, 'nombre', e.target.value)}
+                              value={excursion.nombre || ""}
+                              onChange={(e) =>
+                                handleExcursionChange(
+                                  idx,
+                                  "nombre",
+                                  e.target.value
+                                )
+                              }
                               className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500"
                             />
                           </div>
@@ -1703,8 +2039,14 @@ useEffect(() => {
                             <input
                               type="number"
                               placeholder="0"
-                              value={excursion.costo || ''}
-                              onChange={(e) => handleExcursionChange(idx, 'costo', e.target.value)}
+                              value={excursion.costo || ""}
+                              onChange={(e) =>
+                                handleExcursionChange(
+                                  idx,
+                                  "costo",
+                                  e.target.value
+                                )
+                              }
                               className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500"
                             />
                           </div>
@@ -1718,8 +2060,14 @@ useEffect(() => {
                             <input
                               type="text"
                               placeholder="Descripción detallada de la excursión"
-                              value={excursion.descripcion || ''}
-                              onChange={(e) => handleExcursionChange(idx, 'descripcion', e.target.value)}
+                              value={excursion.descripcion || ""}
+                              onChange={(e) =>
+                                handleExcursionChange(
+                                  idx,
+                                  "descripcion",
+                                  e.target.value
+                                )
+                              }
                               className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500"
                             />
                           </div>
@@ -1731,8 +2079,14 @@ useEffect(() => {
                             <input
                               type="text"
                               placeholder="Nombre del proveedor"
-                              value={excursion.proveedor || ''}
-                              onChange={(e) => handleExcursionChange(idx, 'proveedor', e.target.value)}
+                              value={excursion.proveedor || ""}
+                              onChange={(e) =>
+                                handleExcursionChange(
+                                  idx,
+                                  "proveedor",
+                                  e.target.value
+                                )
+                              }
                               className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500"
                             />
                           </div>
@@ -1740,7 +2094,12 @@ useEffect(() => {
 
                         <div className="flex justify-between items-center">
                           <div className="text-sm text-gray-600">
-                            Total para {calcularPersonasQuePagan()} persona(s): ${Number((excursion.costo || 0) * calcularPersonasQuePagan()).toLocaleString()}
+                            Total para {calcularPersonasQuePagan()} persona(s):
+                            $
+                            {Number(
+                              (excursion.costo || 0) *
+                                calcularPersonasQuePagan()
+                            ).toLocaleString()}
                           </div>
                           <button
                             type="button"
@@ -1763,19 +2122,42 @@ useEffect(() => {
 
                     {form.excursiones.length > 0 && (
                       <div className="mt-3 p-2 bg-green-50 rounded">
-                        <strong>Total Excursiones: ${form.excursiones.reduce((acc, exc) => acc + Number(exc.costo || 0), 0).toLocaleString()} por persona</strong>
+                        <strong>
+                          Total Excursiones: $
+                          {form.excursiones
+                            .reduce(
+                              (acc, exc) => acc + Number(exc.costo || 0),
+                              0
+                            )
+                            .toLocaleString()}{" "}
+                          por persona
+                        </strong>
                         <br />
-                        <strong>Total para {calcularPersonasQuePagan()} persona(s) que pagan: ${(form.excursiones.reduce((acc, exc) => acc + Number(exc.costo || 0), 0) * calcularPersonasQuePagan()).toLocaleString()}</strong>
+                        <strong>
+                          Total para {calcularPersonasQuePagan()} persona(s) que
+                          pagan: $
+                          {(
+                            form.excursiones.reduce(
+                              (acc, exc) => acc + Number(exc.costo || 0),
+                              0
+                            ) * calcularPersonasQuePagan()
+                          ).toLocaleString()}
+                        </strong>
                       </div>
                     )}
                   </div>
 
                   {/* ✅ SECCIÓN: Servicios Extras */}
                   <div className="mt-6 border rounded-lg p-4 bg-gray-50">
-                    <h5 className="font-medium mb-3 text-gray-700">Servicios Extras</h5>
+                    <h5 className="font-medium mb-3 text-gray-700">
+                      Servicios Extras
+                    </h5>
 
                     {form.extras.map((extra, idx) => (
-                      <div key={idx} className="mb-4 p-4 border rounded-lg bg-white">
+                      <div
+                        key={idx}
+                        className="mb-4 p-4 border rounded-lg bg-white"
+                      >
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1784,8 +2166,10 @@ useEffect(() => {
                             <input
                               type="text"
                               placeholder="Ej: Seguro adicional, Wi-Fi"
-                              value={extra.nombre || ''}
-                              onChange={(e) => handleExtraChange(idx, 'nombre', e.target.value)}
+                              value={extra.nombre || ""}
+                              onChange={(e) =>
+                                handleExtraChange(idx, "nombre", e.target.value)
+                              }
                               className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500"
                             />
                           </div>
@@ -1797,8 +2181,10 @@ useEffect(() => {
                             <input
                               type="number"
                               placeholder="0"
-                              value={extra.costo || ''}
-                              onChange={(e) => handleExtraChange(idx, 'costo', e.target.value)}
+                              value={extra.costo || ""}
+                              onChange={(e) =>
+                                handleExtraChange(idx, "costo", e.target.value)
+                              }
                               className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500"
                             />
                           </div>
@@ -1812,8 +2198,14 @@ useEffect(() => {
                             <input
                               type="text"
                               placeholder="Descripción del servicio extra"
-                              value={extra.descripcion || ''}
-                              onChange={(e) => handleExtraChange(idx, 'descripcion', e.target.value)}
+                              value={extra.descripcion || ""}
+                              onChange={(e) =>
+                                handleExtraChange(
+                                  idx,
+                                  "descripcion",
+                                  e.target.value
+                                )
+                              }
                               className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500"
                             />
                           </div>
@@ -1825,8 +2217,14 @@ useEffect(() => {
                             <input
                               type="text"
                               placeholder="Nombre del proveedor"
-                              value={extra.proveedor || ''}
-                              onChange={(e) => handleExtraChange(idx, 'proveedor', e.target.value)}
+                              value={extra.proveedor || ""}
+                              onChange={(e) =>
+                                handleExtraChange(
+                                  idx,
+                                  "proveedor",
+                                  e.target.value
+                                )
+                              }
                               className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-blue-500"
                             />
                           </div>
@@ -1834,7 +2232,8 @@ useEffect(() => {
 
                         <div className="flex justify-between items-center">
                           <div className="text-sm text-gray-600">
-                            Costo total del servicio: ${Number(extra.costo || 0).toLocaleString()}
+                            Costo total del servicio: $
+                            {Number(extra.costo || 0).toLocaleString()}
                           </div>
                           <button
                             type="button"
@@ -1857,7 +2256,15 @@ useEffect(() => {
 
                     {form.extras.length > 0 && (
                       <div className="mt-3 p-2 bg-blue-50 rounded">
-                        <strong>Total Servicios Extras: ${form.extras.reduce((acc, ext) => acc + Number(ext.costo || 0), 0).toLocaleString()}</strong>
+                        <strong>
+                          Total Servicios Extras: $
+                          {form.extras
+                            .reduce(
+                              (acc, ext) => acc + Number(ext.costo || 0),
+                              0
+                            )
+                            .toLocaleString()}
+                        </strong>
                       </div>
                     )}
                   </div>
@@ -1866,9 +2273,17 @@ useEffect(() => {
             </div>
             {/* ✅ NUEVO: Mostrar total calculado */}
             <div className="mt-3 p-2 bg-blue-50 rounded">
-              <strong>Total Actividades por persona: ${Number(calcularTotalActividadesExtras()).toLocaleString()}</strong>
+              <strong>
+                Total Actividades por persona: $
+                {Number(calcularTotalActividadesExtras()).toLocaleString()}
+              </strong>
               <br />
-              <strong>Total para {calcularPersonasQuePagan()} persona(s) que pagan: ${Number(calcularTotalActividadesExtras() * calcularPersonasQuePagan()).toLocaleString()}</strong>
+              <strong>
+                Total para {calcularPersonasQuePagan()} persona(s) que pagan: $
+                {Number(
+                  calcularTotalActividadesExtras() * calcularPersonasQuePagan()
+                ).toLocaleString()}
+              </strong>
               {form.infantes > 0 && (
                 <div className="text-sm text-gray-600 mt-1">
                   + {form.infantes} infante(s) (gratis)
@@ -1879,7 +2294,7 @@ useEffect(() => {
         )}
 
         {/* Sección Comisiones */}
-        {activeTab === 'comisiones' && (
+        {activeTab === "comisiones" && (
           <div className="space-y-6">
             <div className="border rounded-lg p-4">
               <h4 className="font-semibold mb-3">Comisiones por Jerarquía</h4>
@@ -1887,37 +2302,54 @@ useEffect(() => {
               {/* ✅ NUEVA: Información sobre cálculo de comisiones */}
               <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <div className="text-sm text-yellow-800">
-                  <strong>Nota:</strong> Las comisiones por persona se calculan solo para {calcularPersonasQuePagan()} persona(s) que pagan.
-                  {form.infantes > 0 && ` Los ${form.infantes} infante(s) no generan comisión.`}
+                  <strong>Nota:</strong> Las comisiones por persona se calculan
+                  solo para {calcularPersonasQuePagan()} persona(s) que pagan.
+                  {form.infantes > 0 &&
+                    ` Los ${form.infantes} infante(s) no generan comisión.`}
                 </div>
               </div>
 
               {baseData && baseData.comisiones_configuradas && (
                 <div className="space-y-3">
-                  {Object.entries(baseData.comisiones_configuradas).map(([rol, datos]) =>
-                    rol !== 'total_comisiones' && datos && (
-                      <div key={rol} className="flex items-center justify-between p-3 bg-gray-50 rounded">
-                        <div>
-                          <span className="font-medium capitalize">{rol}:</span>
-                          <span className="ml-2 text-sm text-gray-600">
-                            {datos.tipo_calculo === 'fixed_per_person'
-                              ? `$${Number(datos.valor_por_persona || 0).toLocaleString()} por persona`
-                              : datos.tipo_calculo === 'percentage'
+                  {Object.entries(baseData.comisiones_configuradas).map(
+                    ([rol, datos]) =>
+                      rol !== "total_comisiones" &&
+                      datos && (
+                        <div
+                          key={rol}
+                          className="flex items-center justify-between p-3 bg-gray-50 rounded"
+                        >
+                          <div>
+                            <span className="font-medium capitalize">
+                              {rol}:
+                            </span>
+                            <span className="ml-2 text-sm text-gray-600">
+                              {datos.tipo_calculo === "fixed_per_person"
+                                ? `$${Number(
+                                    datos.valor_por_persona || 0
+                                  ).toLocaleString()} por persona`
+                                : datos.tipo_calculo === "percentage"
                                 ? `${datos.porcentaje}%`
-                                : `$${Number(datos.valor_fijo || 0).toLocaleString()} fijo`
-                            }
-                          </span>
+                                : `$${Number(
+                                    datos.valor_fijo || 0
+                                  ).toLocaleString()} fijo`}
+                            </span>
+                          </div>
+                          <div className="font-semibold text-green-600">
+                            $
+                            {Number(
+                              form.comisiones[rol]?.total || 0
+                            ).toLocaleString()}
+                          </div>
                         </div>
-                        <div className="font-semibold text-green-600">
-                          ${Number(form.comisiones[rol]?.total || 0).toLocaleString()}
-                        </div>
-                      </div>
-                    )
+                      )
                   )}
                   <div className="border-t pt-3">
                     <div className="flex justify-between font-bold">
                       <span>Total Comisiones:</span>
-                      <span>${Number(form.total_comisiones).toLocaleString()}</span>
+                      <span>
+                        ${Number(form.total_comisiones).toLocaleString()}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -1928,36 +2360,55 @@ useEffect(() => {
               <h4 className="font-semibold mb-3">Ganancia de la Empresa</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Porcentaje (%)</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Porcentaje (%)
+                  </label>
                   <input
                     type="number"
                     value={form.ganancia.porcentaje}
-                    onChange={e => handleInputChange('ganancia', 'porcentaje', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange(
+                        "ganancia",
+                        "porcentaje",
+                        e.target.value
+                      )
+                    }
                     className="w-full border rounded px-3 py-2"
                     min="0"
                     max="100"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Precio Fijo</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Precio Fijo
+                  </label>
                   <input
                     type="number"
                     value={form.ganancia.valor_fijo}
-                    onChange={e => handleInputChange('ganancia', 'valor_fijo', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange(
+                        "ganancia",
+                        "valor_fijo",
+                        e.target.value
+                      )
+                    }
                     className="w-full border rounded px-3 py-2"
                     min="0"
                   />
                 </div>
               </div>
               <div className="mt-3 p-2 bg-green-50 rounded">
-                <strong>Total Ganancia: ${Number(form.total_ganancia).toLocaleString()}</strong>
+                <strong>
+                  Total Ganancia: $
+                  {Number(form.total_ganancia).toLocaleString()}
+                </strong>
               </div>
             </div>
           </div>
         )}
 
         {/* Sección Resumen */}
-        {activeTab === 'resumen' && (
+        {activeTab === "resumen" && (
           <div className="space-y-6">
             <div className="border rounded-lg p-4">
               <h4 className="font-semibold mb-3">Resumen del Presupuesto</h4>
@@ -1965,59 +2416,106 @@ useEffect(() => {
                 {/* ✅ CORREGIDO: Los costo_total ya son por persona, mostrarlos directamente */}
                 <div className="flex justify-between">
                   <span>Tiquetes (por persona):</span>
-                  <span>${Number(form.tiquetes.costo_total || 0).toLocaleString()}</span>
+                  <span>
+                    ${Number(form.tiquetes.costo_total || 0).toLocaleString()}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Hotel (por persona):</span>
-                  <span>${Number(form.hotel.costo_total || 0).toLocaleString()}</span>
+                  <span>
+                    ${Number(form.hotel.costo_total || 0).toLocaleString()}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Traslados (por persona):</span>
-                  <span>${Number(form.traslados.costo_total || 0).toLocaleString()}</span>
+                  <span>
+                    ${Number(form.traslados.costo_total || 0).toLocaleString()}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Alimentación (por persona):</span>
-                  <span>${Number(form.alimentacion.costo_total || 0).toLocaleString()}</span>
+                  <span>
+                    $
+                    {Number(
+                      form.alimentacion.costo_total || 0
+                    ).toLocaleString()}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Seguros (por persona):</span>
-                  <span>${Number(form.seguros.costo_total || 0).toLocaleString()}</span>
+                  <span>
+                    ${Number(form.seguros.costo_total || 0).toLocaleString()}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Equipaje (por persona):</span>
-                  <span>${Number(form.equipaje.costo_total || 0).toLocaleString()}</span>
+                  <span>
+                    ${Number(form.equipaje.costo_total || 0).toLocaleString()}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Asistencia Médica (por persona):</span>
-                  <span>${Number(form.seguros?.asistencia_medica?.costo || 0).toLocaleString()}</span>
+                  <span>
+                    $
+                    {Number(
+                      form.seguros?.asistencia_medica?.costo || 0
+                    ).toLocaleString()}
+                  </span>
                 </div>
                 {/* ✅ NUEVA: Actividades adicionales detalladas en el resumen */}
                 {form.actividades_adicionales?.incluidas && (
                   <>
                     <div className="border-t pt-2 mt-2">
-                      <h5 className="font-medium text-gray-700 mb-2">Actividades Extras Incluidas:</h5>
+                      <h5 className="font-medium text-gray-700 mb-2">
+                        Actividades Extras Incluidas:
+                      </h5>
 
                       {/* Actividades Básicas */}
-                      {form.actividades_adicionales?.actividades?.length > 0 && (
+                      {form.actividades_adicionales?.actividades?.length >
+                        0 && (
                         <div className="ml-4 mb-2">
-                          <div className="text-sm font-medium text-blue-600 mb-1">Actividades Básicas:</div>
-                          {form.actividades_adicionales.actividades.map((actividad, index) => (
-                            <div key={index} className="flex justify-between text-sm ml-2">
-                              <span>• {actividad.descripcion}</span>
-                              <span>${Number(actividad.costo).toLocaleString()} x {calcularPersonasQuePagan()} = ${Number(actividad.costo * calcularPersonasQuePagan()).toLocaleString()}</span>
-                            </div>
-                          ))}
+                          <div className="text-sm font-medium text-blue-600 mb-1">
+                            Actividades Básicas:
+                          </div>
+                          {form.actividades_adicionales.actividades.map(
+                            (actividad, index) => (
+                              <div
+                                key={index}
+                                className="flex justify-between text-sm ml-2"
+                              >
+                                <span>• {actividad.descripcion}</span>
+                                <span>
+                                  ${Number(actividad.costo).toLocaleString()} x{" "}
+                                  {calcularPersonasQuePagan()} = $
+                                  {Number(
+                                    actividad.costo * calcularPersonasQuePagan()
+                                  ).toLocaleString()}
+                                </span>
+                              </div>
+                            )
+                          )}
                         </div>
                       )}
 
                       {/* Excursiones */}
                       {form.excursiones?.length > 0 && (
                         <div className="ml-4 mb-2">
-                          <div className="text-sm font-medium text-green-600 mb-1">Excursiones:</div>
+                          <div className="text-sm font-medium text-green-600 mb-1">
+                            Excursiones:
+                          </div>
                           {form.excursiones.map((excursion, index) => (
-                            <div key={index} className="flex justify-between text-sm ml-2">
+                            <div
+                              key={index}
+                              className="flex justify-between text-sm ml-2"
+                            >
                               <span>• {excursion.descripcion}</span>
-                              <span>${Number(excursion.costo).toLocaleString()} x {calcularPersonasQuePagan()} = ${Number(excursion.costo * calcularPersonasQuePagan()).toLocaleString()}</span>
+                              <span>
+                                ${Number(excursion.costo).toLocaleString()} x{" "}
+                                {calcularPersonasQuePagan()} = $
+                                {Number(
+                                  excursion.costo * calcularPersonasQuePagan()
+                                ).toLocaleString()}
+                              </span>
                             </div>
                           ))}
                         </div>
@@ -2026,11 +2524,19 @@ useEffect(() => {
                       {/* Servicios Extras */}
                       {form.extras?.length > 0 && (
                         <div className="ml-4 mb-2">
-                          <div className="text-sm font-medium text-purple-600 mb-1">Servicios Extras:</div>
+                          <div className="text-sm font-medium text-purple-600 mb-1">
+                            Servicios Extras:
+                          </div>
                           {form.extras.map((extra, index) => (
-                            <div key={index} className="flex justify-between text-sm ml-2">
+                            <div
+                              key={index}
+                              className="flex justify-between text-sm ml-2"
+                            >
                               <span>• {extra.descripcion}</span>
-                              <span>${Number(extra.costo).toLocaleString()} (costo total)</span>
+                              <span>
+                                ${Number(extra.costo).toLocaleString()} (costo
+                                total)
+                              </span>
                             </div>
                           ))}
                         </div>
@@ -2039,19 +2545,29 @@ useEffect(() => {
                       {/* Total de actividades */}
                       <div className="flex justify-between font-medium text-orange-600 mt-2 pt-2 border-t">
                         <span>Total Actividades Extras (por persona):</span>
-                        <span>${Number(calcularTotalActividadesExtras()).toLocaleString()}</span>
+                        <span>
+                          $
+                          {Number(
+                            calcularTotalActividadesExtras()
+                          ).toLocaleString()}
+                        </span>
                       </div>
                     </div>
                   </>
                 )}
                 <div className="border-t pt-2">
                   <div className="flex justify-between font-semibold">
-                    <span>Costo Base Total ({calcularPersonasQuePagan()} persona(s) que pagan):</span>
+                    <span>
+                      Costo Base Total ({calcularPersonasQuePagan()} persona(s)
+                      que pagan):
+                    </span>
                     <span>${Number(form.costo_base).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-orange-600">
                     <span>+ Comisiones:</span>
-                    <span>${Number(form.total_comisiones).toLocaleString()}</span>
+                    <span>
+                      ${Number(form.total_comisiones).toLocaleString()}
+                    </span>
                   </div>
                   <div className="flex justify-between text-green-600">
                     <span>+ Ganancia:</span>
@@ -2060,16 +2576,23 @@ useEffect(() => {
                   <div className="border-t pt-2 mt-2">
                     <div className="flex justify-between text-lg font-bold">
                       <span>PRECIO TOTAL:</span>
-                      <span>${Number(form.precio_final_total).toLocaleString()}</span>
+                      <span>
+                        ${Number(form.precio_final_total).toLocaleString()}
+                      </span>
                     </div>
                     <div className="flex justify-between text-lg font-bold text-blue-600">
                       <span>PRECIO POR PERSONA:</span>
-                      <span>${Number(form.precio_final_por_persona).toLocaleString()}</span>
+                      <span>
+                        $
+                        {Number(form.precio_final_por_persona).toLocaleString()}
+                      </span>
                     </div>
                     {/* ✅ NUEVA: Información sobre el cálculo */}
                     <div className="text-sm text-gray-600 mt-2 text-center">
-                      Precio calculado para {calcularPersonasQuePagan()} persona(s) que pagan
-                      {form.infantes > 0 && ` • ${form.infantes} infante(s) incluido(s) gratis`}
+                      Precio calculado para {calcularPersonasQuePagan()}{" "}
+                      persona(s) que pagan
+                      {form.infantes > 0 &&
+                        ` • ${form.infantes} infante(s) incluido(s) gratis`}
                     </div>
                   </div>
                 </div>
@@ -2077,10 +2600,17 @@ useEffect(() => {
             </div>
 
             <div className="border rounded-lg p-4">
-              <label className="block text-sm font-medium mb-2">Observaciones Generales</label>
+              <label className="block text-sm font-medium mb-2">
+                Observaciones Generales
+              </label>
               <textarea
                 value={form.observaciones_generales}
-                onChange={e => handleSimpleInputChange('observaciones_generales', e.target.value)}
+                onChange={(e) =>
+                  handleSimpleInputChange(
+                    "observaciones_generales",
+                    e.target.value
+                  )
+                }
                 rows={3}
                 className="w-full border rounded px-3 py-2"
                 placeholder="Comentarios adicionales sobre el presupuesto..."
@@ -2092,21 +2622,37 @@ useEffect(() => {
         {/* Navegación y botones */}
         <div className="flex justify-between pt-6 border-t">
           <div className="text-lg font-bold text-blue-600">
-            Precio por persona: ${Number(form.precio_final_por_persona).toLocaleString()}
+            Precio por persona: $
+            {Number(form.precio_final_por_persona).toLocaleString()}
           </div>
           <div className="space-x-3">
             <button
               type="button"
-              onClick={() => setActiveTab(tabs[Math.max(0, tabs.findIndex(t => t.id === activeTab) - 1)].id)}
+              onClick={() =>
+                setActiveTab(
+                  tabs[
+                    Math.max(0, tabs.findIndex((t) => t.id === activeTab) - 1)
+                  ].id
+                )
+              }
               className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
               disabled={activeTab === tabs[0].id}
             >
               Anterior
             </button>
-            {activeTab !== 'resumen' ? (
+            {activeTab !== "resumen" ? (
               <button
                 type="button"
-                onClick={() => setActiveTab(tabs[Math.min(tabs.length - 1, tabs.findIndex(t => t.id === activeTab) + 1)].id)}
+                onClick={() =>
+                  setActiveTab(
+                    tabs[
+                      Math.min(
+                        tabs.length - 1,
+                        tabs.findIndex((t) => t.id === activeTab) + 1
+                      )
+                    ].id
+                  )
+                }
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
                 Siguiente
@@ -2118,8 +2664,7 @@ useEffect(() => {
               >
                 Aplicar cálculo
               </button>
-            )
-            }
+            )}
           </div>
         </div>
 
