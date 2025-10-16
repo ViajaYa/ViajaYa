@@ -1409,9 +1409,9 @@ const AdvancedQuoteCalculator = ({
         {/* Sección Transporte */}
         {activeTab === "transporte" && (
           <div className="space-y-6">
-            {/* Tiquetes Aéreos */}
+            {/* Tiquetes de Transporte */}
             <div className="border rounded-lg p-4">
-              <h4 className="font-semibold mb-3">Tiquetes Aéreos</h4>
+              <h4 className="font-semibold mb-3">Tiquetes de Transporte</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">
@@ -1430,39 +1430,171 @@ const AdvancedQuoteCalculator = ({
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">
-                    Proveedor
+                    Proveedor / Empresa (opcional)
                   </label>
                   <input
                     type="text"
-                    value={form.tiquetes.proveedor}
-                    onChange={(e) =>
-                      handleInputChange("tiquetes", "proveedor", e.target.value)
-                    }
+                    value={form.tiquetes.aerolinea || form.tiquetes.proveedor}
+                    onChange={(e) => {
+                      handleInputChange("tiquetes", "aerolinea", e.target.value);
+                      handleInputChange("tiquetes", "proveedor", e.target.value);
+                    }}
                     className="w-full border rounded px-3 py-2"
-                    placeholder="Ej: Avianca, LATAM"
+                    placeholder="Ej: Avianca, Copetran, Expreso Bolivariano"
                   />
                 </div>
+                
                 {form.tiquetes.tipo !== "sin_tiquetes" && (
                   <>
-                    {form.tiquetes.tipo === "ida_vuelta" && (
-                      <div>
-                        <label className="block text-sm font-medium mb-1">
-                          Precio (por persona)
-                        </label>
-                        <input
-                          type="number"
-                          value={form.tiquetes.costo_vuelta}
-                          onChange={(e) =>
-                            handleInputChange(
-                              "tiquetes",
-                              "costo_vuelta",
-                              e.target.value
-                            )
-                          }
-                          className="w-full border rounded px-3 py-2"
-                          placeholder="0"
-                        />
+                    {/* Transporte de Ida */}
+                    <div className="md:col-span-2 border-t pt-4 mt-2">
+                      <h5 className="font-medium text-gray-700 mb-3">🚌 Transporte de Ida</h5>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium mb-1">
+                            Número de Vuelo/Bus (opcional)
+                          </label>
+                          <input
+                            type="text"
+                            value={form.tiquetes.numero_vuelo_ida || ''}
+                            onChange={(e) =>
+                              handleInputChange(
+                                "tiquetes",
+                                "numero_vuelo_ida",
+                                e.target.value
+                              )
+                            }
+                            className="w-full border rounded px-3 py-2"
+                            placeholder="Ej: AV123, Bus 456"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium mb-1">
+                            🕐 Hora de Salida (opcional)
+                          </label>
+                          <input
+                            type="time"
+                            value={form.tiquetes.hora_salida_ida || ''}
+                            onChange={(e) =>
+                              handleInputChange(
+                                "tiquetes",
+                                "hora_salida_ida",
+                                e.target.value
+                              )
+                            }
+                            className="w-full border rounded px-3 py-2"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium mb-1">
+                            🕐 Hora de Llegada (opcional)
+                          </label>
+                          <input
+                            type="time"
+                            value={form.tiquetes.hora_llegada_ida || ''}
+                            onChange={(e) =>
+                              handleInputChange(
+                                "tiquetes",
+                                "hora_llegada_ida",
+                                e.target.value
+                              )
+                            }
+                            className="w-full border rounded px-3 py-2"
+                          />
+                        </div>
                       </div>
+                    </div>
+
+                    {/* Transporte de Regreso */}
+                    {form.tiquetes.tipo === "ida_vuelta" && (
+                      <>
+                        <div className="md:col-span-2 border-t pt-4 mt-2">
+                          <h5 className="font-medium text-gray-700 mb-3">🏠 Transporte de Regreso</h5>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium mb-1">
+                                Número de Vuelo/Bus (opcional)
+                              </label>
+                              <input
+                                type="text"
+                                value={form.tiquetes.numero_vuelo_vuelta || ''}
+                                onChange={(e) =>
+                                  handleInputChange(
+                                    "tiquetes",
+                                    "numero_vuelo_vuelta",
+                                    e.target.value
+                                  )
+                                }
+                                className="w-full border rounded px-3 py-2"
+                                placeholder="Ej: AV456, Bus 789"
+                              />
+                            </div>
+                            
+                            <div>
+                              <label className="block text-sm font-medium mb-1">
+                                🕐 Hora de Salida (opcional)
+                              </label>
+                              <input
+                                type="time"
+                                value={form.tiquetes.hora_salida_vuelta || ''}
+                                onChange={(e) =>
+                                  handleInputChange(
+                                    "tiquetes",
+                                    "hora_salida_vuelta",
+                                    e.target.value
+                                  )
+                                }
+                                className="w-full border rounded px-3 py-2"
+                              />
+                            </div>
+                            
+                            <div>
+                              <label className="block text-sm font-medium mb-1">
+                                🕐 Hora de Llegada (opcional)
+                              </label>
+                              <input
+                                type="time"
+                                value={form.tiquetes.hora_llegada_vuelta || ''}
+                                onChange={(e) =>
+                                  handleInputChange(
+                                    "tiquetes",
+                                    "hora_llegada_vuelta",
+                                    e.target.value
+                                  )
+                                }
+                                className="w-full border rounded px-3 py-2"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="md:col-span-2 border-t pt-4 mt-2">
+                          <h5 className="font-medium text-gray-700 mb-3">💰 Precio</h5>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium mb-1">
+                                Precio Total (por persona)
+                              </label>
+                              <input
+                                type="number"
+                                value={form.tiquetes.costo_vuelta}
+                                onChange={(e) =>
+                                  handleInputChange(
+                                    "tiquetes",
+                                    "costo_vuelta",
+                                    e.target.value
+                                  )
+                                }
+                                className="w-full border rounded px-3 py-2"
+                                placeholder="0"
+                                min="0"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </>
                     )}
                   </>
                 )}

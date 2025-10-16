@@ -26,6 +26,13 @@ module.exports = (sequelize) => {
         destino: '',
         fecha_ida: '',
         fecha_vuelta: '',
+        hora_salida_ida: '', // 🆕 Hora de salida del vuelo de ida (formato HH:MM)
+        hora_llegada_ida: '', // 🆕 Hora de llegada del vuelo de ida (formato HH:MM)
+        hora_salida_vuelta: '', // 🆕 Hora de salida del vuelo de regreso (formato HH:MM)
+        hora_llegada_vuelta: '', // 🆕 Hora de llegada del vuelo de regreso (formato HH:MM)
+        aerolinea: '', // 🆕 Nombre de la aerolínea
+        numero_vuelo_ida: '', // 🆕 Número de vuelo de ida
+        numero_vuelo_vuelta: '', // 🆕 Número de vuelo de vuelta
         costo_ida: 0,
         costo_vuelta: 0,
         costo_total: 0,
