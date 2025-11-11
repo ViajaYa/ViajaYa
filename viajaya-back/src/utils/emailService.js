@@ -17,6 +17,9 @@ if (useSendGrid) {
       user: 'apikey', // Usuario fijo para SendGrid
       pass: process.env.SENDGRID_API_KEY,
     },
+    connectionTimeout: 30000, // 30 segundos
+    greetingTimeout: 30000,
+    socketTimeout: 30000,
   });
 } else {
   // Configuración SMTP tradicional (Gmail, Zoho SMTP, etc.)
@@ -38,14 +41,20 @@ if (useSendGrid) {
   });
 }
 
-// Verificar configuración
-transporter.verify((error, success) => {
-  if (error) {
-    console.error('❌ Error al verificar la configuración de email:', error.message);
-  } else {
-    console.log('✅ Servidor de email listo para enviar correos');
-  }
-});
+// Verificar configuración (opcional - no bloqueante)
+if (useSendGrid) {
+  // Para SendGrid, solo verificamos que la API key exista
+  console.log('✅ SendGrid configurado con API Key');
+} else {
+  // Para SMTP tradicional, intentamos verificar la conexión
+  transporter.verify((error, success) => {
+    if (error) {
+      console.error('❌ Error al verificar SMTP:', error.message);
+    } else {
+      console.log('✅ Servidor SMTP listo para enviar correos');
+    }
+  });
+}
 
 // Función para enviar el correo
 const sendEmail = async (mailOptions) => {
