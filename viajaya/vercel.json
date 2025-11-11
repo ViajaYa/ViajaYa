@@ -2,71 +2,71 @@
     "rewrites": [
         {
             "source": "/user/:path*",
-            "destination": "https://viajaya-mve8.onrender.com/user/:path*"
+            "destination": "https://viajaya-production.up.railway.app/user/:path*"
         },
         {
             "source": "/auth/:path*",
-            "destination": "https://viajaya-mve8.onrender.com/auth/:path*"
+            "destination": "https://viajaya-production.up.railway.app/auth/:path*"
         },
         {
             "source": "/financial/:path*",
-            "destination": "https://viajaya-mve8.onrender.com/financial/:path*"
+            "destination": "https://viajaya-production.up.railway.app/financial/:path*"
         },
         {
             "source": "/commissions/:path*",
-            "destination": "https://viajaya-mve8.onrender.com/commissions/:path*"
+            "destination": "https://viajaya-production.up.railway.app/commissions/:path*"
         },
         {
             "source": "/commission-configs/:path*",
-            "destination": "https://viajaya-mve8.onrender.com/commission-configs/:path*"
+            "destination": "https://viajaya-production.up.railway.app/commission-configs/:path*"
         },
         {
             "source": "/quotes/:path*",
-            "destination": "https://viajaya-mve8.onrender.com/quotes/:path*"
+            "destination": "https://viajaya-production.up.railway.app/quotes/:path*"
         },
         {
             "source": "/quote-calculations/:path*",
-            "destination": "https://viajaya-mve8.onrender.com/quote-calculations/:path*"
+            "destination": "https://viajaya-production.up.railway.app/quote-calculations/:path*"
         },
         {
             "source": "/passengers/:path*",
-            "destination": "https://viajaya-mve8.onrender.com/passengers/:path*"
+            "destination": "https://viajaya-production.up.railway.app/passengers/:path*"
         },
         {
             "source": "/contracts/:path*",
-            "destination": "https://viajaya-mve8.onrender.com/contracts/:path*"
+            "destination": "https://viajaya-production.up.railway.app/contracts/:path*"
         },
         {
             "source": "/pack/:path*",
-            "destination": "https://viajaya-mve8.onrender.com/pack/:path*"
+            "destination": "https://viajaya-production.up.railway.app/pack/:path*"
         },
         {
             "source": "/purchases/:path*",
-            "destination": "https://viajaya-mve8.onrender.com/purchases/:path*"
+            "destination": "https://viajaya-production.up.railway.app/purchases/:path*"
         },
         {
             "source": "/payments/:path*",
-            "destination": "https://viajaya-mve8.onrender.com/payments/:path*"
+            "destination": "https://viajaya-production.up.railway.app/payments/:path*"
         },
         {
             "source": "/promotions/:path*",
-            "destination": "https://viajaya-mve8.onrender.com/promotions/:path*"
+            "destination": "https://viajaya-production.up.railway.app/promotions/:path*"
         },
         {
             "source": "/configs/:path*",
-            "destination": "https://viajaya-mve8.onrender.com/configs/:path*"
+            "destination": "https://viajaya-production.up.railway.app/configs/:path*"
         },
         {
             "source": "/dashboard/:path*",
-            "destination": "https://viajaya-mve8.onrender.com/dashboard/:path*"
+            "destination": "https://viajaya-production.up.railway.app/dashboard/:path*"
         },
         {
             "source": "/admin/:path*",
-            "destination": "https://viajaya-mve8.onrender.com/admin/:path*"
+            "destination": "https://viajaya-production.up.railway.app/admin/:path*"
         },
         {
             "source": "/uploads/:path*",
-            "destination": "https://viajaya-mve8.onrender.com/uploads/:path*"
+            "destination": "https://viajaya-production.up.railway.app/uploads/:path*"
         },
         {
             "source": "/(.*)",
