@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { FaPlus, FaEdit, FaTrash, FaSave, FaTimes, FaEye } from 'react-icons/fa';
+import  { useState, useEffect } from 'react';
+import { useSelector } from 'react-redux';
+import { FaPlus, FaEdit, FaTrash, FaSave, FaTimes } from 'react-icons/fa';
 import api from '../../../utils/api';
 import { selectUser } from '../../../redux/slices/authSlice';
 import NavBar from '../../layout/NavBar/NavBar';
 import { Link } from 'react-router-dom';
 
 const CommissionConfigManager = () => {
-  const dispatch = useDispatch();
+  
   const currentUser = useSelector(selectUser);
 
   const [configs, setConfigs] = useState([]);
