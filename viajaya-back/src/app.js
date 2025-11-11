@@ -63,6 +63,33 @@ app.use(express.json())
 app.use(cors(corsOptions));
 app.use(morgan("dev"))
 app.use("/", routes)
+
+// ✅ Middleware global de manejo de errores (DEBE IR AL FINAL)
+// Esto asegura que todos los errores devuelvan JSON en lugar de HTML
+app.use((err, req, res, next) => {
+    console.error('❌ ERROR NO MANEJADO:', {
+        message: err.message,
+        stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+        path: req.path,
+        method: req.method
+    });
+
+    // Si ya se envió una respuesta, delegar al manejador por defecto
+    if (res.headersSent) {
+        return next(err);
+    }
+
+    // Devolver siempre JSON, nunca HTML
+    res.status(err.status || 500).json({
+        success: false,
+        message: err.message || 'Error interno del servidor',
+        error: process.env.NODE_ENV === 'development' ? {
+            message: err.message,
+            stack: err.stack
+        } : 'Error interno del servidor'
+    });
+});
+
 // app.use((req, res, next) => {
 //     res.setHeader(
 //       "Content-Security-Policy",
