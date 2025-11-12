@@ -53,6 +53,25 @@ app.use(morgan("dev"))
 // ✅ Manejar preflight requests explícitamente
 app.options('*', cors(corsOptions));
 
+// ✅ HEALTH CHECK para Railway/Render/etc
+app.get('/health', (req, res) => {
+    res.status(200).json({ 
+        status: 'ok', 
+        timestamp: new Date().toISOString(),
+        service: 'ViajaYa Backend',
+        environment: process.env.NODE_ENV || 'development'
+    });
+});
+
+// ✅ Root endpoint
+app.get('/', (req, res) => {
+    res.status(200).json({ 
+        message: 'ViajaYa API',
+        version: '1.0.0',
+        status: 'running'
+    });
+});
+
 app.use("/", routes)
 
 // ✅ Middleware global de manejo de errores (DEBE IR AL FINAL)
