@@ -13,9 +13,27 @@ console.log('📧 SendGrid configurado:', !!process.env.SENDGRID_API_KEY ? 'SÍ'
 
 // ✅ CAMBIO CRÍTICO: Arrancar el servidor INMEDIATAMENTE
 // No esperar a que la DB termine de sincronizar
-app.listen(PORT, () => {
+const server = app.listen(PORT, '0.0.0.0', () => {  // ← Escuchar en todas las interfaces
     console.log(`🚀 Server listening on port ${PORT}`);
     console.log(`📡 Backend URL: ${process.env.RAILWAY_PUBLIC_DOMAIN || 'localhost:' + PORT}`);
+    console.log(`✅ Server ready to accept connections`);
+});
+
+// ✅ Manejar señales de terminación
+process.on('SIGTERM', () => {
+    console.log('⚠️ SIGTERM recibido - Railway está intentando matar el proceso');
+    server.close(() => {
+        console.log('🛑 Servidor cerrado correctamente');
+        process.exit(0);
+    });
+});
+
+process.on('SIGINT', () => {
+    console.log('⚠️ SIGINT recibido - Interrupción manual');
+    server.close(() => {
+        console.log('🛑 Servidor cerrado correctamente');
+        process.exit(0);
+    });
 });
 
 // ✅ Sincronizar DB en paralelo (no bloquear el startup)
