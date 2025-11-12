@@ -1820,14 +1820,16 @@ convertQuoteToItems: async (req, res) => {
     }
 
     const path = require("path");
-    const fs = require("fs");
+    const fs = require("fs").promises; // ← Usar versión promesas
     const pdfFilePath = path.join(
       __dirname,
       "../../",
       contract.contrato_pdf_url
     );
 
-    if (!fs.existsSync(pdfFilePath)) {
+    // Verificar que el archivo existe
+    const fsSync = require("fs");
+    if (!fsSync.existsSync(pdfFilePath)) {
       return res.status(404).json({
         message: "Archivo PDF no encontrado. Regenere el PDF del contrato.",
         action: "regenerate_pdf",
@@ -2407,8 +2409,12 @@ convertQuoteToItems: async (req, res) => {
       </html>
     `;
 
-    // ✅ PREPARAR EMAIL
+    // ✅ PREPARAR EMAIL - Leer PDF y convertir a base64 para SendGrid API
     const finalEmail = email || contract.Cliente?.email;
+
+    // Leer el PDF y convertirlo a base64
+    const pdfBuffer = await fs.readFile(pdfFilePath);
+    const pdfBase64 = pdfBuffer.toString('base64');
 
     const mailOptions = {
       to: finalEmail,
@@ -2422,9 +2428,10 @@ convertQuoteToItems: async (req, res) => {
       ` : emailHtml,
       attachments: [
         {
+          content: pdfBase64, // ← Base64 string requerido por SendGrid API
           filename: `contrato-${contract.contract_number}.pdf`,
-          path: pdfFilePath,
-          contentType: "application/pdf",
+          type: "application/pdf",
+          disposition: "attachment",
         },
       ],
     };
