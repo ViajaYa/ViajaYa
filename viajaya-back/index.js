@@ -20,6 +20,10 @@ const server = app.listen(PORT, HOST, () => {
     console.log(`✅ Server is listening on ${HOST}:${PORT}`);
     console.log(`📡 Railway URL: ${process.env.RAILWAY_PUBLIC_DOMAIN || 'N/A'}`);
     console.log(`🏥 Health check available at /health`);
+    
+    // ✅ CRITICAL: Forzar que el servidor acepte conexiones inmediatamente
+    server.keepAliveTimeout = 65000; // 65 segundos
+    server.headersTimeout = 66000; // 66 segundos
 });
 
 // ✅ Manejar señales de terminación
