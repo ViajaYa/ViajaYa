@@ -9,6 +9,7 @@ const {
   convertirDatosLegacy 
 } = require("../utils/quoteCalculations");
 const path = require("path");
+const fs = require("fs").promises; // ← AGREGADO para leer archivos PDF
 const crypto = require('crypto');
 // ✅ Importar utilidades de fecha con Luxon para Colombia
 const { formatForPDF, nowInColombia, toFrontend } = require("../utils/dateUtils"); 
@@ -1880,8 +1881,12 @@ getQuoteById: async (req, res) => {
       </html>
     `;
 
-    // ✅ PASO 5: Enviar email con PDF adjunto (IGUAL QUE ANTES)
+    // ✅ PASO 5: Enviar email con PDF adjunto
     console.log("📧 Enviando email al cliente...");
+
+    // Leer el PDF y convertirlo a base64 para SendGrid API
+    const pdfBuffer = await fs.readFile(pdfInfo.filepath);
+    const pdfBase64 = pdfBuffer.toString('base64');
 
     const mailOptions = {
       to: quote.email_cliente,
@@ -1889,9 +1894,10 @@ getQuoteById: async (req, res) => {
       html: emailHTML,
       attachments: [
         {
+          content: pdfBase64, // ← Base64 string requerido por SendGrid API
           filename: pdfInfo.filename,
-          path: pdfInfo.filepath,
-          contentType: "application/pdf",
+          type: "application/pdf",
+          disposition: "attachment",
         },
       ],
     };

@@ -66,13 +66,13 @@ const sendEmail = async (mailOptions) => {
         html: mailOptions.html,
       };
 
-      // Agregar adjuntos si existen
+      // Agregar adjuntos si existen (ya deben venir en base64)
       if (mailOptions.attachments && mailOptions.attachments.length > 0) {
         msg.attachments = mailOptions.attachments.map(att => ({
-          content: att.content ? att.content.toString('base64') : undefined,
+          content: att.content, // Ya viene en base64 desde el controller
           filename: att.filename,
-          type: att.contentType || 'application/pdf',
-          disposition: 'attachment'
+          type: att.type || att.contentType || 'application/pdf',
+          disposition: att.disposition || 'attachment'
         }));
       }
 
