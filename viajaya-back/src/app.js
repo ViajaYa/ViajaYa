@@ -53,22 +53,18 @@ app.use(morgan("dev"))
 // ✅ Manejar preflight requests explícitamente
 app.options('*', cors(corsOptions));
 
-// ✅ HEALTH CHECK para Railway/Render/etc
+// ✅ HEALTH CHECK ULTRARRÁPIDO para Railway
+// Railway necesita respuestas instantáneas en health checks
 app.get('/health', (req, res) => {
-    res.status(200).json({ 
-        status: 'ok', 
-        timestamp: new Date().toISOString(),
-        service: 'ViajaYa Backend',
-        environment: process.env.NODE_ENV || 'development'
-    });
+    res.status(200).send('OK');
 });
 
-// ✅ Root endpoint
+// ✅ Root endpoint con info básica
 app.get('/', (req, res) => {
     res.status(200).json({ 
         message: 'ViajaYa API',
-        version: '1.0.0',
-        status: 'running'
+        status: 'running',
+        timestamp: Date.now()
     });
 });
 

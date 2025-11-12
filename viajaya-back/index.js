@@ -4,19 +4,22 @@ const {conn} = require("./src/db.js")
 const insertNumbers = require('./src/scripts/InsertNumbers.js')
 const seedCommissionConfigs = require('./src/seedCommissionConfigs.js')
 
-// Define puerto - Railway y otras plataformas proporcionarán PORT en la variable de entorno
+// Define puerto - Railway proporciona PORT automáticamente
 const PORT = process.env.PORT || 3001;
+const HOST = '0.0.0.0'; // Escuchar en todas las interfaces para Railway
 
 console.log('🚀 Iniciando servidor ViajaYa...');
 console.log('🔧 Entorno:', process.env.NODE_ENV || 'development');
-console.log('📧 SendGrid configurado:', !!process.env.SENDGRID_API_KEY ? 'SÍ' : 'NO');
+console.log('� Puerto:', PORT);
+console.log('�📧 SendGrid configurado:', !!process.env.SENDGRID_API_KEY ? 'SÍ' : 'NO');
 
 // ✅ CAMBIO CRÍTICO: Arrancar el servidor INMEDIATAMENTE
-// No esperar a que la DB termine de sincronizar
-const server = app.listen(PORT, '0.0.0.0', () => {  // ← Escuchar en todas las interfaces
-    console.log(`🚀 Server listening on port ${PORT}`);
-    console.log(`📡 Backend URL: ${process.env.RAILWAY_PUBLIC_DOMAIN || 'localhost:' + PORT}`);
-    console.log(`✅ Server ready to accept connections`);
+// Railway necesita que el servidor responda rápido a health checks
+const server = app.listen(PORT, HOST, () => {
+    const address = server.address();
+    console.log(`✅ Server is listening on ${HOST}:${PORT}`);
+    console.log(`📡 Railway URL: ${process.env.RAILWAY_PUBLIC_DOMAIN || 'N/A'}`);
+    console.log(`🏥 Health check available at /health`);
 });
 
 // ✅ Manejar señales de terminación
