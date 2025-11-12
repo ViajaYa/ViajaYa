@@ -1,3 +1,4 @@
+const sgMail = require('@sendgrid/mail');
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
@@ -7,20 +8,10 @@ const useSendGrid = !!process.env.SENDGRID_API_KEY;
 let transporter;
 
 if (useSendGrid) {
-  // Configuración con SendGrid (API)
-  console.log('📧 Usando SendGrid para envío de emails');
-  transporter = nodemailer.createTransport({
-    host: 'smtp.sendgrid.net',
-    port: 587,
-    secure: false, // STARTTLS
-    auth: {
-      user: 'apikey', // Usuario fijo para SendGrid
-      pass: process.env.SENDGRID_API_KEY,
-    },
-    connectionTimeout: 30000, // 30 segundos
-    greetingTimeout: 30000,
-    socketTimeout: 30000,
-  });
+  // Configuración con SendGrid API HTTP (NO SMTP)
+  console.log('📧 Usando SendGrid API HTTP para envío de emails');
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+  console.log('✅ SendGrid API configurada correctamente');
 } else {
   // Configuración SMTP tradicional (Gmail, Zoho SMTP, etc.)
   console.log('📧 Usando SMTP tradicional para envío de emails');
@@ -39,13 +30,7 @@ if (useSendGrid) {
     greetingTimeout: 10000,
     socketTimeout: 10000,
   });
-}
 
-// Verificar configuración (opcional - no bloqueante)
-if (useSendGrid) {
-  // Para SendGrid, solo verificamos que la API key exista
-  console.log('✅ SendGrid configurado con API Key');
-} else {
   // Para SMTP tradicional, intentamos verificar la conexión
   transporter.verify((error, success) => {
     if (error) {
@@ -66,23 +51,55 @@ const sendEmail = async (mailOptions) => {
        return;
     }
 
-    // Configurar el remitente (usa SMTP_FROM si está configurado)
     const fromEmail = process.env.SMTP_FROM || process.env.SMTP_USER;
     const fromName = 'Viaja Ya';
-    
-    const optionsToSend = {
-      from: `"${fromName}" <${fromEmail}>`,
-      ...mailOptions,
-    };
 
-    console.log('📧 Enviando desde:', optionsToSend.from);
+    if (useSendGrid) {
+      // Usar SendGrid API HTTP
+      const msg = {
+        to: mailOptions.to,
+        from: {
+          email: fromEmail,
+          name: fromName
+        },
+        subject: mailOptions.subject,
+        html: mailOptions.html,
+      };
 
-    let info = await transporter.sendMail(optionsToSend);
-    console.log('✅ Correo enviado exitosamente. ID:', info.messageId);
-    return info;
+      // Agregar adjuntos si existen
+      if (mailOptions.attachments && mailOptions.attachments.length > 0) {
+        msg.attachments = mailOptions.attachments.map(att => ({
+          content: att.content ? att.content.toString('base64') : undefined,
+          filename: att.filename,
+          type: att.contentType || 'application/pdf',
+          disposition: 'attachment'
+        }));
+      }
+
+      console.log('📧 Enviando desde (SendGrid API):', msg.from.email);
+      const response = await sgMail.send(msg);
+      console.log('✅ Email enviado exitosamente vía SendGrid API');
+      console.log('📊 SendGrid response:', response[0].statusCode);
+      return { messageId: response[0].headers['x-message-id'] };
+    } else {
+      // Usar SMTP tradicional (nodemailer)
+      const optionsToSend = {
+        from: `"${fromName}" <${fromEmail}>`,
+        ...mailOptions,
+      };
+
+      console.log('📧 Enviando desde (SMTP):', optionsToSend.from);
+      let info = await transporter.sendMail(optionsToSend);
+      console.log('✅ Correo enviado exitosamente vía SMTP. ID:', info.messageId);
+      return info;
+    }
   } catch (error) {
     console.error('❌ Error al enviar email:', error.message);
+    if (error.response) {
+      console.error('📋 Detalles del error SendGrid:', error.response.body);
+    }
     throw error;
   }
 };
+
 module.exports = { sendEmail };
