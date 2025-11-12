@@ -21,37 +21,10 @@ const allowedOrigins = [
     'https://viaja-786ywfg3b-viajaya1s-projects.vercel.app',
 ];
 
-// Configuración CORS simplificada y permisiva
+// ⚠️ CORS ULTRA PERMISIVO TEMPORAL - SOLO PARA DEBUG
+// TODO: Restaurar configuración restrictiva cuando Railway funcione
 const corsOptions = {
-    origin: (origin, callback) => {
-        // ✅ Permitir solicitudes sin origen (Postman, curl, server-to-server)
-        if (!origin) {
-            console.log('✅ CORS: Permitiendo solicitud sin origen');
-            return callback(null, true);
-        }
-
-        // ✅ Permitir orígenes en la lista
-        if (allowedOrigins.includes(origin)) {
-            console.log('✅ CORS: Permitiendo origen:', origin);
-            return callback(null, true);
-        }
-
-        // ✅ Permitir subdominios de vercel.app
-        if (origin.includes('vercel.app')) {
-            console.log('✅ CORS: Permitiendo Vercel preview:', origin);
-            return callback(null, true);
-        }
-
-        // ✅ Permitir localhost en desarrollo
-        if (process.env.NODE_ENV === 'development' && origin.includes('localhost')) {
-            console.log('✅ CORS: Permitiendo localhost:', origin);
-            return callback(null, true);
-        }
-
-        // ❌ Rechazar otros orígenes
-        console.warn('🚫 CORS: Origen no permitido:', origin);
-        callback(new Error(`Origen no permitido por CORS: ${origin}`));
-    },
+    origin: '*', // Permitir TODOS los orígenes temporalmente
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: [
@@ -65,8 +38,10 @@ const corsOptions = {
     ],
     exposedHeaders: ['Content-Range', 'X-Content-Range'],
     optionsSuccessStatus: 200,
-    maxAge: 86400 // 24 horas de cache para preflight
+    maxAge: 86400
 };
+
+console.log('⚠️ ADVERTENCIA: CORS en modo permisivo - permitiendo TODOS los orígenes');
 
 const app = express()
 
