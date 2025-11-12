@@ -3,65 +3,81 @@ const cors = require("cors")
 const morgan = require("morgan")
 const routes = require("./routes/index.js")
 
-// Actualización de dominios permitidos para Render y Vercel
+// Actualización de dominios permitidos para Railway y Vercel
 const allowedOrigins = [
     // Desarrollo local
     'http://localhost:5173',
     'http://localhost:5174',
+    'http://localhost:3000',
 
-    // Producción - ViajaYa
+    // Producción - ViajaYa (PRINCIPAL)
     'https://viajaya.com.co',
     'https://www.viajaya.com.co',
 
-    // Render (actualizado)
-    'https://viajaya-mve8.onrender.com',
+    // Railway (backend)
+    'https://viajaya-production.up.railway.app',
 
-    // Vercel (específico)
+    // Vercel previews
     'https://viaja-786ywfg3b-viajaya1s-projects.vercel.app',
-
-    // Permitir cualquier subdominio de onrender.com para flexibilidad
-    // Esto es útil si cambias el nombre de la app o tienes múltiples entornos
 ];
 
-// Función auxiliar para permitir entornos de desarrollo y Render
+// Configuración CORS simplificada y permisiva
 const corsOptions = {
     origin: (origin, callback) => {
-        // Permitir solicitudes sin origen (como las de Postman, curl, etc.)
-        if (!origin) return callback(null, true);
+        // ✅ Permitir solicitudes sin origen (Postman, curl, server-to-server)
+        if (!origin) {
+            console.log('✅ CORS: Permitiendo solicitud sin origen');
+            return callback(null, true);
+        }
 
-        // Permitir orígenes explícitamente listados
+        // ✅ Permitir orígenes en la lista
         if (allowedOrigins.includes(origin)) {
+            console.log('✅ CORS: Permitiendo origen:', origin);
             return callback(null, true);
         }
 
-        // Permitir cualquier subdominio de onrender.com (para Render)
-        if (origin && origin.includes('onrender.com')) {
+        // ✅ Permitir subdominios de vercel.app
+        if (origin.includes('vercel.app')) {
+            console.log('✅ CORS: Permitiendo Vercel preview:', origin);
             return callback(null, true);
         }
 
-        // Permitir cualquier subdominio de vercel.app (para Vercel)
-        if (origin && origin.includes('vercel.app')) {
+        // ✅ Permitir localhost en desarrollo
+        if (process.env.NODE_ENV === 'development' && origin.includes('localhost')) {
+            console.log('✅ CORS: Permitiendo localhost:', origin);
             return callback(null, true);
         }
 
-        // Permitir en desarrollo cualquier origen localhost
-        if (process.env.NODE_ENV === 'development' && origin && origin.includes('localhost')) {
-            return callback(null, true);
-        }
-
-        console.warn(`🚫 Origen no permitido por CORS: ${origin}`);
+        // ❌ Rechazar otros orígenes
+        console.warn('🚫 CORS: Origen no permitido:', origin);
         callback(new Error(`Origen no permitido por CORS: ${origin}`));
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: [
+        'Content-Type', 
+        'Authorization', 
+        'X-Requested-With',
+        'Accept',
+        'Origin',
+        'Access-Control-Request-Method',
+        'Access-Control-Request-Headers'
+    ],
+    exposedHeaders: ['Content-Range', 'X-Content-Range'],
+    optionsSuccessStatus: 200,
+    maxAge: 86400 // 24 horas de cache para preflight
 };
 
 const app = express()
 
-app.use(express.json())
+// ✅ IMPORTANTE: CORS debe ir ANTES de las rutas
 app.use(cors(corsOptions));
+app.use(express.json())
 app.use(morgan("dev"))
+
+// ✅ Manejar preflight requests explícitamente
+app.options('*', cors(corsOptions));
+
 app.use("/", routes)
 
 // ✅ Middleware global de manejo de errores (DEBE IR AL FINAL)
