@@ -1,87 +1,8 @@
 {
     "rewrites": [
         {
-            "source": "/user/:path*",
-            "destination": "https://viajaya-production.up.railway.app/user/:path*"
-        },
-        {
-            "source": "/auth/:path*",
-            "destination": "https://viajaya-production.up.railway.app/auth/:path*"
-        },
-        {
-            "source": "/financial/:path*",
-            "destination": "https://viajaya-production.up.railway.app/financial/:path*"
-        },
-        {
-            "source": "/commissions/:path*",
-            "destination": "https://viajaya-production.up.railway.app/commissions/:path*"
-        },
-        {
-            "source": "/commission-configs/:path*",
-            "destination": "https://viajaya-production.up.railway.app/commission-configs/:path*"
-        },
-        {
-            "source": "/quotes/:path*",
-            "destination": "https://viajaya-production.up.railway.app/quotes/:path*"
-        },
-        {
-            "source": "/quote-calculations/:path*",
-            "destination": "https://viajaya-production.up.railway.app/quote-calculations/:path*"
-        },
-        {
-            "source": "/passengers/:path*",
-            "destination": "https://viajaya-production.up.railway.app/passengers/:path*"
-        },
-        {
-            "source": "/contracts/:path*",
-            "destination": "https://viajaya-production.up.railway.app/contracts/:path*"
-        },
-        {
-            "source": "/pack/:path*",
-            "destination": "https://viajaya-production.up.railway.app/pack/:path*"
-        },
-        {
-            "source": "/purchases/:path*",
-            "destination": "https://viajaya-production.up.railway.app/purchases/:path*"
-        },
-        {
-            "source": "/payments/:path*",
-            "destination": "https://viajaya-production.up.railway.app/payments/:path*"
-        },
-        {
-            "source": "/promotions/:path*",
-            "destination": "https://viajaya-production.up.railway.app/promotions/:path*"
-        },
-        {
-            "source": "/configs/:path*",
-            "destination": "https://viajaya-production.up.railway.app/configs/:path*"
-        },
-        {
-            "source": "/dashboard/:path*",
-            "destination": "https://viajaya-production.up.railway.app/dashboard/:path*"
-        },
-        {
-            "source": "/admin/:path*",
-            "destination": "https://viajaya-production.up.railway.app/admin/:path*"
-        },
-        {
-            "source": "/uploads/:path*",
-            "destination": "https://viajaya-production.up.railway.app/uploads/:path*"
-        },
-        {
             "source": "/(.*)",
             "destination": "/"
-        }
-    ],
-    "headers": [
-        {
-            "source": "/(user|auth|financial|commissions|commission-configs|quotes|quote-calculations|packages|purchases|payments|promotions|configs|dashboard|admin|uploads|passengers|contracts|pack)/(.*)",
-            "headers": [
-                { "key": "Access-Control-Allow-Credentials", "value": "true" },
-                { "key": "Access-Control-Allow-Origin", "value": "*" },
-                { "key": "Access-Control-Allow-Methods", "value": "GET,OPTIONS,PATCH,DELETE,POST,PUT" },
-                { "key": "Access-Control-Allow-Headers", "value": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization" }
-            ]
         }
     ]
 }
