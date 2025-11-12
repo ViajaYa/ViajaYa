@@ -11,15 +11,34 @@ console.log('🚀 Iniciando servidor ViajaYa...');
 console.log('🔧 Entorno:', process.env.NODE_ENV || 'development');
 console.log('📧 SendGrid configurado:', !!process.env.SENDGRID_API_KEY ? 'SÍ' : 'NO');
 
-conn.sync({ alter: true })
+// ✅ En producción: NO usar alter (puede causar timeouts)
+// ✅ En desarrollo: Sí usar alter para sincronizar cambios
+const syncOptions = process.env.NODE_ENV === 'production' 
+    ? { alter: false } // Solo validar, no modificar estructura
+    : { alter: true };  // Permitir cambios en desarrollo
+
+console.log('🔄 Sincronizando base de datos con opciones:', syncOptions);
+
+conn.sync(syncOptions)
     .then(async () => {
-        await insertNumbers();
-        await seedCommissionConfigs(); // Cargar comisiones por defecto si no existen
+        console.log('✅ Base de datos sincronizada');
+        
+        // Solo ejecutar seeds en desarrollo o primera vez
+        if (process.env.NODE_ENV !== 'production' || process.env.FORCE_SEEDS === 'true') {
+            console.log('🌱 Ejecutando seeds...');
+            await insertNumbers();
+            await seedCommissionConfigs();
+            console.log('✅ Seeds completados');
+        } else {
+            console.log('⏭️  Skipping seeds en producción');
+        }
         
         app.listen(PORT, () => {
             console.log(`🚀 Server listening on port ${PORT}`);
+            console.log(`📡 Backend URL: ${process.env.RAILWAY_PUBLIC_DOMAIN || 'localhost:' + PORT}`);
         });
     })
     .catch((error) => {
-        console.error("Error syncing the database:", error);
+        console.error("❌ Error syncing the database:", error);
+        process.exit(1); // Salir con error para que Railway lo detecte
     });
