@@ -3,8 +3,9 @@ import axios from 'axios';
 import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 
-const BASE_URL = "https://viajaya-mve8.onrender.com"
-//const BASE_URL = "http://localhost:3001"
+// ✅ ACTUALIZADO: Usar Railway en producción
+const BASE_URL = "https://viajaya-production.up.railway.app"
+//const BASE_URL = "http://localhost:3001" // Para desarrollo local
 
 const NumberBoard = ({ onSelect }) => {
   const [numbers, setNumbers] = useState([]);
