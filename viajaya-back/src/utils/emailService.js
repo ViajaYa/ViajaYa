@@ -1,13 +1,21 @@
 const sgMail = require('@sendgrid/mail');
 const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 require('dotenv').config();
 
-// Detectar si se usa SendGrid o SMTP tradicional
-const useSendGrid = !!process.env.SENDGRID_API_KEY;
+// Detectar qué servicio de email usar (prioridad: Resend > SendGrid > SMTP)
+const useResend = !!process.env.RESEND_API_KEY;
+const useSendGrid = !useResend && !!process.env.SENDGRID_API_KEY;
 
 let transporter;
+let resend;
 
-if (useSendGrid) {
+if (useResend) {
+  // Configuración con Resend API HTTP (RECOMENDADO)
+  console.log('📧 Usando Resend API HTTP para envío de emails');
+  resend = new Resend(process.env.RESEND_API_KEY);
+  console.log('✅ Resend API configurada correctamente');
+} else if (useSendGrid) {
   // Configuración con SendGrid API HTTP (NO SMTP)
   console.log('📧 Usando SendGrid API HTTP para envío de emails');
   sgMail.setApiKey(process.env.SENDGRID_API_KEY);
@@ -54,7 +62,36 @@ const sendEmail = async (mailOptions) => {
     const fromEmail = process.env.SMTP_FROM || process.env.SMTP_USER;
     const fromName = 'Viaja Ya';
 
-    if (useSendGrid) {
+    if (useResend) {
+      // Usar Resend API HTTP
+      const emailData = {
+        from: `${fromName} <${fromEmail}>`,
+        to: [mailOptions.to],
+        subject: mailOptions.subject,
+        html: mailOptions.html,
+      };
+
+      // Agregar adjuntos si existen
+      if (mailOptions.attachments && mailOptions.attachments.length > 0) {
+        emailData.attachments = mailOptions.attachments.map(att => ({
+          content: att.content, // Ya viene en base64
+          filename: att.filename,
+        }));
+      }
+
+      console.log('📧 Enviando desde (Resend API):', fromEmail);
+      const { data, error } = await resend.emails.send(emailData);
+      
+      if (error) {
+        console.error('❌ Error de Resend:', error);
+        throw new Error(error.message);
+      }
+      
+      console.log('✅ Email enviado exitosamente vía Resend API');
+      console.log('📊 Resend response ID:', data.id);
+      return { messageId: data.id };
+      
+    } else if (useSendGrid) {
       // Usar SendGrid API HTTP
       const msg = {
         to: mailOptions.to,
@@ -96,7 +133,7 @@ const sendEmail = async (mailOptions) => {
   } catch (error) {
     console.error('❌ Error al enviar email:', error.message);
     if (error.response) {
-      console.error('📋 Detalles del error SendGrid:', error.response.body);
+      console.error('📋 Detalles del error:', error.response.body || error.response);
     }
     throw error;
   }
