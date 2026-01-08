@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import  { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchVideos, removeVideo } from '../../redux/NewActions/newActions'; 
 import { openCloudinaryWidget } from '../../cloudinaryConfig'; // Tu función para abrir el widget

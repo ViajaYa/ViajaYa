@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchCapacitaciones, removeCapacitacion } from '../../redux/NewActions/newActions'; 
 import { openCloudinaryWidget } from '../../cloudinaryConfig'; // Tu función para abrir el widget

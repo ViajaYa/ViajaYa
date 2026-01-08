@@ -334,7 +334,7 @@ const createContractTitle = (doc, yPos) => {
   doc.fontSize(12)
      .fillColor('white')
      .font('Helvetica-Bold')
-     .text('OPERADOR TURÍSTICO Y AGENCIA DE VIAJES VIAJA YA RNT 122035', 
+     .text('OPERADOR TURÍSTICO Y AGENCIA DE VIAJES VIAJA YA RNT 256357', 
            margin + 10, yPos + 8, { // Mejor centrado vertical
              width: contentWidth - 20,
              align: 'center'
@@ -380,7 +380,7 @@ const createContractClauses = (doc, contractData, yPos) => {
   yPos += 40; // Más espacio después del header
   
   // ✅ Contenido de la cláusula primera con mejor formato
-  const clausulaPrimera = `El presente contrato será suscrito entre MAYERLY ALEJANDRA HENAO HIGUERA identificada con número de cédula de ciudadanía No. 1032406128, quien funciona bajo el nombre comercial "OPERADOR TURÍSTICO Y AGENCIA DE VIAJES VIAJA YA", con domicilio en Bogotá D.C., en la Oficina Principal Centro Comercial Plaza Ensueño 2° PISO, con NIT 1032406128 y Registro Nacional de Turismo N° 122035, que en adelante será denominado VENDEDOR. Por otra parte, el COMPRADOR, quien se encuentra debidamente identificado en los datos de la reserva y en el capítulo correspondiente del presente contrato.`;
+  const clausulaPrimera = `El presente contrato será suscrito entre GABRIELA MATEUS HENAO Identificado con número de cedula ciudadanía No 1070326574 quien funciona bajo el nombre comercial “OPERADOR TURISTICO VIAJA YA BOGOTA”, con domicilio en Restrepo, Meta, en la Oficina Principal Centro Comercial Sunrise Local 102 Restrepo, Meta, con NIT 1070326574 y Registro Nacional de Turismo N° 256357, que en adelante será denominado VENDEDOR. Por otra parte, el COMPRADOR, quien se encuentra debidamente identificado en los datos de la Reserva y en el capítulo correspondiente del presente contrato.`;
   
   doc.fontSize(9)
      .fillColor('#1f2937') // textoOscuro del PDF de cotización
@@ -491,7 +491,7 @@ const createReservaSection = (doc, contractData) => {
   let yPos = 120;
   
   // Crear el cuadro de información de reserva
-  const boxHeight = 450;
+  const boxHeight = 480; // Aumentado para incluir los nuevos headers
   const boxY = yPos;
   
   // Fondo del cuadro
@@ -503,20 +503,60 @@ const createReservaSection = (doc, contractData) => {
      .stroke();
   
   // Headers del cuadro
-  const headerHeight = 25;
+  const headerHeight = 20;
+  const halfWidth = contentWidth / 2;
   
-  // Header único - FECHA DE RESERVA (ocupando todo el ancho)
-  doc.rect(margin, boxY, contentWidth, headerHeight)
+  // Primera fila de headers - VENTA PROGRAMADA y VENTA AL DIA
+  doc.rect(margin, boxY, halfWidth, headerHeight)
      .fillColor('#7b2cbf')
      .fill();
   
-  doc.fontSize(10)
+  doc.rect(margin + halfWidth, boxY, halfWidth, headerHeight)
+     .fillColor('#7b2cbf')
+     .fill();
+  
+  doc.fontSize(9)
+     .fillColor('#ffffff')
+     .font('Helvetica-Bold')
+     .text('VENTA PROGRAMADA:', margin + 5, boxY + 6, {
+       width: halfWidth - 10
+     });
+  
+  doc.fontSize(9)
+     .fillColor('#ffffff')
+     .font('Helvetica-Bold')
+     .text('VENTA AL DIA:', margin + halfWidth + 5, boxY + 6, {
+       width: halfWidth - 10
+     });
+  
+  // Segunda fila de headers - FECHA DE RESERVA y NUMERO DE CONTRATO
+  const secondRowY = boxY + headerHeight;
+  
+  doc.rect(margin, secondRowY, halfWidth, headerHeight)
+     .fillColor('#7b2cbf')
+     .fill();
+  
+  doc.rect(margin + halfWidth, secondRowY, halfWidth, headerHeight)
+     .fillColor('#7b2cbf')
+     .fill();
+  
+  doc.fontSize(9)
      .fillColor('#ffffff')
      .font('Helvetica-Bold')
      .text('FECHA DE RESERVA: ' + formatearFecha(contractData.fecha_firma), 
-           margin + 5, boxY + 8);
+           margin + 5, secondRowY + 6, {
+             width: halfWidth - 10
+           });
   
-  yPos = boxY + headerHeight + 40; // Aumentado de 25 a 40 para mayor separación
+  doc.fontSize(9)
+     .fillColor('#ffffff')
+     .font('Helvetica-Bold')
+     .text('NUMERO DE CONTRATO: ' + (contractData.numero_contrato || contractData.id || 'N/A'), 
+           margin + halfWidth + 5, secondRowY + 6, {
+             width: halfWidth - 10
+           });
+  
+  yPos = secondRowY + headerHeight + 40;
   
   // ================== SECCIÓN 1: DATOS DEL TITULAR ==================
   // Agregar un pequeño fondo blanco para asegurar visibilidad
@@ -2284,7 +2324,7 @@ const generateContractPDF = async (contractData, saveToFile = true) => {
     yPos += 30;
 
     // Información bancaria
-    const textoBancario = `Bancolombia de ahorros No 846-772-51165 cedula representante legal 1032406128`;
+    const textoBancario = `Bancolombia de ahorros No 84668111024 cedula representante legal 1070326574`;
     
     doc.fontSize(9)
        .fillColor('#7b2cbf')
@@ -2344,7 +2384,7 @@ const generateContractPDF = async (contractData, saveToFile = true) => {
     doc.fontSize(9)
        .fillColor('#000000')
        .font('Helvetica-Bold')
-       .text('MAYERLY ALEJANDRA HENAO HIGUERA', leftColumnX + 5, yPos + 85, {
+       .text('GABRIELA MATEUS HENAO', leftColumnX + 5, yPos + 85, {
          width: firmaColumnWidth - 10,
          align: 'center'
        });
