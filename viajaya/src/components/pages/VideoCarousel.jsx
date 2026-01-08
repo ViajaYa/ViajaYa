@@ -9,7 +9,7 @@ const VideoCarousel = () => {
   const dispatch = useDispatch();
   
   // Obtener los videos del estado global (Redux)
-  const videos = useSelector((state) => state.videos);
+  const videos = useSelector((state) => state.videos?.videos || []);
   console.log('Videos desde Redux:', videos);
 
   useEffect(() => {

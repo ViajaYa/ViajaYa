@@ -14,9 +14,10 @@ const UploadCarouselImage = () => {
     const fetchCarouselImages = async () => {
       try {
         const response = await axios.get('/carousel');
-        setCarouselImages(response.data);
+        setCarouselImages(Array.isArray(response.data) ? response.data : []);
       } catch (error) {
         console.error('Error al obtener las imágenes del carrusel:', error);
+        setCarouselImages([]);
       }
     };
 
@@ -59,7 +60,7 @@ const UploadCarouselImage = () => {
 
       // Refrescar las imágenes después de subir una nueva
       const updatedImages = await axios.get('/carousel');
-      setCarouselImages(updatedImages.data);
+      setCarouselImages(Array.isArray(updatedImages.data) ? updatedImages.data : []);
 
     } catch (error) {
       console.error('Error al subir la imagen', error);
@@ -144,22 +145,26 @@ const UploadCarouselImage = () => {
       <div className="mt-8">
         <h3 className="text-lg font-semibold mb-4">Imágenes Cargadas</h3>
         <div className="grid grid-cols-2 gap-4">
-          {carouselImages.map((image) => (
-            <div key={image.id} className="relative">
-            <img 
-  src={image.src} 
-  alt={image.title} 
-  className="w-full h-32 object-cover rounded-md" 
-/>
-              <button
-                onClick={() => handleDelete(image.id)}
-                className="absolute top-1 right-1 bg-red-500 text-white px-2 py-1 rounded-full text-xs hover:bg-red-600"
-              >
-                Eliminar
-              </button>
-              <p className="mt-2 text-sm text-center">{image.title}</p>
-            </div>
-          ))}
+          {carouselImages && carouselImages.length > 0 ? (
+            carouselImages.map((image) => (
+              <div key={image.id} className="relative">
+              <img 
+    src={image.src} 
+    alt={image.title} 
+    className="w-full h-32 object-cover rounded-md" 
+  />
+                <button
+                  onClick={() => handleDelete(image.id)}
+                  className="absolute top-1 right-1 bg-red-500 text-white px-2 py-1 rounded-full text-xs hover:bg-red-600"
+                >
+                  Eliminar
+                </button>
+                <p className="mt-2 text-sm text-center">{image.title}</p>
+              </div>
+            ))
+          ) : (
+            <p className="text-gray-500 col-span-2">No hay imágenes cargadas</p>
+          )}
         </div>
       </div>
     </div>

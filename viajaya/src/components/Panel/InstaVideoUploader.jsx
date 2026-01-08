@@ -12,7 +12,7 @@ const VideoUploader = () => {
     const [success, setSuccess] = useState(false);
     
     const dispatch = useDispatch();
-    const videos = useSelector((state) => state.videos);
+    const videos = useSelector((state) => state.videos?.videos || []);
 
     // Fetch videos on component mount
     useEffect(() => {

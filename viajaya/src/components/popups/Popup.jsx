@@ -9,7 +9,7 @@ const Popup = ({ id }) => {
   const [isVisible, setIsVisible] = useState(true);
   
   const dispatch = useDispatch();
-  const popup = useSelector(state => state.popup); 
+  const popup = useSelector(state => state.popup?.currentPopup) || {}; 
   // Asegúrate de que el estado esté configurado correctamente
 
   // Cargar el popup cuando se monta el componente
@@ -23,12 +23,12 @@ const Popup = ({ id }) => {
   const handleClose = () => {
     setIsVisible(false);
     // Solo despacha putPopup si el id es válido
-    if (id) {
+    if (id && popup?.content) {
       dispatch(putPopup(id, { content: popup.content, isActive: false }));
     }
   };
 
-  if (!isVisible) return null;
+  if (!isVisible || !popup || !popup.title) return null;
 
   return (
     <div className="fixed inset-0 bg-gray-800 bg-opacity-70 flex justify-center items-center z-50">
@@ -45,12 +45,13 @@ const Popup = ({ id }) => {
         </button>
 
         {/* Título del Popup */}
-        <h2 className="text-2xl sm:text-4xl font-bold font-nunito text-gray-700 mb-6 text-center">{popup.title}</h2>
+        <h2 className="text-2xl sm:text-4xl font-bold font-nunito text-gray-700 mb-6 text-center">{popup?.title || ''}</h2>
         
         {/* Contenido del Popup */}
-        <p className="text-xl sm:text-3xl font-nunito text-gray-800 text-center mb-8">{popup.content}</p>
+        <p className="text-xl sm:text-3xl font-nunito text-gray-800 text-center mb-8">{popup?.content || ''}</p>
         
         {/* Botón de Participación */}
+        {popup?.boton && (
         <div className="mb-8 mt-12 flex justify-center">
           <button 
              onClick={() => window.location.href = popup.boton}  
@@ -59,6 +60,7 @@ const Popup = ({ id }) => {
             PARTICIPA
           </button>
         </div>
+        )}
 
         {/* Logo en la esquina inferior derecha */}
         <div className="absolute bottom-4 left-4">

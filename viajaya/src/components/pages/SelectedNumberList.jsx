@@ -12,9 +12,10 @@ const SelectedNumberList = () => {
       try {
         const response = await axios.get("/numbers/selected");
         console.log("Números seleccionados:", response.data);
-        setSelectedNumbers(response.data);
+        setSelectedNumbers(Array.isArray(response.data) ? response.data : []);
       } catch (error) {
         console.error("Error al obtener números seleccionados:", error);
+        setSelectedNumbers([]);
       }
     };
 
@@ -59,7 +60,8 @@ const SelectedNumberList = () => {
           </tr>
         </thead>
         <tbody>
-          {selectedNumbers.map((number) => (
+          {selectedNumbers && selectedNumbers.length > 0 ? (
+            selectedNumbers.map((number) => (
             <tr key={number.id} className="text-center">
               <td className="border-b border-gray-200 px-4 py-2">
                 {number.value}
@@ -86,7 +88,14 @@ const SelectedNumberList = () => {
                 </button>
               </td>
             </tr>
-          ))}
+          ))
+          ) : (
+            <tr>
+              <td colSpan="5" className="text-center py-8 text-gray-500">
+                No hay números seleccionados
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
     </div>

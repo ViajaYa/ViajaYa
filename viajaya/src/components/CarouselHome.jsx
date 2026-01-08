@@ -28,10 +28,10 @@ const CarouselHome = () => {
                 const response = await axios.get("/carousel");
                 const data = response.data;
 
-
-                setNewImages(data);
+                setNewImages(Array.isArray(data) ? data : []);
             } catch (error) {
                 console.error('Error al obtener las imágenes del carrusel:', error);
+                setNewImages([]);
             }
         };
 
@@ -43,7 +43,7 @@ const CarouselHome = () => {
     const [showAll, setShowAll] = useState(true);
 
     const handlePrev = () => {
-        if (!showAll) {
+        if (!showAll && newImages && newImages.length > 0) {
             setCurrentIndex((prevIndex) =>
                 prevIndex === 0 ? newImages.length - 1 : prevIndex - 1
             );
@@ -52,17 +52,22 @@ const CarouselHome = () => {
 
     const handleNext = () => {
         if (showAll) {
-            setShowAll(false);
-            setCurrentIndex(0);
+            // Solo cambiar si hay imágenes nuevas disponibles
+            if (newImages && Array.isArray(newImages) && newImages.length > 0) {
+                setShowAll(false);
+                setCurrentIndex(0);
+            }
         } else {
-            setCurrentIndex((prevIndex) => {
-                if (prevIndex === newImages.length - 1) {
-                    setShowAll(true);
-                    return 0;
-                } else {
-                    return prevIndex + 1;
-                }
-            });
+            if (newImages && newImages.length > 0) {
+                setCurrentIndex((prevIndex) => {
+                    if (prevIndex === newImages.length - 1) {
+                        setShowAll(true);
+                        return 0;
+                    } else {
+                        return prevIndex + 1;
+                    }
+                });
+            }
         }
     };
 
@@ -98,26 +103,32 @@ const CarouselHome = () => {
                     className="flex transition-transform duration-500 ease-in-out"
                     style={{ transform: `translateX(-${currentIndex * 100}%)` }}
                 >
-                    {newImages.map((image, index) => (
-                        <div
-                            key={index}
-                            className="relative w-full h-64 sm:h-80 lg:h-[600px] flex-shrink-0 flex items-center object-cover"
-                            style={{
-                                backgroundImage: `url(${image.src})`,
-                                backgroundSize: 'cover',
-                                backgroundPosition: 'center',
-                                backgroundRepeat: 'no-repeat',
-                                cursor: 'pointer'
-                            }}
-                            onClick={() => handleImageClick(image.destino)}
-                        >
-                            <div className="w-full h-full flex flex-col justify-center items-end mr-4 sm:mr-16 text-white">
-                                <Title styleAdd="text-xl sm:text-2xl lg:text-4xl font-nunito bg-black bg-opacity-50 p-2 border-2 rounded-xl">
-                                    <a href="#">{image.destino}</a>
-                                </Title>
+                    {newImages && newImages.length > 0 ? (
+                        newImages.map((image, index) => (
+                            <div
+                                key={index}
+                                className="relative w-full h-64 sm:h-80 lg:h-[600px] flex-shrink-0 flex items-center object-cover"
+                                style={{
+                                    backgroundImage: `url(${image.src})`,
+                                    backgroundSize: 'cover',
+                                    backgroundPosition: 'center',
+                                    backgroundRepeat: 'no-repeat',
+                                    cursor: 'pointer'
+                                }}
+                                onClick={() => handleImageClick(image.destino)}
+                            >
+                                <div className="w-full h-full flex flex-col justify-center items-end mr-4 sm:mr-16 text-white">
+                                    <Title styleAdd="text-xl sm:text-2xl lg:text-4xl font-nunito bg-black bg-opacity-50 p-2 border-2 rounded-xl">
+                                        <a href="#">{image.destino}</a>
+                                    </Title>
+                                </div>
                             </div>
+                        ))
+                    ) : (
+                        <div className="w-full h-64 flex items-center justify-center text-gray-500">
+                            No hay imágenes disponibles
                         </div>
-                    ))}
+                    )}
                 </div>
             )}
 

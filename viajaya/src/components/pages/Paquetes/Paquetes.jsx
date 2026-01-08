@@ -43,10 +43,19 @@ const Paquetes = () => {
 
   useEffect(() => {
     axios.get("/pack").then((data) => dispatch(setPaquetes(data.data)));
-    axios.get("/pack/chars").then((data) => setChars(data.data));
+    axios.get("/pack/chars").then((data) => {
+      setChars(Array.isArray(data.data) ? data.data : []);
+    }).catch(error => {
+      console.error('Error al obtener características:', error);
+      setChars([]);
+    });
   }, []);
 
   const filterPacks = (e) => {
+    if (!e || !Array.isArray(e)) {
+      dispatch(filterPacksChar([]));
+      return;
+    }
     const chars = e.map(c => c.label);
     dispatch(filterPacksChar(chars));
   };
@@ -55,7 +64,7 @@ const Paquetes = () => {
     dispatch(filterPacksTitle(e.target.value));
   };
 
-  const options = chars.map(c => ({ value: c.id, label: c.name }));
+  const options = Array.isArray(chars) ? chars.map(c => ({ value: c.id, label: c.name })) : [];
 
   return (
     <>

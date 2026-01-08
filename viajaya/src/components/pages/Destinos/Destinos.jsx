@@ -42,7 +42,7 @@ const FlipCard = ({
         <div className={`flip-card-back ${backColor} p-6 flex flex-col justify-center items-center text-center`}>
           <h2 className="text-2xl md:text-3xl font-bold mb-4 text-gray-800">{backTitle}</h2>
           
-          {backSteps.length > 0 && (
+          {Array.isArray(backSteps) && backSteps.length > 0 && (
             <ul className="text-gray-600 mb-4 space-y-1">
               {backSteps.map((step, index) => (
                 <li key={index} className="text-sm md:text-base">✓ {step}</li>

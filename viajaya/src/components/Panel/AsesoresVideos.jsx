@@ -13,7 +13,7 @@ const AsesoresVideos = () => {
     const [success, setSuccess] = useState(false);
     
     const dispatch = useDispatch();
-    const capacitaciones = useSelector((state) => state.capacitaciones);
+    const capacitaciones = useSelector((state) => state.videos?.capacitaciones || []);
 
     // Fetch videos on component mount
     useEffect(() => {

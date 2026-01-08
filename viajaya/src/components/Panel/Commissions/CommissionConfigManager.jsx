@@ -43,7 +43,10 @@ const CommissionConfigManager = () => {
     { value: 'nacional', label: 'Viajes Nacionales', color: 'bg-emerald-100 text-emerald-800' },
     { value: 'internacional', label: 'Viajes Internacionales', color: 'bg-indigo-100 text-indigo-800' },
     { value: 'operadorLlano', label: 'Operador Llano', color: 'bg-purple-100 text-purple-800' },
-    { value: 'hotel', label: 'Hotel', color: 'bg-pink-100 text-pink-800' }
+    { value: 'hotel', label: 'Hotel', color: 'bg-pink-100 text-pink-800' },
+    { value: 'vuelos', label: 'Vuelos', color: 'bg-sky-100 text-sky-800' },
+    { value: 'terrestres', label: 'Terrestres', color: 'bg-amber-100 text-amber-800' },
+    { value: 'Circuitos/Cruceros', label: 'Circuitos/Cruceros', color: 'bg-cyan-100 text-cyan-800' }
   ];
 
   const calculationTypeOptions = [

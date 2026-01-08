@@ -14,7 +14,7 @@ module.exports = (sequelize) => {
     },
     // Tipo de viaje
     trip_type: {
-      type: DataTypes.ENUM('nacional', 'internacional', 'operadorLlano', 'hotel'),
+      type: DataTypes.ENUM('nacional', 'internacional', 'operadorLlano', 'hotel', "vuelos", "terrestres", "Circuitos/Cruceros"),
       allowNull: false,
     },
     // Tipo de cálculo

@@ -2,7 +2,7 @@
 const { CommissionConfig, User } = require('./db');
 
 const ROLES = ['asesor', 'lider', 'gerente'];
-const TRIP_TYPES = ['nacional', 'internacional', 'operadorLlano', 'hotel'];
+const TRIP_TYPES = ['nacional', 'internacional', 'operadorLlano', 'hotel', 'vuelos', 'terrestres', 'Circuitos/Cruceros'];
 const DEFAULT_AMOUNT = '10000.00';
 
 async function seedCommissionConfigs() {

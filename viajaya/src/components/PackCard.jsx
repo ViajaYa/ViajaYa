@@ -73,8 +73,16 @@ const PackCard = () => {
     );
   }
 
+  // ✅ Validación defensiva de packages
+  const safePackages = Array.isArray(packages) ? packages : [];
+  
   // ✅ Filtrar paquetes activos que NO son YapaYa
-  const filteredPacks = packages.filter(pack => pack.isActive && !pack.isYapaya);
+  const filteredPacks = safePackages.filter(pack => 
+    pack && 
+    typeof pack === 'object' && 
+    pack.isActive && 
+    !pack.isYapaya
+  );
 
   // ✅ Si no hay paquetes, mostrar mensaje
   if (filteredPacks.length === 0) {

@@ -15,6 +15,7 @@ import reservationReducer from '../slices/reservationSlice';
 import quoteCalculationReducer from '../slices/quoteCalculationSlice'; // Importar el slice de quoteCalculation
 import contractPaymentReducer from '../slices/contractPaymentSlice'; // ✅ NUEVO: Importar contract payment slice
 import financialReducer from '../slices/financialSlice'; // ✅ NUEVO: Importar financial slice
+import oldReducer from '../reducer/reducer'; // ✅ Importar reducer antiguo para videos y capacitaciones
 
 export const store = configureStore({
   reducer: {
@@ -33,6 +34,7 @@ export const store = configureStore({
     quoteCalculation: quoteCalculationReducer,
     contractPayment: contractPaymentReducer, // ✅ NUEVO: Agregar contract payment reducer
     financial: financialReducer, // ✅ NUEVO: Agregar financial reducer
+    videos: oldReducer, // ✅ Agregar reducer antiguo para videos
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
