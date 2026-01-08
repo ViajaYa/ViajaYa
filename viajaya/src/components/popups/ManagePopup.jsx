@@ -7,7 +7,7 @@ const ManagePopup = () => {
   const dispatch = useDispatch();
   const loading = useSelector((state) => state.loading);
   const error = useSelector((state) => state.error);
-  const popups = useSelector((state) => state.popups);
+  const popups = useSelector((state) => state.popups || []);
   console.log(popups);
 
   const [content, setContent] = useState('');
@@ -94,7 +94,7 @@ const ManagePopup = () => {
           className="w-full p-2 border border-gray-300 rounded-md mb-4"
         >
           <option value="">Selecciona un Popup</option>
-          {popups.map(popup => (
+          {Array.isArray(popups) && popups.map(popup => (
             <option key={popup.id} value={popup.id}>{popup.title}</option>
           ))}
         </select>

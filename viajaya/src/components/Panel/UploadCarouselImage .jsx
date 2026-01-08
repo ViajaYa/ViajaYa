@@ -1,5 +1,5 @@
 import  { useState, useEffect  } from 'react';
-import axios from 'axios';
+import api from '../../utils/api';
 import NavBar from '../layout/NavBar/NavBar';
 
 const UploadCarouselImage = () => {
@@ -13,7 +13,7 @@ const UploadCarouselImage = () => {
   useEffect(() => {
     const fetchCarouselImages = async () => {
       try {
-        const response = await axios.get('/carousel');
+        const response = await api.get('/carousel');
         setCarouselImages(Array.isArray(response.data) ? response.data : []);
       } catch (error) {
         console.error('Error al obtener las imágenes del carrusel:', error);

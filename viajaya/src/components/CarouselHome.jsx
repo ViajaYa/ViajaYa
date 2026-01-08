@@ -6,7 +6,7 @@ import internacionales from "../assets/flipcard/internacionales.jpg";
 import macarena from "../assets/flipcard/lamacarena.jpg";
 import tierra from "../assets/flipcard/portierra.jpg";
 import Title from "../utils/Title";
-import axios from 'axios';
+import api from '../utils/api';
 
 
 const CarouselHome = () => {
@@ -25,7 +25,7 @@ const CarouselHome = () => {
     useEffect(() => {
         const fetchImages = async () => {
             try {
-                const response = await axios.get("/carousel");
+                const response = await api.get("/carousel");
                 const data = response.data;
 
                 setNewImages(Array.isArray(data) ? data : []);
