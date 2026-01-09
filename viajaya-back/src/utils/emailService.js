@@ -66,7 +66,7 @@ const sendEmail = async (mailOptions) => {
       // Usar Resend API HTTP
       const emailData = {
         from: `${fromName} <${fromEmail}>`,
-        to: [mailOptions.to],
+        to: Array.isArray(mailOptions.to) ? mailOptions.to : [mailOptions.to],
         subject: mailOptions.subject,
         html: mailOptions.html,
       };
